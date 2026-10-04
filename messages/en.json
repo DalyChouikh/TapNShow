@@ -1,0 +1,8 @@
+{
+  "Home": {
+    "title": "{appName}"
+  },
+  "Errors": {
+    "global": "Something went wrong. Please reload the page."
+  }
+}
