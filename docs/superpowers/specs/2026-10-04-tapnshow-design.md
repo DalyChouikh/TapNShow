@@ -115,7 +115,17 @@ A user can be Admin/Viewer in several workspaces and a member of others with the
 - **Single TypeScript codebase**, run with bun locally, deployed to Vercel on Node.js.
 - **All data access via API routes.** Pages are client components; TanStack Query handles caching, optimistic updates, and refetch after mutations.
 - **Outbox pattern** for every side effect (emails, reminders, Sheets rows, push).
-- **Fallback scheduler** if Supabase Cron can't run every minute on Free: a scheduled GitHub Actions workflow calling the dispatcher (to be verified in S1).
+- **Fallback scheduler** if Supabase Cron can't run every minute on Free: a scheduled GitHub Actions workflow calling the dispatcher (to be verified in S1). The repo is public, so Actions minutes are free.
+- **Data access:** supabase-js with generated database types, used only inside `src/server/queries/*`; multi-step/transactional operations (send meeting, claim jobs, rate-limit check) are Postgres functions called via RPC. No ORM, so RLS applies through the user's session.
+- **Environments (two free Supabase projects):**
+  | Env | Database | Used by |
+  |---|---|---|
+  | Local | Local Supabase via Docker (`supabase start`) | Development, integration and RLS tests |
+  | Preview | Supabase project #2 | Vercel preview deployments |
+  | Production | Supabase project #1 | `tapnshow.vercel.app` |
+
+  Migrations live in `supabase/migrations/` and are applied to Preview then Production. Docker Desktop's WSL integration must be enabled before the first task that needs a local database.
+- **Monitoring:** Sentry free tier (5k errors/month, 30-day retention, 1 user) for API routes and the dispatcher; structured logs via the logger utility; `outbox_jobs.last_error` for per-job failures.
 
 ---
 
@@ -126,11 +136,12 @@ All tables have RLS enabled. Timestamps are `timestamptz`. Emails are stored nor
 ### Organizers & workspaces
 - **`profiles`** — `user_id` (PK, → `auth.users`), `display_name`, `avatar_url`, `locale`, timestamps.
 - **`workspaces`** — `id`, `name`, `slug` (unique), `timezone`, `locale`, default meeting settings (`default_response_mode`, `default_delay_options`, `default_reason_required`, `default_comments_enabled`, `default_footer_note`, `default_reminder_*`), `fallback_daily_cap`, `sender_connection_id` (nullable → `google_connections`), timestamps.
-- **`workspace_roles`** — (`workspace_id`, `user_id`) PK, `role` (`admin` | `viewer`).
+- **`workspace_roles`** — (`workspace_id`, `user_id`) PK, `role` (`admin` | `viewer`), `can_check_in` (boolean; Viewers only — the single write a Viewer may perform). At least one Admin must always exist.
+- **`platform_admins`** — `user_id` — platform operators (initially only the project owner).
 - **`workspace_invites`** — `id`, `workspace_id`, `email`, `role`, `token_hash`, `expires_at`, `accepted_at`.
 
 ### People & lists
-- **`contacts`** — `id`, `workspace_id`, `email` (unique per workspace), `full_name`, `user_id` (nullable link once the person has an account with this verified email), `unsubscribed_at`, timestamps.
+- **`contacts`** — `id`, `workspace_id`, `email` (unique per workspace), `full_name`, `user_id` (nullable link once the person has an account with this verified email), `unsubscribed_at`, `is_adhoc` (true for one-off emails typed at send time and not saved to the roster: hidden from lists, kept for history, flipped to false if later added to the roster), timestamps.
 - **`lists`** — `id`, `workspace_id`, `name` (unique per workspace).
 - **`list_contacts`** — (`list_id`, `contact_id`) PK.
 
@@ -141,6 +152,7 @@ All tables have RLS enabled. Timestamps are `timestamptz`. Emails are stored nor
 - **`responses`** — `id`, `invitee_id` (unique), `status` (`attending` | `late` | `absent` | `not_attending`), `delay_option`, `reason`, `comment`, `needs_reconfirmation`, `responded_at`, `updated_at`.
 - **`response_history`** — append-only copy of every response change.
 - **`meeting_changes`** — audit log of edits and cancellations (who, when, which fields).
+- **`attendance_marks`** — (`meeting_id`, `contact_id`) PK, `actual` (`present` | `late` | `absent`), `marked_by`, `marked_at` — post-meeting check-in (actual vs declared).
 
 ### Integrations & pipeline
 - **`google_connections`** — `id`, `user_id`, `google_email`, `granted_scopes`, `refresh_token_encrypted` (AES-256-GCM), `status` (`active` | `broken`), timestamps.
@@ -149,10 +161,14 @@ All tables have RLS enabled. Timestamps are `timestamptz`. Emails are stored nor
 - **`outbox_jobs`** — `id`, `kind` (`invite` | `update` | `cancel` | `reminder` | `sheet_sync` | `push` | `system_email`), `workspace_id`, `payload` (JSON validated by a per-kind Zod schema), `idempotency_key` (unique), `run_after`, `status` (`pending` | `processing` | `done` | `failed` | `paused`), `attempts`, `locked_until`, `last_error`, timestamps.
 - **`send_log`** — one row per sent email (`sender_key`, `workspace_id`, `job_id`, `sent_at`) used for rolling-24h quota checks.
 - **`rate_limits`** — key + window counters for Postgres-backed rate limiting.
+- **`abuse_reports`** — `id`, `workspace_id`, `invitee_id`, `reported_at` — "Not my group" clicks; drives the fallback auto-pause.
+- **`workspace_sending_suspensions`** — `workspace_id`, `reason` (`auto_reports` | `platform_admin`), `created_at`, `lifted_at`.
 
 ### Identity rules
 - Personal link tokens: 256-bit random; only the SHA-256 hash is stored.
 - A signed-in user sees invites whose contact email equals their **verified** auth email, across all workspaces.
+- Personal links are bearer links (forwarding lets the recipient answer). Accepted risk; the page shows "Answering as <Full name>. Not you?" with an explanation.
+- Workspaces are private: no directory or public join page; access only via organizer invite or a member's email link.
 
 ---
 
@@ -185,7 +201,23 @@ Email shows meeting card, three buttons (deep links to `/r/{token}?choice=…`),
 Enqueued at send time with `run_after`. On execution, eligibility is re-evaluated (non-responders, or attending/late), so people who answered meanwhile are skipped. Reminder emails count against the same quotas.
 
 ### 7.7 Viewer (committee)
-Read-only Home, meetings, responses, per-member history ("Late 3×, Absent 1× this semester" + reasons), CSV/Excel export, link to synced Sheet.
+Read-only Home, meetings, responses, per-member history ("Late 3×, Absent 1×, No reply 4× this semester" + reasons; declared vs actual where check-in exists), CSV/Excel export, link to synced Sheet. Viewers with `can_check_in` can mark actual attendance.
+
+### 7.8 Post-meeting check-in
+From the meeting page after start, an Admin (or Viewer with `can_check_in`) marks each invitee Present / Late / Absent, pre-filled from their declared answer. History shows both declared and actual.
+
+### 7.9 Duplicate meeting
+Copies details, audience and response settings into a new draft with an empty date/time.
+
+### 7.10 Timezones
+Times are always shown in the meeting's timezone, plus "(your time: …)" when the viewer's timezone differs.
+
+### 7.11 Workspace lifecycle
+Last Admin cannot leave or demote themselves; Admins can transfer ownership; deleting a workspace requires typing its name and hard-deletes all its data (synced Sheets remain in Drive).
+
+### 7.12 Abuse controls
+- Fallback sending auto-pauses for a workspace when its emails receive ≥ 3 "Not my group" reports **or** reports from ≥ 5% of recipients within 24 h (both configurable); the workspace sees "Connect your Google account to keep sending" and platform admins are alerted.
+- Platform admins can suspend or lift a workspace's sending from an internal admin page (M9).
 
 ---
 
@@ -274,7 +306,13 @@ Read-only Home, meetings, responses, per-member history ("Late 3×, Absent 1× t
 - **Integration:** API routes against local Supabase (`supabase start`), including RLS tests (Viewer cannot write; no cross-workspace reads).
 - **Email:** fake `EmailSender` in tests; local mail catcher for manual checks.
 - **E2E (Playwright, phone viewport):** create meeting → send → respond via link → dashboard updates. UI changes verified with Playwright MCP per repo rules.
+- **Runner:** `bun run test` runs **Vitest** (jsdom + React Testing Library); Playwright for E2E.
 - **CI (GitHub Actions):** lint, format check, typecheck, tests on every PR.
+- **Accessibility:** WCAG 2.2 AA — text on every token color pair ≥ 4.5:1 (asserted in design-token unit tests), visible focus rings, ≥ 44 px tap targets, full keyboard support.
+- **Browser support:** latest 2 versions of Chrome, Edge, Firefox, Safari; iOS Safari 16.4+ (Web Push for installed web apps); Android Chrome.
+
+### Workflow
+One branch per agent-task issue (`feat/<issue#>-<slug>`), PR using the repo template, CI must pass, code review, **squash merge** into a protected `main`.
 
 ---
 
@@ -298,15 +336,15 @@ Each spike ends with a **Decision** issue recording evidence and the outcome; af
 | # | Milestone | Done when |
 |---|---|---|
 | M0 | Spikes S1–S4 | Decision issues closed with evidence |
-| M1 | Foundation — scaffold, tooling (lint/format/test), CI, typed config, logger, i18n, design tokens (light/dark), core components (Button, Card, Sticker, Chip, Input), motion tokens, Supabase baseline | Style-B component showcase deployed |
+| M1 | Foundation — scaffold, tooling (lint/format/test), CI, branch protection, Sentry, typed config, logger, i18n, design tokens (light/dark), core components (Button, Card, Sticker, Chip, Input), motion tokens, Supabase baseline | Style-B component showcase deployed |
 | M2 | Auth & workspaces — Google + email-code sign-in, workspaces, roles, Viewer invites, app shell | Sign in, create workspace, invite a Viewer |
 | M3 | Contacts & lists — list editor, CSV/Excel import, mapping, preview, dedup | Club roster imported |
-| M4 | Meetings & sending — wizard, outbox, dispatcher, fallback SMTP sender, quotas, invite email + `.ics`, unsubscribe, send progress | Invites land in inboxes |
+| M4 | Meetings & sending — wizard, outbox, dispatcher, fallback SMTP sender, quotas, invite email + `.ics`, unsubscribe + "Not my group" + auto-pause, send progress | Invites land in inboxes |
 | M5 | Responses — `/r/[token]`, three modes, edits until start, live dashboard, per-member history, export | **MVP usable by the club** |
-| M6 | Lifecycle & reminders — edit/cancel updates, reconfirmation, reminders, nudge non-responders | |
+| M6 | Lifecycle & reminders — edit/cancel updates, reconfirmation, reminders, nudge non-responders, post-meeting check-in, duplicate meeting | |
 | M7 | Google integrations — Gmail sending connection, Sheets sync | |
 | M8 | Member accounts & PWA — `/invites`, push, install flow, offline shell, account deletion | |
-| M9 | Public launch — landing, privacy/terms, security header audit, Google verification submission | |
+| M9 | Public launch — landing, privacy/terms, security header audit, platform admin page, Google verification submission | |
 | Backlog | Calendar layer B, layer C, French/Arabic, organizer digest email, auto-delete of old reasons | |
 
 ### Process
