@@ -48,3 +48,4 @@ playwright-report/
 test-results/
 spikes/**/.token.json
 supabase/.temp/
+!.env.example
