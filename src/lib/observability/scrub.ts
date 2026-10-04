@@ -1,5 +1,8 @@
-/** `/r/<token>` paths; route patterns such as `/r/[token]` are left alone. */
-const PERSONAL_LINK = /\/r\/(?!\[)[^/?#\s"']+/g;
+/**
+ * `/r/<token>` personal links, including percent-encoded slashes and any letter case.
+ * Route patterns such as `/r/[token]` are left alone.
+ */
+const PERSONAL_LINK = /(?:\/|%2f)r(?:\/|%2f)(?!\[|%5b)[^/?#&\s"'\\]+/gi;
 
 /** Request headers that may carry credentials or personal-link URLs. */
 export const SENSITIVE_HEADERS = [
@@ -8,9 +11,15 @@ export const SENSITIVE_HEADERS = [
   "referer",
 ] as const;
 
+/** Replacement for values beyond the walk depth or already visited (cycles). */
+export const TRUNCATED = "[Truncated]";
+
+/** Maximum nesting depth scrubbed before values are truncated. */
+export const MAX_SCRUB_DEPTH = 20;
+
 /**
- * Replaces personal response-link tokens (`/r/<token>`) with a placeholder so they never
- * reach logs or error reports.
+ * Replaces personal response-link tokens with a placeholder so they never reach logs or
+ * error reports.
  */
 export function scrubUrl(url: string): string {
   return url.replace(PERSONAL_LINK, "/r/[REDACTED]");
@@ -43,9 +52,33 @@ export function scrubHeaders(
 }
 
 /**
- * Returns a deep copy of a JSON-serializable payload with personal-link tokens scrubbed
- * from every string, at any depth (exception messages, nested contexts, extras, spans).
+ * Returns a deep copy with personal-link tokens scrubbed from every string at any depth.
+ * Walks the structure (no regex over serialized JSON); cycles and over-deep values are
+ * replaced with `TRUNCATED`. May throw on hostile inputs (e.g. throwing getters) — callers
+ * must fail closed.
  */
-export function scrubDeep<T>(payload: T): T {
-  return JSON.parse(scrubUrl(JSON.stringify(payload)));
+export function scrubDeep<T>(
+  value: T,
+  depth = 0,
+  seen: WeakSet<object> = new WeakSet(),
+): T {
+  if (typeof value === "string") {
+    return scrubUrl(value) as T;
+  }
+  if (value === null || typeof value !== "object") {
+    return value;
+  }
+  if (depth > MAX_SCRUB_DEPTH || seen.has(value)) {
+    return TRUNCATED as T;
+  }
+  seen.add(value);
+  if (Array.isArray(value)) {
+    return value.map((item) => scrubDeep(item, depth + 1, seen)) as T;
+  }
+  return Object.fromEntries(
+    Object.entries(value).map(([key, item]) => [
+      key,
+      scrubDeep(item, depth + 1, seen),
+    ]),
+  ) as T;
 }

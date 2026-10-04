@@ -22,7 +22,7 @@ describe("buildSentryOptions", () => {
       type: undefined,
       request: { url: "https://x.app/r/secret-token" },
     } as ErrorEvent;
-    expect(options.beforeSend(event).request?.url).toBe(
+    expect(options.beforeSend(event)?.request?.url).toBe(
       "https://x.app/r/[REDACTED]",
     );
   });
@@ -45,7 +45,7 @@ describe("buildSentryOptions privacy scrubbing", () => {
         },
       },
     } as ErrorEvent;
-    const headers = options.beforeSend(event).request?.headers ?? {};
+    const headers = options.beforeSend(event)?.request?.headers ?? {};
     expect(headers).toEqual({ "user-agent": "test" });
   });
 
@@ -78,7 +78,7 @@ describe("buildSentryOptions privacy scrubbing", () => {
     } as ErrorEvent;
     const scrubbed = options.beforeSend(event);
     expect(JSON.stringify(scrubbed)).not.toContain(TOKEN);
-    expect(scrubbed.contexts?.nextjs?.router_path).toBe("/r/[token]");
+    expect(scrubbed?.contexts?.nextjs?.router_path).toBe("/r/[token]");
   });
 
   it("scrubs transaction events (traces)", () => {
@@ -137,9 +137,49 @@ describe("buildSentryOptions privacy scrubbing", () => {
         data: { reason: "medical appointment" },
       },
     } as ErrorEvent;
-    const request = options.beforeSend(event).request;
+    const request = options.beforeSend(event)?.request;
     expect(request?.cookies).toBeUndefined();
     expect(request?.data).toBeUndefined();
     expect(request?.url).toBe("https://x.app/api/responses");
+  });
+
+  it("scrubs tokens next to escaped quotes and backslashes", () => {
+    const event = {
+      type: undefined,
+      message: `bad link /r/${TOKEN}"tail and /r/${TOKEN}\\tail`,
+    } as ErrorEvent;
+    const result = options.beforeSend(event);
+    expect(JSON.stringify(result)).not.toContain(TOKEN);
+  });
+
+  it("scrubs percent-encoded and upper-case personal links", () => {
+    const event = {
+      type: undefined,
+      extra: {
+        next: `https://x.app/login?next=%2Fr%2F${TOKEN}`,
+        upper: `/R/${TOKEN}`,
+      },
+    } as ErrorEvent;
+    expect(JSON.stringify(options.beforeSend(event))).not.toContain(TOKEN);
+  });
+
+  it("does not throw on circular payloads and still scrubs", () => {
+    const extra: Record<string, object | string> = { link: `/r/${TOKEN}` };
+    extra.self = extra;
+    const event = { type: undefined, extra } as ErrorEvent;
+    const result = options.beforeSend(event);
+    expect(result).not.toBeNull();
+    expect(JSON.stringify(result)).not.toContain(TOKEN);
+  });
+
+  it("fails closed: drops the event if sanitizing throws", () => {
+    const event = { type: undefined } as ErrorEvent;
+    Object.defineProperty(event, "extra", {
+      enumerable: true,
+      get() {
+        throw new Error("boom");
+      },
+    });
+    expect(options.beforeSend(event)).toBeNull();
   });
 });
