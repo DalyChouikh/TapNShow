@@ -1,9 +1,10 @@
-# Meetings Confirmation Platform — Design Spec
+# TapNShow — Design Spec
 
 - **Date:** 2026-10-04
 - **Author:** DalyChouikh (with Claude)
 - **Status:** Draft — awaiting review
-- **Origin:** GDG on Campus ISSAT Sousse; built as a general-purpose, public, free tool
+- **Product name:** TapNShow (`tapnshow.vercel.app`; name lives in a single `APP_NAME` config constant)
+- **Origin:** GDG on Campus ISSAT Sousse; built as a general-purpose, public, free, brand-neutral tool
 
 ---
 
@@ -84,6 +85,7 @@ A user can be Admin/Viewer in several workspaces and a member of others with the
 | Visual style | **Soft Neobrutalism** — thick outlines, rounded corners, "pressable" drop shadows, pastels; light + dark following system |
 | Motion | **Expressive** — springy, staggered entrances, tilt-on-hover, drop-in chips, CONFIRMED stamp + shake + confetti; reduced-motion users get a snappy fallback |
 | Icons | **Phosphor Bold** inside outlined pastel "sticker" tiles |
+| Branding | Brand-neutral platform; no Google/GDG theming or logo uploads. The only Google-styled element is the "Continue with Google" button, which must follow Google's sign-in branding guidelines (standard-color G on white `#FFFFFF` with `#747775` stroke, or the dark/neutral variants) |
 | Navigation | **Hub + center "+"** — Home (next meeting live counts, "needs attention"), Meetings, [+ New], Lists, Settings |
 | Architecture | Next.js monolith + Postgres outbox queue drained by a per-minute dispatcher |
 
@@ -316,5 +318,5 @@ Each spike ends with a **Decision** issue recording evidence and the outcome; af
 
 ## 15. Open Items
 
-- **Product name** — not chosen yet; needed before M9 (landing page, Google consent screen, email "via <App>" line). Until then the codebase uses a single configurable `APP_NAME` constant.
+- **Claim `tapnshow.vercel.app`** early (first Vercel deploy in M1) — subdomains are first-come, first-served; availability was checked on 2026-10-04 only.
 - Spike outcomes S1–S4 may change §5 (scheduler), §9 (`.ics` method, verification path) and the default sender.
