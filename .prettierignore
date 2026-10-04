@@ -1,0 +1,9 @@
+.next
+bun.lock
+docs
+.superpowers
+spikes
+playwright-report
+test-results
+src/server/db/database.types.ts
+.agents

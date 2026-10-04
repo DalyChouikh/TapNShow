@@ -5,13 +5,28 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
-  // Override default ignores of eslint-config-next.
+  {
+    rules: {
+      "no-console": "error",
+      "@typescript-eslint/no-explicit-any": "error",
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "TSUnknownKeyword",
+          message: "Repo rule: use an explicit type instead of `unknown`.",
+        },
+      ],
+    },
+  },
   globalIgnores([
-    // Default ignores of eslint-config-next:
     ".next/**",
     "out/**",
     "build/**",
     "next-env.d.ts",
+    "spikes/**",
+    ".superpowers/**",
+    "playwright-report/**",
+    "test-results/**",
   ]),
 ]);
 
