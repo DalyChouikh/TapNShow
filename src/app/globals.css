@@ -1,26 +1,69 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "./tokens.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--tn-background);
+  --color-surface: var(--tn-surface);
+  --color-ink: var(--tn-ink);
+  --color-muted-ink: var(--tn-muted);
+  --color-outline: var(--tn-outline);
+  --color-on-fill: var(--tn-on-fill);
+  --color-fill-primary: var(--tn-fill-primary);
+  --color-fill-success: var(--tn-fill-success);
+  --color-fill-warning: var(--tn-fill-warning);
+  --color-fill-danger: var(--tn-fill-danger);
+  --color-fill-info: var(--tn-fill-info);
+  --color-fill-neutral: var(--tn-fill-neutral);
+
+  /* shadcn semantic aliases so future Radix components follow our tokens */
+  --color-foreground: var(--tn-ink);
+  --color-card: var(--tn-surface);
+  --color-card-foreground: var(--tn-ink);
+  --color-popover: var(--tn-surface);
+  --color-popover-foreground: var(--tn-ink);
+  --color-primary: var(--tn-fill-primary);
+  --color-primary-foreground: var(--tn-on-fill);
+  --color-secondary: var(--tn-fill-neutral);
+  --color-secondary-foreground: var(--tn-on-fill);
+  --color-muted: var(--tn-fill-neutral);
+  --color-muted-foreground: var(--tn-muted);
+  --color-accent: var(--tn-fill-info);
+  --color-accent-foreground: var(--tn-on-fill);
+  --color-destructive: var(--tn-fill-danger);
+  --color-border: var(--tn-outline);
+  --color-input: var(--tn-outline);
+  --color-ring: var(--tn-outline);
+
+  --radius-sticker: var(--tn-radius-sticker);
+  --radius-control: var(--tn-radius-control);
+  --radius-card: var(--tn-radius-card);
+
+  --shadow-brutal-sm: 0 var(--tn-shadow-sm) 0 var(--tn-outline);
+  --shadow-brutal: 0 var(--tn-shadow) 0 var(--tn-outline);
+  --shadow-brutal-lg: 0 var(--tn-shadow-lg) 0 var(--tn-outline);
+
+  --ease-spring: var(--tn-ease-spring);
+
+  --font-sans: var(--font-space-grotesk);
+  --font-display: var(--font-archivo-black);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    border-color: var(--tn-outline);
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  html {
+    background-color: var(--tn-background);
+    color: var(--tn-ink);
+  }
+  body {
+    @apply bg-background font-sans text-ink;
+  }
+  :focus-visible {
+    outline: 3px solid var(--tn-outline);
+    outline-offset: 2px;
+  }
 }

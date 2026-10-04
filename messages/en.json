@@ -4,5 +4,11 @@
   },
   "Errors": {
     "global": "Something went wrong. Please reload the page."
+  },
+  "Theme": {
+    "toggle": "Color theme: {mode}. Activate to switch.",
+    "system": "system",
+    "light": "light",
+    "dark": "dark"
   }
 }

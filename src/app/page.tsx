@@ -8,7 +8,7 @@ export default function HomePage() {
   const t = useTranslations("Home");
   return (
     <main className="flex min-h-dvh items-center justify-center p-4">
-      <h1 className="text-4xl font-bold">
+      <h1 className="font-display text-4xl">
         {t("title", { appName: APP_NAME })}
       </h1>
     </main>
