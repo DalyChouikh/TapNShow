@@ -5,6 +5,7 @@
     "": {
       "name": "tapnshow-scaffold",
       "dependencies": {
+        "@sentry/core": "11.4.0",
         "@sentry/nextjs": "^11",
         "next": "16.3.8",
         "next-intl": "^4",
