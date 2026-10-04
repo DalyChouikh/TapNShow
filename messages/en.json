@@ -10,5 +10,29 @@
     "system": "system",
     "light": "light",
     "dark": "dark"
+  },
+  "Design": {
+    "title": "Design system",
+    "colors": "Colors",
+    "buttons": "Buttons",
+    "inputs": "Inputs",
+    "demo": "Response demo",
+    "meetingTitle": "Bureau Weekly Meeting",
+    "meetingDate": "Tue, 14 Oct 2026",
+    "meetingTime": "18:00 - 19:30",
+    "meetingPlace": "ISSAT Sousse, Room B12",
+    "attend": "I'll be there",
+    "late": "I'll be late",
+    "absent": "I can't make it",
+    "delay": "How late will you be?",
+    "delayShort": "5-10 min",
+    "delayMedium": "10-20 min",
+    "delayLong": "20-30 min",
+    "reasonLabel": "Reason for delay",
+    "reasonHint": "Visible to the workspace organizers",
+    "reasonError": "Please enter a reason",
+    "confirmed": "CONFIRMED",
+    "reset": "Reset demo",
+    "tone": "Fill: {tone}"
   }
 }
