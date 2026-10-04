@@ -41,3 +41,11 @@ export function scrubHeaders(
   );
   return scrubRecord(Object.fromEntries(kept));
 }
+
+/**
+ * Returns a deep copy of a JSON-serializable payload with personal-link tokens scrubbed
+ * from every string, at any depth (exception messages, nested contexts, extras, spans).
+ */
+export function scrubDeep<T>(payload: T): T {
+  return JSON.parse(scrubUrl(JSON.stringify(payload)));
+}

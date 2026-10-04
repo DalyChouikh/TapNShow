@@ -109,4 +109,37 @@ describe("buildSentryOptions privacy scrubbing", () => {
     });
     expect(JSON.stringify(crumb)).not.toContain(TOKEN);
   });
+
+  it("scrubs tokens inside exception messages and nested values", () => {
+    const event = {
+      type: undefined,
+      exception: {
+        values: [{ type: "TypeError", value: `fetch failed: /r/${TOKEN}` }],
+      },
+      contexts: {
+        trace: {
+          trace_id: "t",
+          span_id: "s",
+          data: { "url.full": `https://x.app/r/${TOKEN}` },
+        },
+      },
+      extra: { nested: { deeper: [`/r/${TOKEN}`] } },
+    } as ErrorEvent;
+    expect(JSON.stringify(options.beforeSend(event))).not.toContain(TOKEN);
+  });
+
+  it("drops request cookies and body (may contain absence reasons)", () => {
+    const event = {
+      type: undefined,
+      request: {
+        url: "https://x.app/api/responses",
+        cookies: { "sb-access-token": "secret-cookie" },
+        data: { reason: "medical appointment" },
+      },
+    } as ErrorEvent;
+    const request = options.beforeSend(event).request;
+    expect(request?.cookies).toBeUndefined();
+    expect(request?.data).toBeUndefined();
+    expect(request?.url).toBe("https://x.app/api/responses");
+  });
 });
