@@ -182,4 +182,41 @@ describe("buildSentryOptions privacy scrubbing", () => {
     });
     expect(options.beforeSend(event)).toBeNull();
   });
+
+  it("redacts values stored under sensitive field names at any depth", () => {
+    const event = {
+      type: undefined,
+      extra: {
+        token: "raw-token-value",
+        nested: {
+          refresh_token: "raw-refresh",
+          refreshToken: "raw-refresh-2",
+          Authorization: "Bearer raw-auth",
+          password: "raw-password",
+          apiKey: "raw-key",
+          safe: "visible",
+        },
+      },
+    } as ErrorEvent;
+    const serialized = JSON.stringify(options.beforeSend(event));
+    for (const secret of [
+      "raw-token-value",
+      "raw-refresh",
+      "raw-refresh-2",
+      "raw-auth",
+      "raw-password",
+      "raw-key",
+    ]) {
+      expect(serialized).not.toContain(secret);
+    }
+    expect(serialized).toContain("visible");
+  });
+
+  it("scrubs personal links used as object keys", () => {
+    const event = {
+      type: undefined,
+      extra: { [`/r/${TOKEN}`]: 1 },
+    } as ErrorEvent;
+    expect(JSON.stringify(options.beforeSend(event))).not.toContain(TOKEN);
+  });
 });

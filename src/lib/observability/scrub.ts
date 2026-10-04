@@ -11,6 +11,21 @@ export const SENSITIVE_HEADERS = [
   "referer",
 ] as const;
 
+/** Replacement for values stored under sensitive field names. */
+export const REDACTED = "[REDACTED]";
+
+/**
+ * Field names (case/separator-insensitive substring match) whose values are always
+ * redacted, e.g. `token`, `refresh_token`, `Authorization`, `apiKey`, `password`.
+ */
+const SENSITIVE_KEY =
+  /token|secret|passw(or)?d|authorization|cookie|apikey|privatekey|dsn/;
+
+/** True when a field name suggests its value is a credential or secret. */
+export function isSensitiveKey(key: string): boolean {
+  return SENSITIVE_KEY.test(key.toLowerCase().replace(/[^a-z]/g, ""));
+}
+
 /** Replacement for values beyond the walk depth or already visited (cycles). */
 export const TRUNCATED = "[Truncated]";
 
@@ -52,7 +67,8 @@ export function scrubHeaders(
 }
 
 /**
- * Returns a deep copy with personal-link tokens scrubbed from every string at any depth.
+ * Returns a deep copy with personal-link tokens scrubbed from every string and key at any
+ * depth, and values under sensitive field names (see `isSensitiveKey`) redacted.
  * Walks the structure (no regex over serialized JSON); cycles and over-deep values are
  * replaced with `TRUNCATED`. May throw on hostile inputs (e.g. throwing getters) — callers
  * must fail closed.
@@ -77,8 +93,10 @@ export function scrubDeep<T>(
   }
   return Object.fromEntries(
     Object.entries(value).map(([key, item]) => [
-      key,
-      scrubDeep(item, depth + 1, seen),
+      scrubUrl(key),
+      isSensitiveKey(key) && item !== undefined && item !== null
+        ? REDACTED
+        : scrubDeep(item, depth + 1, seen),
     ]),
   ) as T;
 }
