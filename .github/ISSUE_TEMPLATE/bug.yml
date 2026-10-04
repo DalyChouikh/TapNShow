@@ -1,0 +1,43 @@
+name: Bug
+description: Report a confirmed defect in existing behavior.
+title: "[bug] "
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What is broken?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: How can someone reproduce the defect?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation
+      description: What should be checked after the fix? Include the regression test that should fail before the fix and pass after it.
+      placeholder: |
+        Regression test:
+        - [ ] ...
+
+        Other validation:
+        - [ ] ...
+    validations:
+      required: true

@@ -1,0 +1,53 @@
+name: Epic
+description: Define a larger product outcome or delivery slice.
+title: "[epic] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use epics for larger outcomes that will be decomposed into sub-issues.
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome
+      description: What larger result should exist when this epic is complete?
+      placeholder: Describe the completed product or platform outcome.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why this matters
+      description: What product, operational, or architectural value does this create?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: What is included and explicitly excluded?
+      placeholder: |
+        Included:
+        -
+
+        Excluded:
+        -
+    validations:
+      required: true
+  - type: textarea
+    id: child_work
+    attributes:
+      label: Expected sub-issues
+      description: List the main task groups that should later become sub-issues.
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: completion
+    attributes:
+      label: Completion criteria
+      description: What must be true before this epic can be closed?
+    validations:
+      required: true

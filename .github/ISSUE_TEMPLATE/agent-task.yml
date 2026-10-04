@@ -1,0 +1,85 @@
+name: Agent task
+description: Define one implementation task that an AI agent can execute safely.
+title: "[task] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A task should be small, concrete, and reviewable in one focused cycle.
+  - type: input
+    id: parent
+    attributes:
+      label: Parent issue
+      description: Link the parent epic or higher-level issue.
+      placeholder: "#123"
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What concrete outcome should exist when this task is complete?
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: What product, domain, or architectural background matters here?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Be explicit about what is included and excluded.
+      placeholder: |
+        Included:
+        -
+
+        Excluded:
+        -
+    validations:
+      required: true
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints
+      description: Standards, dependencies, interfaces, or prior decisions that must be respected.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Observable conditions that prove the work is complete.
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation
+      description: Tests, checks, or manual verification expected before completion, including required unit and regression coverage.
+      placeholder: |
+        Unit tests:
+        - [ ] ...
+
+        Regression tests:
+        - [ ] ...
+
+        Human workflow check, when applicable:
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: stop_conditions
+    attributes:
+      label: Stop conditions
+      description: What should make an agent pause and ask for human review?
+      placeholder: |
+        - ...
+    validations:
+      required: true

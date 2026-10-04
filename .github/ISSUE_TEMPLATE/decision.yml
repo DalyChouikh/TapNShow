@@ -1,0 +1,39 @@
+name: Decision
+description: Capture a product or architecture decision before implementation proceeds.
+title: "[decision] "
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Decision to make
+      description: What question must be resolved?
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Why is this decision needed now?
+    validations:
+      required: true
+  - type: textarea
+    id: options
+    attributes:
+      label: Options considered
+      description: List the viable options and their tradeoffs.
+    validations:
+      required: true
+  - type: textarea
+    id: criteria
+    attributes:
+      label: Decision criteria
+      description: What principles or constraints should determine the answer?
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Downstream impact
+      description: What work is blocked by this decision?
+    validations:
+      required: true
