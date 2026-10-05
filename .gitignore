@@ -43,7 +43,7 @@ next-env.d.ts
 
 # local tooling
 # throwaway spike code, tokens and credentials (never merged)
-spikes/
+/spikes/
 .vercel
 .env*.local
 playwright-report/
