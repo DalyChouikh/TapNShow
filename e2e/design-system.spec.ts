@@ -68,7 +68,16 @@ test.describe("/design", () => {
     const page = await context.newPage();
     await page.goto("/design");
     await page.getByRole("button", { name: /I'll be there/ }).click();
-    await expect(page.getByText("CONFIRMED")).toBeVisible({ timeout: 100 });
+    const stamp = page.getByText("CONFIRMED");
+    await expect(stamp).toBeVisible({ timeout: 100 });
+    // toBeVisible accepts opacity:0, so assert the real computed state immediately.
+    expect(await stamp.evaluate((el) => getComputedStyle(el).opacity)).toBe(
+      "1",
+    );
+    const status = page.getByRole("status");
+    expect(await status.evaluate((el) => getComputedStyle(el).transform)).toBe(
+      "none",
+    );
     await expect(page.getByTestId("confetti-piece")).toHaveCount(0);
     await context.close();
   });

@@ -21,6 +21,15 @@ describe.each(THEMES)("%s theme contrast (WCAG AA)", (theme) => {
     );
   });
 
+  it.each(FILL_TONES)(
+    "muted on-fill text (e.g. placeholders) on %s fill",
+    (tone) => {
+      expect(
+        contrastRatio(colors.onFillMuted, colors[tone]),
+      ).toBeGreaterThanOrEqual(AA);
+    },
+  );
+
   it("outline is visible against the background (non-text, 3:1)", () => {
     expect(
       contrastRatio(colors.outline, colors.background),

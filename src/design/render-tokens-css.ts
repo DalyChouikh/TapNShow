@@ -14,6 +14,7 @@ function colorVars(colors: ThemeColors, indent: string): string {
     ["muted", colors.muted],
     ["outline", colors.outline],
     ["on-fill", colors.onFill],
+    ["on-fill-muted", colors.onFillMuted],
   ];
   const fills = FILL_TONES.map((tone) => [`fill-${tone}`, colors[tone]]);
   return [...base, ...fills]

@@ -11,6 +11,7 @@
   --color-muted-ink: var(--tn-muted);
   --color-outline: var(--tn-outline);
   --color-on-fill: var(--tn-on-fill);
+  --color-on-fill-muted: var(--tn-on-fill-muted);
   --color-fill-primary: var(--tn-fill-primary);
   --color-fill-success: var(--tn-fill-success);
   --color-fill-warning: var(--tn-fill-warning);

@@ -17,7 +17,10 @@ export const FILL_TONES = [
 /** A pastel fill tone. */
 export type FillTone = (typeof FILL_TONES)[number];
 
-/** Every color a theme must define (hex). `onFill` is the text color on any pastel fill. */
+/**
+ * Every color a theme must define (hex). `onFill` is the text color on any pastel fill;
+ * `onFillMuted` is secondary text on a fill (e.g. a placeholder in an invalid input).
+ */
 export type ThemeColors = {
   background: string;
   surface: string;
@@ -25,6 +28,7 @@ export type ThemeColors = {
   muted: string;
   outline: string;
   onFill: string;
+  onFillMuted: string;
 } & Record<FillTone, string>;
 
 /** Soft Neobrutalism palette. Fills stay light in dark mode so dark ink remains readable. */
@@ -36,6 +40,7 @@ export const palette: Record<ThemeName, ThemeColors> = {
     muted: "#5B5670",
     outline: "#1E1B2E",
     onFill: "#1E1B2E",
+    onFillMuted: "#3F3A52",
     primary: "#C4B5FD",
     success: "#BBF7D0",
     warning: "#FDE68A",
@@ -50,6 +55,7 @@ export const palette: Record<ThemeName, ThemeColors> = {
     muted: "#B7B0CC",
     outline: "#F4F1FF",
     onFill: "#1E1B2E",
+    onFillMuted: "#3F3A52",
     primary: "#C4B5FD",
     success: "#86EFAC",
     warning: "#FCD34D",
