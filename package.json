@@ -12,12 +12,15 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest",
     "test:e2e": "playwright test",
-    "tokens": "bun scripts/generate-tokens-css.ts"
+    "tokens": "bun scripts/generate-tokens-css.ts",
+    "db:types": "supabase gen types typescript --project-id \"$SUPABASE_PROJECT_REF\" --schema public > src/server/db/database.types.ts"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
     "@sentry/core": "11.4.0",
     "@sentry/nextjs": "^11",
+    "@supabase/ssr": "0.12.7",
+    "@supabase/supabase-js": "2.117.2",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.4.0",
     "motion": "^14",
