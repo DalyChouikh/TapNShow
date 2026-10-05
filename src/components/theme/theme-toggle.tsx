@@ -3,7 +3,7 @@
 import { DesktopIcon, MoonIcon, SunIcon } from "@phosphor-icons/react";
 import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
-import { useSyncExternalStore } from "react";
+import { useIsClient } from "@/lib/use-is-client";
 import { cn } from "@/lib/utils";
 
 const ORDER = ["system", "light", "dark"] as const;
@@ -14,17 +14,6 @@ const ICONS: Record<Mode, typeof SunIcon> = {
   light: SunIcon,
   dark: MoonIcon,
 };
-
-const noopSubscribe = () => () => undefined;
-
-/** False during SSR/hydration, true on the client — avoids theme hydration mismatch. */
-function useIsClient(): boolean {
-  return useSyncExternalStore(
-    noopSubscribe,
-    () => true,
-    () => false,
-  );
-}
 
 function isMode(value: string | undefined): value is Mode {
   return ORDER.some((mode) => mode === value);

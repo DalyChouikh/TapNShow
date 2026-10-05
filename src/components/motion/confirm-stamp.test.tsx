@@ -1,4 +1,9 @@
 import { screen } from "@testing-library/react";
+import { NextIntlClientProvider } from "next-intl";
+import { renderToString } from "react-dom/server";
+import messages from "../../../messages/en.json";
+import { DEFAULT_LOCALE } from "@/config/i18n";
+import { MotionProvider } from "./motion-provider";
 import { describe, expect, it } from "vitest";
 import { setReducedMotion } from "@/test/match-media";
 import { renderWithProviders } from "@/test/render";
@@ -21,5 +26,24 @@ describe("ConfirmStamp", () => {
   it("renders nothing when hidden", () => {
     renderWithProviders(<ConfirmStamp label="Confirmed" show={false} />);
     expect(screen.queryByText("Confirmed")).not.toBeInTheDocument();
+  });
+
+  it("announces the confirmation to assistive technology", () => {
+    renderWithProviders(<ConfirmStamp label="Confirmed" show />);
+    expect(screen.getByRole("status")).toHaveTextContent("Confirmed");
+  });
+
+  it("server-renders the final state: no confetti and a fully visible stamp", () => {
+    const html = renderToString(
+      <NextIntlClientProvider locale={DEFAULT_LOCALE} messages={messages}>
+        <MotionProvider>
+          <ConfirmStamp label="Confirmed" show />
+        </MotionProvider>
+      </NextIntlClientProvider>,
+    );
+    expect(html).toContain("Confirmed");
+    expect(html).not.toContain("confetti-piece");
+    expect(html).not.toMatch(/opacity:\s*0[;"]/);
+    expect(html).not.toContain("scale(2.4)");
   });
 });
