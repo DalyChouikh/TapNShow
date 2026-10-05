@@ -57,7 +57,7 @@ Groups (university clubs first, but any team or person) agree on meeting times i
 | **Viewer** (e.g. Team Management committee) | Required | Read-only: meetings, responses, per-member history, exports, Sheet link |
 | **Member (no account)** | None | Responds through a personal link from the email |
 | **Member (with account)** | Optional | Sees upcoming invites across all workspaces, changes answers, enables push notifications, exports/deletes their data |
-| **Platform** | — | Sends system emails (sign-in codes, workspace invites) from a platform Gmail |
+| **Platform** | — | Sends system emails only (sign-in codes, Viewer invites) through Supabase custom SMTP: a dedicated platform Gmail now, Resend once a domain is owned. Never sends meeting invites |
 
 A user can be Admin/Viewer in several workspaces and a member of others with the same account.
 
@@ -68,7 +68,7 @@ A user can be Admin/Viewer in several workspaces and a member of others with the
 | Topic | Decision |
 |---|---|
 | Calendar delivery | **Layer A (v1):** email with `.ics` + "Add to Google Calendar" link — no OAuth. **Layer B (later):** members with accounts connect Google Calendar → auto-insert on Attend. **Layer C (backlog, not committed):** native Google Calendar event created by the organizer |
-| Sign-in | "Continue with Google" (basic scopes) + email one-time code |
+| Sign-in | "Continue with Google" (basic scopes) + email one-time code delivered via Supabase custom SMTP (platform Gmail → Resend later). Supabase's built-in mailer is not usable: 2 emails/hour and team-members-only delivery |
 | Tenancy | Workspaces with roles Admin / Viewer; open sign-up, **no approval step** |
 | Audience | **Multiple named lists** per workspace; one contact per normalized email; recipients deduplicated across lists and extra emails |
 | Member list editing | Spreadsheet-like grid; import `.csv`/`.xlsx`, paste from Sheets/Excel, or type; columns Full name, Email, Lists; header mapping; preview of new/updated/duplicate/invalid rows before saving |
@@ -79,7 +79,7 @@ A user can be Admin/Viewer in several workspaces and a member of others with the
 | Reminders | Configurable: non-responders X h before deadline; attending/late X h before meeting. Email to all; Web Push for account holders with the PWA |
 | Responses storage | Supabase is the source of truth; in-app dashboard + CSV/Excel export always; Google Sheets sync optional per workspace (later milestone) |
 | Sheet layout | One spreadsheet per workspace, one `Responses` tab, one row per response, updated in place |
-| Sending | Invites sent **from the organizer's connected Gmail** (`gmail.send`); **platform Gmail SMTP fallback** for organizers who don't connect, with strict caps; platform Gmail also sends system emails |
+| Sending | Meeting invites, updates and reminders are sent **only from the organizer's connected Gmail** (`gmail.send`). **No shared fallback sender**: drafting works without Gmail, but sending requires connecting it (decided 2026-10-05). Viewer invites: emailed by the platform sender **or** copied as a single-use link. |
 | Language | English at launch; all strings and email templates through next-intl from day one |
 | Privacy | Admins + Viewers of the workspace see reasons; members never see each other; account deletion rule in §11 |
 | Visual style | **Soft Neobrutalism** — thick outlines, rounded corners, "pressable" drop shadows, pastels; light + dark following system |
@@ -107,7 +107,7 @@ A user can be Admin/Viewer in several workspaces and a member of others with the
             │ Postgres + RLS · Auth · Cron                    │
             │ outbox_jobs ← enqueued by API routes            │
             └─────────────────────────────────────────────────┘
- Dispatcher ──► EmailSender (GmailApiSender | FallbackSmtpSender)
+ Dispatcher ──► EmailSender (GmailApiSender)
             ──► Google Sheets API (drive.file)
             ──► Web Push (VAPID)
 ```
@@ -135,7 +135,7 @@ All tables have RLS enabled. Timestamps are `timestamptz`. Emails are stored nor
 
 ### Organizers & workspaces
 - **`profiles`** — `user_id` (PK, → `auth.users`), `display_name`, `avatar_url`, `locale`, timestamps.
-- **`workspaces`** — `id`, `name`, `slug` (unique), `timezone`, `locale`, default meeting settings (`default_response_mode`, `default_delay_options`, `default_reason_required`, `default_comments_enabled`, `default_footer_note`, `default_reminder_*`), `fallback_daily_cap`, `sender_connection_id` (nullable → `google_connections`), timestamps.
+- **`workspaces`** — `id`, `name`, `slug` (unique), `timezone`, `locale`, default meeting settings (`default_response_mode`, `default_delay_options`, `default_reason_required`, `default_comments_enabled`, `default_footer_note`, `default_reminder_*`), `sender_connection_id` (nullable → `google_connections`), timestamps.
 - **`workspace_roles`** — (`workspace_id`, `user_id`) PK, `role` (`admin` | `viewer`), `can_check_in` (boolean; Viewers only — the single write a Viewer may perform). At least one Admin must always exist.
 - **`platform_admins`** — `user_id` — platform operators (initially only the project owner).
 - **`workspace_invites`** — `id`, `workspace_id`, `email`, `role`, `token_hash`, `expires_at`, `accepted_at`.
@@ -161,7 +161,7 @@ All tables have RLS enabled. Timestamps are `timestamptz`. Emails are stored nor
 - **`outbox_jobs`** — `id`, `kind` (`invite` | `update` | `cancel` | `reminder` | `sheet_sync` | `push` | `system_email`), `workspace_id`, `payload` (JSON validated by a per-kind Zod schema), `idempotency_key` (unique), `run_after`, `status` (`pending` | `processing` | `done` | `failed` | `paused`), `attempts`, `locked_until`, `last_error`, timestamps.
 - **`send_log`** — one row per sent email (`sender_key`, `workspace_id`, `job_id`, `sent_at`) used for rolling-24h quota checks.
 - **`rate_limits`** — key + window counters for Postgres-backed rate limiting.
-- **`abuse_reports`** — `id`, `workspace_id`, `invitee_id`, `reported_at` — "Not my group" clicks; drives the fallback auto-pause.
+- **`abuse_reports`** — `id`, `workspace_id`, `invitee_id`, `reported_at` — "Not my group" clicks; surfaced to platform admins (M9).
 - **`workspace_sending_suspensions`** — `workspace_id`, `reason` (`auto_reports` | `platform_admin`), `created_at`, `lifted_at`.
 
 ### Identity rules
@@ -175,7 +175,7 @@ All tables have RLS enabled. Timestamps are `timestamptz`. Emails are stored nor
 ## 7. Core Flows
 
 ### 7.1 Organizer onboarding
-Sign in → create workspace (name, timezone pre-filled) → Home shows a checklist: import members, connect Gmail sending (optional), connect Google Sheets (optional), invite committee as Viewers.
+Sign in → create workspace (name, timezone pre-filled) → Home shows a checklist: import members, connect Gmail sending (required before the first send), connect Google Sheets (optional), invite committee as Viewers.
 
 ### 7.2 Create & send a meeting (center "+")
 1. **Details** — title, date/time, duration, location and/or URL, agenda.
@@ -216,7 +216,7 @@ Times are always shown in the meeting's timezone, plus "(your time: …)" when t
 Last Admin cannot leave or demote themselves; Admins can transfer ownership; deleting a workspace requires typing its name and hard-deletes all its data (synced Sheets remain in Drive).
 
 ### 7.12 Abuse controls
-- Fallback sending auto-pauses for a workspace when its emails receive ≥ 3 "Not my group" reports **or** reports from ≥ 5% of recipients within 24 h (both configurable); the workspace sees "Connect your Google account to keep sending" and platform admins are alerted.
+- Meeting emails come from each organizer's own Gmail, so abuse affects that organizer's own quota and reputation, not the platform. "Not my group" reports also unsubscribe the reporter from that workspace and are visible to platform admins.
 - Platform admins can suspend or lift a workspace's sending from an internal admin page (M9).
 
 ---
@@ -227,11 +227,10 @@ Last Admin cannot leave or demote themselves; Admins can transfer ownership; del
 - **Claiming:** Postgres function claims a batch with `FOR UPDATE SKIP LOCKED`, sets `status = processing` and `locked_until` (lease). Expired leases are reclaimable. Each run stops at a ~60 s time budget.
 - **Senders** — `EmailSender` interface:
   - `GmailApiSender` — organizer's connected Gmail via Gmail API.
-  - `FallbackSmtpSender` — nodemailer + platform Gmail app password; From shows "via <App> on behalf of <Organizer>", Reply-To = organizer.
-  - Future adapters (e.g. Resend + domain) implement the same interface.
+  - No fallback sender for meeting emails. A workspace without a connected sender cannot dispatch; jobs wait in `paused` with a "Connect Gmail to send" prompt.
+  - System emails (sign-in codes, Viewer invites) do not go through this pipeline: Supabase Auth sends codes via its custom SMTP setting; Viewer invite emails use a small `SystemMailer` (nodemailer, same SMTP credentials). Switching to Resend later is a configuration change.
 - **Quotas (rolling 24 h, all values in config):**
   - Organizer Gmail: ~500 recipients (figure documented for consumer Gmail SMTP; the Gmail API limit for consumer accounts is confirmed in S4).
-  - Fallback: 50 recipients per workspace, ~400 platform-wide (keeps ~100 for system emails).
   - Over cap → job rescheduled to when the oldest send in the window expires; meeting page shows "N queued, resumes ~HH:MM".
 - **Errors:**
 
@@ -239,7 +238,7 @@ Last Admin cannot leave or demote themselves; Admins can transfer ownership; del
   |---|---|
   | Network, 5xx, 429 | Exponential backoff, max 5 attempts |
   | Invalid / bouncing address | `failed` for that invitee; surfaced on meeting page |
-  | Google `invalid_grant` | Connection → `broken`; admin alerted (Home + email); workspace jobs `paused` until reconnect or "send via fallback" |
+  | Google `invalid_grant` | Connection → `broken`; admin alerted (Home + email); workspace jobs `paused` until reconnect |
 
 - **Idempotency:** unique `idempotency_key` (e.g. `invite:{invitee}:{seq}`); duplicate enqueue is a no-op; job completion and `send_log` insert happen together.
 - **Other job kinds:** `sheet_sync` (append new row / update stored row, coalesced per workspace), `push` (Web Push; delete subscriptions on 404/410), `reminder` (eligibility at run time).
@@ -248,7 +247,7 @@ Last Admin cannot leave or demote themselves; Admins can transfer ownership; del
 
 ## 9. Integrations & Auth
 
-- **Sign-in:** Supabase Auth — Google provider (`openid email profile`) and email OTP. Supabase custom SMTP points to the platform Gmail. Rate limited per address and IP.
+- **Sign-in:** Supabase Auth — Google provider (`openid email profile`) and email OTP. Supabase custom SMTP points to the dedicated platform Gmail (app password, ~500 recipients/day) until a domain is bought, then Resend (free 3,000/month). The built-in mailer is unusable (2/hour, team-members only). Rate limited per address and IP.
 - **Google connection for sending/Sheets:** separate, self-managed OAuth flow (`/api/integrations/google/connect` → `/callback`) with PKCE, `state`, offline access, **incremental consent**: "Connect Gmail sending" → `gmail.send` (sensitive); "Connect Google Sheets" → `drive.file` (non-sensitive). Refresh tokens encrypted at rest.
 - **Google verification:** until verified, organizers see the "unverified app" screen and the app is capped at 100 new users total. Verification requires a public homepage, privacy policy on the same domain, demo video, and Search Console ownership of the domain (S3).
 - **Sheets:** spreadsheet created in the admin's Drive by the app; admin shares it with the committee via Google Sheets.
@@ -323,7 +322,7 @@ One branch per agent-task issue (`feat/<issue#>-<slug>`), PR using the repo temp
 | S1 | Can Supabase Cron on the Free plan call a Vercel route every minute via `pg_net`? | Calls observed every minute for an hour | Scheduled GitHub Actions workflow (verify its minimum interval and reliability) |
 | S2 | `.ics` `REQUEST` vs `PUBLISH`: behavior of invite, update (`SEQUENCE`) and cancel in Gmail, Outlook, Apple Calendar | Chosen method adds, updates in place and removes the event in all three | Calendar link only + downloadable `.ics` |
 | S3 | Can `<app>.vercel.app` be verified in Google Search Console and accepted as an OAuth authorized domain? | Ownership verified; domain accepted in consent screen config | Gmail sending stays in unverified mode (100-user cap) until a free domain option exists |
-| S4 | Gmail API send from an unverified app: consent flow, warning screen, refresh-token lifetime | Organizer connects and sends; refresh token still works after 7+ days (checks Testing vs In-production token lifetime); consumer Gmail API daily send limit documented | Fallback SMTP becomes the default sender |
+| S4 | Gmail API send from an unverified app: consent flow, warning screen, refresh-token lifetime | Organizer connects and sends; refresh token still works after 7+ days (checks Testing vs In-production token lifetime); consumer Gmail API daily send limit documented | Stop and decide with the owner: without organizer-Gmail sending there is no meeting-email path (no shared fallback by decision) |
 
 **S5 (deferred, before calendar layer B):** classify `calendar.app.created` / `calendar.events` in the Google Cloud console and determine verification requirements.
 
@@ -337,14 +336,14 @@ Each spike ends with a **Decision** issue recording evidence and the outcome; af
 |---|---|---|
 | M0 | Spikes S1–S4 | Decision issues closed with evidence |
 | M1 | Foundation — scaffold, tooling (lint/format/test), CI, branch protection, Sentry, typed config, logger, i18n, design tokens (light/dark), core components (Button, Card, Sticker, Chip, Input), motion tokens, Supabase baseline | Style-B component showcase deployed |
-| M2 | Auth & workspaces — Google + email-code sign-in, workspaces, roles, Viewer invites, app shell | Sign in, create workspace, invite a Viewer |
+| M2 | Auth & workspaces — platform Gmail as Supabase custom SMTP, Google + email-code sign-in, workspaces, roles, Viewer invites (emailed or copied link), app shell | Sign in, create workspace, invite a Viewer |
 | M3 | Contacts & lists — list editor, CSV/Excel import, mapping, preview, dedup | Club roster imported |
-| M4 | Meetings & sending — wizard, outbox, dispatcher, fallback SMTP sender, quotas, invite email + `.ics`, unsubscribe + "Not my group" + auto-pause, send progress | Invites land in inboxes |
+| M4 | Meetings & sending — Google OAuth connection + GmailApiSender (moved from M7), wizard, outbox, dispatcher, quotas, invite email + `.ics`, unsubscribe + "Not my group", send progress | Invites land in inboxes from the organizer's Gmail |
 | M5 | Responses — `/r/[token]`, three modes, edits until start, live dashboard, per-member history, export | **MVP usable by the club** |
 | M6 | Lifecycle & reminders — edit/cancel updates, reconfirmation, reminders, nudge non-responders, post-meeting check-in, duplicate meeting | |
-| M7 | Google integrations — Gmail sending connection, Sheets sync | |
+| M7 | Google Sheets sync | |
 | M8 | Member accounts & PWA — `/invites`, push, install flow, offline shell, account deletion | |
-| M9 | Public launch — landing, privacy/terms, security header audit, platform admin page, Google verification submission | |
+| M9 | Public launch — landing, privacy/terms, security header audit, platform admin page, Google verification submission; switch system email to Resend if a domain is owned | |
 | Backlog | Calendar layer B, layer C, French/Arabic, organizer digest email, auto-delete of old reasons | |
 
 ### Process
