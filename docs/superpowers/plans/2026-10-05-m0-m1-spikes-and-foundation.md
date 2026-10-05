@@ -1098,7 +1098,7 @@ bun send.ts        # expect "sent id=..."
 - [ ] **Step 6: Unverified "In production" run** — switch Audience publishing status to **In production**, delete `.token.json`, run `bun authorize.ts` again with a **second** Google account that is not a test user. Screenshot the "Google hasn't verified this app" screen and note the steps needed to continue; run `bun send.ts` with that token.
 - [ ] **Step 7: Day 8 run** — re-run `bun send.ts` with each saved token (keep both token files, renamed `.token.testing.json` / `.token.production.json`, adjusting the path in `send.ts`). Record success or the exact error (e.g. `invalid_grant`).
 - [ ] **Step 8: Daily limit** — read Google's official Gmail sending-limits and Gmail API usage-limits pages; quote the consumer-account daily recipient limit that applies to API sends, with URLs.
-- [ ] **Step 9: Write `docs/spikes/S4.md`** (screenshots, scope sensitivity label, token results per status, quoted limits) and Decision issue "S4: organizer Gmail sending". Fail → fallback SMTP becomes the default sender (spec §13). Merge docs PR; update spec §8 quota figure with the quoted limit.
+- [ ] **Step 9: Write `docs/spikes/S4.md`** (screenshots, scope sensitivity label, token results per status, quoted limits) and Decision issue "S4: organizer Gmail sending". Fail → stop and decide with the owner: there is no shared fallback sender (decision 2026-10-05, spec §4). Merge docs PR; update spec §8 quota figure with the quoted limit.
 
 ---
 
