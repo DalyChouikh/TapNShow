@@ -31,7 +31,7 @@ export function Input({
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy}
         className={cn(
-          "min-h-11 rounded-control border-[length:var(--tn-border-width)] border-outline bg-surface px-3 text-base text-ink shadow-brutal-sm placeholder:text-muted-ink aria-invalid:bg-fill-danger aria-invalid:text-on-fill",
+          "min-h-11 rounded-control border-[length:var(--tn-border-width)] border-outline bg-surface px-3 text-base text-ink shadow-brutal-sm placeholder:text-muted-ink aria-invalid:bg-fill-danger aria-invalid:text-on-fill aria-invalid:placeholder:text-on-fill-muted",
           className,
         )}
         {...props}
