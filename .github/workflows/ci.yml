@@ -11,6 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NEXT_PUBLIC_SUPABASE_URL: https://ci.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci
+      SUPABASE_SECRET_KEY: sb_secret_ci
     steps:
       - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
