@@ -50,6 +50,27 @@ export function scrubUrl(url: string): string {
   return url.replace(PERSONAL_LINK, "/r/[REDACTED]");
 }
 
+/** Credential shapes that must never appear in logs or error reports. */
+const CREDENTIAL_PATTERNS: ReadonlyArray<[RegExp, string]> = [
+  [/\bBearer\s+[A-Za-z0-9._~+/-]+=*/gi, "Bearer [REDACTED]"],
+  [/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, "[REDACTED_JWT]"],
+  [/\bya29\.[A-Za-z0-9._-]+/g, "[REDACTED_GOOGLE_TOKEN]"],
+  [/\b1\/\/[A-Za-z0-9._-]{10,}/g, "[REDACTED_GOOGLE_TOKEN]"],
+  [/\bsb_secret_[A-Za-z0-9_-]+/g, "[REDACTED_SUPABASE_KEY]"],
+];
+
+/**
+ * Scrubs free text: personal-link tokens plus credential-shaped strings (Bearer
+ * tokens, JWTs, Google OAuth tokens, Supabase secret keys).
+ */
+export function scrubText(text: string): string {
+  return CREDENTIAL_PATTERNS.reduce(
+    (scrubbed, [pattern, replacement]) =>
+      scrubbed.replace(pattern, replacement),
+    scrubUrl(text),
+  );
+}
+
 /**
  * Returns a copy of a flat record with personal-link tokens scrubbed from every string value.
  * Non-string values are kept as-is.
@@ -58,7 +79,7 @@ export function scrubRecord<T extends object>(record: T): T {
   return Object.fromEntries(
     Object.entries(record).map(([key, value]) => [
       key,
-      typeof value === "string" ? scrubUrl(value) : value,
+      typeof value === "string" ? scrubText(value) : value,
     ]),
   ) as T;
 }
@@ -90,7 +111,7 @@ export function scrubDeep<T>(
   seen: WeakSet<object> = new WeakSet(),
 ): T {
   if (typeof value === "string") {
-    return scrubUrl(value) as T;
+    return scrubText(value) as T;
   }
   if (value === null || typeof value !== "object") {
     return value;
@@ -103,8 +124,8 @@ export function scrubDeep<T>(
     // Error fields are non-enumerable; copy them explicitly so they survive the walk.
     return {
       type: value.name,
-      message: scrubUrl(value.message),
-      stack: value.stack ? scrubUrl(value.stack) : undefined,
+      message: scrubText(value.message),
+      stack: value.stack ? scrubText(value.stack) : undefined,
       cause: scrubDeep(value.cause, depth + 1, seen),
     } as T;
   }

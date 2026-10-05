@@ -122,4 +122,41 @@ describe("createLogger", () => {
     expect(entry.err.stack).toContain("failed for /r/[REDACTED]");
     expect(entry.err.stack).not.toContain("tok_error");
   });
+
+  it("scrubs child-logger bindings and format arguments", () => {
+    const { stream, lines } = memoryStream();
+    const logger = createLogger({ level: "info", destination: stream });
+    logger
+      .child({ refreshToken: "leak-binding", url: "/r/tok_binding" })
+      .info("child");
+    logger.info("payload %o", { token: "leak-format", url: "/r/tok_format" });
+    const all = lines.join("\n");
+    for (const secret of [
+      "leak-binding",
+      "tok_binding",
+      "leak-format",
+      "tok_format",
+    ]) {
+      expect(all).not.toContain(secret);
+    }
+  });
+
+  it("scrubs credential-shaped strings in messages", () => {
+    const { stream, lines } = memoryStream();
+    const logger = createLogger({ level: "info", destination: stream });
+    const jwt = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMifQ.c2lnbmF0dXJlLXZhbHVl";
+    logger.info(`header Bearer abc.def-123 and jwt ${jwt}`);
+    logger.info("google ya29.a0AfH6SMBxyz and 1//0gLongRefreshTokenValue-xyz");
+    logger.info("supabase sb_secret_AbC123xyz key");
+    const all = lines.join("\n");
+    for (const secret of [
+      "abc.def-123",
+      jwt,
+      "ya29.a0AfH6SMBxyz",
+      "1//0gLongRefreshTokenValue-xyz",
+      "sb_secret_AbC123xyz",
+    ]) {
+      expect(all).not.toContain(secret);
+    }
+  });
 });
