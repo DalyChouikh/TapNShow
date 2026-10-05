@@ -287,10 +287,11 @@ Last Admin cannot leave or demote themselves; Admins can transfer ownership; del
 
 ## 11. Security & Privacy
 
-- **Authorization:** RLS on every table; API routes use the user's Supabase session so RLS applies; route-level `requireRole(workspace, role)`. The service-role key is used only by the dispatcher and the public token route, each in an isolated server-only module.
+- **Authorization:** RLS on every table; API routes use the user's Supabase session so RLS applies; route-level `requireRole(workspace, role)`. The service-role key is used only by the dispatcher, the public token route, and `GET /api/health` (its `healthcheck()` function is deliberately not executable by `anon`/`authenticated`), each in an isolated server-only module.
 - **Public token route:** lookup by hash; rate limited per IP and per token; exposes only that invitee's meeting and response; validates choice against response mode; read-only after start.
 - **Requests:** `Origin` check on all mutating routes; SameSite=Lax cookies; Zod validation of every body; agenda stored as Markdown and sanitized on render (web and email).
 - **Rate limiting:** Postgres-backed (`rate_limits` + function) for OTP requests, token routes, meeting creation, imports.
+- **Logs and error reports:** the logger and Sentry share one scrubbing module (`src/lib/observability/scrub.ts`): values under sensitive field names are redacted at any depth, personal-link tokens and credential-shaped strings (Bearer, JWT, Google OAuth, Supabase secret keys) are scrubbed from every string, errors keep type/message/stack with tokens removed, and scrubbing failures drop the payload (fail closed).
 - **Secrets:** Vercel env vars only (Supabase service role, token-encryption key, cron secret, Google client ID/secret, SMTP credentials, VAPID keys); validated at startup by a typed config module; never sent to the client.
 - **Headers:** strict CSP, HSTS, `frame-ancestors 'none'`, `Referrer-Policy` that prevents token leakage.
 - **Visibility:** reasons visible to the workspace's Admins and Viewers only; members never see each other's answers; response form shows "Your answer is visible to <Workspace> organizers".
