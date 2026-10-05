@@ -1,4 +1,8 @@
-import type { ErrorEvent, TransactionEvent } from "@sentry/core";
+import type {
+  ErrorEvent,
+  StreamedSpanJSON,
+  TransactionEvent,
+} from "@sentry/core";
 import { describe, expect, it } from "vitest";
 import { buildSentryOptions } from "./sentry-options";
 
@@ -218,5 +222,32 @@ describe("buildSentryOptions privacy scrubbing", () => {
       extra: { [`/r/${TOKEN}`]: 1 },
     } as ErrorEvent;
     expect(JSON.stringify(options.beforeSend(event))).not.toContain(TOKEN);
+  });
+
+  it("scrubs streamed spans (Sentry 11 default trace lifecycle)", () => {
+    const span: StreamedSpanJSON = {
+      trace_id: "t",
+      span_id: "s",
+      name: `GET /r/${TOKEN}`,
+      start_timestamp: 0,
+      status: "ok",
+      is_segment: true,
+      attributes: {
+        "url.full": `https://x.app/r/${TOKEN}?choice=late`,
+        "http.request.header.cookie": "sb=secret",
+      },
+    };
+    const serialized = JSON.stringify(options.beforeSendSpan(span));
+    expect(serialized).not.toContain(TOKEN);
+    expect(serialized).not.toContain("sb=secret");
+  });
+
+  it("strips user data (IP address, id) from error events", () => {
+    const event = {
+      type: undefined,
+      user: { ip_address: "203.0.113.7", id: "u1" },
+    } as ErrorEvent;
+    const result = options.beforeSend(event);
+    expect(result?.user).toBeUndefined();
   });
 });
