@@ -42,10 +42,11 @@ yarn-error.log*
 next-env.d.ts
 
 # local tooling
+# throwaway spike code, tokens and credentials (never merged)
+/spikes/
 .vercel
 .env*.local
 playwright-report/
 test-results/
-spikes/**/.token.json
 supabase/.temp/
 !.env.example

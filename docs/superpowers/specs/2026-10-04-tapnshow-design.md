@@ -67,7 +67,7 @@ A user can be Admin/Viewer in several workspaces and a member of others with the
 
 | Topic | Decision |
 |---|---|
-| Calendar delivery | **Layer A (v1):** email with `.ics` + "Add to Google Calendar" link — no OAuth. **Layer B (later):** members with accounts connect Google Calendar → auto-insert on Attend. **Layer C (backlog, not committed):** native Google Calendar event created by the organizer |
+| Calendar delivery | **Layer A (v1, decided after S2):** the invite email has only TapNShow's buttons (no `.ics`); when a member answers Attend or Late, a **calendar confirmation email** with a pre-accepted `METHOD:REQUEST` (`RSVP=FALSE`, `PARTSTAT=ACCEPTED`) puts the event in their calendar; edits update it in place and Absent/cancel removes it — no OAuth. `PUBLISH` rejected (cannot update or cancel). **Layer B (later):** members with accounts connect Google Calendar → auto-insert on Attend. **Layer C (backlog, not committed):** native Google Calendar event created by the organizer |
 | Sign-in | "Continue with Google" (basic scopes) + email one-time code delivered via Supabase custom SMTP (platform Gmail → Resend later). Supabase's built-in mailer is not usable: 2 emails/hour and team-members-only delivery |
 | Tenancy | Workspaces with roles Admin / Viewer; open sign-up, **no approval step** |
 | Audience | **Multiple named lists** per workspace; one contact per normalized email; recipients deduplicated across lists and extra emails |
@@ -158,7 +158,7 @@ All tables have RLS enabled. Timestamps are `timestamptz`. Emails are stored nor
 - **`google_connections`** — `id`, `user_id`, `google_email`, `granted_scopes`, `refresh_token_encrypted` (AES-256-GCM), `status` (`active` | `broken`), timestamps.
 - **`sheet_syncs`** — `workspace_id` (PK), `connection_id`, `spreadsheet_id`; plus `response_sheet_rows` (`response_id` → row number) for in-place updates.
 - **`push_subscriptions`** — `id`, `user_id`, `endpoint` (unique), `p256dh`, `auth`, timestamps.
-- **`outbox_jobs`** — `id`, `kind` (`invite` | `update` | `cancel` | `reminder` | `sheet_sync` | `push` | `system_email`), `workspace_id`, `payload` (JSON validated by a per-kind Zod schema), `idempotency_key` (unique), `run_after`, `status` (`pending` | `processing` | `done` | `failed` | `paused`), `attempts`, `locked_until`, `last_error`, timestamps.
+- **`outbox_jobs`** — `id`, `kind` (`invite` | `calendar_confirm` | `update` | `cancel` | `reminder` | `sheet_sync` | `push` | `system_email`), `workspace_id`, `payload` (JSON validated by a per-kind Zod schema), `idempotency_key` (unique), `run_after`, `status` (`pending` | `processing` | `done` | `failed` | `paused`), `attempts`, `locked_until`, `last_error`, timestamps.
 - **`send_log`** — one row per sent email (`sender_key`, `workspace_id`, `job_id`, `sent_at`) used for rolling-24h quota checks.
 - **`rate_limits`** — key + window counters for Postgres-backed rate limiting.
 - **`abuse_reports`** — `id`, `workspace_id`, `invitee_id`, `reported_at` — "Not my group" clicks; surfaced to platform admins (M9).
@@ -186,15 +186,15 @@ Sign in → create workspace (name, timezone pre-filled) → Home shows a checkl
 Send snapshots invitees, enqueues one `invite` job per invitee plus scheduled `reminder` jobs, then triggers an immediate dispatch via `after()`.
 
 ### 7.3 Member responds (no account)
-Email shows meeting card, three buttons (deep links to `/r/{token}?choice=…`), Add-to-Calendar link, `.ics` attachment. On the page: Attending → one tap → CONFIRMED stamp + calendar buttons; Late/Absent → form (reason, delay chips, comment, footer note) → submit. Re-opening the link shows the answer with **Change** until the meeting starts; read-only afterwards. Each response enqueues `sheet_sync` (if enabled).
+Email shows meeting card and three buttons (deep links to `/r/{token}?choice=…`) — **no `.ics`**, so Gmail shows no competing RSVP buttons. On the page: Attending → one tap → CONFIRMED stamp + "Added to your calendar" note (a `calendar_confirm` job emails the pre-accepted invite; Late does the same); Absent after an earlier Attend/Late enqueues a `METHOD:CANCEL` for that member; Late/Absent → form (reason, delay chips, comment, footer note) → submit. Re-opening the link shows the answer with **Change** until the meeting starts; read-only afterwards. Each response enqueues `sheet_sync` (if enabled).
 
 ### 7.4 Member with an account
 `/invites` lists upcoming invites across workspaces with their status and one-tap change. Can enable push notifications, later calendar auto-add (layer B), export or delete data.
 
 ### 7.5 Edit / cancel
-- Date/time change → `ics_sequence++`, `update` jobs, all responses flagged `needs_reconfirmation`.
+- Date/time change → `ics_sequence++`, `update` jobs (members with a calendar copy get an updated pre-accepted `REQUEST`), all responses flagged `needs_reconfirmation`.
 - Text/location change → `ics_sequence++`, `update` jobs, responses kept.
-- Cancel → `status = cancelled`, `cancel` jobs with `.ics` cancellation; pending reminders cancelled.
+- Cancel → `status = cancelled`, `cancel` jobs (members with a calendar copy get `METHOD:CANCEL`); pending reminders cancelled.
 - Every change written to `meeting_changes`.
 
 ### 7.6 Reminders
@@ -230,7 +230,7 @@ Last Admin cannot leave or demote themselves; Admins can transfer ownership; del
   - No fallback sender for meeting emails. A workspace without a connected sender cannot dispatch; jobs wait in `paused` with a "Connect Gmail to send" prompt.
   - System emails (sign-in codes, Viewer invites) do not go through this pipeline: Supabase Auth sends codes via its custom SMTP setting; Viewer invite emails use a small `SystemMailer` (nodemailer, same SMTP credentials). Switching to Resend later is a configuration change.
 - **Quotas (rolling 24 h, all values in config):**
-  - Organizer Gmail: ~500 recipients (figure documented for consumer Gmail SMTP; the Gmail API limit for consumer accounts is confirmed in S4).
+  - Organizer Gmail: **500 emails/day** and ≤ 500 recipients per message (Gmail Help; still applies to the Gmail API). Throughput: `messages.send` = 100 of 6,000 quota units/min/user → **≤ 60 sends/min per organizer** (S4).
   - Over cap → job rescheduled to when the oldest send in the window expires; meeting page shows "N queued, resumes ~HH:MM".
 - **Errors:**
 
@@ -241,7 +241,7 @@ Last Admin cannot leave or demote themselves; Admins can transfer ownership; del
   | Google `invalid_grant` | Connection → `broken`; admin alerted (Home + email); workspace jobs `paused` until reconnect |
 
 - **Idempotency:** unique `idempotency_key` (e.g. `invite:{invitee}:{seq}`); duplicate enqueue is a no-op; job completion and `send_log` insert happen together.
-- **Other job kinds:** `sheet_sync` (append new row / update stored row, coalesced per workspace), `push` (Web Push; delete subscriptions on 404/410), `reminder` (eligibility at run time).
+- **Other job kinds:** `calendar_confirm` (pre-accepted `REQUEST` to one member after Attend/Late; `CANCEL` when they switch to Absent), `sheet_sync` (append new row / update stored row, coalesced per workspace), `push` (Web Push; delete subscriptions on 404/410), `reminder` (eligibility at run time).
 
 ---
 
@@ -251,7 +251,7 @@ Last Admin cannot leave or demote themselves; Admins can transfer ownership; del
 - **Google connection for sending/Sheets:** separate, self-managed OAuth flow (`/api/integrations/google/connect` → `/callback`) with PKCE, `state`, offline access, **incremental consent**: "Connect Gmail sending" → `gmail.send` (sensitive); "Connect Google Sheets" → `drive.file` (non-sensitive). Refresh tokens encrypted at rest.
 - **Google verification:** until verified, organizers see the "unverified app" screen and the app is capped at 100 new users total. Verification requires a public homepage, privacy policy on the same domain, demo video, and Search Console ownership of the domain (S3).
 - **Sheets:** spreadsheet created in the admin's Drive by the app; admin shares it with the committee via Google Sheets.
-- **Calendar files:** stable `ics_uid` per meeting, `SEQUENCE` = `ics_sequence`. `METHOD:REQUEST` vs `METHOD:PUBLISH` decided by S2 (hypothesis: `PUBLISH`, so Gmail's own RSVP buttons don't compete with ours). Google Calendar template link for one-tap add.
+- **Calendar files (S2):** stable `ics_uid` per meeting, `SEQUENCE` = `ics_sequence`, `METHOD:REQUEST` with the member as attendee (`CN` = full name, `RSVP=FALSE`, `PARTSTAT=ACCEPTED`), sent only after Attend/Late; `METHOD:CANCEL` + `STATUS:CANCELLED` to remove. Whether it lands in the calendar automatically depends on the member's "Add invitations to my calendar" setting (default-like "Only if the sender is known" adds only after prior contact). To verify in M4: first-contact behavior and Outlook/Apple clients. See `docs/spikes/S2.md`.
 - **Member calendar auto-add (layer B):** later milestone; scope (`calendar.app.created` vs `calendar.events`) and its verification needs confirmed in the Google Cloud console first (spike S5, run when layer B starts — not part of M0).
 - **Email compliance:** per-workspace one-click unsubscribe (`List-Unsubscribe` + `List-Unsubscribe-Post`) and visible "Not my group" link; unsubscribed contacts are skipped at snapshot time.
 
@@ -323,6 +323,12 @@ One branch per agent-task issue (`feat/<issue#>-<slug>`), PR using the repo temp
 | S2 | `.ics` `REQUEST` vs `PUBLISH`: behavior of invite, update (`SEQUENCE`) and cancel in Gmail, Outlook, Apple Calendar | Chosen method adds, updates in place and removes the event in all three | Calendar link only + downloadable `.ics` |
 | S3 | Can `<app>.vercel.app` be verified in Google Search Console and accepted as an OAuth authorized domain? | Ownership verified; domain accepted in consent screen config | Gmail sending stays in unverified mode (100-user cap) until a free domain option exists |
 | S4 | Gmail API send from an unverified app: consent flow, warning screen, refresh-token lifetime | Organizer connects and sends; refresh token still works after 7+ days (checks Testing vs In-production token lifetime); consumer Gmail API daily send limit documented | Stop and decide with the owner: without organizer-Gmail sending there is no meeting-email path (no shared fallback by decision) |
+
+**Results (2026-10-05):**
+- **S1 — PASS.** 629/629 runs over 10 h 28 min, max gap 61 s, all retained responses HTTP 200. Supabase Cron schedules the dispatcher. `docs/spikes/S1.md`
+- **S2 — decided.** `PUBLISH` duplicates on update and is not removed by cancel; `REQUEST` updates/cancels in place. Calendar invites are sent pre-accepted after the member responds (see §4, §9). Outlook/Apple untested. `docs/spikes/S2.md`
+- **S3 — PASS.** Search Console verified `https://tapnshow.vercel.app/`; Google accepted `tapnshow.vercel.app` as an authorized domain. `docs/spikes/S3.md`
+- **S4 — day 0 PASS, final 2026-10-13.** Consent + send via Gmail API work; `gmail.send` is sensitive; Testing-status refresh tokens expire after 7 days (Google docs), so production uses "In production" (unverified until M9). `docs/spikes/S4.md`
 
 **S5 (deferred, before calendar layer B):** classify `calendar.app.created` / `calendar.events` in the Google Cloud console and determine verification requirements.
 
