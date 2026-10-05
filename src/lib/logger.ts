@@ -1,30 +1,17 @@
 import "server-only";
-import pino, { type DestinationStream, type Logger } from "pino";
+import pino, { type DestinationStream, type LogFn, type Logger } from "pino";
 import { APP_NAME } from "@/config/app";
 import { getServerEnv, type ServerEnv } from "@/config/env";
+import { scrubDeep, scrubUrl } from "@/lib/observability/scrub";
 
 /** Log levels accepted by the logger (mirrors `LOG_LEVEL`). */
 export type LogLevel = ServerEnv["LOG_LEVEL"];
 
-/** Object paths whose values are replaced with "[REDACTED]" before writing. */
-export const REDACT_PATHS = [
-  "token",
-  "*.token",
-  "refreshToken",
-  "*.refreshToken",
-  "secret",
-  "*.secret",
-  "password",
-  "*.password",
-  "authorization",
-  "headers.authorization",
-  "headers.cookie",
-  "*.headers.authorization",
-  "*.headers.cookie",
-] as const;
-
 /**
- * Creates a structured JSON logger with secret redaction.
+ * Creates a structured JSON logger that shares Sentry's privacy rules (`scrub.ts`):
+ * values under sensitive field names are redacted at any depth, and personal-link
+ * tokens are scrubbed from fields, message strings and serialized errors. If scrubbing
+ * a log object fails, the object is replaced instead of being written raw (fail closed).
  * @param options.level - minimum level to write
  * @param options.destination - optional stream (tests); defaults to stdout
  */
@@ -36,7 +23,26 @@ export function createLogger(options: {
     {
       level: options.level,
       base: { app: APP_NAME },
-      redact: { paths: [...REDACT_PATHS], censor: "[REDACTED]" },
+      // `formatters.log` (below) already turns Errors into scrubbed plain objects; pino's
+      // default `err` serializer runs afterwards and would overwrite `type`, so pass through.
+      serializers: { err: (error: Record<string, string>) => error },
+      formatters: {
+        log: (object) => {
+          try {
+            return scrubDeep(object);
+          } catch {
+            return { scrubFailed: true };
+          }
+        },
+      },
+      hooks: {
+        logMethod(inputArgs, method) {
+          const scrubbed = inputArgs.map((arg) =>
+            typeof arg === "string" ? scrubUrl(arg) : arg,
+          ) as Parameters<LogFn>;
+          return method.apply(this, scrubbed);
+        },
+      },
     },
     options.destination,
   );

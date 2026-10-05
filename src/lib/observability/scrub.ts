@@ -21,9 +21,19 @@ export const REDACTED = "[REDACTED]";
 const SENSITIVE_KEY =
   /token|secret|passw(or)?d|authorization|cookie|apikey|privatekey|dsn/;
 
+/**
+ * Field names that are sensitive only as whole words (substring matching would hit
+ * "author", "passenger"…): nodemailer's `auth.pass`, Web Push's `keys.auth`.
+ */
+const SENSITIVE_EXACT_KEYS = ["pass", "auth"] as const;
+
 /** True when a field name suggests its value is a credential or secret. */
 export function isSensitiveKey(key: string): boolean {
-  return SENSITIVE_KEY.test(key.toLowerCase().replace(/[^a-z]/g, ""));
+  const normalized = key.toLowerCase().replace(/[^a-z]/g, "");
+  return (
+    SENSITIVE_KEY.test(normalized) ||
+    SENSITIVE_EXACT_KEYS.some((exact) => exact === normalized)
+  );
 }
 
 /** Replacement for values beyond the walk depth or already visited (cycles). */
@@ -69,7 +79,8 @@ export function scrubHeaders(
 /**
  * Returns a deep copy with personal-link tokens scrubbed from every string and key at any
  * depth, and values under sensitive field names (see `isSensitiveKey`) redacted.
- * Walks the structure (no regex over serialized JSON); cycles and over-deep values are
+ * Walks the structure (no regex over serialized JSON); Errors become plain
+ * `{ type, message, stack, cause }` objects; cycles and over-deep values are
  * replaced with `TRUNCATED`. May throw on hostile inputs (e.g. throwing getters) — callers
  * must fail closed.
  */
@@ -88,6 +99,15 @@ export function scrubDeep<T>(
     return TRUNCATED as T;
   }
   seen.add(value);
+  if (value instanceof Error) {
+    // Error fields are non-enumerable; copy them explicitly so they survive the walk.
+    return {
+      type: value.name,
+      message: scrubUrl(value.message),
+      stack: value.stack ? scrubUrl(value.stack) : undefined,
+      cause: scrubDeep(value.cause, depth + 1, seen),
+    } as T;
+  }
   if (Array.isArray(value)) {
     return value.map((item) => scrubDeep(item, depth + 1, seen)) as T;
   }

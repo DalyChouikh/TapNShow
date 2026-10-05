@@ -59,4 +59,67 @@ describe("createLogger", () => {
     createLogger({ level: "warn", destination: stream }).info("hidden");
     expect(lines).toHaveLength(0);
   });
+
+  it("redacts snake_case, nested, capitalised and app-password secrets", () => {
+    const { stream, lines } = memoryStream();
+    createLogger({ level: "info", destination: stream }).info(
+      {
+        refresh_token: "leak-refresh",
+        access_token: "leak-access",
+        accessToken: "leak-access-2",
+        headers: {
+          Authorization: "Bearer leak-auth",
+          "set-cookie": "leak-cookie",
+        },
+        req: { raw: { headers: { cookie: "leak-raw-cookie" } } },
+        job: { payload: { token: "leak-nested" } },
+        smtp: {
+          auth: { user: "platform@gmail.com", pass: "leak-app-password" },
+        },
+        push: { keys: { auth: "leak-push-auth" } },
+      },
+      "secrets",
+    );
+    for (const secret of [
+      "leak-refresh",
+      "leak-access",
+      "leak-access-2",
+      "leak-auth",
+      "leak-cookie",
+      "leak-raw-cookie",
+      "leak-nested",
+      "leak-app-password",
+      "leak-push-auth",
+    ]) {
+      expect(lines[0]).not.toContain(secret);
+    }
+  });
+
+  it("scrubs personal-link tokens from fields, messages and errors", () => {
+    const { stream, lines } = memoryStream();
+    const logger = createLogger({ level: "info", destination: stream });
+    logger.info({ url: "https://x.app/r/tok_field?choice=attend" }, "field");
+    logger.info("visited /r/tok_message");
+    logger.error({ err: new Error("failed for /r/tok_error") }, "boom");
+    const all = lines.join("\n");
+    for (const token of ["tok_field", "tok_message", "tok_error"]) {
+      expect(all).not.toContain(token);
+    }
+    expect(all).toContain("/r/[REDACTED]");
+  });
+
+  it("keeps error details while scrubbing them", () => {
+    const { stream, lines } = memoryStream();
+    createLogger({ level: "info", destination: stream }).error(
+      { err: new Error("failed for /r/tok_error") },
+      "boom",
+    );
+    const entry = JSON.parse(lines[0]) as {
+      err: { type: string; message: string; stack: string };
+    };
+    expect(entry.err.type).toBe("Error");
+    expect(entry.err.message).toBe("failed for /r/[REDACTED]");
+    expect(entry.err.stack).toContain("failed for /r/[REDACTED]");
+    expect(entry.err.stack).not.toContain("tok_error");
+  });
 });
