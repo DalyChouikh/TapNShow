@@ -30,7 +30,10 @@ export function DialogContent({
   const t = useTranslations("Common");
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-ink/40 data-closed:animate-out data-closed:fade-out-0 data-open:animate-in data-open:fade-in-0 motion-reduce:animate-none" />
+      <DialogPrimitive.Overlay
+        data-slot="dialog-overlay"
+        className="fixed inset-0 z-50 bg-on-fill/50 data-closed:animate-out data-closed:fade-out-0 data-open:animate-in data-open:fade-in-0 motion-reduce:animate-none"
+      />
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(

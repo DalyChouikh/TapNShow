@@ -28,3 +28,11 @@ export const workspaceDetailsSchema = z.object({
 
 /** A workspace as seen by one of its members. */
 export type WorkspaceDetails = z.infer<typeof workspaceDetailsSchema>;
+
+/** `PATCH /api/workspaces/[slug]` body (Owner/Admin). */
+export const updateWorkspaceBodySchema = z
+  .object({
+    name: workspaceNameSchema.optional(),
+    timezone: timezoneSchema.optional(),
+  })
+  .refine((body) => body.name !== undefined || body.timezone !== undefined);
