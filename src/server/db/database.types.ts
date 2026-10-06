@@ -24,6 +24,25 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"workspace_invites": {
+                  Row: {
+                    "accepted_at": string | null,"accepted_by": string | null,"created_at": string,"email": string,"expires_at": string,"id": string,"invited_by": string | null,"revoked_at": string | null,"role": Database["public"]['Enums']["workspace_role"],"token_hash": string,"updated_at": string,"workspace_id": string
+                  }
+                  Insert: {
+                    "accepted_at"?: string | null,"accepted_by"?: string | null,"created_at"?: string,"email": string,"expires_at": string,"id"?: string,"invited_by"?: string | null,"revoked_at"?: string | null,"role": Database["public"]['Enums']["workspace_role"],"token_hash": string,"updated_at"?: string,"workspace_id": string
+                  }
+                  Update: {
+                    "accepted_at"?: string | null,"accepted_by"?: string | null,"created_at"?: string,"email"?: string,"expires_at"?: string,"id"?: string,"invited_by"?: string | null,"revoked_at"?: string | null,"role"?: Database["public"]['Enums']["workspace_role"],"token_hash"?: string,"updated_at"?: string,"workspace_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "workspace_invites_workspace_id_fkey"
+      columns: ["workspace_id"]
+isOneToOne: false
+      referencedRelation: "workspaces"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"workspace_roles": {
                   Row: {
                     "can_check_in": boolean,"created_at": string,"role": Database["public"]['Enums']["workspace_role"],"user_id": string,"workspace_id": string
@@ -62,11 +81,20 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "change_role":
+            "accept_invite":
+{ Args: { "p_token_hash": string }; Returns: string
+                           },
+"change_role":
 { Args: { "p_can_check_in": boolean,"p_role": Database["public"]['Enums']["workspace_role"],"p_user": string,"p_workspace": string }; Returns: undefined
                            },
 "check_ip_rate_limit":
 { Args: { "p_action": string,"p_ip": string }; Returns: boolean
+                           },
+"consume_invite_email":
+{ Args: { "p_workspace": string }; Returns: boolean
+                           },
+"create_invite":
+{ Args: { "p_email": string,"p_role": Database["public"]['Enums']["workspace_role"],"p_token_hash": string,"p_workspace": string }; Returns: string
                            },
 "create_workspace":
 { Args: { "p_name": string,"p_slug": string,"p_timezone": string }; Returns: {
@@ -90,6 +118,11 @@ isOneToOne: false
 "healthcheck":
 { Args: Record<PropertyKey, never>; Returns: string
                            },
+"invite_preview":
+{ Args: { "p_token_hash": string }; Returns: {
+              "masked_email": string,"role": Database["public"]['Enums']["workspace_role"],"status": string,"workspace_name": string,"workspace_slug": string
+            }[]
+                           },
 "leave_workspace":
 { Args: { "p_workspace": string }; Returns: undefined
                            },
@@ -100,6 +133,12 @@ isOneToOne: false
                            },
 "remove_member":
 { Args: { "p_user": string,"p_workspace": string }; Returns: undefined
+                           },
+"renew_invite":
+{ Args: { "p_invite": string,"p_token_hash": string }; Returns: undefined
+                           },
+"revoke_invite":
+{ Args: { "p_invite": string }; Returns: undefined
                            },
 "transfer_ownership":
 { Args: { "p_confirm_name": string,"p_new_owner": string,"p_workspace": string }; Returns: undefined
