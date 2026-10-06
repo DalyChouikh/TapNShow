@@ -3,6 +3,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale } from "next-intl/server";
 import { MotionProvider } from "@/components/motion/motion-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { APP_DESCRIPTION, APP_NAME } from "@/config/app";
 import { publicEnv } from "@/config/public-env";
@@ -31,6 +32,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           <ThemeProvider>
             <QueryProvider>
               <MotionProvider>{children}</MotionProvider>
+              <Toaster />
             </QueryProvider>
           </ThemeProvider>
         </NextIntlClientProvider>

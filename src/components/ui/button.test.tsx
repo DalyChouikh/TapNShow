@@ -39,7 +39,7 @@ describe("Button", () => {
   it("renders its child element when asChild is set", () => {
     render(
       <Button asChild tone="primary">
-        <a href="/w/demo">Open</a>
+        <a href="https://example.test/w/demo">Open</a>
       </Button>,
     );
     expect(screen.getByRole("link", { name: "Open" })).toHaveAttribute(
