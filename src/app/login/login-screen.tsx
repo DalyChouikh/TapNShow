@@ -8,12 +8,14 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { GoogleButton } from "@/components/auth/google-button";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Sticker } from "@/components/ui/sticker";
 import { APP_NAME } from "@/config/app";
 import { OTP_LENGTH, OTP_RESEND_SECONDS } from "@/config/auth";
+import { publicEnv } from "@/config/public-env";
 import { ApiClientError, apiRequest } from "@/lib/api-client";
 import { safeNextPath } from "@/lib/safe-next-path";
 import { otpSendBodySchema, otpVerifyBodySchema } from "@/shared/api/auth";
@@ -27,7 +29,10 @@ export function LoginScreen() {
   const t = useTranslations("Auth");
   const tErrors = useTranslations("ApiErrors");
   const router = useRouter();
-  const next = safeNextPath(useSearchParams().get("next"));
+  const searchParams = useSearchParams();
+  const next = safeNextPath(searchParams.get("next"));
+  const errorParam = searchParams.get("error");
+  const googleHref = `/api/auth/google/start${next ? `?next=${encodeURIComponent(next)}` : ""}`;
   const [email, setEmail] = useState<string | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(0);
 
@@ -81,44 +86,65 @@ export function LoginScreen() {
 
   if (!email) {
     return (
-      <Card key="email-step" as="section" className="flex flex-col gap-4">
-        <Sticker tone="primary">
-          <EnvelopeSimple weight="bold" />
-        </Sticker>
-        <h1 className="font-display text-3xl">
-          {t("title", { appName: APP_NAME })}
-        </h1>
-        <p className="text-muted-ink">{t("subtitle")}</p>
-        <form
-          className="flex flex-col gap-4"
-          onSubmit={emailForm.handleSubmit((values) =>
-            sendCode.mutate(values.email),
-          )}
-          noValidate
-        >
-          <Input
-            id="email"
-            type="email"
-            autoComplete="email"
-            label={t("emailLabel")}
-            placeholder={t("emailPlaceholder")}
-            error={
-              emailForm.formState.errors.email
-                ? t("invalidEmail")
-                : errorText(sendCode.error)
-            }
-            {...emailForm.register("email")}
-          />
-          <Button
-            type="submit"
-            tone="primary"
-            size="lg"
-            disabled={sendCode.isPending}
+      <div className="flex flex-col gap-4">
+        {errorParam === "google_failed" ||
+        errorParam === "google_unavailable" ? (
+          <p
+            role="alert"
+            className="rounded-control border-2 border-outline bg-fill-warning p-3 font-bold text-on-fill"
           >
-            {t("sendCode")}
-          </Button>
-        </form>
-      </Card>
+            {errorParam === "google_failed"
+              ? t("googleFailed")
+              : tErrors("google_unavailable")}
+          </p>
+        ) : null}
+        <Card key="email-step" as="section" className="flex flex-col gap-4">
+          <Sticker tone="primary">
+            <EnvelopeSimple weight="bold" />
+          </Sticker>
+          <h1 className="font-display text-3xl">
+            {t("title", { appName: APP_NAME })}
+          </h1>
+          <p className="text-muted-ink">{t("subtitle")}</p>
+          <form
+            className="flex flex-col gap-4"
+            onSubmit={emailForm.handleSubmit((values) =>
+              sendCode.mutate(values.email),
+            )}
+            noValidate
+          >
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              label={t("emailLabel")}
+              placeholder={t("emailPlaceholder")}
+              error={
+                emailForm.formState.errors.email
+                  ? t("invalidEmail")
+                  : errorText(sendCode.error)
+              }
+              {...emailForm.register("email")}
+            />
+            <Button
+              type="submit"
+              tone="primary"
+              size="lg"
+              disabled={sendCode.isPending}
+            >
+              {t("sendCode")}
+            </Button>
+          </form>
+          {publicEnv.NEXT_PUBLIC_GOOGLE_SIGN_IN_ENABLED ? (
+            <>
+              <p className="text-center text-sm font-bold text-muted-ink">
+                {t("or")}
+              </p>
+              <GoogleButton href={googleHref} />
+            </>
+          ) : null}
+        </Card>
+      </div>
     );
   }
 

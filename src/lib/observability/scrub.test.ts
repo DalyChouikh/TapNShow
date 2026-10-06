@@ -17,4 +17,11 @@ describe("scrubUrl", () => {
       "https://tapnshow.vercel.app/w/gdg/meetings",
     );
   });
+
+  it("scrubs OAuth code and state on the Google callback", () => {
+    expect(scrubUrl("/api/auth/google/callback?code=4/0Ab&state=xyz")).toBe(
+      "/api/auth/google/callback?code=[REDACTED]&state=[REDACTED]",
+    );
+    expect(scrubUrl("/w/club?state=open")).toBe("/w/club?state=open");
+  });
 });
