@@ -49,3 +49,26 @@ describe("apiError", () => {
     });
   });
 });
+
+describe("fromDatabaseError overrides", () => {
+  it("maps a Postgres code to a specific API code when the route knows the meaning", async () => {
+    const response = fromDatabaseError(
+      { code: "23505", message: "duplicate key" },
+      { "23505": "contact_email_taken" },
+    );
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: { code: "contact_email_taken" },
+    });
+  });
+
+  it("still prefers tn:<code> from our functions", async () => {
+    const response = fromDatabaseError(
+      { code: "P0001", message: "tn:contacts_limit_reached" },
+      { P0001: "conflict" },
+    );
+    expect(await response.json()).toEqual({
+      error: { code: "contacts_limit_reached" },
+    });
+  });
+});

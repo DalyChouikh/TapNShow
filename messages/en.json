@@ -84,7 +84,12 @@
     "email_failed": "The email couldn't be sent. Copy the link instead.",
     "invalid_code": "That code is wrong or has expired. Check the email or send a new code.",
     "send_failed": "We couldn't send the email. Try again in a minute.",
-    "google_unavailable": "Google sign-in isn't available here. Use an email code."
+    "google_unavailable": "Google sign-in isn't available here. Use an email code.",
+    "contact_email_taken": "Someone in your roster already uses this email.",
+    "contacts_limit_reached": "Your roster is full. Remove people before adding more.",
+    "lists_limit_reached": "You have the maximum number of lists. Delete one first.",
+    "list_name_taken": "A list with this name already exists.",
+    "import_too_many_rows": "This file has too many rows. Split it and import each part."
   },
   "Auth": {
     "title": "Sign in to {appName}",
