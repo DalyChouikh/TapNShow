@@ -6,6 +6,7 @@ import {
   expectAppError,
   type TestUser,
 } from "@/test/db/clients";
+import { addGoogleIdentity } from "@/test/db/sql";
 import {
   addMember,
   createWorkspaceAs,
@@ -13,19 +14,62 @@ import {
 } from "@/test/db/workspaces";
 
 describe("profiles", () => {
-  it("are created at sign-up, with Google's name when present", async () => {
-    const named = await createTestUser({ fullName: "Amira Ben Ali" });
-    const anonymous = await createTestUser();
-    const a = await named.client
+  it("ignore names and avatars a client supplies at email sign-up", async () => {
+    const email = `spoof-${crypto.randomUUID()}@example.test`;
+    const created = await adminClient().auth.admin.createUser({
+      email,
+      email_confirm: true,
+      user_metadata: {
+        full_name: "Spoofed Owner",
+        avatar_url: "https://evil.example/pixel.png",
+      },
+    });
+    const { data } = await adminClient()
+      .from("profiles")
+      .select("display_name, avatar_url")
+      .eq("user_id", created.data.user!.id)
+      .single();
+    expect(data).toEqual({ display_name: null, avatar_url: null });
+  });
+
+  it("take the name and a Google-hosted avatar from a Google identity", async () => {
+    const hosted = await createTestUser();
+    const foreign = await createTestUser();
+    addGoogleIdentity(hosted.id, {
+      full_name: "Amira Ben Ali",
+      picture: "https://lh3.googleusercontent.com/a/abc=s96-c",
+    });
+    addGoogleIdentity(foreign.id, {
+      full_name: "Sami",
+      picture: "https://evil.example/pixel.png",
+    });
+    const a = await hosted.client
+      .from("profiles")
+      .select("display_name, avatar_url")
+      .single();
+    const b = await foreign.client
+      .from("profiles")
+      .select("display_name, avatar_url")
+      .single();
+    expect(a.data).toEqual({
+      display_name: "Amira Ben Ali",
+      avatar_url: "https://lh3.googleusercontent.com/a/abc=s96-c",
+    });
+    expect(b.data).toEqual({ display_name: "Sami", avatar_url: null });
+  });
+
+  it("keep a name the user already chose when Google is linked later", async () => {
+    const user = await createTestUser();
+    await user.client
+      .from("profiles")
+      .update({ display_name: "Lina" })
+      .eq("user_id", user.id);
+    addGoogleIdentity(user.id, { full_name: "Lina Google" });
+    const { data } = await user.client
       .from("profiles")
       .select("display_name")
       .single();
-    const b = await anonymous.client
-      .from("profiles")
-      .select("display_name")
-      .single();
-    expect(a.data?.display_name).toBe("Amira Ben Ali");
-    expect(b.data?.display_name).toBeNull();
+    expect(data?.display_name).toBe("Lina");
   });
 
   it("are private to their owner", async () => {

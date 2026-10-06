@@ -41,7 +41,7 @@ export type TestUser = {
 
 /**
  * Creates a confirmed user (password sign-in is used only by tests) and signs in.
- * @param options.fullName - stored as Google would store it, to exercise the profile trigger
+ * @param options.fullName - display name written to the profile (test fixture)
  */
 export async function createTestUser(
   options: { email?: string; fullName?: string } = {},
@@ -52,10 +52,18 @@ export async function createTestUser(
     email,
     password,
     email_confirm: true,
-    user_metadata: options.fullName ? { full_name: options.fullName } : {},
   });
   if (created.error) {
     throw created.error;
+  }
+  if (options.fullName) {
+    const named = await adminClient()
+      .from("profiles")
+      .update({ display_name: options.fullName })
+      .eq("user_id", created.data.user.id);
+    if (named.error) {
+      throw named.error;
+    }
   }
   const client = anonClient();
   const signedIn = await client.auth.signInWithPassword({ email, password });
