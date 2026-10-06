@@ -38,8 +38,8 @@ describe("LoginScreen", () => {
     renderWithProviders(<LoginScreen />);
     await user.type(screen.getByLabelText("Email"), "ali@example.test");
     await user.click(screen.getByRole("button", { name: "Email me a code" }));
-    await user.type(await screen.findByLabelText("Sign-in code"), "1234 5678");
-    await user.click(screen.getByRole("button", { name: "Sign in" }));
+    await user.click(await screen.findByLabelText("Digit 1 of 8"));
+    await user.paste("1234 5678");
     await waitFor(() =>
       expect(replace).toHaveBeenCalledWith("/welcome?next=%2Fw%2Fclub-ab12"),
     );
@@ -58,8 +58,7 @@ describe("LoginScreen", () => {
     renderWithProviders(<LoginScreen />);
     await user.type(screen.getByLabelText("Email"), "ali@example.test");
     await user.click(screen.getByRole("button", { name: "Email me a code" }));
-    await user.type(await screen.findByLabelText("Sign-in code"), "00000000");
-    await user.click(screen.getByRole("button", { name: "Sign in" }));
+    await user.type(await screen.findByLabelText("Digit 1 of 8"), "00000000");
     expect(
       await screen.findByText(
         "That code is wrong or has expired. Check the email or send a new code.",

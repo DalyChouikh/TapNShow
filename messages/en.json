@@ -93,9 +93,9 @@
     "emailPlaceholder": "you@example.com",
     "sendCode": "Email me a code",
     "codeTitle": "Check your email",
-    "codeSent": "We sent a {length}-digit code to {email}.",
+    "codeSent": "We sent a code with {length} digits to {email}.",
     "codeLabel": "Sign-in code",
-    "codeHint": "Paste or type the digits. Spaces are fine.",
+    "codeHint": "Paste the code or type it. It signs you in as soon as all digits are in.",
     "verify": "Sign in",
     "resendIn": "Resend code in {seconds} s",
     "resend": "Resend code",
@@ -104,7 +104,8 @@
     "google": "Continue with Google",
     "googleFailed": "Google sign-in didn't finish. Try again or use an email code.",
     "invalidEmail": "Enter a valid email address.",
-    "invalidCodeFormat": "Enter the {length} digits from the email."
+    "invalidCodeFormat": "Enter the {length} digits from the email.",
+    "codeDigit": "Digit {index} of {length}"
   },
   "Common": {
     "loading": "Loading",

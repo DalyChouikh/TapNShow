@@ -6,9 +6,10 @@ import { useMutation } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { GoogleButton } from "@/components/auth/google-button";
+import { CodeInput } from "@/components/forms/code-input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -78,6 +79,13 @@ export function LoginScreen() {
         next ? `/welcome?next=${encodeURIComponent(next)}` : "/welcome",
       ),
   });
+
+  /** Submits once per attempt: the last digit auto-submits, and the button can too. */
+  const submitCode = () => {
+    if (!verify.isPending) {
+      void codeForm.handleSubmit((values) => verify.mutate(values.code))();
+    }
+  };
 
   const errorText = (error: Error | null): string | undefined =>
     error
@@ -159,21 +167,32 @@ export function LoginScreen() {
       </p>
       <form
         className="flex flex-col gap-4"
-        onSubmit={codeForm.handleSubmit((values) => verify.mutate(values.code))}
+        onSubmit={(event) => {
+          event.preventDefault();
+          submitCode();
+        }}
         noValidate
       >
-        <Input
-          id="code"
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          label={t("codeLabel")}
-          hint={t("codeHint")}
-          error={
-            codeForm.formState.errors.code
-              ? t("invalidCodeFormat", { length: OTP_LENGTH })
-              : errorText(verify.error)
-          }
-          {...codeForm.register("code")}
+        <Controller
+          control={codeForm.control}
+          name="code"
+          render={({ field }) => (
+            <CodeInput
+              id="code"
+              label={t("codeLabel")}
+              hint={t("codeHint")}
+              length={OTP_LENGTH}
+              value={field.value ?? ""}
+              onChange={field.onChange}
+              onComplete={submitCode}
+              disabled={verify.isPending}
+              error={
+                codeForm.formState.errors.code
+                  ? t("invalidCodeFormat", { length: OTP_LENGTH })
+                  : errorText(verify.error)
+              }
+            />
+          )}
         />
         <Button
           type="submit"
