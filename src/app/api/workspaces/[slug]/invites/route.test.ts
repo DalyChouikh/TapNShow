@@ -1,26 +1,30 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { sha256Hex } from "@/server/crypto/tokens";
+import type { DeliveryOutcome } from "@/server/invites/deliver-invite";
 import { jsonRequest, okContext } from "@/test/workspace-context-mock";
 
+type CreateResult = { data: string | null; error: { message: string } | null };
+
 const mocks = vi.hoisted(() => ({
-  createInvite: vi.fn<
-    (
-      client: object,
-      input: { email: string; tokenHash: string },
-    ) => Promise<{ data: string | null; error: { message: string } | null }>
-  >(async () => ({
-    data: "7c1e4b2a-9d3f-4e6a-8b5c-0f1a2b3c4d5e" as string | null,
-    error: null as { message: string } | null,
-  })),
+  createInvite:
+    vi.fn<
+      (
+        client: object,
+        input: { email: string; tokenHash: string },
+      ) => Promise<CreateResult>
+    >(),
   listOpenInvites: vi.fn(async () => []),
-  deliverInvite: vi.fn<
-    (input: {
-      token: string;
-      origin: string;
-      inviterName: string;
-    }) => Promise<Response>
-  >(async () => new Response(null, { status: 201 })),
+  deliverInviteOutcome:
+    vi.fn<
+      (input: {
+        email?: string;
+        inviteId: string;
+        token: string;
+        origin: string;
+        inviterName: string;
+      }) => Promise<DeliveryOutcome>
+    >(),
 }));
 vi.mock("@/server/http/workspace-context", () => ({
   loadWorkspaceContext: async () => okContext,
@@ -30,93 +34,171 @@ vi.mock("@/server/queries/invites", () => ({
   listOpenInvites: mocks.listOpenInvites,
 }));
 vi.mock("@/server/invites/deliver-invite", () => ({
-  deliverInvite: mocks.deliverInvite,
+  deliverInviteOutcome: mocks.deliverInviteOutcome,
 }));
 vi.mock("@/server/queries/profile", () => ({
   getDisplayName: async () => "Amira",
 }));
 
 const ctx = { params: Promise.resolve({ slug: "club-ab12" }) };
-const post = (body: object, origin = "http://localhost:3000") =>
-  new NextRequest("http://localhost:3000/api/workspaces/club-ab12/invites", {
+const post = (
+  body: object,
+  url = "http://localhost:3000/api/workspaces/club-ab12/invites",
+  origin = "http://localhost:3000",
+) =>
+  new NextRequest(url, {
     method: "POST",
     headers: { origin },
     body: JSON.stringify(body),
   });
+const id = (n: number) => `7c1e4b2a-9d3f-4e6a-8b5c-0f1a2b3c4d5${n}`;
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  let n = 0;
+  mocks.createInvite.mockImplementation(async () => ({
+    data: id(n++),
+    error: null,
+  }));
+  mocks.deliverInviteOutcome.mockImplementation(async (input) => ({
+    status: "link",
+    link: `http://localhost:3000/invite/${input.token}`,
+  }));
+});
 
-describe("/api/workspaces/[slug]/invites", () => {
-  it("POST stores only the hash of the token it delivers, with the request origin", async () => {
+describe("POST /api/workspaces/[slug]/invites", () => {
+  it("gives every address its own invite and token, storing only the hash", async () => {
     const { POST } = await import("./route");
-    await POST(
-      post({ email: "V@Example.test", role: "viewer", delivery: "email" }),
+    const response = await POST(
+      post({
+        emails: ["A@x.test", "b@y.test"],
+        role: "viewer",
+        delivery: "link",
+      }),
       ctx,
     );
-    const created = mocks.createInvite.mock.calls[0][1];
-    const delivered = mocks.deliverInvite.mock.calls[0][0];
-    expect(created.email).toBe("v@example.test");
-    expect(delivered.token).toMatch(/^[A-Za-z0-9_-]{43}$/);
-    expect(created.tokenHash).toBe(sha256Hex(delivered.token));
-    expect(delivered).toMatchObject({
-      origin: "http://localhost:3000",
-      inviterName: "Amira",
-    });
+    expect(response.status).toBe(200);
+    const { results } = (await response.json()) as {
+      results: Array<{
+        email: string;
+        status: string;
+        inviteId: string;
+        link: string;
+      }>;
+    };
+    expect(results.map((result) => [result.email, result.status])).toEqual([
+      ["a@x.test", "link"],
+      ["b@y.test", "link"],
+    ]);
+    const hashes = mocks.createInvite.mock.calls.map(
+      ([, input]) => input.tokenHash,
+    );
+    const tokens = mocks.deliverInviteOutcome.mock.calls.map(
+      ([input]) => input.token,
+    );
+    expect(new Set(tokens).size).toBe(2);
+    expect(hashes).toEqual(tokens.map((token) => sha256Hex(token)));
+    expect(results[0].link).toBe(`http://localhost:3000/invite/${tokens[0]}`);
   });
 
-  it("POST refuses cross-origin calls and maps tn:already_member to 409", async () => {
+  it("continues past addresses that are already members", async () => {
+    mocks.createInvite.mockResolvedValueOnce({
+      data: null,
+      error: { message: "tn:already_member" },
+    });
+    const { POST } = await import("./route");
+    const { results } = await (
+      await POST(
+        post({
+          emails: ["in@x.test", "new@x.test"],
+          role: "viewer",
+          delivery: "email",
+        }),
+        ctx,
+      )
+    ).json();
+    expect(results.map((result: { status: string }) => result.status)).toEqual([
+      "already_member",
+      "link",
+    ]);
+  });
+
+  it("reports the email limit per address and keeps the invite for copying", async () => {
+    mocks.deliverInviteOutcome
+      .mockResolvedValueOnce({ status: "sent" })
+      .mockResolvedValueOnce({ status: "email_limit" });
+    const { POST } = await import("./route");
+    const { results } = await (
+      await POST(
+        post({
+          emails: ["a@x.test", "b@x.test"],
+          role: "viewer",
+          delivery: "email",
+        }),
+        ctx,
+      )
+    ).json();
+    expect(results).toEqual([
+      { email: "a@x.test", status: "sent", inviteId: id(0) },
+      { email: "b@x.test", status: "email_limit", inviteId: id(1) },
+    ]);
+  });
+
+  it("refuses the whole batch when the caller may not invite", async () => {
+    mocks.createInvite.mockResolvedValueOnce({
+      data: null,
+      error: { message: "tn:forbidden" },
+    });
+    const { POST } = await import("./route");
+    expect(
+      (
+        await POST(
+          post({
+            emails: ["a@x.test", "b@x.test"],
+            role: "admin",
+            delivery: "link",
+          }),
+          ctx,
+        )
+      ).status,
+    ).toBe(403);
+    expect(mocks.createInvite).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses cross-origin calls and builds links from the configured app URL, not a spoofed host", async () => {
     const { POST } = await import("./route");
     expect(
       (
         await POST(
           post(
-            { email: "v@example.test", role: "viewer", delivery: "link" },
+            { emails: ["a@x.test"], role: "viewer", delivery: "link" },
+            undefined,
             "https://evil.example",
           ),
           ctx,
         )
       ).status,
     ).toBe(403);
-    mocks.createInvite.mockResolvedValueOnce({
-      data: null,
-      error: { message: "tn:already_member" },
-    });
-    expect(
-      (
-        await POST(
-          post({ email: "v@example.test", role: "viewer", delivery: "link" }),
-          ctx,
-        )
-      ).status,
-    ).toBe(409);
-    expect(mocks.deliverInvite).not.toHaveBeenCalled();
+    await POST(
+      post(
+        { emails: ["a@x.test"], role: "viewer", delivery: "email" },
+        "https://evil.example/api/workspaces/club-ab12/invites",
+        "https://evil.example",
+      ),
+      ctx,
+    );
+    expect(mocks.deliverInviteOutcome.mock.calls[0][0].origin).toBe(
+      "http://localhost:3000",
+    );
   });
+});
 
-  it("GET lists open invites", async () => {
+describe("GET /api/workspaces/[slug]/invites", () => {
+  it("lists open invites", async () => {
     const { GET } = await import("./route");
     expect((await GET(new NextRequest(jsonRequest("GET")), ctx)).status).toBe(
       200,
     );
     expect(mocks.listOpenInvites).toHaveBeenCalledWith({}, "w1");
-  });
-
-  it("POST builds emailed links from the configured app URL, not a spoofed host", async () => {
-    const { POST } = await import("./route");
-    const spoofed = new NextRequest(
-      "https://evil.example/api/workspaces/club-ab12/invites",
-      {
-        method: "POST",
-        headers: { origin: "https://evil.example" },
-        body: JSON.stringify({
-          email: "v@example.test",
-          role: "viewer",
-          delivery: "email",
-        }),
-      },
-    );
-    await POST(spoofed, ctx);
-    expect(mocks.deliverInvite.mock.calls[0][0].origin).toBe(
-      "http://localhost:3000",
-    );
   });
 });

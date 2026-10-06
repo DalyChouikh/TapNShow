@@ -1,20 +1,49 @@
 import { describe, expect, it } from "vitest";
+import { INVITE_BATCH_MAX } from "@/config/invites";
 import { createInviteBodySchema, inviteTokenBodySchema } from "./invites";
 
 describe("invite contracts", () => {
-  it("normalizes the invited email and refuses the owner role", () => {
+  it("normalizes and de-duplicates the invited emails and refuses the owner role", () => {
     expect(
       createInviteBodySchema.parse({
-        email: " Ali.Ben@Gmail.COM ",
+        emails: [" Ali.Ben@Gmail.COM ", "ali.ben@gmail.com", "sami@x.test"],
         role: "viewer",
         delivery: "link",
-      }).email,
-    ).toBe("ali.ben@gmail.com");
+      }).emails,
+    ).toEqual(["ali.ben@gmail.com", "sami@x.test"]);
     expect(
       createInviteBodySchema.safeParse({
-        email: "a@example.test",
+        emails: ["a@example.test"],
         role: "owner",
         delivery: "link",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("needs 1 to INVITE_BATCH_MAX valid addresses", () => {
+    expect(
+      createInviteBodySchema.safeParse({
+        emails: [],
+        role: "viewer",
+        delivery: "email",
+      }).success,
+    ).toBe(false);
+    expect(
+      createInviteBodySchema.safeParse({
+        emails: ["nope"],
+        role: "viewer",
+        delivery: "email",
+      }).success,
+    ).toBe(false);
+    const many = Array.from(
+      { length: INVITE_BATCH_MAX + 1 },
+      (_, index) => `p${index}@x.test`,
+    );
+    expect(
+      createInviteBodySchema.safeParse({
+        emails: many,
+        role: "viewer",
+        delivery: "email",
       }).success,
     ).toBe(false);
   });

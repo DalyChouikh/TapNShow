@@ -7,27 +7,54 @@ import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
+import { EmailChipsInput } from "@/components/forms/email-chips-input";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { RadioCard, RadioGroup } from "@/components/ui/radio-group";
+import { INVITE_BATCH_MAX } from "@/config/invites";
 import { invitesQueryKey } from "@/hooks/use-invites";
 import { ApiClientError, apiRequest } from "@/lib/api-client";
+import { cn } from "@/lib/utils";
 import {
   createInviteBodySchema,
+  inviteBatchResponseSchema,
   inviteDeliveredSchema,
+  type InviteResult,
 } from "@/shared/api/invites";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
 
 type Values = z.input<typeof createInviteBodySchema>;
 
-/** Invite someone by email or copied link (spec §7.13). Admin role is offered to the Owner only. */
+const STATUS_KEY = {
+  sent: "statusSent",
+  link: "statusLink",
+  already_member: "statusAlreadyMember",
+  email_limit: "statusEmailLimit",
+  email_failed: "statusEmailFailed",
+  error: "statusError",
+} as const;
+
+const STATUS_FILL: Record<InviteResult["status"], string> = {
+  sent: "bg-fill-success",
+  link: "bg-fill-success",
+  already_member: "bg-fill-neutral",
+  email_limit: "bg-fill-warning",
+  email_failed: "bg-fill-warning",
+  error: "bg-fill-danger",
+};
+
+/**
+ * Invite one or several people (spec §7.13). Each address gets its own email-bound invite; the
+ * results list shows what happened per person, with "Copy link" per row and "Copy all links".
+ * The Admin role is offered to the Owner only.
+ */
 export function InviteDialog({
   open,
   onOpenChange,
@@ -40,10 +67,10 @@ export function InviteDialog({
   const t = useTranslations("Invites");
   const tErrors = useTranslations("ApiErrors");
   const queryClient = useQueryClient();
-  const [link, setLink] = useState<{ url: string; email: string } | null>(null);
+  const [results, setResults] = useState<InviteResult[] | null>(null);
   const form = useForm<Values>({
     resolver: zodResolver(createInviteBodySchema),
-    defaultValues: { email: "", role: "viewer", delivery: "email" },
+    defaultValues: { emails: [], role: "viewer", delivery: "email" },
   });
   const base = `/api/workspaces/${workspace.slug}/invites`;
   const refresh = () =>
@@ -56,77 +83,129 @@ export function InviteDialog({
       apiRequest(base, {
         method: "POST",
         body: values,
-        schema: inviteDeliveredSchema,
+        schema: inviteBatchResponseSchema,
       }),
-    onSuccess: async (result, values) => {
+    onSuccess: async (response) => {
       await refresh();
-      if (result.delivery === "link") {
-        setLink({ url: result.link, email: values.email.trim().toLowerCase() });
-      } else {
-        toast(t("sent", { email: values.email.trim().toLowerCase() }));
-        close(false);
-      }
+      setResults(response.results);
     },
   });
-  const copyInstead = useMutation({
-    mutationFn: (inviteId: string) =>
-      apiRequest(`${base}/${inviteId}/renew`, {
+  const linkFor = useMutation({
+    mutationFn: (result: InviteResult) =>
+      apiRequest(`${base}/${result.inviteId}/renew`, {
         method: "POST",
         body: { delivery: "link" },
         schema: inviteDeliveredSchema,
       }),
-    onSuccess: async (result) => {
+    onSuccess: async (response, result) => {
       await refresh();
-      if (result.delivery === "link") {
-        setLink({
-          url: result.link,
-          email: form.getValues("email").trim().toLowerCase(),
-        });
+      if (response.delivery === "link") {
+        await navigator.clipboard.writeText(response.link);
+        toast(t("copied", { email: result.email }));
+        setResults(
+          (rows) =>
+            rows?.map((row) =>
+              row.email === result.email
+                ? { ...row, status: "link", link: response.link }
+                : row,
+            ) ?? null,
+        );
       }
     },
+    onError: (error) =>
+      toast.error(
+        tErrors(error instanceof ApiClientError ? error.code : "internal"),
+      ),
   });
 
   function close(next: boolean) {
     if (!next) {
-      setLink(null);
+      setResults(null);
       form.reset();
       create.reset();
-      copyInstead.reset();
     }
     onOpenChange(next);
   }
 
-  const failure = create.error instanceof ApiClientError ? create.error : null;
-  const fallbackInviteId = failure?.details?.inviteId;
+  const copy = async (result: InviteResult) => {
+    if (result.link) {
+      await navigator.clipboard.writeText(result.link);
+      toast(t("copied", { email: result.email }));
+    } else {
+      linkFor.mutate(result);
+    }
+  };
+  const links = results?.filter((row) => row.link) ?? [];
+  const copyAll = async () => {
+    await navigator.clipboard.writeText(
+      links.map((row) => `${row.email}: ${row.link}`).join("\n"),
+    );
+    toast(t("copiedAll", { count: links.length }));
+  };
+
+  const emailsError = (() => {
+    if (!form.formState.errors.emails) {
+      return undefined;
+    }
+    const emails = form.getValues("emails");
+    if (emails.length === 0) {
+      return t("noEmails");
+    }
+    return emails.length > INVITE_BATCH_MAX
+      ? t("tooMany", { max: INVITE_BATCH_MAX })
+      : t("invalidEmails");
+  })();
 
   return (
     <Dialog open={open} onOpenChange={close}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {t("dialogTitle", { workspace: workspace.name })}
+            {results
+              ? t("resultsTitle", { workspace: workspace.name })
+              : t("dialogTitle", { workspace: workspace.name })}
           </DialogTitle>
+          {results && links.length > 0 ? (
+            <DialogDescription>{t("linksHint")}</DialogDescription>
+          ) : null}
         </DialogHeader>
-        {link ? (
+        {results ? (
           <div className="flex flex-col gap-3">
-            <Input
-              id="invite-link"
-              label={t("linkLabel")}
-              hint={t("linkHint", { email: link.email })}
-              value={link.url}
-              readOnly
-              onFocus={(event) => event.target.select()}
-            />
+            <ul className="flex flex-col gap-2">
+              {results.map((result) => (
+                <li
+                  key={result.email}
+                  className="flex items-center gap-2 rounded-control border-2 border-outline bg-surface px-3 py-2"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-bold">{result.email}</p>
+                    <span
+                      className={cn(
+                        "inline-flex rounded-full border-2 border-outline px-2 text-xs font-bold text-on-fill",
+                        STATUS_FILL[result.status],
+                      )}
+                    >
+                      {t(STATUS_KEY[result.status])}
+                    </span>
+                  </div>
+                  {result.inviteId && result.status !== "sent" ? (
+                    <Button
+                      aria-label={t("copyLinkFor", { email: result.email })}
+                      disabled={linkFor.isPending}
+                      onClick={() => void copy(result)}
+                    >
+                      {t("copyLink")}
+                    </Button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
             <DialogFooter>
-              <Button
-                tone="primary"
-                onClick={async () => {
-                  await navigator.clipboard.writeText(link.url);
-                  toast(t("copied", { email: link.email }));
-                }}
-              >
-                {t("copyLink")}
-              </Button>
+              {links.length > 1 ? (
+                <Button tone="primary" onClick={() => void copyAll()}>
+                  {t("copyAll")}
+                </Button>
+              ) : null}
               <Button onClick={() => close(false)}>{t("done")}</Button>
             </DialogFooter>
           </div>
@@ -136,12 +215,19 @@ export function InviteDialog({
             onSubmit={form.handleSubmit((values) => create.mutate(values))}
             noValidate
           >
-            <Input
-              id="invite-email"
-              type="email"
-              autoComplete="off"
-              label={t("emailLabel")}
-              {...form.register("email")}
+            <Controller
+              control={form.control}
+              name="emails"
+              render={({ field }) => (
+                <EmailChipsInput
+                  id="invite-emails"
+                  label={t("emailsLabel")}
+                  hint={t("emailsHint", { max: INVITE_BATCH_MAX })}
+                  error={emailsError}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              )}
             />
             <div className="flex flex-col gap-2">
               <span id="invite-role-label" className="text-sm font-bold">
@@ -185,19 +271,14 @@ export function InviteDialog({
             </div>
             {create.error ? (
               <p role="alert" className="text-sm font-bold">
-                {tErrors(failure ? failure.code : "internal")}
+                {tErrors(
+                  create.error instanceof ApiClientError
+                    ? create.error.code
+                    : "internal",
+                )}
               </p>
             ) : null}
             <DialogFooter>
-              {fallbackInviteId ? (
-                <Button
-                  tone="warning"
-                  disabled={copyInstead.isPending}
-                  onClick={() => copyInstead.mutate(fallbackInviteId)}
-                >
-                  {t("copyInstead")}
-                </Button>
-              ) : null}
               <Button type="submit" tone="primary" disabled={create.isPending}>
                 {t("submit")}
               </Button>

@@ -4,10 +4,16 @@ import { appOriginFor } from "@/server/http/app-origin";
 import { fromDatabaseError } from "@/server/http/errors";
 import { parseJsonBody, rejectCrossOrigin } from "@/server/http/request";
 import { loadWorkspaceContext } from "@/server/http/workspace-context";
-import { deliverInvite } from "@/server/invites/deliver-invite";
+import {
+  deliverInviteOutcome,
+  type DeliveryOutcome,
+} from "@/server/invites/deliver-invite";
 import { createInvite, listOpenInvites } from "@/server/queries/invites";
 import { getDisplayName } from "@/server/queries/profile";
-import { createInviteBodySchema } from "@/shared/api/invites";
+import {
+  createInviteBodySchema,
+  type InviteResult,
+} from "@/shared/api/invites";
 
 type Ctx = RouteContext<"/api/workspaces/[slug]/invites">;
 
@@ -25,7 +31,29 @@ export async function GET(
   );
 }
 
-/** Creates an email-bound invite and delivers it by email or as a copyable link. */
+/** Maps one address's delivery outcome to its result row. */
+function toResult(
+  email: string,
+  inviteId: string,
+  outcome: DeliveryOutcome,
+): InviteResult {
+  switch (outcome.status) {
+    case "link":
+      return { email, status: "link", inviteId, link: outcome.link };
+    case "sent":
+    case "email_limit":
+    case "email_failed":
+      return { email, status: outcome.status, inviteId };
+    default:
+      return { email, status: "error", inviteId };
+  }
+}
+
+/**
+ * Invites up to INVITE_BATCH_MAX addresses: each gets its own email-bound, single-use invite and
+ * token, delivered by email or returned as a link. Results come back per address; the whole batch
+ * is refused only when the caller may not invite at all.
+ */
 export async function POST(
   request: NextRequest,
   ctx: Ctx,
@@ -42,28 +70,41 @@ export async function POST(
   if (!body.ok) {
     return body.response;
   }
-  const token = generateToken();
-  const { data: inviteId, error } = await createInvite(context.supabase, {
-    workspaceId: context.workspace.id,
-    email: body.data.email,
-    role: body.data.role,
-    tokenHash: sha256Hex(token),
-  });
-  if (error || !inviteId) {
-    return fromDatabaseError(
-      error ?? { message: "create_invite returned nothing" },
-    );
+  const origin = appOriginFor(request);
+  const inviterName =
+    (await getDisplayName(context.supabase, context.user)) ??
+    context.workspace.name;
+  const results: InviteResult[] = [];
+  for (const email of body.data.emails) {
+    const token = generateToken();
+    const { data: inviteId, error } = await createInvite(context.supabase, {
+      workspaceId: context.workspace.id,
+      email,
+      role: body.data.role,
+      tokenHash: sha256Hex(token),
+    });
+    if (error?.message === "tn:forbidden") {
+      return fromDatabaseError(error);
+    }
+    if (error || !inviteId) {
+      results.push({
+        email,
+        status:
+          error?.message === "tn:already_member" ? "already_member" : "error",
+      });
+      continue;
+    }
+    const outcome = await deliverInviteOutcome({
+      supabase: context.supabase,
+      workspaceId: context.workspace.id,
+      inviteId,
+      token,
+      delivery: body.data.delivery,
+      origin,
+      inviterName,
+      workspaceName: context.workspace.name,
+    });
+    results.push(toResult(email, inviteId, outcome));
   }
-  return deliverInvite({
-    supabase: context.supabase,
-    workspaceId: context.workspace.id,
-    inviteId,
-    token,
-    delivery: body.data.delivery,
-    origin: appOriginFor(request),
-    inviterName:
-      (await getDisplayName(context.supabase, context.user)) ??
-      context.workspace.name,
-    workspaceName: context.workspace.name,
-  });
+  return NextResponse.json({ results });
 }

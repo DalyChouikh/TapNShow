@@ -20,9 +20,11 @@ test("M2 story: sign in, create a workspace, invite a Viewer who accepts", async
   await page.getByRole("link", { name: "Invite" }).click();
   await expect(page).toHaveURL(new RegExp(`/w/${slug}/settings#people$`));
   await page.getByRole("button", { name: "Invite someone" }).click();
-  await page.getByLabel("Email address").fill(viewerEmail);
+  await page.getByLabel("Email addresses").fill(viewerEmail);
+  await page.getByLabel("Email addresses").press("Enter");
   await page.getByRole("button", { name: "Create invite" }).click();
-  await expect(page.getByText(`Invite sent to ${viewerEmail}.`)).toBeVisible();
+  await expect(page.getByText("Email sent")).toBeVisible();
+  await page.getByRole("button", { name: "Done" }).click();
 
   const link = /(http:\/\/localhost:3000\/invite\/[A-Za-z0-9_-]{43})/.exec(
     await latestEmailText(viewerEmail),
