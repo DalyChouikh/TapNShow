@@ -4,6 +4,12 @@
  */
 const PERSONAL_LINK = /(?:\/|%2f)r(?:\/|%2f)(?!\[|%5b)[^/?#&\s"'\\]+/gi;
 
+/** Google OAuth callback URL with its query string (the `code` is a one-time credential). */
+const OAUTH_CALLBACK = /\/api\/auth\/google\/callback\?[^#\s"']*/gi;
+
+/** `code` and `state` values inside an OAuth callback query string. */
+const OAUTH_SECRET_PARAM = /([?&](?:code|state)=)[^&#\s"']+/gi;
+
 /** Request headers that may carry credentials or personal-link URLs. */
 export const SENSITIVE_HEADERS = [
   "cookie",
@@ -47,7 +53,11 @@ export const MAX_SCRUB_DEPTH = 20;
  * error reports.
  */
 export function scrubUrl(url: string): string {
-  return url.replace(PERSONAL_LINK, "/r/[REDACTED]");
+  return url
+    .replace(PERSONAL_LINK, "/r/[REDACTED]")
+    .replace(OAUTH_CALLBACK, (callback) =>
+      callback.replace(OAUTH_SECRET_PARAM, "$1[REDACTED]"),
+    );
 }
 
 /** Credential shapes that must never appear in logs or error reports. */
