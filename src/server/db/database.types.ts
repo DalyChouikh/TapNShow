@@ -5,7 +5,70 @@ export type Database = {
   
   "public": {
           Tables: {
-            "profiles": {
+            "contacts": {
+                  Row: {
+                    "created_at": string,"email": string,"full_name": string,"id": string,"is_adhoc": boolean,"unsubscribed_at": string | null,"updated_at": string,"user_id": string | null,"workspace_id": string
+                  }
+                  Insert: {
+                    "created_at"?: string,"email": string,"full_name": string,"id"?: string,"is_adhoc"?: boolean,"unsubscribed_at"?: string | null,"updated_at"?: string,"user_id"?: string | null,"workspace_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"email"?: string,"full_name"?: string,"id"?: string,"is_adhoc"?: boolean,"unsubscribed_at"?: string | null,"updated_at"?: string,"user_id"?: string | null,"workspace_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "contacts_workspace_id_fkey"
+      columns: ["workspace_id"]
+isOneToOne: false
+      referencedRelation: "workspaces"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"list_contacts": {
+                  Row: {
+                    "contact_id": string,"created_at": string,"list_id": string,"workspace_id": string
+                  }
+                  Insert: {
+                    "contact_id": string,"created_at"?: string,"list_id": string,"workspace_id": string
+                  }
+                  Update: {
+                    "contact_id"?: string,"created_at"?: string,"list_id"?: string,"workspace_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "list_contacts_contact_id_workspace_id_fkey"
+      columns: ["contact_id","workspace_id"]
+isOneToOne: false
+      referencedRelation: "contacts"
+      referencedColumns: ["id","workspace_id"]
+    },{
+      foreignKeyName: "list_contacts_list_id_workspace_id_fkey"
+      columns: ["list_id","workspace_id"]
+isOneToOne: false
+      referencedRelation: "lists"
+      referencedColumns: ["id","workspace_id"]
+    }
+                  ]
+                },"lists": {
+                  Row: {
+                    "created_at": string,"id": string,"name": string,"updated_at": string,"workspace_id": string
+                  }
+                  Insert: {
+                    "created_at"?: string,"id"?: string,"name": string,"updated_at"?: string,"workspace_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: string,"name"?: string,"updated_at"?: string,"workspace_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "lists_workspace_id_fkey"
+      columns: ["workspace_id"]
+isOneToOne: false
+      referencedRelation: "workspaces"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"profiles": {
                   Row: {
                     "avatar_url": string | null,"created_at": string,"display_name": string | null,"last_workspace_id": string | null,"locale": string,"updated_at": string,"user_id": string
                   }
@@ -84,6 +147,9 @@ isOneToOne: false
             "accept_invite":
 { Args: { "p_token_hash": string }; Returns: string
                            },
+"bulk_contacts":
+{ Args: { "p_action": string,"p_contact_ids": (string)[],"p_list_id"?: string,"p_workspace": string }; Returns: number
+                           },
 "change_role":
 { Args: { "p_can_check_in": boolean,"p_role": Database["public"]['Enums']["workspace_role"],"p_user": string,"p_workspace": string }; Returns: undefined
                            },
@@ -139,6 +205,12 @@ isOneToOne: false
                            },
 "revoke_invite":
 { Args: { "p_invite": string }; Returns: undefined
+                           },
+"roster":
+{ Args: { "p_workspace": string }; Returns: Json
+                           },
+"set_contact_lists":
+{ Args: { "p_contact": string,"p_list_ids": (string)[] }; Returns: undefined
                            },
 "transfer_ownership":
 { Args: { "p_confirm_name": string,"p_new_owner": string,"p_workspace": string }; Returns: undefined
