@@ -74,5 +74,25 @@
     "invalid_code": "That code is wrong or has expired. Check the email or send a new code.",
     "send_failed": "We couldn't send the email. Try again in a minute.",
     "google_unavailable": "Google sign-in isn't available here. Use an email code."
+  },
+  "Auth": {
+    "title": "Sign in to {appName}",
+    "subtitle": "We'll email you a code. No password needed.",
+    "emailLabel": "Email",
+    "emailPlaceholder": "you@example.com",
+    "sendCode": "Email me a code",
+    "codeTitle": "Check your email",
+    "codeSent": "We sent a {length}-digit code to {email}.",
+    "codeLabel": "Sign-in code",
+    "codeHint": "Paste or type the digits. Spaces are fine.",
+    "verify": "Sign in",
+    "resendIn": "Resend code in {seconds} s",
+    "resend": "Resend code",
+    "differentEmail": "Use a different email",
+    "or": "or",
+    "google": "Continue with Google",
+    "googleFailed": "Google sign-in didn't finish. Try again or use an email code.",
+    "invalidEmail": "Enter a valid email address.",
+    "invalidCodeFormat": "Enter the {length} digits from the email."
   }
 }
