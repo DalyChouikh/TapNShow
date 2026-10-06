@@ -24,6 +24,9 @@ export default defineConfig({
       NEXT_PUBLIC_SUPABASE_URL: "https://test.supabase.co",
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
       SUPABASE_SECRET_KEY: "sb_secret_test",
+      SMTP_HOST: "localhost",
+      SMTP_PORT: "1025",
+      SMTP_FROM: "no-reply@example.test",
     },
   },
 });

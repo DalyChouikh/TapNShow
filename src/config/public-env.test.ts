@@ -27,4 +27,17 @@ describe("parsePublicEnv", () => {
       /NEXT_PUBLIC_APP_URL/,
     );
   });
+
+  it("reads the Google sign-in flag as a boolean, off by default", () => {
+    expect(
+      parsePublicEnv({ NEXT_PUBLIC_APP_URL: "http://localhost:3000" })
+        .NEXT_PUBLIC_GOOGLE_SIGN_IN_ENABLED,
+    ).toBe(false);
+    expect(
+      parsePublicEnv({
+        NEXT_PUBLIC_APP_URL: "http://localhost:3000",
+        NEXT_PUBLIC_GOOGLE_SIGN_IN_ENABLED: "true",
+      }).NEXT_PUBLIC_GOOGLE_SIGN_IN_ENABLED,
+    ).toBe(true);
+  });
 });

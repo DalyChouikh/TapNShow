@@ -7,25 +7,70 @@ const supabase = {
   SUPABASE_SECRET_KEY: "sb_secret_x",
 };
 
+const smtp = {
+  SMTP_HOST: "smtp.gmail.com",
+  SMTP_PORT: "587",
+  SMTP_FROM: "platform@example.test",
+};
+
 describe("parseServerEnv", () => {
   it("applies defaults", () => {
-    const env = parseServerEnv({ ...supabase });
+    const env = parseServerEnv({ ...supabase, ...smtp });
     expect(env.NODE_ENV).toBe("development");
     expect(env.LOG_LEVEL).toBe("info");
   });
 
   it("rejects an unknown log level and names it", () => {
-    expect(() => parseServerEnv({ ...supabase, LOG_LEVEL: "loud" })).toThrow(
-      /LOG_LEVEL/,
-    );
+    expect(() =>
+      parseServerEnv({ ...supabase, ...smtp, LOG_LEVEL: "loud" }),
+    ).toThrow(/LOG_LEVEL/);
   });
 
   it("requires the Supabase keys and names the missing one", () => {
     expect(() =>
-      parseServerEnv({ ...supabase, SUPABASE_SECRET_KEY: undefined }),
+      parseServerEnv({ ...supabase, ...smtp, SUPABASE_SECRET_KEY: undefined }),
     ).toThrow(/SUPABASE_SECRET_KEY/);
-    expect(parseServerEnv(supabase).NEXT_PUBLIC_SUPABASE_URL).toBe(
-      "https://abc.supabase.co",
-    );
+    expect(
+      parseServerEnv({ ...supabase, ...smtp }).NEXT_PUBLIC_SUPABASE_URL,
+    ).toBe("https://abc.supabase.co");
+  });
+
+  it("parses SMTP settings with TLS required by default", () => {
+    const env = parseServerEnv({ ...supabase, ...smtp });
+    expect(env.SMTP_PORT).toBe(587);
+    expect(env.SMTP_REQUIRE_TLS).toBe(true);
+    expect(
+      parseServerEnv({ ...supabase, ...smtp, SMTP_REQUIRE_TLS: "false" })
+        .SMTP_REQUIRE_TLS,
+    ).toBe(false);
+  });
+
+  it("requires SMTP_FROM to be an email", () => {
+    expect(() =>
+      parseServerEnv({ ...supabase, ...smtp, SMTP_FROM: "nope" }),
+    ).toThrow(/SMTP_FROM/);
+  });
+
+  it("requires the Google client ID and secret together", () => {
+    expect(() =>
+      parseServerEnv({
+        ...supabase,
+        ...smtp,
+        GOOGLE_CLIENT_ID: "id.apps.googleusercontent.com",
+      }),
+    ).toThrow(/GOOGLE_CLIENT_SECRET/);
+    expect(
+      parseServerEnv({ ...supabase, ...smtp }).GOOGLE_CLIENT_ID,
+    ).toBeUndefined();
+  });
+
+  it("requires SMTP user and password together", () => {
+    expect(() =>
+      parseServerEnv({
+        ...supabase,
+        ...smtp,
+        SMTP_USER: "platform@example.test",
+      }),
+    ).toThrow(/SMTP_PASS/);
   });
 });
