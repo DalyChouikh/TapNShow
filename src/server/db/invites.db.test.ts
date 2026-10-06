@@ -6,6 +6,7 @@ import {
   expectAppError,
   type TestUser,
 } from "@/test/db/clients";
+import { runLocalSql } from "@/test/db/sql";
 import {
   addMember,
   createWorkspaceAs,
@@ -263,6 +264,10 @@ describe("renew_invite", () => {
 
 describe("consume_invite_email", () => {
   it("allows 20 invite emails per workspace per 24 hours, for Owners/Admins only", async () => {
+    // The platform budget is global; earlier local runs may have used it up.
+    runLocalSql(
+      "delete from private.rate_limit_events where key like 'invite_email:%'",
+    );
     const results: boolean[] = [];
     for (let index = 0; index < 21; index += 1) {
       const { data } = await admin.client.rpc("consume_invite_email", {
