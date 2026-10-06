@@ -184,6 +184,9 @@ isOneToOne: false
 "healthcheck":
 { Args: Record<PropertyKey, never>; Returns: string
                            },
+"import_contacts":
+{ Args: { "p_also_add_to_list"?: string,"p_dry_run": boolean,"p_rows": Json,"p_workspace": string }; Returns: Json
+                           },
 "invite_preview":
 { Args: { "p_token_hash": string }; Returns: {
               "masked_email": string,"role": Database["public"]['Enums']["workspace_role"],"status": string,"workspace_name": string,"workspace_slug": string
