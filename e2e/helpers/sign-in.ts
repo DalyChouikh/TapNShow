@@ -22,8 +22,7 @@ export async function signInWithCode(
   await page.getByLabel("Email").fill(email);
   await page.getByRole("button", { name: "Email me a code" }).click();
   const code = await latestSignInCode(email, requestedAt);
-  await page.getByLabel("Sign-in code").fill(code);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByLabel("Digit 1 of 8").fill(code);
   if (options.name) {
     await page.getByLabel("Your name").fill(options.name);
     await page.getByRole("button", { name: "Continue" }).click();
