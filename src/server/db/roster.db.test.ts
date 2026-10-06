@@ -49,13 +49,11 @@ describe("contacts and lists RLS", () => {
       .select("id, email")
       .eq("workspace_id", workspace.id);
     expect(asViewer.data).toEqual([{ id, email: "amira@example.test" }]);
-    const viewerInsert = await viewer.client
-      .from("contacts")
-      .insert({
-        workspace_id: workspace.id,
-        email: "v@example.test",
-        full_name: "V",
-      });
+    const viewerInsert = await viewer.client.from("contacts").insert({
+      workspace_id: workspace.id,
+      email: "v@example.test",
+      full_name: "V",
+    });
     expect(viewerInsert.error?.code).toBe("42501");
     const viewerUpdate = await viewer.client
       .from("contacts")
@@ -85,33 +83,27 @@ describe("contacts and lists RLS", () => {
   });
 
   it("stores emails normalized and rejects malformed ones", async () => {
-    const bad = await admin.client
-      .from("contacts")
-      .insert({
-        workspace_id: workspace.id,
-        email: "Not An Email",
-        full_name: "Bad",
-      });
+    const bad = await admin.client.from("contacts").insert({
+      workspace_id: workspace.id,
+      email: "Not An Email",
+      full_name: "Bad",
+    });
     expect(bad.error?.code).toBe("23514");
-    const upper = await admin.client
-      .from("contacts")
-      .insert({
-        workspace_id: workspace.id,
-        email: "Amira@Example.test",
-        full_name: "Amira",
-      });
+    const upper = await admin.client.from("contacts").insert({
+      workspace_id: workspace.id,
+      email: "Amira@Example.test",
+      full_name: "Amira",
+    });
     expect(upper.error?.code).toBe("23514");
   });
 
   it("refuses a second contact with the same email and a list name differing only in case", async () => {
     await seedContacts(workspace.id, 1, "dup");
-    const again = await admin.client
-      .from("contacts")
-      .insert({
-        workspace_id: workspace.id,
-        email: "dup-1@example.test",
-        full_name: "Again",
-      });
+    const again = await admin.client.from("contacts").insert({
+      workspace_id: workspace.id,
+      email: "dup-1@example.test",
+      full_name: "Again",
+    });
     expect(again.error?.code).toBe("23505");
     await seedList(workspace.id, "Dev");
     const dev = await admin.client
@@ -124,13 +116,11 @@ describe("contacts and lists RLS", () => {
     const other = await createWorkspaceAs(admin, "Other Club");
     const [contact] = await seedContacts(workspace.id, 1, "x");
     const foreignList = await seedList(other.id, "Foreign");
-    const linked = await admin.client
-      .from("list_contacts")
-      .insert({
-        workspace_id: workspace.id,
-        list_id: foreignList,
-        contact_id: contact,
-      });
+    const linked = await admin.client.from("list_contacts").insert({
+      workspace_id: workspace.id,
+      list_id: foreignList,
+      contact_id: contact,
+    });
     expect(linked.error?.code).toBe("23503");
   });
 
