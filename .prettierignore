@@ -8,3 +8,4 @@ test-results
 src/server/db/database.types.ts
 .agents
 src/app/tokens.css
+supabase/templates

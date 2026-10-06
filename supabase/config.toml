@@ -110,7 +110,7 @@ enabled = true
 # Port to use for the email testing server web interface.
 port = 44324
 # Uncomment to expose additional ports for testing user applications that send emails.
-# smtp_port = 44325
+smtp_port = 44325
 # pop3_port = 44326
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
@@ -232,9 +232,9 @@ secure_password_change = false
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
 max_frequency = "1s"
 # Number of characters used in the email OTP.
-otp_length = 6
+otp_length = 8
 # Number of seconds before the email OTP expires (defaults to 1 hour).
-otp_expiry = 3600
+otp_expiry = 900
 
 # Use a production-ready SMTP server
 # [auth.email.smtp]
@@ -250,6 +250,14 @@ otp_expiry = 3600
 # [auth.email.template.invite]
 # subject = "You have been invited"
 # content_path = "./supabase/templates/invite.html"
+
+[auth.email.template.magic_link]
+subject = "Your TapNShow sign-in code"
+content_path = "./supabase/templates/sign-in-code.html"
+
+[auth.email.template.confirmation]
+subject = "Your TapNShow sign-in code"
+content_path = "./supabase/templates/sign-in-code.html"
 
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]

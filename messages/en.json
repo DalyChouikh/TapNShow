@@ -34,5 +34,16 @@
     "confirmed": "CONFIRMED",
     "reset": "Reset demo",
     "tone": "Fill: {tone}"
+  },
+  "Email": {
+    "footer": "You got this email because this address was used on {appName}. If that wasn't you, you can ignore it.",
+    "signIn": {
+      "subject": "Your {appName} sign-in code",
+      "preview": "Your sign-in code is inside. It works once and expires in {minutes} minutes.",
+      "heading": "Your sign-in code",
+      "intro": "Type this code on the {appName} sign-in screen:",
+      "expiry": "It works once and expires in {minutes} minutes.",
+      "ignore": "Didn't ask for a code? Ignore this email. Nobody can sign in without it."
+    }
   }
 }
