@@ -5,7 +5,7 @@ import { execFileSync } from "node:child_process";
  * rows no API can create, such as a Google identity in `auth.identities`.
  */
 export function runLocalSql(sql: string): void {
-  execFileSync("supabase", ["db", "query", "--local", sql], {
+  execFileSync("supabase", ["db", "query", "--local", "--agent", "no", sql], {
     stdio: ["ignore", "pipe", "pipe"],
   });
 }

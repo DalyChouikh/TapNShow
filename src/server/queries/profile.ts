@@ -70,3 +70,16 @@ export async function updateProfile(
     .eq("user_id", userId);
   return { error };
 }
+
+/** Name shown as the inviter in emails: display name, else email, else the app name. */
+export async function getDisplayName(
+  client: Client,
+  user: AuthedUser,
+): Promise<string | null> {
+  const { data } = await client
+    .from("profiles")
+    .select("display_name")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  return data?.display_name ?? user.email;
+}

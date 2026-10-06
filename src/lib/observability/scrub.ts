@@ -1,8 +1,8 @@
 /**
- * `/r/<token>` personal links, including percent-encoded slashes and any letter case.
- * Route patterns such as `/r/[token]` are left alone.
+ * `/r/<token>` personal links and `/invite/<token>` invite links, including percent-encoded
+ * slashes and any letter case. Route patterns such as `/r/[token]` are left alone.
  */
-const PERSONAL_LINK = /(?:\/|%2f)r(?:\/|%2f)(?!\[|%5b)[^/?#&\s"'\\]+/gi;
+const TOKEN_LINK = /(?:\/|%2f)(r|invite)(?:\/|%2f)(?!\[|%5b)[^/?#&\s"'\\]+/gi;
 
 /** Google OAuth callback URL with its query string (the `code` is a one-time credential). */
 const OAUTH_CALLBACK = /\/api\/auth\/google\/callback\?[^#\s"']*/gi;
@@ -54,7 +54,10 @@ export const MAX_SCRUB_DEPTH = 20;
  */
 export function scrubUrl(url: string): string {
   return url
-    .replace(PERSONAL_LINK, "/r/[REDACTED]")
+    .replace(
+      TOKEN_LINK,
+      (_match, segment: string) => `/${segment.toLowerCase()}/[REDACTED]`,
+    )
     .replace(OAUTH_CALLBACK, (callback) =>
       callback.replace(OAUTH_SECRET_PARAM, "$1[REDACTED]"),
     );

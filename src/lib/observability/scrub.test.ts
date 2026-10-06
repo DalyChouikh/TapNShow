@@ -24,4 +24,11 @@ describe("scrubUrl", () => {
     );
     expect(scrubUrl("/w/club?state=open")).toBe("/w/club?state=open");
   });
+
+  it("scrubs invite tokens like personal links", () => {
+    expect(
+      scrubUrl("https://tapnshow.vercel.app/invite/Abc_123-xyz?next=1"),
+    ).toBe("https://tapnshow.vercel.app/invite/[REDACTED]?next=1");
+    expect(scrubUrl("/invite/[token]")).toBe("/invite/[token]");
+  });
 });

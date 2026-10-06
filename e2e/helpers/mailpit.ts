@@ -5,6 +5,7 @@ const listSchema = z.object({
     z.object({
       ID: z.string(),
       Created: z.string(),
+      Subject: z.string(),
       To: z.array(z.object({ Address: z.string() })),
     }),
   ),
@@ -25,7 +26,7 @@ function mailpitUrl(): string {
  */
 export async function latestEmailText(
   email: string,
-  options: { after?: Date; timeoutMs?: number } = {},
+  options: { after?: Date; subject?: RegExp; timeoutMs?: number } = {},
 ): Promise<string> {
   const timeoutMs = options.timeoutMs ?? 15_000;
   const after = options.after?.getTime() ?? 0;
@@ -37,7 +38,8 @@ export async function latestEmailText(
     const found = list.messages.find(
       (message) =>
         message.To.some((to) => to.Address === email) &&
-        Date.parse(message.Created) >= after,
+        Date.parse(message.Created) >= after &&
+        (options.subject?.test(message.Subject) ?? true),
     );
     if (found) {
       return messageSchema.parse(
@@ -56,7 +58,9 @@ export async function latestSignInCode(
   email: string,
   after?: Date,
 ): Promise<string> {
-  const code = /\b(\d{8})\b/.exec(await latestEmailText(email, { after }))?.[1];
+  const code = /\b(\d{8})\b/.exec(
+    await latestEmailText(email, { after, subject: /sign-in code/i }),
+  )?.[1];
   if (!code) {
     throw new Error(`no sign-in code in the email to ${email}`);
   }

@@ -21,6 +21,8 @@ const serverEnvSchema = z
     SMTP_REQUIRE_TLS: z.stringbool().default(true),
     GOOGLE_CLIENT_ID: z.string().min(1).optional(),
     GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
+    VERCEL_URL: z.string().min(1).optional(),
+    VERCEL_BRANCH_URL: z.string().min(1).optional(),
   })
   .superRefine((env, context) => {
     const pairs: ReadonlyArray<[keyof typeof env, keyof typeof env]> = [
