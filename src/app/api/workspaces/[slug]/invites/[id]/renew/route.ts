@@ -1,5 +1,6 @@
 import type { NextRequest, NextResponse } from "next/server";
 import { generateToken, sha256Hex } from "@/server/crypto/tokens";
+import { appOriginFor } from "@/server/http/app-origin";
 import { fromDatabaseError } from "@/server/http/errors";
 import { parseJsonBody, rejectCrossOrigin } from "@/server/http/request";
 import { loadWorkspaceContext } from "@/server/http/workspace-context";
@@ -37,7 +38,7 @@ export async function POST(
     inviteId: id,
     token,
     delivery: body.data.delivery,
-    origin: request.nextUrl.origin,
+    origin: appOriginFor(request),
     inviterName:
       (await getDisplayName(context.supabase, context.user)) ??
       context.workspace.name,

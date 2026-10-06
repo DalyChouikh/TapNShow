@@ -7,7 +7,7 @@ const E2E_OTP_REQUESTS_PER_HOUR = 1000;
 function localSql(sql: string): string {
   return execFileSync(
     "supabase",
-    ["db", "query", "--local", "--output-format", "json", sql],
+    ["db", "query", "--local", "--output-format", "json", "--agent", "no", sql],
     {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
@@ -15,9 +15,9 @@ function localSql(sql: string): string {
   );
 }
 
-const limitRowsSchema = z.object({
-  rows: z.array(z.object({ value: z.number() })).length(1),
-});
+// `--agent no` keeps the output a plain JSON array of rows on every machine: the CLI wraps
+// results differently when it detects an AI agent.
+const limitRowsSchema = z.array(z.object({ value: z.number() })).length(1);
 
 /**
  * Locally every request has the IP "unknown", so a whole e2e run shares one per-IP bucket for
@@ -31,7 +31,7 @@ export default function globalSetup(): () => void {
         "select value from private.app_limits where name = 'otp_send_per_ip_per_hour'",
       ),
     ),
-  ).rows[0].value;
+  )[0].value;
   localSql("delete from private.rate_limit_events");
   localSql(
     `update private.app_limits set value = ${E2E_OTP_REQUESTS_PER_HOUR} where name = 'otp_send_per_ip_per_hour'`,

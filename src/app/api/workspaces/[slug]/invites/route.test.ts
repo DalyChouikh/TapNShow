@@ -99,4 +99,24 @@ describe("/api/workspaces/[slug]/invites", () => {
     );
     expect(mocks.listOpenInvites).toHaveBeenCalledWith({}, "w1");
   });
+
+  it("POST builds emailed links from the configured app URL, not a spoofed host", async () => {
+    const { POST } = await import("./route");
+    const spoofed = new NextRequest(
+      "https://evil.example/api/workspaces/club-ab12/invites",
+      {
+        method: "POST",
+        headers: { origin: "https://evil.example" },
+        body: JSON.stringify({
+          email: "v@example.test",
+          role: "viewer",
+          delivery: "email",
+        }),
+      },
+    );
+    await POST(spoofed, ctx);
+    expect(mocks.deliverInvite.mock.calls[0][0].origin).toBe(
+      "http://localhost:3000",
+    );
+  });
 });
