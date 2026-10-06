@@ -99,7 +99,8 @@
     "loading": "Loading",
     "save": "Save",
     "cancel": "Cancel",
-    "continue": "Continue"
+    "continue": "Continue",
+    "close": "Close"
   },
   "Welcome": {
     "title": "What should we call you?",
@@ -120,5 +121,55 @@
     "timezoneLabel": "Timezone",
     "timezoneHint": "Meeting times are shown in this timezone.",
     "submit": "Create workspace"
+  },
+  "Shell": {
+    "nav": {
+      "label": "Workspace",
+      "home": "Home",
+      "meetings": "Meetings",
+      "new": "New meeting",
+      "lists": "Lists",
+      "settings": "Settings",
+      "soon": "Coming soon"
+    },
+    "roles": {
+      "owner": "Owner",
+      "admin": "Admin",
+      "viewer": "Viewer"
+    },
+    "switcherLabel": "Switch workspace",
+    "createWorkspace": "Create workspace",
+    "userMenuLabel": "Account",
+    "yourName": "Your name",
+    "signOut": "Sign out",
+    "notFoundTitle": "Workspace not found",
+    "notFoundBody": "It doesn't exist or you're not a member.",
+    "backHome": "Go to my workspaces"
+  },
+  "Profile": {
+    "title": "Your name",
+    "nameLabel": "Name",
+    "saved": "Name saved."
+  },
+  "ComingSoon": {
+    "meetingsTitle": "Meetings arrive soon",
+    "meetingsBody": "Creating and sending meetings is the next big step.",
+    "listsTitle": "Member lists arrive soon",
+    "listsBody": "Soon you'll import your members from a spreadsheet here."
+  },
+  "Settings": {
+    "title": "Settings"
+  },
+  "WorkspaceHome": {
+    "title": "Welcome to {workspace}",
+    "checklistTitle": "Get set up",
+    "inviteCommittee": "Invite your committee as Viewers",
+    "inviteCommitteeAction": "Invite",
+    "importMembers": "Import your members",
+    "connectGmail": "Connect Gmail to send invites",
+    "connectSheets": "Sync responses to Google Sheets",
+    "soon": "Coming soon",
+    "viewerTitle": "You're a Viewer in {workspace}",
+    "viewerBody": "You'll see meetings, answers and reasons here once organizers start sending invites."
   }
 }
