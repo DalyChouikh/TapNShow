@@ -14,6 +14,15 @@ vi.mock("next/font/google", () => {
   return { Archivo_Black: font, Google_Sans: font, Space_Grotesk: font };
 });
 
+// Radix popovers and cmdk measure and scroll elements; jsdom lacks both APIs.
+class ResizeObserverStub {
+  observe(): void {}
+  unobserve(): void {}
+  disconnect(): void {}
+}
+globalThis.ResizeObserver ??= ResizeObserverStub;
+Element.prototype.scrollIntoView ??= () => {};
+
 installMatchMedia();
 
 afterEach(() => {

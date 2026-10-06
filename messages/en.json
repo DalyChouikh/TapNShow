@@ -106,5 +106,19 @@
     "hint": "Organizers and teammates see this name in TapNShow.",
     "nameLabel": "Your name",
     "invalidName": "Enter a name between 1 and 80 characters."
+  },
+  "TimezonePicker": {
+    "search": "Search timezones",
+    "empty": "No timezone matches."
+  },
+  "CreateWorkspace": {
+    "title": "Create your workspace",
+    "intro": "A workspace holds your group's members, meetings and organizers.",
+    "nameLabel": "Workspace name",
+    "namePlaceholder": "e.g. Robotics Club",
+    "invalidName": "Enter a name between 1 and 80 characters.",
+    "timezoneLabel": "Timezone",
+    "timezoneHint": "Meeting times are shown in this timezone.",
+    "submit": "Create workspace"
   }
 }
