@@ -29,6 +29,11 @@ export const API_ERROR_CODES = [
   "invalid_code",
   "send_failed",
   "google_unavailable",
+  "contact_email_taken",
+  "contacts_limit_reached",
+  "lists_limit_reached",
+  "list_name_taken",
+  "import_too_many_rows",
 ] as const;
 
 /** An API error code. */
@@ -63,6 +68,11 @@ export const API_ERROR_STATUS: Record<ApiErrorCode, number> = {
   invalid_code: 400,
   send_failed: 502,
   google_unavailable: 404,
+  contact_email_taken: 409,
+  contacts_limit_reached: 409,
+  lists_limit_reached: 409,
+  list_name_taken: 409,
+  import_too_many_rows: 400,
 };
 
 /** Body of every non-2xx API response. */

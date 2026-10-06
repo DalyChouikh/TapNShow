@@ -21,3 +21,9 @@ export function jsonRequest(method: string, body?: object): Request {
     body: body ? JSON.stringify(body) : undefined,
   });
 }
+
+/** Same as `okContext` but the caller is a Viewer. */
+export const viewerContext = {
+  ...okContext,
+  workspace: { ...okContext.workspace, myRole: "viewer" as const },
+};

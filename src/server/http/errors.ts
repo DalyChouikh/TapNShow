@@ -37,17 +37,21 @@ function isApiErrorCode(value: string): value is ApiErrorCode {
 
 /**
  * Converts a Supabase/PostgREST error into an API error. `tn:<code>` messages come from our
- * database functions; anything unexpected is logged and returned as `internal`.
+ * database functions; `overrides` let a route name what a Postgres code means for it (e.g. a
+ * unique violation on contacts is `contact_email_taken`); anything unexpected is logged and
+ * returned as `internal`.
  */
-export function fromDatabaseError(error: {
-  code?: string;
-  message: string;
-}): NextResponse {
+export function fromDatabaseError(
+  error: { code?: string; message: string },
+  overrides: Readonly<Record<string, ApiErrorCode>> = {},
+): NextResponse {
   const appCode = /^tn:([a-z_]+)$/.exec(error.message)?.[1];
   if (appCode && isApiErrorCode(appCode)) {
     return apiError(appCode);
   }
-  const mapped = error.code ? POSTGRES_CODES[error.code] : undefined;
+  const mapped = error.code
+    ? (overrides[error.code] ?? POSTGRES_CODES[error.code])
+    : undefined;
   if (mapped) {
     return apiError(mapped);
   }
