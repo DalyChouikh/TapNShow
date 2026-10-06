@@ -14,7 +14,15 @@ describe("HomeChecklist", () => {
       "href",
       "/w/robotics-cd34/settings#people",
     );
-    expect(screen.getAllByText("Coming soon")).toHaveLength(3);
+    expect(screen.getAllByText("Coming soon")).toHaveLength(2);
+  });
+
+  it("links the import step to the roster", () => {
+    renderWithProviders(<HomeChecklist workspace={workspaceFixture} />);
+    expect(screen.getByRole("link", { name: "Import" })).toHaveAttribute(
+      "href",
+      "/w/robotics-cd34/lists",
+    );
   });
 
   it("shows Viewers a read-only welcome instead", () => {

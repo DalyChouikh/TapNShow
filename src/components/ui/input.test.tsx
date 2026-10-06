@@ -21,4 +21,12 @@ describe("Input", () => {
     expect(input).toHaveAttribute("aria-invalid", "true");
     expect(input).toHaveAccessibleDescription("Please enter a reason");
   });
+
+  it("can hide its label visually while keeping the accessible name", () => {
+    render(<Input id="q" label="Search people" hideLabel type="search" />);
+    expect(
+      screen.getByRole("searchbox", { name: "Search people" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Search people")).toHaveClass("sr-only");
+  });
 });

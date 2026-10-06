@@ -6,6 +6,8 @@ type InputProps = InputHTMLAttributes<HTMLInputElement> & {
   label: string;
   hint?: string;
   error?: string;
+  /** Keeps the label for assistive tech but hides it visually (e.g. a search field). */
+  hideLabel?: boolean;
 };
 
 /** Labelled text input with accessible hint and error wiring. */
@@ -14,6 +16,7 @@ export function Input({
   label,
   hint,
   error,
+  hideLabel = false,
   className,
   ...props
 }: InputProps) {
@@ -23,7 +26,10 @@ export function Input({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-sm font-bold text-ink">
+      <label
+        htmlFor={id}
+        className={cn("text-sm font-bold text-ink", hideLabel && "sr-only")}
+      >
         {label}
       </label>
       <input

@@ -232,7 +232,8 @@
     "connectSheets": "Sync responses to Google Sheets",
     "soon": "Coming soon",
     "viewerTitle": "You're a Viewer in {workspace}",
-    "viewerBody": "You'll see meetings, answers and reasons here once organizers start sending invites."
+    "viewerBody": "You'll see meetings, answers and reasons here once organizers start sending invites.",
+    "importMembersAction": "Import"
   },
   "Invites": {
     "title": "Invites",
@@ -295,5 +296,22 @@
     "notFound": "This invite link isn't valid. Check that you copied all of it.",
     "alreadyMember": "You're already in {workspace}.",
     "open": "Open workspace"
+  },
+  "Lists": {
+    "title": "Lists",
+    "count": "{count, plural, =0 {No one yet} one {# person} other {# people}}",
+    "searchLabel": "Search people",
+    "searchPlaceholder": "Search {count, plural, one {# person} other {# people}}",
+    "listChipsLabel": "Filter by list",
+    "allChip": "All {count}",
+    "noListChip": "No list {count}",
+    "noMatches": "Nobody matches your search.",
+    "loadError": "We couldn't load your roster.",
+    "retry": "Try again",
+    "emptyTitle": "Import your roster",
+    "emptyBody": "Bring your members in from a spreadsheet, paste them from Google Sheets, or add them one by one.",
+    "emptyViewerTitle": "No one here yet",
+    "emptyViewerBody": "The organizers haven't added anyone to the roster yet.",
+    "peopleLabel": "People"
   }
 }

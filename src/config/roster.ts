@@ -15,3 +15,9 @@ export const UNDO_DELETE_MS = 5000;
 
 /** Separators inside one Lists cell: "Dev, Events" or "Dev; Events" or "Dev | Events" (spec §4). */
 export const LIST_CELL_SEPARATORS = /[,;|]/;
+
+/** From this width the roster shows the editable grid instead of cards (Tailwind `md`). */
+export const ROSTER_GRID_MEDIA = "(min-width: 768px)";
+
+/** First guess of a card's height before it is measured (virtualized list). */
+export const ROSTER_CARD_ESTIMATE_PX = 104;
