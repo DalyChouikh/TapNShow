@@ -16,7 +16,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `bun run build && bun run start -p ${PORT}`,
+    command: `NEXT_PUBLIC_ROSTER_ENABLED=true bun run build && bun run start -p ${PORT}`,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 240_000,

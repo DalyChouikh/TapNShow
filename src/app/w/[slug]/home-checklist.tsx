@@ -13,17 +13,35 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Sticker } from "@/components/ui/sticker";
+import { publicEnv } from "@/config/public-env";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
 
+type StepKey =
+  "inviteCommittee" | "importMembers" | "connectGmail" | "connectSheets";
+type ActionKey = "inviteCommitteeAction" | "importMembersAction";
+
 const STEPS: ReadonlyArray<{
-  key: "inviteCommittee" | "importMembers" | "connectGmail" | "connectSheets";
+  key: StepKey;
   icon: Icon;
-  available: boolean;
+  href?: (slug: string) => string;
+  actionKey?: ActionKey;
 }> = [
-  { key: "inviteCommittee", icon: UserPlus, available: true },
-  { key: "importMembers", icon: UploadSimple, available: false },
-  { key: "connectGmail", icon: EnvelopeSimple, available: false },
-  { key: "connectSheets", icon: Table, available: false },
+  {
+    key: "inviteCommittee",
+    icon: UserPlus,
+    href: (slug) => `/w/${slug}/settings#people`,
+    actionKey: "inviteCommitteeAction",
+  },
+  publicEnv.NEXT_PUBLIC_ROSTER_ENABLED
+    ? {
+        key: "importMembers",
+        icon: UploadSimple,
+        href: (slug) => `/w/${slug}/lists`,
+        actionKey: "importMembersAction",
+      }
+    : { key: "importMembers", icon: UploadSimple },
+  { key: "connectGmail", icon: EnvelopeSimple },
+  { key: "connectSheets", icon: Table },
 ];
 
 /** Home (spec §7.1): onboarding checklist for Owners/Admins, a short welcome for Viewers. */
@@ -50,17 +68,15 @@ export function HomeChecklist({ workspace }: { workspace: WorkspaceDetails }) {
       <Card as="section">
         <h2 className="font-display text-xl">{t("checklistTitle")}</h2>
         <ul className="mt-3 flex flex-col gap-3">
-          {STEPS.map(({ key, icon: Glyph, available }) => (
+          {STEPS.map(({ key, icon: Glyph, href, actionKey }) => (
             <li key={key} className="flex items-center gap-3">
-              <Sticker tone={available ? "primary" : "neutral"}>
+              <Sticker tone={href ? "primary" : "neutral"}>
                 <Glyph weight="bold" />
               </Sticker>
               <span className="flex-1 font-bold">{t(key)}</span>
-              {available ? (
+              {href && actionKey ? (
                 <Button asChild tone="primary">
-                  <Link href={`/w/${workspace.slug}/settings#people`}>
-                    {t("inviteCommitteeAction")}
-                  </Link>
+                  <Link href={href(workspace.slug)}>{t(actionKey)}</Link>
                 </Button>
               ) : (
                 <span className="rounded-full border-2 border-outline bg-fill-neutral px-2 text-xs font-bold text-on-fill">

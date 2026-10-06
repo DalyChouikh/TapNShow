@@ -40,4 +40,17 @@ describe("parsePublicEnv", () => {
       }).NEXT_PUBLIC_GOOGLE_SIGN_IN_ENABLED,
     ).toBe(true);
   });
+
+  it("reads the roster rollout flag as a boolean, off by default", () => {
+    expect(
+      parsePublicEnv({ NEXT_PUBLIC_APP_URL: "http://localhost:3000" })
+        .NEXT_PUBLIC_ROSTER_ENABLED,
+    ).toBe(false);
+    expect(
+      parsePublicEnv({
+        NEXT_PUBLIC_APP_URL: "http://localhost:3000",
+        NEXT_PUBLIC_ROSTER_ENABLED: "true",
+      }).NEXT_PUBLIC_ROSTER_ENABLED,
+    ).toBe(true);
+  });
 });

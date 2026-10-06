@@ -1,7 +1,11 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterEach, vi } from "vitest";
-import { installMatchMedia, setReducedMotion } from "./src/test/match-media";
+import {
+  installMatchMedia,
+  setReducedMotion,
+  setWideViewport,
+} from "./src/test/match-media";
 
 // next/font functions only exist inside the Next compiler; components that use a font get
 // an empty class name in tests.
@@ -31,4 +35,5 @@ installMatchMedia();
 afterEach(() => {
   cleanup();
   setReducedMotion(false);
+  setWideViewport(false);
 });
