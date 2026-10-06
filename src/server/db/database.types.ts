@@ -62,7 +62,10 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "check_ip_rate_limit":
+            "change_role":
+{ Args: { "p_can_check_in": boolean,"p_role": Database["public"]['Enums']["workspace_role"],"p_user": string,"p_workspace": string }; Returns: undefined
+                           },
+"check_ip_rate_limit":
 { Args: { "p_action": string,"p_ip": string }; Returns: boolean
                            },
 "create_workspace":
@@ -81,13 +84,25 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"delete_workspace":
+{ Args: { "p_confirm_name": string,"p_workspace": string }; Returns: undefined
+                           },
 "healthcheck":
 { Args: Record<PropertyKey, never>; Returns: string
+                           },
+"leave_workspace":
+{ Args: { "p_workspace": string }; Returns: undefined
                            },
 "list_members":
 { Args: { "p_workspace": string }; Returns: {
               "avatar_url": string,"can_check_in": boolean,"display_name": string,"email": string,"joined_at": string,"role": Database["public"]['Enums']["workspace_role"],"user_id": string
             }[]
+                           },
+"remove_member":
+{ Args: { "p_user": string,"p_workspace": string }; Returns: undefined
+                           },
+"transfer_ownership":
+{ Args: { "p_confirm_name": string,"p_new_owner": string,"p_workspace": string }; Returns: undefined
                            }
           }
           Enums: {
