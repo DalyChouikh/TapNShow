@@ -94,5 +94,17 @@
     "googleFailed": "Google sign-in didn't finish. Try again or use an email code.",
     "invalidEmail": "Enter a valid email address.",
     "invalidCodeFormat": "Enter the {length} digits from the email."
+  },
+  "Common": {
+    "loading": "Loading",
+    "save": "Save",
+    "cancel": "Cancel",
+    "continue": "Continue"
+  },
+  "Welcome": {
+    "title": "What should we call you?",
+    "hint": "Organizers and teammates see this name in TapNShow.",
+    "nameLabel": "Your name",
+    "invalidName": "Enter a name between 1 and 80 characters."
   }
 }

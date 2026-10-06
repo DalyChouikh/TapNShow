@@ -4,6 +4,7 @@ const listSchema = z.object({
   messages: z.array(
     z.object({
       ID: z.string(),
+      Created: z.string(),
       To: z.array(z.object({ Address: z.string() })),
     }),
   ),
@@ -18,18 +19,25 @@ function mailpitUrl(): string {
   return url;
 }
 
-/** Polls the local Mailpit inbox for the newest email to `email` and returns its text. */
+/**
+ * Polls the local Mailpit inbox for the newest email to `email` and returns its text.
+ * @param options.after - ignore emails received before this time (e.g. an earlier code)
+ */
 export async function latestEmailText(
   email: string,
-  timeoutMs = 15_000,
+  options: { after?: Date; timeoutMs?: number } = {},
 ): Promise<string> {
+  const timeoutMs = options.timeoutMs ?? 15_000;
+  const after = options.after?.getTime() ?? 0;
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     const list = listSchema.parse(
       await (await fetch(`${mailpitUrl()}/api/v1/messages`)).json(),
     );
-    const found = list.messages.find((message) =>
-      message.To.some((to) => to.Address === email),
+    const found = list.messages.find(
+      (message) =>
+        message.To.some((to) => to.Address === email) &&
+        Date.parse(message.Created) >= after,
     );
     if (found) {
       return messageSchema.parse(
@@ -43,9 +51,12 @@ export async function latestEmailText(
   throw new Error(`no email for ${email} within ${timeoutMs} ms`);
 }
 
-/** The 8-digit sign-in code from the newest sign-in email. */
-export async function latestSignInCode(email: string): Promise<string> {
-  const code = /\b(\d{8})\b/.exec(await latestEmailText(email))?.[1];
+/** The 8-digit sign-in code from the newest sign-in email (optionally one sent after `after`). */
+export async function latestSignInCode(
+  email: string,
+  after?: Date,
+): Promise<string> {
+  const code = /\b(\d{8})\b/.exec(await latestEmailText(email, { after }))?.[1];
   if (!code) {
     throw new Error(`no sign-in code in the email to ${email}`);
   }
