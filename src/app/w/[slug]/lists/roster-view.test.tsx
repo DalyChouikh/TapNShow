@@ -1,7 +1,9 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
-import { rosterFixture } from "@/test/fixtures/roster";
+import { describe, expect, it, vi } from "vitest";
+import { UNDO_DELETE_MS } from "@/config/roster";
+import { json, routeFetch } from "@/test/fetch";
+import { IDS, rosterFixture } from "@/test/fixtures/roster";
 import { renderWithProviders } from "@/test/render";
 import { okContext } from "@/test/workspace-context-mock";
 import { RosterView } from "./roster-view";
@@ -88,5 +90,51 @@ describe("RosterView", () => {
     expect(
       screen.getByRole("heading", { name: "No one here yet" }),
     ).toBeInTheDocument();
+  });
+
+  it("deletes with Undo: hidden at once, restored by Undo, sent only after the delay", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const fetchMock = routeFetch({
+      [`DELETE /api/workspaces/club-ab12/contacts/${IDS.ines}`]: json({
+        ok: true,
+      }),
+      "GET /api/workspaces/club-ab12/contacts": json(rosterFixture),
+    });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderWithProviders(
+      <RosterView workspace={owner} roster={rosterFixture} />,
+      { toaster: true },
+    );
+
+    await user.click(screen.getByRole("button", { name: /Inès Ben Salah/ }));
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    expect(screen.queryByRole("listitem", { name: /Inès/ })).toBeNull();
+    await user.click(await screen.findByRole("button", { name: "Undo" }));
+    expect(screen.getByRole("listitem", { name: /Inès/ })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Inès Ben Salah/ }));
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    expect(
+      fetchMock.mock.calls.some(([, init]) => init?.method === "DELETE"),
+    ).toBe(false);
+    await vi.advanceTimersByTimeAsync(UNDO_DELETE_MS);
+    expect(
+      fetchMock.mock.calls.some(([, init]) => init?.method === "DELETE"),
+    ).toBe(true);
+    vi.useRealTimers();
+  });
+
+  it("lets organizers add people and manage lists, not Viewers", () => {
+    const { unmount } = renderWithProviders(
+      <RosterView workspace={owner} roster={rosterFixture} />,
+    );
+    expect(screen.getByRole("button", { name: "Add" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Manage" })).toBeInTheDocument();
+    unmount();
+    renderWithProviders(
+      <RosterView workspace={viewer} roster={rosterFixture} />,
+    );
+    expect(screen.queryByRole("button", { name: "Add" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Manage" })).toBeNull();
   });
 });

@@ -78,3 +78,39 @@ test("a large roster renders only the visible cards", async ({ page }) => {
   );
   await expect(page.getByText("Member 299")).toBeVisible();
 });
+
+test("an organizer edits a person, adds one, and deletes with Undo", async ({
+  page,
+}) => {
+  const slug = await createWorkspace(page, "Edit Club");
+  await seedRoster(slug, [
+    {
+      fullName: "Youssef Trabelsi",
+      email: "youssef@example.test",
+      lists: ["Design"],
+    },
+  ]);
+  await page.goto(`/w/${slug}/lists`);
+
+  await page.getByRole("button", { name: /Youssef Trabelsi/ }).click();
+  await page.getByLabel("Full name").fill("Youssef T.");
+  await page.getByLabel("Full name").blur();
+  await expect(page.getByText("Saved")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.reload();
+  await expect(page.getByText("Youssef T.")).toBeVisible();
+
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByLabel("Full name").fill("Amira Haddad");
+  await page.getByLabel("Email").fill("amira@example.test");
+  await page.getByRole("button", { name: "Add person" }).click();
+  await expect(page.getByText("Amira Haddad added.")).toBeVisible();
+  await expect(page.getByText("2 people")).toBeVisible();
+
+  await page.getByRole("button", { name: /Amira Haddad/ }).click();
+  await page.getByRole("button", { name: "Delete" }).click();
+  await expect(page.getByText("1 person")).toBeVisible();
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(page.getByText("2 people")).toBeVisible();
+  await expectNoHorizontalScroll(page);
+});
