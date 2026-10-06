@@ -223,7 +223,7 @@ Exactly one Owner always exists. The Owner transfers ownership to an existing Ad
 - Platform admins can suspend or lift a workspace's sending from an internal admin page (M9).
 
 ### 7.13 Viewer and Admin invites
-Admins invite Viewers; only the Owner invites Admins. Delivery: email from the platform sender or "Copy link" (the token is shown once; copying an existing invite renews it). `/invite/[token]` requires sign-in first (no signed-out invite lookup), then shows workspace, role and masked email; accepting requires the signed-in **verified** email to equal the invite email. States: ready, wrong account (with "Switch account"), expired, revoked, used, already a member.
+Admins invite Viewers; only the Owner invites Admins. Several addresses can be entered at once (chips: comma, space, Enter or a pasted list; up to 20 per request): each address still gets its own email-bound invite and token, and the dialog lists the result per person with "Copy link" per row and "Copy all links". Delivery: email from the platform sender or "Copy link" (the token is shown once; copying an existing invite renews it). `/invite/[token]` requires sign-in first (no signed-out invite lookup), then shows workspace, role and masked email; accepting requires the signed-in **verified** email to equal the invite email. States: ready, wrong account (with "Switch account"), expired, revoked, used, already a member.
 
 ---
 

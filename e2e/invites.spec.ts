@@ -24,19 +24,48 @@ async function invite(
   delivery: "email" | "link",
 ): Promise<string | null> {
   await page.getByRole("button", { name: "Invite someone" }).click();
-  await page.getByLabel("Email address").fill(email);
+  await page.getByLabel("Email addresses").fill(email);
+  await page.getByLabel("Email addresses").press("Enter");
   if (delivery === "link") {
-    await page.getByRole("radio", { name: "Give me a link to share" }).check();
+    await page.getByRole("radio", { name: "Give me a link to share" }).click();
   }
+  const response = page.waitForResponse(
+    (candidate) =>
+      candidate.url().endsWith("/invites") &&
+      candidate.request().method() === "POST",
+  );
   await page.getByRole("button", { name: "Create invite" }).click();
-  if (delivery === "link") {
-    const link = await page.getByLabel("Invite link").inputValue();
-    await page.getByRole("button", { name: "Done" }).click();
-    return link;
-  }
-  await expect(page.getByText(`Invite sent to ${email}.`)).toBeVisible();
-  return null;
+  const { results } = (await (await response).json()) as {
+    results: Array<{ status: string; link?: string }>;
+  };
+  await expect(
+    page.getByText(delivery === "link" ? "Link ready" : "Email sent"),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Done" }).click();
+  return results[0].link ?? null;
 }
+
+test("several people are invited at once, each with their own link", async ({
+  page,
+}) => {
+  await ownerWithWorkspace(page, "Batch Club");
+  await page.getByRole("button", { name: "Invite someone" }).click();
+  const field = page.getByLabel("Email addresses");
+  await field.fill("one@example.test, two@example.test three@example.test");
+  await field.press("Enter");
+  await page.getByRole("radio", { name: "Give me a link to share" }).click();
+  await page.getByRole("button", { name: "Create invite" }).click();
+  await expect(page.getByRole("listitem")).toHaveCount(3);
+  await expect(page.getByText("Link ready")).toHaveCount(3);
+  await page.getByRole("button", { name: "Done" }).click();
+  for (const email of [
+    "one@example.test",
+    "two@example.test",
+    "three@example.test",
+  ]) {
+    await expect(page.getByText(email)).toBeVisible();
+  }
+});
 
 async function freshPage(browser: Browser): Promise<Page> {
   const context = await browser.newContext();

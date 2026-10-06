@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { INVITE_BATCH_MAX } from "@/config/invites";
 import { emailSchema } from "./common";
 import { workspaceRoleSchema } from "./me";
 
@@ -8,11 +9,41 @@ export const inviteDeliverySchema = z.enum(["email", "link"]);
 /** Roles that can be invited (the Owner role only changes by transfer). */
 export const invitableRoleSchema = z.enum(["admin", "viewer"]);
 
-/** `POST /api/workspaces/[slug]/invites` body. */
+/** `POST /api/workspaces/[slug]/invites` body: up to INVITE_BATCH_MAX addresses, normalized, de-duplicated. */
 export const createInviteBodySchema = z.object({
-  email: emailSchema,
+  emails: z
+    .array(emailSchema)
+    .min(1)
+    .max(INVITE_BATCH_MAX)
+    .transform((emails) => [...new Set(emails)]),
   role: invitableRoleSchema,
   delivery: inviteDeliverySchema,
+});
+
+/** What happened to one address of a batch. */
+export const inviteResultStatusSchema = z.enum([
+  "sent",
+  "link",
+  "already_member",
+  "email_limit",
+  "email_failed",
+  "error",
+]);
+
+/** One row of the batch response; `inviteId` lets the UI offer "Copy link" for failed emails. */
+export const inviteResultSchema = z.object({
+  email: z.string(),
+  status: inviteResultStatusSchema,
+  inviteId: z.uuid().optional(),
+  link: z.url().optional(),
+});
+
+/** A per-address batch result. */
+export type InviteResult = z.infer<typeof inviteResultSchema>;
+
+/** `POST /api/workspaces/[slug]/invites` response. */
+export const inviteBatchResponseSchema = z.object({
+  results: z.array(inviteResultSchema),
 });
 
 /** `POST …/invites/[id]/renew` body. */
