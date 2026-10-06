@@ -88,12 +88,12 @@ describe("DangerZone", () => {
       screen.getByRole("button", { name: "Transfer ownership" }),
     );
     const select = screen.getByRole("combobox", { name: "New Owner" });
+    expect(select).toHaveTextContent("Choose an Admin");
+    await user.click(select);
     expect(
-      Array.from((select as HTMLSelectElement).options).map(
-        (option) => option.textContent,
-      ),
-    ).toEqual(["Choose an Admin", "Admin Person"]);
-    await user.selectOptions(select, adminId);
+      screen.getAllByRole("option").map((option) => option.textContent),
+    ).toEqual(["Admin Person"]);
+    await user.click(screen.getByRole("option", { name: "Admin Person" }));
     await user.type(
       screen.getByLabelText("Type Robotics Club to confirm"),
       "Robotics Club",

@@ -3,7 +3,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -40,11 +40,14 @@ export function WorkspaceShell({
   const shouldRemember = Boolean(
     workspaceId && me.data && me.data.lastWorkspaceSlug !== slug,
   );
+  const { mutate: rememberWorkspace } = remember;
+  const rememberedId = useRef<string | null>(null);
   useEffect(() => {
-    if (shouldRemember && workspaceId && remember.isIdle) {
-      remember.mutate(workspaceId);
+    if (shouldRemember && workspaceId && rememberedId.current !== workspaceId) {
+      rememberedId.current = workspaceId;
+      rememberWorkspace(workspaceId);
     }
-  }, [shouldRemember, workspaceId, remember]);
+  }, [shouldRemember, workspaceId, rememberWorkspace]);
 
   if (
     workspace.error instanceof ApiClientError &&

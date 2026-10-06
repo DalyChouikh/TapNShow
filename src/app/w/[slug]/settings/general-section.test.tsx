@@ -1,5 +1,6 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { json, routeFetch } from "@/test/fetch";
 import { workspaceFixture } from "@/test/fixtures/me";
@@ -40,5 +41,29 @@ describe("GeneralSection", () => {
       screen.getByText("Only Owners and Admins can change these."),
     ).toBeInTheDocument();
     expect(screen.getByText("Africa/Tunis")).toBeInTheDocument();
+  });
+
+  it("keeps what the user is typing when the workspace refetches", async () => {
+    const user = userEvent.setup();
+    function Harness() {
+      const [name, setName] = useState("Robotics Club");
+      return (
+        <>
+          <button
+            type="button"
+            onClick={() => setName("Robotics Club (refetched)")}
+          >
+            refetch
+          </button>
+          <GeneralSection workspace={{ ...workspaceFixture, name }} />
+        </>
+      );
+    }
+    renderWithProviders(<Harness />);
+    const field = screen.getByLabelText("Workspace name");
+    await user.clear(field);
+    await user.type(field, "Draft name");
+    await user.click(screen.getByRole("button", { name: "refetch" }));
+    expect(screen.getByLabelText("Workspace name")).toHaveValue("Draft name");
   });
 });

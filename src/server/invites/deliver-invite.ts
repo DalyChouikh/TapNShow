@@ -35,16 +35,17 @@ export async function deliverInvite(input: {
       { status: 201 },
     );
   }
+  const invite = await getInvite(input.supabase, input.inviteId);
+  if (!invite) {
+    return apiError("not_found");
+  }
+  // Budget is spent per attempt, including failed SMTP sends: retries cannot hammer Gmail.
   const budget = await consumeInviteEmail(input.supabase, input.workspaceId);
   if (budget.error) {
     return fromDatabaseError(budget.error);
   }
   if (budget.data !== true) {
     return apiError("invite_email_limit", { inviteId: input.inviteId });
-  }
-  const invite = await getInvite(input.supabase, input.inviteId);
-  if (!invite) {
-    return apiError("not_found");
   }
   try {
     const content = await renderInviteEmail({

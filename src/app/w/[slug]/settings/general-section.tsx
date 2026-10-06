@@ -33,7 +33,8 @@ export function GeneralSection({ workspace }: { workspace: WorkspaceDetails }) {
   const queryClient = useQueryClient();
   const form = useForm<Values>({
     resolver: zodResolver(schema),
-    values: { name: workspace.name, timezone: workspace.timezone },
+    // Read once: a refetch must not overwrite what the user is typing (the page keys this by id).
+    defaultValues: { name: workspace.name, timezone: workspace.timezone },
   });
   const save = useMutation({
     mutationFn: (values: Values) =>

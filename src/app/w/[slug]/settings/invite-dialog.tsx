@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { RadioCard, RadioGroup } from "@/components/ui/radio-group";
 import { invitesQueryKey } from "@/hooks/use-invites";
 import { ApiClientError, apiRequest } from "@/lib/api-client";
 import {
@@ -142,44 +143,46 @@ export function InviteDialog({
               label={t("emailLabel")}
               {...form.register("email")}
             />
-            <fieldset className="flex flex-col gap-2">
-              <legend className="text-sm font-bold">{t("roleLabel")}</legend>
-              <label className="flex min-h-11 items-center gap-2">
-                <input type="radio" value="viewer" {...form.register("role")} />
-                {t("roleViewer")}
-              </label>
-              {workspace.myRole === "owner" ? (
-                <label className="flex min-h-11 items-center gap-2">
-                  <input
-                    type="radio"
-                    value="admin"
-                    {...form.register("role")}
-                  />
-                  {t("roleAdmin")}
-                </label>
-              ) : null}
-            </fieldset>
-            <fieldset className="flex flex-col gap-2">
-              <legend className="text-sm font-bold">
+            <div className="flex flex-col gap-2">
+              <span id="invite-role-label" className="text-sm font-bold">
+                {t("roleLabel")}
+              </span>
+              <Controller
+                control={form.control}
+                name="role"
+                render={({ field }) => (
+                  <RadioGroup
+                    aria-labelledby="invite-role-label"
+                    value={field.value}
+                    onValueChange={field.onChange}
+                  >
+                    <RadioCard value="viewer">{t("roleViewer")}</RadioCard>
+                    {workspace.myRole === "owner" ? (
+                      <RadioCard value="admin">{t("roleAdmin")}</RadioCard>
+                    ) : null}
+                  </RadioGroup>
+                )}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <span id="invite-delivery-label" className="text-sm font-bold">
                 {t("deliveryLabel")}
-              </legend>
-              <label className="flex min-h-11 items-center gap-2">
-                <input
-                  type="radio"
-                  value="email"
-                  {...form.register("delivery")}
-                />
-                {t("deliveryEmail")}
-              </label>
-              <label className="flex min-h-11 items-center gap-2">
-                <input
-                  type="radio"
-                  value="link"
-                  {...form.register("delivery")}
-                />
-                {t("deliveryLink")}
-              </label>
-            </fieldset>
+              </span>
+              <Controller
+                control={form.control}
+                name="delivery"
+                render={({ field }) => (
+                  <RadioGroup
+                    aria-labelledby="invite-delivery-label"
+                    value={field.value}
+                    onValueChange={field.onChange}
+                  >
+                    <RadioCard value="email">{t("deliveryEmail")}</RadioCard>
+                    <RadioCard value="link">{t("deliveryLink")}</RadioCard>
+                  </RadioGroup>
+                )}
+              />
+            </div>
             {create.error ? (
               <p role="alert" className="text-sm font-bold">
                 {tErrors(failure ? failure.code : "internal")}
