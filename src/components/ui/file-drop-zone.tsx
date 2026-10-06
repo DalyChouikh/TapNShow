@@ -6,8 +6,8 @@ import { cn } from "@/lib/utils";
 import { Sticker } from "./sticker";
 
 /**
- * Drop area + file chooser. The native file input stays in the DOM for keyboard and screen-reader
- * users but is visually hidden; the whole card is its label, so tapping anywhere opens the picker.
+ * Drop area + file chooser. The native file input is transparent and covers the whole card, so the
+ * tap target is the card (spec §12: 44 px) and keyboard and screen-reader users reach a real input.
  */
 export function FileDropZone({
   id,
@@ -44,7 +44,7 @@ export function FileDropZone({
       onDragLeave={() => setDragging(false)}
       onDrop={onDrop}
       className={cn(
-        "flex cursor-pointer flex-col items-center gap-2 rounded-card border-[length:var(--tn-border-width)] border-dashed border-outline bg-surface px-4 py-6 text-center shadow-brutal-sm transition-colors has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 motion-reduce:transition-none",
+        "relative flex cursor-pointer flex-col items-center gap-2 rounded-card border-[length:var(--tn-border-width)] border-dashed border-outline bg-surface px-4 py-6 text-center shadow-brutal-sm transition-colors has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 motion-reduce:transition-none",
         dragging && "bg-fill-info",
         disabled && "pointer-events-none opacity-50",
       )}
@@ -65,7 +65,7 @@ export function FileDropZone({
         aria-describedby={`${id}-hint`}
         accept={accept}
         disabled={disabled}
-        className="sr-only"
+        className="absolute inset-0 size-full cursor-pointer opacity-0"
         onChange={(event) => {
           const file = event.target.files?.[0];
           if (file) {

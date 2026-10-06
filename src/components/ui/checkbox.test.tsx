@@ -13,6 +13,7 @@ describe("Checkbox", () => {
     );
     const box = screen.getByRole("checkbox", { name: "Select Inès" });
     expect(box.tagName).toBe("BUTTON");
+    expect(box).toHaveClass("size-11");
     expect(box).not.toBeChecked();
     await user.click(box);
     expect(onCheckedChange).toHaveBeenCalledWith(true);

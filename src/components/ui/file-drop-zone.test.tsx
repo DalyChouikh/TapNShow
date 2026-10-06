@@ -19,7 +19,8 @@ describe("FileDropZone", () => {
     );
     const input = screen.getByLabelText("Choose a .csv or .xlsx");
     expect(input).toHaveAttribute("type", "file");
-    expect(input.className).toContain("sr-only");
+    expect(input.className).toContain("opacity-0");
+    expect(input.className).toContain("inset-0");
     const chosen = new File(["Email\n"], "roster.csv", { type: "text/csv" });
     await user.upload(input, chosen);
     expect(onFile).toHaveBeenLastCalledWith(chosen);

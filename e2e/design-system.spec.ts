@@ -1,11 +1,16 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
-/** Waits until entrance animations have settled so audits see the final colors. */
+/**
+ * Waits until entrance animations have settled so audits see the final colors. File inputs are
+ * transparent on purpose (they cover their drop zone), so they never reach opacity 1.
+ */
 async function waitForEntrance(page: Page): Promise<void> {
   await page.waitForFunction(() =>
     Array.from(document.querySelectorAll("main *")).every(
-      (el) => getComputedStyle(el).opacity === "1",
+      (el) =>
+        el.matches('input[type="file"]') ||
+        getComputedStyle(el).opacity === "1",
     ),
   );
 }

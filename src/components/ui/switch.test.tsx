@@ -16,6 +16,7 @@ describe("Switch", () => {
     );
     const toggle = screen.getByRole("switch", { name: "First row is headers" });
     expect(toggle).toBeChecked();
+    expect(toggle).toHaveClass("h-11");
     await user.click(toggle);
     expect(onCheckedChange).toHaveBeenCalledWith(false);
   });
