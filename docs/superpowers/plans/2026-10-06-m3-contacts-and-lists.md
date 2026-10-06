@@ -22,6 +22,8 @@
 - **Limits live in `private.app_limits` only:** `contacts_per_workspace_max` 2000, `lists_per_workspace_max` 50, `import_rows_max` 2000, `imports_per_user_per_hour` 30, `import_previews_per_user_per_hour` 120. The client learns the first three from `GET …/contacts` (`limits`). Client-only constants (5 MB file cap, Undo delay) live in `src/config/roster.ts`. Field length rules (name ≤ 120, list name ≤ 60) mirror the database checks in Zod, as M2 did for workspace names.
 - Every mutating route: `rejectCrossOrigin` → `loadWorkspaceContext` → `forbidViewer` (Task 4) → `parseJsonBody` with a shared Zod schema from `src/shared/api/roster.ts` → query module → `fromDatabaseError`.
 - The import file never leaves the device: only `{ row, fullName, email, lists[] }` objects are sent. Parsed cell text is never logged.
+- **Rollout flag (grilling, 2026-10-06):** every merge deploys to production, so the roster UI stays behind `NEXT_PUBLIC_ROSTER_ENABLED` (in `src/config/public-env.ts`, `z.stringbool().default(false)`) until it is complete. It is `true` in `.env.local`, on Vercel **Preview** and for Vitest/Playwright; Production does not set it, so `/w/[slug]/lists` keeps `ComingSoon` and Home keeps "Coming soon" for the import step. Task 10 deletes the flag, its Preview variable and its `.env.local` lines in the same PR that completes the import, so production gets the whole feature at once.
+- **Grilling decisions (2026-10-06):** phone header = title + Import + "+ Add"; Select is a chip at the end of the list-chip row next to Manage; bulk delete = confirm dialog **and** the same 5 s Undo as single delete; a "No list N" chip appears after "All N" when someone is in no list; Viewers get a read-only grid from `md` up; a pending delete survives in-app navigation (the Undo toast is global) and only closing the tab cancels it.
 - UI verification: Playwright screenshots at 390 px (light) and 320 px (dark) for every new screen, and no horizontal page scroll at 320 px.
 - Local stack: `supabase start` (API 44321, DB 44322, Studio 44323, Mailpit 44324/44325). Always run the CLI with `</dev/null`. Stop any `next dev` before `bun run test:e2e` (find it with `ss -ltnp`, kill by PID; never `pkill -f`). Regenerate types with `bun run db:types` after each migration.
 
@@ -92,6 +94,7 @@ gh api -X POST repos/DalyChouikh/TapNShow/issues/5/sub_issues -F sub_issue_id="$
 | `src/components/ui/{checkbox,switch,segmented-control,textarea,file-drop-zone}.tsx` | Styled primitives | 6 |
 | `src/app/design/design-showcase.tsx` | Shows the new primitives | 6 |
 | `src/hooks/use-media-query.ts`, `src/test/match-media.ts` | `useMediaQuery`; tests can emulate a wide viewport | 7 |
+| `src/config/public-env.ts`, `vitest.config.mts`, `playwright.config.ts` | `NEXT_PUBLIC_ROSTER_ENABLED` rollout flag (added in 7, removed in 10) | 7, 10 |
 | `src/lib/roster/filter-contacts.ts` | Accent-insensitive search + list filter | 7 |
 | `src/app/w/[slug]/lists/*` | Roster page, toolbar, list chips, cards, empty state | 7 |
 | `src/components/forms/list-picker.tsx` | Pick/create lists (sheet, grid, import, bulk) | 8 |
@@ -3920,7 +3923,7 @@ Run `bun run test src/components/ui` → PASS.
 
 **Files:**
 - Create: `src/hooks/use-media-query.ts` + test, `src/lib/roster/filter-contacts.ts` + test, `src/app/w/[slug]/lists/roster-view.tsx` + test, `list-chips.tsx`, `list-tag.tsx`, `contact-card.tsx`, `roster-cards.tsx`, `roster-empty.tsx`, `roster-skeleton.tsx`, `page.test.tsx`; `e2e/helpers/layout.ts`, `e2e/roster.spec.ts`
-- Modify: `src/app/w/[slug]/lists/page.tsx` (replaces `ComingSoon`), `src/components/shell/coming-soon.tsx` (`area` is only `"meetings"` now), `src/components/ui/input.tsx` + test (`hideLabel`), `src/test/match-media.ts` + `vitest.setup.ts` (`setWideViewport`), `src/config/roster.ts` (`ROSTER_GRID_MEDIA`, `ROSTER_CARD_ESTIMATE_PX`), `src/app/w/[slug]/home-checklist.tsx` + test (Import members links here), `e2e/helpers/seed.ts` (`seedRoster`), `messages/en.json` (`Lists`, `WorkspaceHome.importMembersAction`; remove `ComingSoon.listsTitle`/`listsBody`)
+- Modify: `src/config/public-env.ts` + test (`NEXT_PUBLIC_ROSTER_ENABLED`), `vitest.config.mts` and `playwright.config.ts` (flag on for tests), `.env.local` (flag on, plus the Preview backup line), `src/app/w/[slug]/lists/page.tsx` (roster behind the flag, `ComingSoon` otherwise), `src/components/ui/input.tsx` + test (`hideLabel`), `src/test/match-media.ts` + `vitest.setup.ts` (`setWideViewport`), `src/config/roster.ts` (`ROSTER_GRID_MEDIA`, `ROSTER_CARD_ESTIMATE_PX`), `src/app/w/[slug]/home-checklist.tsx` + test (Import members links here), `e2e/helpers/seed.ts` (`seedRoster`), `messages/en.json` (`Lists`, `WorkspaceHome.importMembersAction`)
 - Add dependency: `bun add @tanstack/react-virtual`
 
 **Interfaces:**
@@ -3928,11 +3931,18 @@ Run `bun run test src/components/ui` → PASS.
 - Produces:
   - `useMediaQuery(query: string): boolean` (false on the server and first client render).
   - `setWideViewport(value: boolean)` in `src/test/match-media.ts` — makes `(min-width: …)` queries match in jsdom; reset after each test.
-  - `normalizeForSearch(text: string): string` and `filterContacts(contacts: Contact[], filter: { query: string; listId: string | null }): Contact[]`.
+  - `publicEnv.NEXT_PUBLIC_ROSTER_ENABLED: boolean` (removed again in Task 10).
+  - `NO_LIST = "no-list"` and `ListFilter = string | null` (a list id, `NO_LIST`, or `null` for All); `normalizeForSearch(text: string): string`; `filterContacts(contacts: Contact[], filter: { query: string; listId: ListFilter }): Contact[]`.
   - `RosterView({ workspace, roster })` — the page body; later tasks add editing state to it.
   - `ListChips({ lists, total, selectedListId, onSelect, trailing? })`, `ListTag({ list })`, `ContactCard({ contact, lists, onOpen })`, `RosterCards({ contacts, lists, onOpen })`, `RosterEmpty({ canEdit, actions? })` where `actions` is a `ReactNode` slot filled by Tasks 8 and 10.
   - `Input` gains `hideLabel?: boolean` (label kept for assistive tech, visually hidden).
   - e2e: `expectNoHorizontalScroll(page)`; `seedRoster(slug, people: Array<{ fullName: string; email: string; lists?: string[] }>)`.
+
+- [ ] **Step 0: Rollout flag** — in `src/config/public-env.ts` add `NEXT_PUBLIC_ROSTER_ENABLED: z.stringbool().default(false)` to the schema and `NEXT_PUBLIC_ROSTER_ENABLED: process.env.NEXT_PUBLIC_ROSTER_ENABLED` to `publicEnv`, with a test in `public-env.test.ts` mirroring the Google flag one (off by default, `"true"` → `true`). Turn it on for tests: `NEXT_PUBLIC_ROSTER_ENABLED: "true"` in `vitest.config.mts` `test.env`, and in `playwright.config.ts` change the web server command to `NEXT_PUBLIC_ROSTER_ENABLED=true bun run build && bun run start -p ${PORT}` (a `NEXT_PUBLIC_` value is inlined at build time). Locally add `NEXT_PUBLIC_ROSTER_ENABLED=true` to `.env.local`'s active values. On Vercel, Preview only:
+```bash
+timeout 60 vercel env add NEXT_PUBLIC_ROSTER_ENABLED preview --value true --no-sensitive --yes --non-interactive --scope dalychouikhs-projects
+```
+and mirror it in `.env.local`'s `VERCEL BACKUP` Preview block (owner rule). Production gets nothing.
 
 - [ ] **Step 1: Config + test helpers** — append to `src/config/roster.ts`:
 ```ts
@@ -3962,9 +3972,9 @@ and make the installed `matches` read `query.includes("prefers-reduced-motion") 
 ```ts
 import { describe, expect, it } from "vitest";
 import { IDS, rosterFixture } from "@/test/fixtures/roster";
-import { filterContacts, normalizeForSearch } from "./filter-contacts";
+import { filterContacts, NO_LIST, normalizeForSearch, type ListFilter } from "./filter-contacts";
 
-const names = (query: string, listId: string | null = null): string[] =>
+const names = (query: string, listId: ListFilter = null): string[] =>
   filterContacts(rosterFixture.contacts, { query, listId }).map((c) => c.fullName);
 
 describe("filterContacts", () => {
@@ -3979,6 +3989,10 @@ describe("filterContacts", () => {
     expect(names("", IDS.dev)).toEqual(["Inès Ben Salah", "Sarra Khelifi"]);
     expect(names("sarra", IDS.dev)).toEqual(["Sarra Khelifi"]);
     expect(names("", IDS.design)).toEqual(["Sarra Khelifi"]);
+  });
+
+  it("finds people who are in no list", () => {
+    expect(names("", NO_LIST)).toEqual(["Youssef Trabelsi"]);
   });
 });
 ```
@@ -4032,6 +4046,20 @@ describe("RosterView", () => {
     ]);
     await user.click(screen.getByRole("button", { name: "All 3" }));
     expect(screen.getAllByRole("listitem")).toHaveLength(3);
+  });
+
+  it("offers a No list chip only when someone has no list", async () => {
+    const user = userEvent.setup();
+    const { unmount } = renderWithProviders(<RosterView workspace={owner} roster={rosterFixture} />);
+    await user.click(screen.getByRole("button", { name: "No list 1" }));
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+    unmount();
+    const everyoneListed = {
+      ...rosterFixture,
+      contacts: rosterFixture.contacts.map((contact) => ({ ...contact, listIds: [rosterFixture.lists[0].id] })),
+    };
+    renderWithProviders(<RosterView workspace={owner} roster={everyoneListed} />);
+    expect(screen.queryByRole("button", { name: /^No list/ })).toBeNull();
   });
 
   it("says when nobody matches", async () => {
@@ -4111,15 +4139,28 @@ export function normalizeForSearch(text: string): string {
   return text.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().trim();
 }
 
+/** The "No list" chip's filter value (never a list id: those are UUIDs). */
+export const NO_LIST = "no-list";
+
+/** Selected chip: a list id, `NO_LIST`, or `null` for "All". */
+export type ListFilter = string | null;
+
+const inFilter = (contact: Contact, listId: ListFilter): boolean => {
+  if (listId === null) {
+    return true;
+  }
+  return listId === NO_LIST ? contact.listIds.length === 0 : contact.listIds.includes(listId);
+};
+
 /** People matching the search (name or email) and the selected list chip. */
 export function filterContacts(
   contacts: Contact[],
-  filter: { query: string; listId: string | null },
+  filter: { query: string; listId: ListFilter },
 ): Contact[] {
   const query = normalizeForSearch(filter.query);
   return contacts.filter(
     (contact) =>
-      (filter.listId === null || contact.listIds.includes(filter.listId)) &&
+      inFilter(contact, filter.listId) &&
       (query === "" ||
         normalizeForSearch(contact.fullName).includes(query) ||
         contact.email.includes(query)),
@@ -4180,20 +4221,23 @@ export function ListTag({ list, className }: { list: Pick<ListSummary, "id" | "n
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { Chip } from "@/components/ui/chip";
+import { NO_LIST, type ListFilter } from "@/lib/roster/filter-contacts";
 import type { ListSummary } from "@/shared/api/roster";
 
-/** "All N" plus one chip per list (with its count); one is always selected. Scrolls sideways. */
+/** "All N", "No list N" (only when someone has no list), then one chip per list. Scrolls sideways. */
 export function ListChips({
   lists,
   total,
+  noListCount,
   selectedListId,
   onSelect,
   trailing,
 }: {
   lists: ListSummary[];
   total: number;
-  selectedListId: string | null;
-  onSelect: (listId: string | null) => void;
+  noListCount: number;
+  selectedListId: ListFilter;
+  onSelect: (listId: ListFilter) => void;
   trailing?: ReactNode;
 }) {
   const t = useTranslations("Lists");
@@ -4202,6 +4246,15 @@ export function ListChips({
       <Chip pressed={selectedListId === null} onPressedChange={() => onSelect(null)} className="shrink-0">
         {t("allChip", { count: total })}
       </Chip>
+      {noListCount > 0 ? (
+        <Chip
+          pressed={selectedListId === NO_LIST}
+          onPressedChange={(pressed) => onSelect(pressed ? NO_LIST : null)}
+          className="shrink-0"
+        >
+          {t("noListChip", { count: noListCount })}
+        </Chip>
+      ) : null}
       {lists.map((list) => (
         <Chip
           key={list.id}
@@ -4375,7 +4428,7 @@ export function RosterSkeleton() {
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
-import { filterContacts } from "@/lib/roster/filter-contacts";
+import { filterContacts, type ListFilter } from "@/lib/roster/filter-contacts";
 import type { Contact, Roster } from "@/shared/api/roster";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
 import { ListChips } from "./list-chips";
@@ -4386,7 +4439,7 @@ import { RosterEmpty } from "./roster-empty";
 export function RosterView({ workspace, roster }: { workspace: WorkspaceDetails; roster: Roster }) {
   const t = useTranslations("Lists");
   const [query, setQuery] = useState("");
-  const [listId, setListId] = useState<string | null>(null);
+  const [listId, setListId] = useState<ListFilter>(null);
   const canEdit = workspace.myRole !== "viewer";
   const visible = filterContacts(roster.contacts, { query, listId });
   const openContact: (contact: Contact) => void = () => undefined;
@@ -4415,6 +4468,7 @@ export function RosterView({ workspace, roster }: { workspace: WorkspaceDetails;
           <ListChips
             lists={roster.lists}
             total={roster.contacts.length}
+            noListCount={roster.contacts.filter((contact) => contact.listIds.length === 0).length}
             selectedListId={listId}
             onSelect={setListId}
           />
@@ -4437,15 +4491,21 @@ export function RosterView({ workspace, roster }: { workspace: WorkspaceDetails;
 
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { ComingSoon } from "@/components/shell/coming-soon";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { publicEnv } from "@/config/public-env";
 import { useRoster } from "@/hooks/use-roster";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { RosterSkeleton } from "./roster-skeleton";
 import { RosterView } from "./roster-view";
 
-/** `/w/[slug]/lists` (spec §7.14): the roster and its lists. */
+/** `/w/[slug]/lists` (spec §7.14); "coming soon" until the rollout flag is on (removed in Task 10). */
 export default function ListsPage() {
+  return publicEnv.NEXT_PUBLIC_ROSTER_ENABLED ? <Roster /> : <ComingSoon area="lists" />;
+}
+
+function Roster() {
   const t = useTranslations("Lists");
   const { slug } = useParams<{ slug: string }>();
   const workspace = useWorkspace(slug);
@@ -4466,7 +4526,7 @@ export default function ListsPage() {
   return <RosterView workspace={workspace.data} roster={roster.data} />;
 }
 ```
-`src/components/shell/coming-soon.tsx`: change the prop type to `area: "meetings"` and delete `ComingSoon.listsTitle` / `listsBody` from `messages/en.json`.
+`ComingSoon` keeps its `"lists"` area and messages until Task 10 removes the flag.
 
 Messages — add a `Lists` namespace (check `messages/en.json` has none first):
 ```json
@@ -4477,6 +4537,7 @@ Messages — add a `Lists` namespace (check `messages/en.json` has none first):
   "searchPlaceholder": "Search {count, plural, one {# person} other {# people}}",
   "listChipsLabel": "Filter by list",
   "allChip": "All {count}",
+  "noListChip": "No list {count}",
   "noMatches": "Nobody matches your search.",
   "loadError": "We couldn't load your roster.",
   "retry": "Try again",
@@ -4497,12 +4558,14 @@ const STEPS: ReadonlyArray<{
   actionKey?: "inviteCommitteeAction" | "importMembersAction";
 }> = [
   { key: "inviteCommittee", icon: UserPlus, href: (slug) => `/w/${slug}/settings#people`, actionKey: "inviteCommitteeAction" },
-  { key: "importMembers", icon: UploadSimple, href: (slug) => `/w/${slug}/lists`, actionKey: "importMembersAction" },
+  ...(publicEnv.NEXT_PUBLIC_ROSTER_ENABLED
+    ? [{ key: "importMembers" as const, icon: UploadSimple, href: (slug: string) => `/w/${slug}/lists`, actionKey: "importMembersAction" as const }]
+    : [{ key: "importMembers" as const, icon: UploadSimple }]),
   { key: "connectGmail", icon: EnvelopeSimple },
   { key: "connectSheets", icon: Table },
 ];
 ```
-and render `href && actionKey ? <Button asChild tone="primary"><Link href={href(workspace.slug)}>{t(actionKey)}</Link></Button> : <span …>{t("soon")}</span>` (sticker tone `primary` when `href` is set). Add `"importMembersAction": "Import"` to `WorkspaceHome`. Extend `home-checklist.test.tsx`:
+(import `publicEnv` from `@/config/public-env`; Task 10 drops the condition) and render `href && actionKey ? <Button asChild tone="primary"><Link href={href(workspace.slug)}>{t(actionKey)}</Link></Button> : <span …>{t("soon")}</span>` (sticker tone `primary` when `href` is set). Add `"importMembersAction": "Import"` to `WorkspaceHome`. Extend `home-checklist.test.tsx`:
 ```tsx
 it("links the import step to the roster", () => {
   renderWithProviders(<HomeChecklist workspace={okContext.workspace} />);
@@ -4638,7 +4701,7 @@ Stop any `next dev`, then `bun run test:e2e -- e2e/roster.spec.ts` → PASS on `
   - `ContactSheet({ slug, contact, roster, canEdit, onClose, onDelete })`.
   - `AddContactDialog({ slug, roster, open, onOpenChange })`.
   - `ManageListsDialog({ slug, lists, open, onOpenChange })`.
-  - `useDeferredDelete(slug): { pendingIds: ReadonlySet<string>; scheduleDelete: (contact: Contact) => void }`.
+  - `useDeferredDelete(slug): { pendingIds: ReadonlySet<string>; scheduleDelete: (contacts: Contact[]) => void }` — one person uses `DELETE …/contacts/[id]`, several use the bulk route; both wait for the Undo window (Task 9's bulk delete reuses it).
   - `describeEditError(error: Error, email: string | undefined, roster: Roster): { code: ApiErrorCode; takenBy: string | null }` — `takenBy` names the person who already has `email` when the API said `contact_email_taken`.
   - `RosterView` now owns `openContactId`, the "+ Add" and "Manage" entry points, and hides `pendingIds`.
 
@@ -4669,6 +4732,7 @@ Stop any `next dev`, then `bun run test:e2e -- e2e/roster.spec.ts` → PASS on `
 "invalidEmail": "Enter a valid email address.",
 "delete": "Delete",
 "deleted": "{name} deleted.",
+"deletedMany": "{count, plural, one {# person} other {# people}} deleted.",
 "undo": "Undo",
 "manage": "Manage",
 "manageTitle": "Manage lists",
@@ -5084,42 +5148,54 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { UNDO_DELETE_MS } from "@/config/roster";
-import { useDeleteContact } from "@/hooks/use-roster";
+import { useBulkContacts, useDeleteContact } from "@/hooks/use-roster";
 import { ApiClientError } from "@/lib/api-client";
 import type { Contact } from "@/shared/api/roster";
 
 /**
- * Delete with Undo (spec §7.14): the person disappears at once, the DELETE is sent only when the
- * Undo toast expires, and Undo cancels it. Closing the tab first means nothing is deleted. The
- * timer is not cleared on unmount, so moving to another page still completes the delete.
+ * Delete with Undo (spec §7.14, grilling 2026-10-06): the people disappear at once, the delete is
+ * sent only when the Undo toast expires, and Undo cancels it. Closing the tab first means nothing
+ * is deleted. The timer is not cleared on unmount, so moving to another page still completes the
+ * delete while the (global) toast keeps its Undo. One person uses the single route, several the
+ * bulk route.
  */
 export function useDeferredDelete(slug: string): {
   pendingIds: ReadonlySet<string>;
-  scheduleDelete: (contact: Contact) => void;
+  scheduleDelete: (contacts: Contact[]) => void;
 } {
   const t = useTranslations("Lists");
   const tErrors = useTranslations("ApiErrors");
-  const remove = useDeleteContact(slug);
+  const removeOne = useDeleteContact(slug);
+  const bulk = useBulkContacts(slug);
   const [pendingIds, setPendingIds] = useState<ReadonlySet<string>>(new Set());
 
-  const forget = (id: string) =>
-    setPendingIds((current) => new Set([...current].filter((pending) => pending !== id)));
+  const forget = (ids: readonly string[]) =>
+    setPendingIds((current) => new Set([...current].filter((id) => !ids.includes(id))));
 
-  const scheduleDelete = (contact: Contact) => {
-    setPendingIds((current) => new Set(current).add(contact.id));
+  const scheduleDelete = (contacts: Contact[]) => {
+    const ids = contacts.map((contact) => contact.id);
+    if (ids.length === 0) {
+      return;
+    }
+    setPendingIds((current) => new Set([...current, ...ids]));
+    const callbacks = {
+      onSettled: () => forget(ids),
+      onError: (error: Error) => toast.error(tErrors(error instanceof ApiClientError ? error.code : "internal")),
+    };
     const timer = setTimeout(() => {
-      remove.mutate(contact.id, {
-        onSettled: () => forget(contact.id),
-        onError: (error) => toast.error(tErrors(error instanceof ApiClientError ? error.code : "internal")),
-      });
+      if (ids.length === 1) {
+        removeOne.mutate(ids[0], callbacks);
+      } else {
+        bulk.mutate({ action: "delete", contactIds: ids }, callbacks);
+      }
     }, UNDO_DELETE_MS);
-    toast(t("deleted", { name: contact.fullName }), {
+    toast(ids.length === 1 ? t("deleted", { name: contacts[0].fullName }) : t("deletedMany", { count: ids.length }), {
       duration: UNDO_DELETE_MS,
       action: {
         label: t("undo"),
         onClick: () => {
           clearTimeout(timer);
-          forget(contact.id);
+          forget(ids);
         },
       },
     });
@@ -5575,7 +5651,7 @@ export function ManageListsDialog({
     onClose={() => setOpenContactId(null)}
     onDelete={(contact) => {
       setOpenContactId(null);
-      scheduleDelete(contact);
+      scheduleDelete([contact]);
     }}
   />
 ) : null}
@@ -5639,9 +5715,9 @@ Run `bun run test:e2e -- e2e/roster.spec.ts` → PASS.
 **Interfaces:**
 - Consumes: `useBulkContacts`, `useUpdateContact`, `useCreateList` (Task 4), `ListPicker`, `ListTag`, `Checkbox` (Task 6), `useMediaQuery`, `ROSTER_GRID_MEDIA`, `ROSTER_CARD_ESTIMATE_PX` (Task 7), TanStack Table v9 (`useTable`, `tableFeatures`, `createColumnHelper`, `rowSortingFeature`, `createSortedRowModel`, `sortFn_text`), `useWindowVirtualizer`.
 - Produces:
-  - `SelectionBar({ slug, roster, selectedIds, onClear })` — sticky above the bottom bar: "N selected", Add to list (single-mode picker, can create), Remove from list (only lists the selection is in), Delete N (confirm dialog), Clear.
+  - `SelectionBar({ slug, roster, selectedIds, onClear, onDelete })` — sticky above the bottom bar: "N selected", Add to list (single-mode picker, can create), Remove from list (only lists the selection is in), Delete N (confirm dialog, then `onDelete(contactIds)`, which RosterView sends through Task 8's `scheduleDelete` so bulk deletes get the same 5 s Undo), Clear.
   - `EditableCell({ value, label, onCommit, validate, rowIndex, columnIndex })` — shows text; Enter or click edits; Enter/blur commits when `validate(value)` returns `null`; Escape cancels; arrow keys move focus between cells (`data-cell="<row>:<col>"`).
-  - `RosterGrid({ slug, contacts, roster, selectedIds, onToggle, onToggleAll })` — virtualized `<table>` with sortable Full name / Email headers.
+  - `RosterGrid({ slug, contacts, roster, canEdit, selectedIds, onToggle, onToggleAll, onOpen })` — virtualized `<table>` with sortable Full name / Email headers; with `canEdit` false (Viewers) there is no checkbox column, names are buttons that open the read-only sheet, and nothing is editable.
   - `ContactCard` gains `selection?: { selected: boolean; onToggle: () => void }`; with it the card is a checkbox row instead of a sheet opener.
 
 - [ ] **Step 1: Messages** — add to `Lists`:
@@ -5659,7 +5735,6 @@ Run `bun run test:e2e -- e2e/roster.spec.ts` → PASS.
 "bulkDeleteBody": "They are removed from every list. This can't be undone.",
 "bulkAdded": "{count, plural, one {# person} other {# people}} added to {list}.",
 "bulkRemoved": "{count, plural, one {# person} other {# people}} removed from {list}.",
-"bulkDeleted": "{count, plural, one {# person} other {# people}} deleted.",
 "columnName": "Full name",
 "columnEmail": "Email",
 "columnLists": "Lists",
@@ -5758,7 +5833,7 @@ describe("SelectionBar", () => {
     const onClear = vi.fn();
     const user = userEvent.setup();
     renderWithProviders(
-      <SelectionBar slug="club-ab12" roster={rosterFixture} selectedIds={new Set([IDS.ines, IDS.youssef])} onClear={onClear} />,
+      <SelectionBar slug="club-ab12" roster={rosterFixture} selectedIds={new Set([IDS.ines, IDS.youssef])} onClear={onClear} onDelete={vi.fn()} />,
       { toaster: true },
     );
     expect(screen.getByText("2 selected")).toBeInTheDocument();
@@ -5773,15 +5848,13 @@ describe("SelectionBar", () => {
     expect(onClear).toHaveBeenCalled();
   });
 
-  it("offers only the selection's lists for removal, and confirms deletes", async () => {
-    const fetchMock = routeFetch({
-      [`POST ${base}/contacts/bulk`]: json({ affected: 1 }),
-      [`GET ${base}/contacts`]: json(rosterFixture),
-    });
+  it("offers only the selection's lists for removal, and hands confirmed deletes to Undo", async () => {
+    const fetchMock = routeFetch({});
+    const onDelete = vi.fn();
+    const onClear = vi.fn();
     const user = userEvent.setup();
     renderWithProviders(
-      <SelectionBar slug="club-ab12" roster={rosterFixture} selectedIds={new Set([IDS.ines])} onClear={vi.fn()} />,
-      { toaster: true },
+      <SelectionBar slug="club-ab12" roster={rosterFixture} selectedIds={new Set([IDS.ines])} onClear={onClear} onDelete={onDelete} />,
     );
     await user.click(screen.getByRole("button", { name: "Remove from list" }));
     expect(screen.getByRole("option", { name: "Dev" })).toBeInTheDocument();
@@ -5790,8 +5863,9 @@ describe("SelectionBar", () => {
     await user.click(screen.getByRole("button", { name: "Delete 1" }));
     expect(screen.getByRole("heading", { name: "Delete 1 person?" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Delete" }));
-    expect(await screen.findByText("1 person deleted.")).toBeInTheDocument();
-    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({ action: "delete", contactIds: [IDS.ines] });
+    expect(onDelete).toHaveBeenCalledWith([IDS.ines]);
+    expect(onClear).toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 ```
@@ -5805,15 +5879,17 @@ import { IDS, rosterFixture } from "@/test/fixtures/roster";
 import { renderWithProviders } from "@/test/render";
 import { RosterGrid } from "./roster-grid";
 
-function renderGrid(selectedIds = new Set<string>(), onToggle = vi.fn()) {
+function renderGrid(selectedIds = new Set<string>(), onToggle = vi.fn(), canEdit = true, onOpen = vi.fn()) {
   renderWithProviders(
     <RosterGrid
       slug="club-ab12"
       contacts={rosterFixture.contacts}
       roster={rosterFixture}
+      canEdit={canEdit}
       selectedIds={selectedIds}
       onToggle={onToggle}
       onToggleAll={vi.fn()}
+      onOpen={onOpen}
     />,
   );
   return onToggle;
@@ -5842,6 +5918,17 @@ describe("RosterGrid", () => {
     await user.type(field, "Inès B.{Enter}");
     const call = fetchMock.mock.calls.find(([, init]) => init?.method === "PATCH");
     expect(JSON.parse(String(call?.[1]?.body))).toEqual({ fullName: "Inès B." });
+  });
+
+  it("is read-only for Viewers: no checkboxes, no editing, names open the sheet", async () => {
+    const onOpen = vi.fn();
+    const user = userEvent.setup();
+    renderGrid(new Set(), vi.fn(), false, onOpen);
+    expect(screen.queryByRole("checkbox")).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Full name of/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add to a list" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Sarra Khelifi" }));
+    expect(onOpen).toHaveBeenCalledWith(rosterFixture.contacts[1]);
   });
 
   it("sorts by name and selects rows", async () => {
@@ -5876,14 +5963,29 @@ it("shows the grid from md up", () => {
   expect(screen.queryByRole("button", { name: "Select" })).toBeNull();
 });
 
+it("bulk deletes with the same Undo as single deletes", async () => {
+  routeFetch({ "GET /api/workspaces/club-ab12/contacts": json(rosterFixture) });
+  const user = userEvent.setup();
+  renderWithProviders(<RosterView workspace={owner} roster={rosterFixture} />, { toaster: true });
+  await user.click(screen.getByRole("button", { name: "Select" }));
+  await user.click(screen.getByRole("checkbox", { name: "Select Inès Ben Salah" }));
+  await user.click(screen.getByRole("checkbox", { name: "Select Sarra Khelifi" }));
+  await user.click(screen.getByRole("button", { name: "Delete 2" }));
+  await user.click(screen.getByRole("button", { name: "Delete" }));
+  expect(screen.getAllByRole("listitem")).toHaveLength(1);
+  await user.click(await screen.findByRole("button", { name: "Undo" }));
+  expect(screen.getAllByRole("listitem")).toHaveLength(3);
+});
+
 it("never shows selection or the grid's edit buttons to Viewers", () => {
   setWideViewport(true);
   renderWithProviders(<RosterView workspace={viewer} roster={rosterFixture} />);
+  expect(screen.getByRole("table")).toBeInTheDocument();
   expect(screen.queryByRole("checkbox")).toBeNull();
   expect(screen.queryByRole("button", { name: /^Full name of/ })).toBeNull();
 });
 ```
-(import `setWideViewport` from `@/test/match-media`.) Run → FAIL.
+(import `setWideViewport` from `@/test/match-media`, and `json`/`routeFetch` from `@/test/fetch`.) Run → FAIL.
 
 - [ ] **Step 3: EditableCell** — `src/app/w/[slug]/lists/editable-cell.tsx`:
 ```tsx
@@ -6019,17 +6121,22 @@ import { useBulkContacts, useCreateList } from "@/hooks/use-roster";
 import { ApiClientError } from "@/lib/api-client";
 import type { Roster } from "@/shared/api/roster";
 
-/** Sticky actions for the selected people (Select mode on phones, checkbox column on wider screens). */
+/**
+ * Sticky actions for the selected people (Select mode on phones, checkbox column on wider screens).
+ * Delete confirms, then hands the ids to the parent's deferred delete, so it gets the 5 s Undo too.
+ */
 export function SelectionBar({
   slug,
   roster,
   selectedIds,
   onClear,
+  onDelete,
 }: {
   slug: string;
   roster: Roster;
   selectedIds: ReadonlySet<string>;
   onClear: () => void;
+  onDelete: (contactIds: string[]) => void;
 }) {
   const t = useTranslations("Lists");
   const tErrors = useTranslations("ApiErrors");
@@ -6095,19 +6202,11 @@ export function SelectionBar({
             <Button onClick={() => setConfirming(false)}>{t("cancel")}</Button>
             <Button
               tone="danger"
-              onClick={() =>
-                bulk.mutate(
-                  { action: "delete", contactIds },
-                  {
-                    onSuccess: ({ affected }) => {
-                      toast(t("bulkDeleted", { count: affected }));
-                      setConfirming(false);
-                      onClear();
-                    },
-                    onError,
-                  },
-                )
-              }
+              onClick={() => {
+                setConfirming(false);
+                onDelete(contactIds);
+                onClear();
+              }}
             >
               {t("delete")}
             </Button>
@@ -6169,21 +6268,26 @@ const GRID_ROW_ESTIMATE_PX = ROSTER_CARD_ESTIMATE_PX / 2;
 /**
  * Wide-screen roster (spec §7.14): a virtualized table with inline-editable name and email,
  * list pills with the picker, sortable headers, and a checkbox column feeding the selection bar.
+ * Viewers (`canEdit` false) get the same table read-only; a name opens the read-only sheet.
  */
 export function RosterGrid({
   slug,
   contacts,
   roster,
+  canEdit,
   selectedIds,
   onToggle,
   onToggleAll,
+  onOpen,
 }: {
   slug: string;
   contacts: Contact[];
   roster: Roster;
+  canEdit: boolean;
   selectedIds: ReadonlySet<string>;
   onToggle: (contactId: string) => void;
   onToggleAll: (contactIds: string[]) => void;
+  onOpen: (contact: Contact) => void;
 }) {
   const t = useTranslations("Lists");
   const update = useUpdateContact(slug);
@@ -6214,20 +6318,22 @@ export function RosterGrid({
     <div className="overflow-x-auto rounded-card border-[length:var(--tn-border-width)] border-outline bg-surface shadow-brutal">
       <table className="w-full table-fixed border-collapse text-sm">
         <colgroup>
-          <col className="w-14" />
+          {canEdit ? <col className="w-14" /> : null}
           <col />
           <col />
           <col className="w-[34%]" />
         </colgroup>
         <thead className="bg-fill-primary text-on-fill">
           <tr>
-            <th className="p-2">
-              <Checkbox
-                checked={allShown}
-                onCheckedChange={() => onToggleAll(contacts.map((c) => c.id))}
-                aria-label={t("selectAll")}
-              />
-            </th>
+            {canEdit ? (
+              <th className="p-2">
+                <Checkbox
+                  checked={allShown}
+                  onCheckedChange={() => onToggleAll(contacts.map((c) => c.id))}
+                  aria-label={t("selectAll")}
+                />
+              </th>
+            ) : null}
             {table.getHeaderGroups()[0].headers.map((header) => (
               <th key={header.id} className="p-2 text-left font-bold">
                 <button
@@ -6247,7 +6353,7 @@ export function RosterGrid({
         <tbody ref={setBody}>
           {paddingTop > 0 ? (
             <tr aria-hidden>
-              <td colSpan={4} style={{ height: paddingTop }} />
+              <td colSpan={canEdit ? 4 : 3} style={{ height: paddingTop }} />
             </tr>
           ) : null}
           {items.map((item) => {
@@ -6262,13 +6368,17 @@ export function RosterGrid({
                 ref={virtualizer.measureElement}
                 className="border-t-[length:var(--tn-border-width)] border-outline align-top"
               >
-                <td className="p-2">
-                  <Checkbox
-                    checked={selectedIds.has(contact.id)}
-                    onCheckedChange={() => onToggle(contact.id)}
-                    aria-label={t("selectPerson", { name: contact.fullName })}
-                  />
-                </td>
+                {canEdit ? (
+                  <td className="p-2">
+                    <Checkbox
+                      checked={selectedIds.has(contact.id)}
+                      onCheckedChange={() => onToggle(contact.id)}
+                      aria-label={t("selectPerson", { name: contact.fullName })}
+                    />
+                  </td>
+                ) : null}
+                {canEdit ? (
+                  <>
                 <td className="p-1">
                   <EditableCell
                     value={contact.fullName}
@@ -6290,19 +6400,36 @@ export function RosterGrid({
                     inputType="email"
                   />
                 </td>
+                  </>
+                ) : (
+                  <>
+                    <td className="p-1">
+                      <button
+                        type="button"
+                        onClick={() => onOpen(contact)}
+                        className="min-h-11 w-full truncate rounded-control px-2 text-left text-sm font-bold"
+                      >
+                        {contact.fullName}
+                      </button>
+                    </td>
+                    <td className="truncate p-2 text-sm">{contact.email}</td>
+                  </>
+                )}
                 <td className="p-2">
                   <div className="flex flex-wrap items-center gap-1">
                     {own.map((list) => (
                       <ListTag key={list.id} list={list} />
                     ))}
-                    <ListPicker
-                      lists={roster.lists}
-                      selectedIds={contact.listIds}
-                      onChange={(listIds) => save({ listIds })}
-                      onCreate={(name) => createList.mutateAsync(name)}
-                      triggerLabel={t("addToList")}
-                      triggerClassName="min-h-9 px-2 text-xs"
-                    />
+                    {canEdit ? (
+                      <ListPicker
+                        lists={roster.lists}
+                        selectedIds={contact.listIds}
+                        onChange={(listIds) => save({ listIds })}
+                        onCreate={(name) => createList.mutateAsync(name)}
+                        triggerLabel={t("addToList")}
+                        triggerClassName="min-h-9 px-2 text-xs"
+                      />
+                    ) : null}
                   </div>
                 </td>
               </tr>
@@ -6310,7 +6437,7 @@ export function RosterGrid({
           })}
           {paddingBottom > 0 ? (
             <tr aria-hidden>
-              <td colSpan={4} style={{ height: paddingBottom }} />
+              <td colSpan={canEdit ? 4 : 3} style={{ height: paddingBottom }} />
             </tr>
           ) : null}
         </tbody>
@@ -6338,11 +6465,32 @@ Checked against `@tanstack/table-core` 9.2.6 while planning: the column option i
 
 - [ ] **Step 7: RosterView** — add `selecting: boolean` and `selectedIds: ReadonlySet<string>` state; `const wide = useMediaQuery(ROSTER_GRID_MEDIA);`
   - `toggle(id)` adds/removes; `toggleAll(ids)` selects all of `ids` unless all are selected (then removes them); `clear()` empties and sets `selecting` false.
-  - phones (`!wide`): when `canEdit`, a header button `t(selecting ? "doneSelecting" : "select")` toggles `selecting` (clearing the selection when leaving); `RosterCards` gets `selection` only while `selecting`.
-  - wide: `canEdit ? <RosterGrid … /> : <RosterCards … />` (Viewers keep the read-only cards on every width).
-  - `selectedIds.size > 0 && canEdit ? <SelectionBar slug={workspace.slug} roster={roster} selectedIds={selectedIds} onClear={clear} /> : null`.
-  - Selected ids that disappear from the roster (deleted) are dropped: compute `const liveSelection = new Set([...selectedIds].filter((id) => people.some((c) => c.id === id)))` and use it everywhere.
-  Run all Step 2 tests → PASS.
+  - Phones (`!wide`) and `canEdit`: the **Select chip** sits in `ListChips`' `trailing` slot after Manage (grilling decision; the header keeps only Import and "+ Add"):
+```tsx
+trailing={
+  canEdit ? (
+    <>
+      <Chip pressed={false} onPressedChange={() => setManaging(true)} className="shrink-0">
+        {t("manage")}
+      </Chip>
+      {!wide ? (
+        <Chip
+          pressed={selecting}
+          onPressedChange={(on) => (on ? setSelecting(true) : clear())}
+          className="shrink-0"
+        >
+          {selecting ? t("doneSelecting") : t("select")}
+        </Chip>
+      ) : null}
+    </>
+  ) : undefined
+}
+```
+    `RosterCards` gets `selection` only while `selecting`.
+  - Wide: `<RosterGrid … canEdit={canEdit} onOpen={openContactSheet} />` for everyone (Viewers get it read-only).
+  - `liveSelection.size > 0 && canEdit ? <SelectionBar slug={workspace.slug} roster={roster} selectedIds={liveSelection} onClear={clear} onDelete={(ids) => scheduleDelete(people.filter((c) => ids.includes(c.id)))} /> : null` — bulk deletes go through Task 8's deferred delete, so they get the 5 s Undo.
+  - Selected ids that disappear from the roster (deleted) are dropped: `const liveSelection = new Set([...selectedIds].filter((id) => people.some((c) => c.id === id)))`, used everywhere instead of `selectedIds`.
+  Update the Step 2 RosterView test "never shows selection or the grid's edit buttons to Viewers" to also assert `screen.getByRole("table")` is present (read-only grid). Run all Step 2 tests → PASS.
 
 - [ ] **Step 8: e2e** — append to `e2e/roster.spec.ts`:
 ```ts
@@ -6396,6 +6544,7 @@ Run `bun run test:e2e -- e2e/roster.spec.ts` → PASS.
 - Create: `src/app/w/[slug]/lists/import/import-dialog.tsx` + test, `source-step.tsx` + test, `match-step.tsx` + test, `preview-step.tsx` + test, `wizard-footer.tsx`
 - Create: `e2e/fixtures/roster.csv`
 - Modify: `src/app/w/[slug]/lists/roster-view.tsx` + test (Import button, empty-state Import/Paste, `next/dynamic`), `messages/en.json` (`ListsImport`, `Lists.import`, `Lists.paste`), `e2e/roster.spec.ts`
+- Remove the rollout flag (Step 11): `src/config/public-env.ts` + test, `vitest.config.mts`, `playwright.config.ts`, `src/app/w/[slug]/lists/page.tsx`, `src/app/w/[slug]/home-checklist.tsx`, `src/components/shell/coming-soon.tsx` (`area: "meetings"` only) and `messages/en.json` (`ComingSoon.listsTitle`/`listsBody`), `.env.local`, Vercel Preview variable
 
 **Interfaces:**
 - Consumes: Task 5 (`readImportFile`, `ImportFileError`, `parsePaste`, `guessColumns`, `mappingProblem`, `buildImportRows`, types), Task 6 (`SegmentedControl`, `FileDropZone`, `Textarea`, `Switch`), Task 4 (`useImportContacts`, `ImportResult`, `ImportRowResult`, `Roster`, `IMPORT_FILE_MAX_BYTES`), Task 8 (`ListPicker`, `ListTag`), `Select*`, `Dialog*`, `Button`.
@@ -7319,7 +7468,14 @@ Run `bun run test:e2e -- e2e/roster.spec.ts` → PASS on both projects.
 
 - [ ] **Step 10: Visual check** — screenshots of the three steps at 390 px light and 320 px dark (file and paste variants, a multi-sheet workbook, the preview with a limit warning): the dialog fills the phone screen, the footer buttons are the same height on every step with one-line labels, and nothing scrolls sideways.
 
-- [ ] **Step 11: Verify and commit** — `bun run lint && bun run typecheck && bun run test` → PASS. Commit: `feat: three-step roster import with column matching and dry-run preview`.
+- [ ] **Step 11: Remove the rollout flag** — this PR completes the feature, so production must get it on merge:
+  - `src/config/public-env.ts`: delete `NEXT_PUBLIC_ROSTER_ENABLED` (schema + `publicEnv`) and its test; `vitest.config.mts`: delete it from `test.env`; `playwright.config.ts`: back to `bun run build && bun run start -p ${PORT}`.
+  - `src/app/w/[slug]/lists/page.tsx`: the default export renders the roster directly (inline `Roster` back into `ListsPage`); `home-checklist.tsx`: the import step always has its `href`/`actionKey`.
+  - `src/components/shell/coming-soon.tsx`: `area: "meetings"`; delete `ComingSoon.listsTitle` / `listsBody`.
+  - `timeout 60 vercel env rm NEXT_PUBLIC_ROSTER_ENABLED preview --yes --scope dalychouikhs-projects`; remove the active line and the Preview backup line from `.env.local`.
+  - `grep -rn "ROSTER_ENABLED" src e2e *.ts *.mts` → no matches.
+
+- [ ] **Step 12: Verify and commit** — `bun run lint && bun run typecheck && bun run test` → PASS. Commit: `feat: three-step roster import with column matching and dry-run preview`. After merge, check production: `/w/<slug>/lists` shows the roster (no "coming soon") once the new deployment is live.
 
 ---
 
@@ -7458,7 +7614,7 @@ test("a Viewer sees the roster read-only", async ({ page, browser }, testInfo) =
 
 - [ ] **Step 2: Hosted database audit** — for both projects (preview, then prod; re-link to prod at the end), as in the Task 1–3 rollout steps: `supabase migration list --linked` shows the three M3 migrations applied; `supabase db advisors --linked` shows no WARN/ERROR (lint 0029 gone since Task 1).
 
-- [ ] **Step 3: Environment audit** — M3 adds no environment variables. `vercel env ls --scope dalychouikhs-projects` (names only) matches the M2 list; `.env.local`'s backup blocks need no change. Note it in the ledger.
+- [ ] **Step 3: Environment audit** — M3 leaves no environment variables behind (the temporary `NEXT_PUBLIC_ROSTER_ENABLED` was removed in Task 10). `vercel env ls --scope dalychouikhs-projects` (names only) matches the M2 list; `.env.local`'s backup blocks need no change. Note it in the ledger.
 
 - [ ] **Step 4: Production smoke test with the owner (both on phones)** — this is the epic's completion criterion:
   1. Owner exports the real club roster sheet (Google Sheets → File → Download → `.xlsx`, or `.csv`) and imports it on `https://tapnshow.vercel.app` → Lists → Import: check the guessed columns (Team → Lists), the preview counts and new lists, then Import.
@@ -7482,5 +7638,6 @@ test("a Viewer sees the roster read-only", async ({ page, browser }, testInfo) =
 - **Spec coverage:** §4 member list editing (layout, autosave, merge rules, Team → lists) → Tasks 3, 5, 7–10; §6 tables, access pattern, caps, `import_contacts` → Tasks 2, 3; §7.13 `invite_preview` decision → settled in PR #92 (Task 11 closes #87); §7.14 roster page, edits + Undo, import dialog, empty state, Home link → Tasks 7–10; §10 roster API, error codes, libraries → Tasks 4, 5, 7, 9; §11 wrapper pattern → Task 1 (and every new function is invoker), visibility note → PR #92, import rate limits → Tasks 2, 3; §12 M3 tests → Tasks 2, 3, 5, 7–10, 12; §14 done criteria → Task 12.
 - **Verified while planning (not assumed):** Supabase `max_rows = 1000` (config); trigger functions fire without `EXECUTE`; `on conflict (workspace_id, lower(name))`; `jsonb_to_recordset` into `text[]`; the email regex agrees with Zod 4.6; `import_contacts` dry run / commit / re-import on the local stack and its 2,000-row timings; `read-excel-file/universal` on fflate-built workbooks (multi-sheet, empty sheet, broken zip); PapaParse delimiter detection and Windows-1252 decoding; jsdom 30 `Blob.arrayBuffer`; Radix ToggleGroup single = `radiogroup`/`radio`; TanStack Table 9.2.6 `sortFn` and `getToggleSortingHandler`; the Google "G" asset uses `mask` + `foreignObject`.
 - **Deliberately not in M3:** `is_adhoc` behaviour and flipping it back to roster, `unsubscribed_at`, the "Not my group" flow (M4); `contacts.user_id` linking (M8); roster export (M5 exports responses); the daily `rate_limit_events` cleanup (M4).
+- **Grilling (2026-10-06):** rollout flag until Task 10 (Tasks 7, 10); Select as a chip (Task 9); bulk delete with confirm + Undo (Tasks 8, 9); "No list" chip (Task 7); Viewers' read-only grid (Task 9); pending deletes survive in-app navigation (Task 8).
 - **Known follow-ups:** `private.rate_limit_events` grows by one row per import/preview until M4's cleanup; preview row counts in Step 1 of the import include the header row.
 
