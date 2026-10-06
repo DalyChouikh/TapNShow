@@ -15,9 +15,14 @@ import { Stagger, StaggerItem } from "@/components/motion/stagger";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Chip } from "@/components/ui/chip";
+import { FileDropZone } from "@/components/ui/file-drop-zone";
 import { Input } from "@/components/ui/input";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Sticker } from "@/components/ui/sticker";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { FILL_TONES } from "@/design/tokens";
 
 type Choice = "none" | "attend" | "late";
@@ -28,6 +33,7 @@ export function DesignShowcase() {
   const t = useTranslations("Design");
   const [choice, setChoice] = useState<Choice>("none");
   const [delay, setDelay] = useState<(typeof DELAYS)[number] | null>(null);
+  const [source, setSource] = useState("file");
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-6 px-4 py-6">
@@ -143,6 +149,45 @@ export function DesignShowcase() {
               id="demo-error"
               label={t("reasonLabel")}
               error={t("reasonError")}
+            />
+          </Card>
+        </StaggerItem>
+
+        <StaggerItem>
+          <Card
+            as="section"
+            aria-label={t("controls")}
+            className="flex flex-col gap-4"
+          >
+            <h2 className="font-bold">{t("controls")}</h2>
+            <label className="flex min-h-11 items-center gap-3 font-bold">
+              <Checkbox />
+              {t("checkboxLabel")}
+            </label>
+            <label className="flex min-h-11 items-center gap-3 font-bold">
+              <Switch defaultChecked />
+              {t("switchLabel")}
+            </label>
+            <SegmentedControl
+              label={t("sourceLabel")}
+              value={source}
+              onValueChange={setSource}
+              options={[
+                { value: "file", label: t("sourceFile") },
+                { value: "paste", label: t("sourcePaste") },
+              ]}
+            />
+            <Textarea
+              id="demo-paste"
+              label={t("pasteLabel")}
+              hint={t("pasteHint")}
+            />
+            <FileDropZone
+              id="demo-file"
+              title={t("dropTitle")}
+              hint={t("dropHint")}
+              accept=".csv,.xlsx"
+              onFile={() => undefined}
             />
           </Card>
         </StaggerItem>

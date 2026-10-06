@@ -33,7 +33,17 @@
     "reasonError": "Please enter a reason",
     "confirmed": "CONFIRMED",
     "reset": "Reset demo",
-    "tone": "Fill: {tone}"
+    "tone": "Fill: {tone}",
+    "controls": "Controls",
+    "checkboxLabel": "Include alumni",
+    "switchLabel": "First row is headers",
+    "sourceLabel": "Source",
+    "sourceFile": "File",
+    "sourcePaste": "Paste",
+    "pasteLabel": "Paste rows",
+    "pasteHint": "Copied from Google Sheets or Excel",
+    "dropTitle": "Choose a .csv or .xlsx",
+    "dropHint": "Up to 5 MB. Stays on your device."
   },
   "Email": {
     "footer": "You got this email because this address was used on {appName}. If that wasn't you, you can ignore it.",
