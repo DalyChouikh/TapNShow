@@ -2,17 +2,44 @@ import "server-only";
 import { z } from "zod";
 import { blankToUndefined, formatEnvError, type EnvSource } from "./env-utils";
 
-const serverEnvSchema = z.object({
-  NODE_ENV: z
-    .enum(["development", "test", "production"])
-    .default("development"),
-  LOG_LEVEL: z
-    .enum(["fatal", "error", "warn", "info", "debug", "trace"])
-    .default("info"),
-  NEXT_PUBLIC_SUPABASE_URL: z.url(),
-  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
-  SUPABASE_SECRET_KEY: z.string().min(1),
-});
+const serverEnvSchema = z
+  .object({
+    NODE_ENV: z
+      .enum(["development", "test", "production"])
+      .default("development"),
+    LOG_LEVEL: z
+      .enum(["fatal", "error", "warn", "info", "debug", "trace"])
+      .default("info"),
+    NEXT_PUBLIC_SUPABASE_URL: z.url(),
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
+    SUPABASE_SECRET_KEY: z.string().min(1),
+    SMTP_HOST: z.string().min(1),
+    SMTP_PORT: z.coerce.number().int().positive(),
+    SMTP_USER: z.string().min(1).optional(),
+    SMTP_PASS: z.string().min(1).optional(),
+    SMTP_FROM: z.email(),
+    SMTP_REQUIRE_TLS: z.stringbool().default(true),
+    GOOGLE_CLIENT_ID: z.string().min(1).optional(),
+    GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
+  })
+  .superRefine((env, context) => {
+    const pairs: ReadonlyArray<[keyof typeof env, keyof typeof env]> = [
+      ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
+      ["SMTP_USER", "SMTP_PASS"],
+    ];
+    for (const [first, second] of pairs) {
+      if (Boolean(env[first]) !== Boolean(env[second])) {
+        const [missing, present] = env[first]
+          ? [second, first]
+          : [first, second];
+        context.addIssue({
+          code: "custom",
+          path: [missing],
+          message: `${missing} is required together with ${present}`,
+        });
+      }
+    }
+  });
 
 /** Server-only environment variables (secrets live here, never in PublicEnv). */
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

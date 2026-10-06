@@ -45,5 +45,34 @@
       "expiry": "It works once and expires in {minutes} minutes.",
       "ignore": "Didn't ask for a code? Ignore this email. Nobody can sign in without it."
     }
+  },
+  "ApiErrors": {
+    "unauthenticated": "Please sign in again.",
+    "forbidden": "You don't have permission to do that.",
+    "not_found": "We couldn't find that.",
+    "invalid_input": "Something in the form isn't valid.",
+    "invalid_origin": "This request was blocked. Reload the page and try again.",
+    "conflict": "That already exists. Try again.",
+    "rate_limited": "Too many attempts. Wait a bit and try again.",
+    "internal": "Something went wrong on our side. Try again.",
+    "invalid_timezone": "Pick a timezone from the list.",
+    "workspace_limit": "You already own the maximum number of workspaces.",
+    "use_transfer": "Use \"Transfer ownership\" to change the Owner.",
+    "use_leave": "Use \"Leave workspace\" to remove yourself.",
+    "owner_cannot_leave": "Transfer ownership before leaving.",
+    "name_mismatch": "The name you typed doesn't match.",
+    "target_not_admin": "Ownership can only go to an Admin.",
+    "already_member": "This person is already in the workspace.",
+    "invite_closed": "This invite is no longer open.",
+    "invite_revoked": "This invite was cancelled.",
+    "invite_already_member": "You're already in this workspace.",
+    "invite_used": "This invite was already used.",
+    "invite_expired": "This invite has expired. Ask for a new one.",
+    "invite_wrong_account": "This invite is for a different email address.",
+    "invite_email_limit": "Email limit reached for today. Copy the link instead.",
+    "email_failed": "The email couldn't be sent. Copy the link instead.",
+    "invalid_code": "That code is wrong or has expired. Check the email or send a new code.",
+    "send_failed": "We couldn't send the email. Try again in a minute.",
+    "google_unavailable": "Google sign-in isn't available here. Use an email code."
   }
 }

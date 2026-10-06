@@ -17,6 +17,11 @@ describe("localSupabaseEnv", () => {
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_local",
       SUPABASE_SECRET_KEY: "sb_secret_local",
       MAILPIT_URL: "http://127.0.0.1:44324",
+      SMTP_HOST: "127.0.0.1",
+      SMTP_PORT: "44325",
+      SMTP_FROM: "no-reply@tapnshow.test",
+      SMTP_REQUIRE_TLS: "false",
+      NEXT_PUBLIC_GOOGLE_SIGN_IN_ENABLED: "false",
     });
   });
 
