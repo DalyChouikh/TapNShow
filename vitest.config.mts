@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
   plugins: [tsconfigPaths(), react()],
@@ -17,6 +17,7 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./vitest.setup.ts"],
     include: ["src/**/*.test.{ts,tsx}", "scripts/**/*.test.ts"],
+    exclude: [...configDefaults.exclude, "src/**/*.db.test.ts"],
     css: false,
     env: {
       NEXT_PUBLIC_APP_URL: "http://localhost:3000",

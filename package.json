@@ -11,10 +11,11 @@
     "format:check": "prettier --check .",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest",
-    "test:e2e": "playwright test",
+    "test:e2e": "bun scripts/with-local-supabase.ts playwright test",
     "tokens": "bun scripts/generate-tokens-css.ts",
-    "db:types": "supabase gen types typescript --project-id \"$SUPABASE_PROJECT_REF\" --schema public > src/server/db/database.types.ts",
-    "auth:config": "bun scripts/supabase-auth-config.ts"
+    "db:types": "supabase gen types typescript --local --schema public > src/server/db/database.types.ts",
+    "auth:config": "bun scripts/supabase-auth-config.ts",
+    "test:db": "bun scripts/with-local-supabase.ts vitest run --config vitest.db.config.mts"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
