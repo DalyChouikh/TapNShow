@@ -1,8 +1,11 @@
 import { withSentryConfig } from "@sentry/nextjs/config";
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
+import { tokenPageHeaders } from "./src/config/security-headers";
 
-const nextConfig: NextConfig = {};
+const nextConfig: NextConfig = {
+  headers: async () => tokenPageHeaders,
+};
 const withNextIntl = createNextIntlPlugin();
 
 export default withSentryConfig(withNextIntl(nextConfig), {

@@ -54,9 +54,8 @@ test("the Owner promotes a Viewer and transfers ownership to an Admin", async ({
   await expect(page.getByText("Updated.")).toBeVisible();
 
   await page.getByRole("button", { name: "Transfer ownership" }).click();
-  await page
-    .getByRole("combobox", { name: "New Owner" })
-    .selectOption({ label: "Ada Admin" });
+  await page.getByRole("combobox", { name: "New Owner" }).click();
+  await page.getByRole("option", { name: "Ada Admin" }).click();
   await page.getByLabel("Type Transfer Club to confirm").fill("Transfer Club");
   await page.getByRole("button", { name: "Confirm" }).click();
   await expect(

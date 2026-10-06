@@ -24,7 +24,7 @@ export default function SettingsPage() {
   return (
     <div className="flex flex-col gap-4">
       <h1 className="font-display text-3xl">{t("title")}</h1>
-      <GeneralSection workspace={workspace.data} />
+      <GeneralSection key={workspace.data.id} workspace={workspace.data} />
       <PeopleSection workspace={workspace.data} myId={me.data.userId}>
         <InvitesPanel workspace={workspace.data} />
       </PeopleSection>

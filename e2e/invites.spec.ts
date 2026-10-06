@@ -106,3 +106,8 @@ test("a revoked invite says it was cancelled", async ({ page, browser }) => {
   await person.goto(link!);
   await expect(person.getByText("This invite was cancelled.")).toBeVisible();
 });
+
+test("invite pages never send the token as a referrer", async ({ request }) => {
+  const response = await request.get(`/invite/${"A".repeat(43)}`);
+  expect(response.headers()["referrer-policy"]).toBe("no-referrer");
+});

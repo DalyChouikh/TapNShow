@@ -14,6 +14,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ME_QUERY_KEY } from "@/hooks/use-me";
 import { membersQueryKey } from "@/hooks/use-members";
 import { workspaceQueryKey } from "@/hooks/use-workspace";
@@ -157,23 +164,23 @@ export function DangerZone({
         {admins.length === 0 ? (
           <p className="font-bold">{t("noAdmins")}</p>
         ) : (
-          <label className="flex flex-col gap-1.5 text-sm font-bold text-ink">
-            {t("transferTo")}
-            <select
-              value={newOwner}
-              onChange={(event) => setNewOwner(event.target.value)}
-              className="min-h-11 rounded-control border-[length:var(--tn-border-width)] border-outline bg-surface px-3 text-base font-normal"
-            >
-              <option value="" disabled>
-                {t("choose")}
-              </option>
-              {admins.map((admin) => (
-                <option key={admin.userId} value={admin.userId}>
-                  {admin.displayName ?? admin.email}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="flex flex-col gap-1.5">
+            <span id="transfer-to-label" className="text-sm font-bold text-ink">
+              {t("transferTo")}
+            </span>
+            <Select value={newOwner} onValueChange={setNewOwner}>
+              <SelectTrigger aria-labelledby="transfer-to-label">
+                <SelectValue placeholder={t("choose")} />
+              </SelectTrigger>
+              <SelectContent>
+                {admins.map((admin) => (
+                  <SelectItem key={admin.userId} value={admin.userId}>
+                    {admin.displayName ?? admin.email}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         )}
       </ConfirmNameDialog>
 
