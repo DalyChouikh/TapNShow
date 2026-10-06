@@ -1,20 +1,69 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { apiError } from "@/server/http/errors";
-import { requireUser } from "@/server/http/require-user";
-import { getWorkspaceBySlug } from "@/server/queries/workspaces";
-import { createSupabaseServerClient } from "@/server/supabase/server-client";
+import { fromDatabaseError, ok } from "@/server/http/errors";
+import { parseJsonBody, rejectCrossOrigin } from "@/server/http/request";
+import { loadWorkspaceContext } from "@/server/http/workspace-context";
+import { deleteWorkspace } from "@/server/queries/members";
+import { updateWorkspace } from "@/server/queries/workspaces";
+import { confirmNameBodySchema } from "@/shared/api/members";
+import { updateWorkspaceBodySchema } from "@/shared/api/workspaces";
 
-/** A workspace the caller belongs to, with their role. */
+type Ctx = RouteContext<"/api/workspaces/[slug]">;
+
+/** A workspace the caller belongs to, with their role (401 / 404 otherwise). */
 export async function GET(
   _request: NextRequest,
-  ctx: RouteContext<"/api/workspaces/[slug]">,
+  ctx: Ctx,
 ): Promise<NextResponse> {
-  const { slug } = await ctx.params;
-  const supabase = await createSupabaseServerClient();
-  const user = await requireUser(supabase);
-  if (!user) {
-    return apiError("unauthenticated");
+  const context = await loadWorkspaceContext((await ctx.params).slug);
+  return context.ok ? NextResponse.json(context.workspace) : context.response;
+}
+
+/** Renames the workspace and/or changes its timezone (Owner/Admin via RLS). */
+export async function PATCH(
+  request: NextRequest,
+  ctx: Ctx,
+): Promise<NextResponse> {
+  const blocked = rejectCrossOrigin(request);
+  if (blocked) {
+    return blocked;
   }
-  const workspace = await getWorkspaceBySlug(supabase, user.id, slug);
-  return workspace ? NextResponse.json(workspace) : apiError("not_found");
+  const context = await loadWorkspaceContext((await ctx.params).slug);
+  if (!context.ok) {
+    return context.response;
+  }
+  const body = await parseJsonBody(request, updateWorkspaceBodySchema);
+  if (!body.ok) {
+    return body.response;
+  }
+  const { error } = await updateWorkspace(
+    context.supabase,
+    context.workspace.id,
+    body.data,
+  );
+  return error ? fromDatabaseError(error) : ok();
+}
+
+/** Deletes the workspace after the typed name (Owner only, `delete_workspace`). */
+export async function DELETE(
+  request: NextRequest,
+  ctx: Ctx,
+): Promise<NextResponse> {
+  const blocked = rejectCrossOrigin(request);
+  if (blocked) {
+    return blocked;
+  }
+  const context = await loadWorkspaceContext((await ctx.params).slug);
+  if (!context.ok) {
+    return context.response;
+  }
+  const body = await parseJsonBody(request, confirmNameBodySchema);
+  if (!body.ok) {
+    return body.response;
+  }
+  const { error } = await deleteWorkspace(
+    context.supabase,
+    context.workspace.id,
+    body.data.confirmName,
+  );
+  return error ? fromDatabaseError(error) : ok();
 }

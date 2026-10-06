@@ -158,7 +158,42 @@
     "listsBody": "Soon you'll import your members from a spreadsheet here."
   },
   "Settings": {
-    "title": "Settings"
+    "title": "Settings",
+    "general": {
+      "title": "General",
+      "nameLabel": "Workspace name",
+      "timezoneLabel": "Timezone",
+      "save": "Save changes",
+      "saved": "Saved.",
+      "readOnly": "Only Owners and Admins can change these."
+    },
+    "people": {
+      "title": "People",
+      "you": "You",
+      "checkIn": "Can check in",
+      "actionsFor": "Actions for {name}",
+      "makeAdmin": "Make Admin",
+      "makeViewer": "Make Viewer",
+      "allowCheckIn": "Allow check-in",
+      "disallowCheckIn": "Remove check-in",
+      "remove": "Remove from workspace",
+      "removeConfirm": "Remove {name} from {workspace}?",
+      "updated": "Updated."
+    },
+    "danger": {
+      "title": "Danger zone",
+      "leave": "Leave workspace",
+      "leaveConfirm": "Leave {workspace}? You'll need a new invite to come back.",
+      "transfer": "Transfer ownership",
+      "transferBody": "Pick an Admin to become the Owner. You'll stay as an Admin.",
+      "transferTo": "New Owner",
+      "noAdmins": "Make someone an Admin first.",
+      "delete": "Delete workspace",
+      "deleteBody": "This permanently deletes {workspace} and everything in it.",
+      "typeName": "Type {workspace} to confirm",
+      "confirm": "Confirm",
+      "choose": "Choose an Admin"
+    }
   },
   "WorkspaceHome": {
     "title": "Welcome to {workspace}",

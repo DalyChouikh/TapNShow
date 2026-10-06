@@ -31,5 +31,8 @@ describe("Dialog", () => {
     const dialog = screen.getByRole("dialog", { name: "Delete workspace" });
     expect(dialog).toHaveAccessibleDescription("Gone forever.");
     expect(dialog.className).toContain("shadow-brutal");
+    // The backdrop must darken the page in both themes (`ink` turns light in dark mode).
+    const overlay = document.querySelector('[data-slot="dialog-overlay"]');
+    expect(overlay?.className).toContain("bg-on-fill/50");
   });
 });

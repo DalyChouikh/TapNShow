@@ -54,3 +54,26 @@ export async function getWorkspaceBySlug(
       }
     : null;
 }
+
+/**
+ * Renames / changes the timezone (RLS: Owner/Admin). Zero updated rows means the caller may
+ * not edit it, reported as `tn:forbidden` so routes map it like database refusals.
+ */
+export async function updateWorkspace(
+  client: Client,
+  workspaceId: string,
+  patch: { name?: string; timezone?: string },
+): Promise<{ error: { code?: string; message: string } | null }> {
+  const { data, error } = await client
+    .from("workspaces")
+    .update(patch)
+    .eq("id", workspaceId)
+    .select("id");
+  if (error) {
+    return { error };
+  }
+  return {
+    error:
+      data.length === 0 ? { code: "P0001", message: "tn:forbidden" } : null,
+  };
+}
