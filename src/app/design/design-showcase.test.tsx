@@ -24,4 +24,20 @@ describe("DesignShowcase response demo", () => {
     );
     expect(screen.getByText("CONFIRMED")).toBeInTheDocument();
   });
+
+  it("shows the styled form controls", () => {
+    renderWithProviders(<DesignShowcase />);
+    expect(
+      screen.getByRole("region", { name: "Controls" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: "Include alumni" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("switch", { name: "First row is headers" }),
+    ).toBeChecked();
+    expect(
+      screen.getByRole("radiogroup", { name: "Source" }),
+    ).toBeInTheDocument();
+  });
 });
