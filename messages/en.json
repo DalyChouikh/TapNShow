@@ -44,6 +44,17 @@
       "intro": "Type this code on the {appName} sign-in screen:",
       "expiry": "It works once and expires in {minutes} minutes.",
       "ignore": "Didn't ask for a code? Ignore this email. Nobody can sign in without it."
+    },
+    "invite": {
+      "subject": "{inviter} invited you to {workspace} on {appName}",
+      "preview": "Join {workspace} as {role}. The link expires in {days} days.",
+      "heading": "You're invited to {workspace}",
+      "body": "{inviter} invited you to join {workspace} on {appName} as {role}.",
+      "roleViewer": "a Viewer: you'll see meetings, answers and reasons",
+      "roleAdmin": "an Admin: you'll help run meetings",
+      "button": "Accept invite",
+      "expiry": "The link works once and expires in {days} days. Sign in with this email address to accept.",
+      "fallback": "If the button doesn't work, copy this link:"
     }
   },
   "ApiErrors": {
@@ -206,5 +217,50 @@
     "soon": "Coming soon",
     "viewerTitle": "You're a Viewer in {workspace}",
     "viewerBody": "You'll see meetings, answers and reasons here once organizers start sending invites."
+  },
+  "Invites": {
+    "title": "Invites",
+    "invite": "Invite someone",
+    "empty": "No pending invites.",
+    "pending": "Pending",
+    "expired": "Expired",
+    "expires": "Expires {date}",
+    "copyLink": "Copy link",
+    "resend": "Email again",
+    "revoke": "Cancel invite",
+    "actionsFor": "Invite actions for {email}",
+    "copied": "Link copied. It works once, for {email} only.",
+    "sent": "Invite sent to {email}.",
+    "revoked": "Invite cancelled.",
+    "dialogTitle": "Invite to {workspace}",
+    "emailLabel": "Email address",
+    "roleLabel": "Role",
+    "roleViewer": "Viewer: sees meetings, answers and reasons",
+    "roleAdmin": "Admin: helps run the workspace",
+    "deliveryLabel": "How should they get it?",
+    "deliveryEmail": "Email it from TapNShow",
+    "deliveryLink": "Give me a link to share",
+    "submit": "Create invite",
+    "linkLabel": "Invite link",
+    "linkHint": "Works once, only for {email}, for 7 days.",
+    "copyInstead": "Copy link instead",
+    "done": "Done"
+  },
+  "InvitePage": {
+    "signInTitle": "Sign in to see your invitation",
+    "signInBody": "Use the email address the invite was sent to.",
+    "signIn": "Sign in",
+    "readyTitle": "Join {workspace}",
+    "readyBody": "You're invited as {role}.",
+    "accept": "Accept invite",
+    "wrongTitle": "This invite is for {email}",
+    "wrongBody": "You're signed in with another address. Switch accounts to accept it.",
+    "switchAccount": "Switch account",
+    "expired": "This invite has expired. Ask the organizer for a new one.",
+    "revoked": "This invite was cancelled.",
+    "used": "This invite was already used.",
+    "notFound": "This invite link isn't valid. Check that you copied all of it.",
+    "alreadyMember": "You're already in {workspace}.",
+    "open": "Open workspace"
   }
 }
