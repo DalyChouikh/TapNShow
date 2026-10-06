@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import type { z } from "zod";
 
 /**
  * Runs SQL as the local `postgres` superuser through the Supabase CLI. Test setup only: used for
@@ -20,4 +21,17 @@ export function addGoogleIdentity(
     `insert into auth.identities (provider_id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
      values ('${crypto.randomUUID()}', '${userId}', $json$${data}$json$::jsonb, 'google', now(), now(), now())`,
   );
+}
+
+/**
+ * Runs SQL as the local `postgres` superuser and parses the rows (test assertions only).
+ * `--agent no` keeps the CLI output a plain JSON array on every machine.
+ */
+export function queryLocalSql<T>(sql: string, schema: z.ZodType<T>): T {
+  const output = execFileSync(
+    "supabase",
+    ["db", "query", "--local", "--output-format", "json", "--agent", "no", sql],
+    { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+  );
+  return schema.parse(JSON.parse(output));
 }
