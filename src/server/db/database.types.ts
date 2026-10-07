@@ -181,6 +181,31 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"outbox_jobs": {
+                  Row: {
+                    "attempts": number,"created_at": string,"id": string,"idempotency_key": string,"invitee_id": string | null,"kind": Database["public"]['Enums']["job_kind"],"last_error": string | null,"locked_until": string | null,"payload": NonNullable<Json>,"run_after": string,"run_id": string | null,"send_started_at": string | null,"status": Database["public"]['Enums']["job_status"],"updated_at": string,"workspace_id": string
+                  }
+                  Insert: {
+                    "attempts"?: number,"created_at"?: string,"id"?: string,"idempotency_key": string,"invitee_id"?: string | null,"kind": Database["public"]['Enums']["job_kind"],"last_error"?: string | null,"locked_until"?: string | null,"payload"?: NonNullable<Json>,"run_after"?: string,"run_id"?: string | null,"send_started_at"?: string | null,"status"?: Database["public"]['Enums']["job_status"],"updated_at"?: string,"workspace_id": string
+                  }
+                  Update: {
+                    "attempts"?: number,"created_at"?: string,"id"?: string,"idempotency_key"?: string,"invitee_id"?: string | null,"kind"?: Database["public"]['Enums']["job_kind"],"last_error"?: string | null,"locked_until"?: string | null,"payload"?: NonNullable<Json>,"run_after"?: string,"run_id"?: string | null,"send_started_at"?: string | null,"status"?: Database["public"]['Enums']["job_status"],"updated_at"?: string,"workspace_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "outbox_jobs_invitee_id_fkey"
+      columns: ["invitee_id"]
+isOneToOne: false
+      referencedRelation: "meeting_invitees"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "outbox_jobs_workspace_id_fkey"
+      columns: ["workspace_id"]
+isOneToOne: false
+      referencedRelation: "workspaces"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"profiles": {
                   Row: {
                     "avatar_url": string | null,"created_at": string,"display_name": string | null,"last_workspace_id": string | null,"locale": string,"updated_at": string,"user_id": string
@@ -212,12 +237,31 @@ isOneToOne: false
                   }
                   Relationships: [
                     {
+      foreignKeyName: "send_log_job_fk"
+      columns: ["job_id"]
+isOneToOne: false
+      referencedRelation: "outbox_jobs"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "send_log_workspace_id_fkey"
       columns: ["workspace_id"]
 isOneToOne: false
       referencedRelation: "workspaces"
       referencedColumns: ["id"]
     }
+                  ]
+                },"sender_leases": {
+                  Row: {
+                    "google_sub": string,"locked_until": string,"run_id": string
+                  }
+                  Insert: {
+                    "google_sub": string,"locked_until": string,"run_id": string
+                  }
+                  Update: {
+                    "google_sub"?: string,"locked_until"?: string,"run_id"?: string
+                  }
+                  Relationships: [
+                    
                   ]
                 },"workspace_invites": {
                   Row: {
@@ -335,6 +379,33 @@ isOneToOne: false
 "disconnect_google_connection":
 { Args: { "p_connection": string }; Returns: Json
                            },
+"dispatch_claim":
+{ Args: { "p_lease_seconds": number,"p_limit": number,"p_run": string }; Returns: Json
+                           },
+"dispatch_defer_sender":
+{ Args: { "p_connection": string,"p_error": string,"p_run": string,"p_until": string }; Returns: undefined
+                           },
+"dispatch_finish":
+{ Args: { "p_error": string,"p_job": string,"p_outcome": Database["public"]['Enums']["invitee_email_status"],"p_token_hash": string }; Returns: undefined
+                           },
+"dispatch_mark_broken":
+{ Args: { "p_connection": string,"p_reason": string,"p_run": string }; Returns: Json
+                           },
+"dispatch_release":
+{ Args: { "p_run": string }; Returns: undefined
+                           },
+"dispatch_reserve":
+{ Args: { "p_job": string }; Returns: Json
+                           },
+"dispatch_retry":
+{ Args: { "p_error": string,"p_job": string }; Returns: Json
+                           },
+"dispatch_set_thread":
+{ Args: { "p_connection": string,"p_meeting": string,"p_root_message_id": string,"p_thread_id": string }; Returns: undefined
+                           },
+"dispatch_unclaim":
+{ Args: { "p_jobs": (string)[] }; Returns: undefined
+                           },
 "healthcheck":
 { Args: Record<PropertyKey, never>; Returns: string
                            },
@@ -360,6 +431,9 @@ isOneToOne: false
 "meeting_audience":
 { Args: { "p_meeting": string }; Returns: Json
                            },
+"meeting_progress":
+{ Args: { "p_meeting": string }; Returns: Json
+                           },
 "remove_member":
 { Args: { "p_user": string,"p_workspace": string }; Returns: undefined
                            },
@@ -374,6 +448,9 @@ isOneToOne: false
                            },
 "save_google_connection":
 { Args: { "p_google_email": string,"p_google_sub": string,"p_scopes": (string)[],"p_token_encrypted": string,"p_user": string }; Returns: string
+                           },
+"send_meeting":
+{ Args: { "p_meeting": string }; Returns: Json
                            },
 "set_contact_lists":
 { Args: { "p_contact": string,"p_list_ids": (string)[] }; Returns: undefined
@@ -392,7 +469,7 @@ isOneToOne: false
                            }
           }
           Enums: {
-            "audience_mode": "include"|"exclude","connection_status": "active"|"broken","invitee_email_status": "queued"|"sent"|"skipped"|"failed"|"unknown","location_mode": "in_person"|"online"|"hybrid","meeting_status": "draft"|"scheduled"|"cancelled","response_mode": "announcement"|"rsvp"|"attendance","unsubscribe_via": "link"|"report","workspace_role": "owner"|"admin"|"viewer"
+            "audience_mode": "include"|"exclude","connection_status": "active"|"broken","invitee_email_status": "queued"|"sent"|"skipped"|"failed"|"unknown","job_kind": "invite"|"calendar_confirm"|"update"|"cancel"|"reminder"|"sheet_sync"|"push"|"system_email","job_status": "pending"|"processing"|"done"|"failed"|"paused","location_mode": "in_person"|"online"|"hybrid","meeting_status": "draft"|"scheduled"|"cancelled","response_mode": "announcement"|"rsvp"|"attendance","unsubscribe_via": "link"|"report","workspace_role": "owner"|"admin"|"viewer"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -508,7 +585,7 @@ export type CompositeTypes<
 export const Constants = {
   "public": {
           Enums: {
-            "audience_mode": ["include", "exclude"],"connection_status": ["active", "broken"],"invitee_email_status": ["queued", "sent", "skipped", "failed", "unknown"],"location_mode": ["in_person", "online", "hybrid"],"meeting_status": ["draft", "scheduled", "cancelled"],"response_mode": ["announcement", "rsvp", "attendance"],"unsubscribe_via": ["link", "report"],"workspace_role": ["owner", "admin", "viewer"]
+            "audience_mode": ["include", "exclude"],"connection_status": ["active", "broken"],"invitee_email_status": ["queued", "sent", "skipped", "failed", "unknown"],"job_kind": ["invite", "calendar_confirm", "update", "cancel", "reminder", "sheet_sync", "push", "system_email"],"job_status": ["pending", "processing", "done", "failed", "paused"],"location_mode": ["in_person", "online", "hybrid"],"meeting_status": ["draft", "scheduled", "cancelled"],"response_mode": ["announcement", "rsvp", "attendance"],"unsubscribe_via": ["link", "report"],"workspace_role": ["owner", "admin", "viewer"]
           }
         }
 } as const
