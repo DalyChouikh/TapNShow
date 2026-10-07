@@ -6347,7 +6347,7 @@ Import `REFRESH_FAILURE_DEFER_MS` and `THROTTLE_DEFER_MS` from `@/config/meeting
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { getServerEnv } from "@/config/env";
-import { GMAIL_SEND_TIMEOUT_MS } from "@/config/meetings";
+import { GMAIL_SEND_TIMEOUT_MS } from "@/config/gmail";
 import { publicEnv } from "@/config/public-env";
 import { requireSecret } from "@/config/secrets";
 import { renderSenderBrokenEmail } from "@/emails/sender-broken-email";
