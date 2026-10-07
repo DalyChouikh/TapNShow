@@ -377,22 +377,18 @@ describe("writes go through the functions (security review)", () => {
     const meeting = await seedMeeting(workspace.id);
     const [a] = await seedContacts(workspace.id, 1, "direct");
     const list = await seedList(workspace.id, "Direct");
-    const people = await admin.client
-      .from("meeting_audience_people")
-      .insert({
-        workspace_id: workspace.id,
-        meeting_id: meeting,
-        contact_id: a,
-        mode: "include",
-      });
+    const people = await admin.client.from("meeting_audience_people").insert({
+      workspace_id: workspace.id,
+      meeting_id: meeting,
+      contact_id: a,
+      mode: "include",
+    });
     expect(people.error?.code).toBe("42501");
-    const lists = await admin.client
-      .from("meeting_audience")
-      .insert({
-        workspace_id: workspace.id,
-        meeting_id: meeting,
-        list_id: list,
-      });
+    const lists = await admin.client.from("meeting_audience").insert({
+      workspace_id: workspace.id,
+      meeting_id: meeting,
+      list_id: list,
+    });
     expect(lists.error?.code).toBe("42501");
   });
 
