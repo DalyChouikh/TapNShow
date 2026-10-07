@@ -25,6 +25,14 @@ describe("scrubUrl", () => {
     expect(scrubUrl("/w/club?state=open")).toBe("/w/club?state=open");
   });
 
+  it("scrubs OAuth code and state on the Gmail connect callback", () => {
+    const scrubbed = scrubUrl(
+      "/api/integrations/google/callback?code=4/0Ab&state=xyz",
+    );
+    expect(scrubbed).not.toContain("4/0Ab");
+    expect(scrubbed).not.toContain("xyz");
+  });
+
   it("scrubs invite tokens like personal links", () => {
     expect(
       scrubUrl("https://tapnshow.vercel.app/invite/Abc_123-xyz?next=1"),

@@ -4,8 +4,9 @@
  */
 const TOKEN_LINK = /(?:\/|%2f)(r|invite)(?:\/|%2f)(?!\[|%5b)[^/?#&\s"'\\]+/gi;
 
-/** Google OAuth callback URL with its query string (the `code` is a one-time credential). */
-const OAUTH_CALLBACK = /\/api\/auth\/google\/callback\?[^#\s"']*/gi;
+/** Google OAuth callback URLs (sign-in and Gmail connect) with their query string (the `code` is a one-time credential). */
+const OAUTH_CALLBACK =
+  /\/api\/(?:auth|integrations)\/google\/callback\?[^#\s"']*/gi;
 
 /** `code` and `state` values inside an OAuth callback query string. */
 const OAUTH_SECRET_PARAM = /([?&](?:code|state)=)[^&#\s"']+/gi;
