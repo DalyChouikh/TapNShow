@@ -25,3 +25,6 @@ export const GOOGLE_REVOKE_ENDPOINT = "https://oauth2.googleapis.com/revoke";
 
 /** `users.messages.send` path under `GMAIL_API_BASE_URL`. */
 export const GMAIL_SEND_PATH = "/gmail/v1/users/me/messages/send";
+
+/** Give up waiting for Gmail after this long; the outcome is then unknown (spec §8). */
+export const GMAIL_SEND_TIMEOUT_MS = 20_000;

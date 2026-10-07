@@ -16,6 +16,8 @@ export const emailTheme = {
   outline: palette.light.outline,
   primary: palette.light.primary,
   warning: palette.light.warning,
+  success: palette.light.success,
+  danger: palette.light.danger,
   border: `${Math.ceil(px(shape.borderWidth))}px`,
   shadowBorder: `${Math.ceil(px(shape.borderWidth)) + px(shape.shadow)}px`,
   radiusCard: shape.radiusCard,
