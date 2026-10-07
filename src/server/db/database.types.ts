@@ -24,6 +24,19 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"google_connections": {
+                  Row: {
+                    "broken_at": string | null,"broken_reason": string | null,"created_at": string,"google_email": string,"google_sub": string,"granted_scopes": (string)[],"id": string,"refresh_token_encrypted": string,"status": Database["public"]['Enums']["connection_status"],"updated_at": string,"user_id": string
+                  }
+                  Insert: {
+                    "broken_at"?: string | null,"broken_reason"?: string | null,"created_at"?: string,"google_email": string,"google_sub": string,"granted_scopes": (string)[],"id"?: string,"refresh_token_encrypted": string,"status"?: Database["public"]['Enums']["connection_status"],"updated_at"?: string,"user_id": string
+                  }
+                  Update: {
+                    "broken_at"?: string | null,"broken_reason"?: string | null,"created_at"?: string,"google_email"?: string,"google_sub"?: string,"granted_scopes"?: (string)[],"id"?: string,"refresh_token_encrypted"?: string,"status"?: Database["public"]['Enums']["connection_status"],"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"list_contacts": {
                   Row: {
                     "contact_id": string,"created_at": string,"list_id": string,"workspace_id": string
@@ -87,6 +100,25 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"send_log": {
+                  Row: {
+                    "google_sub": string,"id": number,"job_id": string | null,"sent_at": string,"workspace_id": string | null
+                  }
+                  Insert: {
+                    "google_sub": string,"id"?: never,"job_id"?: string | null,"sent_at"?: string,"workspace_id"?: string | null
+                  }
+                  Update: {
+                    "google_sub"?: string,"id"?: never,"job_id"?: string | null,"sent_at"?: string,"workspace_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "send_log_workspace_id_fkey"
+      columns: ["workspace_id"]
+isOneToOne: false
+      referencedRelation: "workspaces"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"workspace_invites": {
                   Row: {
                     "accepted_at": string | null,"accepted_by": string | null,"created_at": string,"email": string,"expires_at": string,"id": string,"invited_by": string | null,"revoked_at": string | null,"role": Database["public"]['Enums']["workspace_role"],"token_hash": string,"updated_at": string,"workspace_id": string
@@ -127,16 +159,22 @@ isOneToOne: false
                   ]
                 },"workspaces": {
                   Row: {
-                    "created_at": string,"id": string,"locale": string,"name": string,"slug": string,"timezone": string,"updated_at": string
+                    "created_at": string,"default_comments_enabled": boolean,"default_delay_options": (number)[],"default_duration_minutes": number,"default_footer_note": string,"default_reason_required": boolean,"default_response_mode": Database["public"]['Enums']["response_mode"],"id": string,"locale": string,"name": string,"sender_connection_id": string | null,"slug": string,"timezone": string,"updated_at": string
                   }
                   Insert: {
-                    "created_at"?: string,"id"?: string,"locale"?: string,"name": string,"slug": string,"timezone": string,"updated_at"?: string
+                    "created_at"?: string,"default_comments_enabled"?: boolean,"default_delay_options"?: (number)[],"default_duration_minutes"?: number,"default_footer_note"?: string,"default_reason_required"?: boolean,"default_response_mode"?: Database["public"]['Enums']["response_mode"],"id"?: string,"locale"?: string,"name": string,"sender_connection_id"?: string | null,"slug": string,"timezone": string,"updated_at"?: string
                   }
                   Update: {
-                    "created_at"?: string,"id"?: string,"locale"?: string,"name"?: string,"slug"?: string,"timezone"?: string,"updated_at"?: string
+                    "created_at"?: string,"default_comments_enabled"?: boolean,"default_delay_options"?: (number)[],"default_duration_minutes"?: number,"default_footer_note"?: string,"default_reason_required"?: boolean,"default_response_mode"?: Database["public"]['Enums']["response_mode"],"id"?: string,"locale"?: string,"name"?: string,"sender_connection_id"?: string | null,"slug"?: string,"timezone"?: string,"updated_at"?: string
                   }
                   Relationships: [
-                    
+                    {
+      foreignKeyName: "workspaces_sender_connection_id_fkey"
+      columns: ["sender_connection_id"]
+isOneToOne: false
+      referencedRelation: "google_connections"
+      referencedColumns: ["id"]
+    }
                   ]
                 }
           }
@@ -165,9 +203,16 @@ isOneToOne: false
 "create_workspace":
 { Args: { "p_name": string,"p_slug": string,"p_timezone": string }; Returns: {
               "created_at": string,
+"default_comments_enabled": boolean,
+"default_delay_options": (number)[],
+"default_duration_minutes": number,
+"default_footer_note": string,
+"default_reason_required": boolean,
+"default_response_mode": Database["public"]['Enums']["response_mode"],
 "id": string,
 "locale": string,
 "name": string,
+"sender_connection_id": string | null,
 "slug": string,
 "timezone": string,
 "updated_at": string
@@ -180,6 +225,9 @@ isOneToOne: false
       } },
 "delete_workspace":
 { Args: { "p_confirm_name": string,"p_workspace": string }; Returns: undefined
+                           },
+"disconnect_google_connection":
+{ Args: { "p_connection": string }; Returns: Json
                            },
 "healthcheck":
 { Args: Record<PropertyKey, never>; Returns: string
@@ -212,15 +260,24 @@ isOneToOne: false
 "roster":
 { Args: { "p_workspace": string }; Returns: Json
                            },
+"save_google_connection":
+{ Args: { "p_google_email": string,"p_google_sub": string,"p_scopes": (string)[],"p_token_encrypted": string }; Returns: string
+                           },
 "set_contact_lists":
 { Args: { "p_contact": string,"p_list_ids": (string)[] }; Returns: undefined
                            },
+"set_workspace_sender":
+{ Args: { "p_connection": string,"p_workspace": string }; Returns: undefined
+                           },
 "transfer_ownership":
 { Args: { "p_confirm_name": string,"p_new_owner": string,"p_workspace": string }; Returns: undefined
+                           },
+"workspace_sender":
+{ Args: { "p_workspace": string }; Returns: Json
                            }
           }
           Enums: {
-            "workspace_role": "owner"|"admin"|"viewer"
+            "connection_status": "active"|"broken","location_mode": "in_person"|"online"|"hybrid","response_mode": "announcement"|"rsvp"|"attendance","workspace_role": "owner"|"admin"|"viewer"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -336,7 +393,7 @@ export type CompositeTypes<
 export const Constants = {
   "public": {
           Enums: {
-            "workspace_role": ["owner", "admin", "viewer"]
+            "connection_status": ["active", "broken"],"location_mode": ["in_person", "online", "hybrid"],"response_mode": ["announcement", "rsvp", "attendance"],"workspace_role": ["owner", "admin", "viewer"]
           }
         }
 } as const
