@@ -16,6 +16,7 @@ const PRIVATE_FUNCTIONS_FOR_AUTHENTICATED = [
   "create_invite",
   "create_workspace",
   "delete_workspace",
+  "disconnect_google_connection",
   "hit_user_rate_limit",
   "invite_preview",
   "is_member",
@@ -26,7 +27,11 @@ const PRIVATE_FUNCTIONS_FOR_AUTHENTICATED = [
   "renew_invite",
   "revoke_invite",
   "role_of",
+  "save_google_connection",
+  "set_workspace_sender",
   "transfer_ownership",
+  "valid_delay_options",
+  "workspace_sender",
 ];
 
 describe("function security (spec §11)", () => {
