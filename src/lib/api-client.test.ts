@@ -35,6 +35,14 @@ describe("apiRequest", () => {
     ).rejects.toMatchObject({ code: "workspace_limit", status: 409 });
   });
 
+  it("passes PUT through with a JSON body", async () => {
+    respond(200, { name: "Club" });
+    await apiRequest("/api/x", { schema, method: "PUT", body: { a: 1 } });
+    const [, init] = vi.mocked(fetch).mock.calls[0];
+    expect(init?.method).toBe("PUT");
+    expect(init?.body).toBe('{"a":1}');
+  });
+
   it("sends the user to sign-in on 401", async () => {
     respond(401, { error: { code: "unauthenticated" } });
     const onUnauthenticated = vi.fn();
