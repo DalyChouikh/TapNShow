@@ -99,6 +99,7 @@ export function RosterGrid({
     : 0;
   const allShown =
     contacts.length > 0 && contacts.every((c) => selectedIds.has(c.id));
+  const someShown = contacts.some((c) => selectedIds.has(c.id));
   const nameError = (value: string) =>
     contactNameSchema.safeParse(value).success ? null : t("invalidName");
   const emailError = (value: string) =>
@@ -118,7 +119,9 @@ export function RosterGrid({
             {canEdit ? (
               <th className="p-2">
                 <Checkbox
-                  checked={allShown}
+                  checked={
+                    allShown ? true : someShown ? "indeterminate" : false
+                  }
                   onCheckedChange={() => onToggleAll(contacts.map((c) => c.id))}
                   aria-label={t("selectAll")}
                 />

@@ -98,4 +98,11 @@ describe("RosterGrid", () => {
     );
     expect(onToggle).toHaveBeenCalledWith(IDS.sarra);
   });
+
+  it("shows a mixed header checkbox when only some people are selected", () => {
+    renderGrid(new Set([IDS.ines]));
+    expect(
+      screen.getByRole("checkbox", { name: "Select everyone shown" }),
+    ).toHaveAttribute("aria-checked", "mixed");
+  });
 });

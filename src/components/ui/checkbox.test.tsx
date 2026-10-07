@@ -24,4 +24,11 @@ describe("Checkbox", () => {
       ),
     ).toBeNull();
   });
+
+  it("shows a dash and reports mixed when indeterminate", () => {
+    renderWithProviders(<Checkbox aria-label="Some" checked="indeterminate" />);
+    const box = screen.getByRole("checkbox", { name: "Some" });
+    expect(box).toHaveAttribute("aria-checked", "mixed");
+    expect(box.querySelectorAll("svg")).toHaveLength(2);
+  });
 });

@@ -444,6 +444,7 @@
     "renamed": "{from} → {to}",
     "mergedRows": "Merged with {rows, plural, one {row} other {rows}} {list}",
     "importAction": "{count, plural, =0 {Nothing to import} one {Import # person} other {Import # people}}",
-    "done": "{added} added, {updated} updated{lists, plural, =0 {} one {, # list created} other {, # lists created}}."
+    "done": "{added} added, {updated} updated{lists, plural, =0 {} one {, # list created} other {, # lists created}}.",
+    "mergedInto": "Row {row} merged into row {into} ({email})"
   }
 }

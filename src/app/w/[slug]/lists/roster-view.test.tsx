@@ -1,12 +1,13 @@
 import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ComponentType } from "react";
+import { useState, type ComponentType } from "react";
 import { toast } from "sonner";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { UNDO_DELETE_MS } from "@/config/roster";
 import { json, routeFetch } from "@/test/fetch";
 import { setWideViewport } from "@/test/match-media";
 import { IDS, rosterFixture } from "@/test/fixtures/roster";
+import type { Roster } from "@/shared/api/roster";
 import { renderWithProviders } from "@/test/render";
 import { okContext } from "@/test/workspace-context-mock";
 import { RosterView } from "./roster-view";
@@ -91,6 +92,54 @@ describe("RosterView", () => {
       <RosterView workspace={owner} roster={everyoneListed} />,
     );
     expect(screen.queryByRole("button", { name: /^No list/ })).toBeNull();
+  });
+
+  it("falls back to All when the chosen filter stops matching anything", async () => {
+    const withoutDesign: Roster = {
+      ...rosterFixture,
+      lists: rosterFixture.lists.filter((list) => list.id !== IDS.design),
+      contacts: rosterFixture.contacts.map((contact) => ({
+        ...contact,
+        listIds: contact.listIds.filter((id) => id !== IDS.design),
+      })),
+    };
+    const everyoneListed: Roster = {
+      ...rosterFixture,
+      contacts: rosterFixture.contacts.map((contact) => ({
+        ...contact,
+        listIds: contact.listIds.length ? contact.listIds : [IDS.dev],
+      })),
+    };
+    function Swapper() {
+      const [roster, setRoster] = useState<Roster>(rosterFixture);
+      return (
+        <>
+          <button type="button" onClick={() => setRoster(withoutDesign)}>
+            drop design
+          </button>
+          <button type="button" onClick={() => setRoster(everyoneListed)}>
+            list everyone
+          </button>
+          <RosterView workspace={owner} roster={roster} />
+        </>
+      );
+    }
+    const user = userEvent.setup();
+    renderWithProviders(<Swapper />);
+    await user.click(screen.getByRole("button", { name: "Design 1" }));
+    await user.click(screen.getByRole("button", { name: "drop design" }));
+    expect(screen.getByRole("button", { name: "All 3" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(people()).toHaveLength(3);
+    await user.click(screen.getByRole("button", { name: "No list 1" }));
+    await user.click(screen.getByRole("button", { name: "list everyone" }));
+    expect(screen.getByRole("button", { name: "All 3" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(people()).toHaveLength(3);
   });
 
   it("scrolls the list chips sideways without a visible scrollbar", () => {

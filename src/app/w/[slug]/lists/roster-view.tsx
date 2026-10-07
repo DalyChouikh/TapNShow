@@ -9,7 +9,11 @@ import { Chip } from "@/components/ui/chip";
 import { Input } from "@/components/ui/input";
 import { ROSTER_GRID_MEDIA } from "@/config/roster";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import { filterContacts, type ListFilter } from "@/lib/roster/filter-contacts";
+import {
+  filterContacts,
+  NO_LIST,
+  type ListFilter,
+} from "@/lib/roster/filter-contacts";
 import { withListCounts } from "@/lib/roster/roster-cache";
 import type { Contact, Roster } from "@/shared/api/roster";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
@@ -58,7 +62,20 @@ export function RosterView({
     contacts: roster.contacts.filter((contact) => !pendingIds.has(contact.id)),
   });
   const people = live.contacts;
-  const visible = filterContacts(people, { query, listId });
+  const noListCount = people.filter(
+    (contact) => contact.listIds.length === 0,
+  ).length;
+  // A filter that stopped matching (its list was deleted, or nobody is listless any more) falls
+  // back to "All" instead of an empty view with no chip pressed (#119).
+  const stale =
+    listId === NO_LIST
+      ? noListCount === 0
+      : listId !== null && !live.lists.some((list) => list.id === listId);
+  if (stale) {
+    setListId(null);
+  }
+  const activeListId = stale ? null : listId;
+  const visible = filterContacts(people, { query, listId: activeListId });
   const openContact = people.find((contact) => contact.id === openContactId);
   const openContactSheet = (contact: Contact) => setOpenContactId(contact.id);
   // Deleted people drop out of the selection.
@@ -137,10 +154,8 @@ export function RosterView({
           <ListChips
             lists={live.lists}
             total={people.length}
-            noListCount={
-              people.filter((contact) => contact.listIds.length === 0).length
-            }
-            selectedListId={listId}
+            noListCount={noListCount}
+            selectedListId={activeListId}
             onSelect={setListId}
             trailing={
               canEdit ? (

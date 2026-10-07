@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { json, routeFetch } from "@/test/fetch";
@@ -80,5 +80,31 @@ describe("ManageListsDialog", () => {
         ([url, init]) => `${init?.method} ${String(url)}`,
       ),
     ).toContain(`PATCH ${base}/lists/${IDS.dev}`);
+  });
+
+  it("puts the list's name back when a rename is refused", async () => {
+    routeFetch({
+      [`PATCH ${base}/lists/${IDS.dev}`]: json(
+        { error: { code: "list_name_taken" } },
+        409,
+      ),
+      [`GET ${base}/contacts`]: json(rosterFixture),
+    });
+    const user = userEvent.setup();
+    renderWithProviders(
+      <ManageListsDialog
+        slug="club-ab12"
+        lists={rosterFixture.lists}
+        open
+        onOpenChange={vi.fn()}
+      />,
+      { toaster: true },
+    );
+    const dev = screen.getByLabelText("Name of the list Dev");
+    await user.clear(dev);
+    await user.type(dev, "Design");
+    await user.tab();
+    await waitFor(() => expect(dev).toHaveValue("Dev"));
+    expect(await screen.findByText(/already/i)).toBeInTheDocument();
   });
 });

@@ -51,4 +51,32 @@ describe("PreviewStep", () => {
       "This import would go past your roster limit of 2000 people.",
     );
   });
+
+  it("lists one line per merged row under Merged duplicates, matching the tile", async () => {
+    const user = userEvent.setup();
+    const [first, ...rest] = importPreviewFixture.rows.filter(
+      (row) => row.outcome !== "invalid",
+    );
+    const result = {
+      ...importPreviewFixture,
+      summary: { ...importPreviewFixture.summary, merged: 2 },
+      rows: [
+        { ...first, row: 3, mergedRows: [5, 7] },
+        ...rest.map((row) => ({ ...row, mergedRows: [] })),
+      ],
+    };
+    renderWithProviders(
+      <PreviewStep result={result} limits={rosterFixture.limits} />,
+    );
+    await user.click(
+      screen.getByRole("button", { name: "2 Merged duplicates" }),
+    );
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
+    expect(
+      screen.getByText(`Row 5 merged into row 3 (${first.email})`),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(`Row 7 merged into row 3 (${first.email})`),
+    ).toBeInTheDocument();
+  });
 });
