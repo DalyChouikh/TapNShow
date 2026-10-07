@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { json, routeFetch } from "@/test/fetch";
@@ -40,6 +40,36 @@ describe("ContactSheet", () => {
     const patch = fetchMock.mock.calls.find(
       ([url, init]) =>
         String(url).endsWith(IDS.youssef) && init?.method === "PATCH",
+    );
+    expect(JSON.parse(String(patch?.[1]?.body))).toEqual({
+      fullName: "Youssef T.",
+    });
+  });
+
+  it("saves the last edit when the sheet closes without leaving the field", async () => {
+    const fetchMock = routeFetch({
+      [`PATCH ${base}/contacts/${IDS.youssef}`]: json({ ok: true }),
+      [`GET ${base}/contacts`]: json(rosterFixture),
+    });
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+    renderWithProviders(
+      <ContactSheet
+        slug="club-ab12"
+        contact={youssef}
+        roster={rosterFixture}
+        canEdit
+        onClose={onClose}
+        onDelete={vi.fn()}
+      />,
+    );
+    const name = screen.getByLabelText("Full name");
+    await user.clear(name);
+    await user.type(name, "Youssef T.");
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    const patch = fetchMock.mock.calls.find(
+      ([, init]) => init?.method === "PATCH",
     );
     expect(JSON.parse(String(patch?.[1]?.body))).toEqual({
       fullName: "Youssef T.",
@@ -95,6 +125,23 @@ describe("ContactSheet", () => {
     expect(bodies()).toContainEqual({ listIds: [IDS.dev] });
     await user.click(screen.getByRole("button", { name: "Delete" }));
     expect(onDelete).toHaveBeenCalledWith(youssef);
+  });
+
+  it("says why a list change failed", async () => {
+    routeFetch({
+      [`PATCH ${base}/contacts/${IDS.youssef}`]: json(
+        { error: { code: "forbidden" } },
+        403,
+      ),
+      [`GET ${base}/contacts`]: json(rosterFixture),
+    });
+    const user = userEvent.setup();
+    renderSheet();
+    await user.click(screen.getByRole("button", { name: "Add to a list" }));
+    await user.click(screen.getByRole("option", { name: "Dev" }));
+    expect(
+      await screen.findByText("You don't have permission to do that."),
+    ).toBeInTheDocument();
   });
 
   it("is read-only for Viewers", () => {

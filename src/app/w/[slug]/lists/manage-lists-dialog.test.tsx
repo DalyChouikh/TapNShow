@@ -54,4 +54,31 @@ describe("ManageListsDialog", () => {
       ]),
     );
   });
+
+  it("saves a rename when the dialog closes without leaving the field", async () => {
+    const fetchMock = routeFetch({
+      [`PATCH ${base}/lists/${IDS.dev}`]: json({ ok: true }),
+      [`GET ${base}/contacts`]: json(rosterFixture),
+    });
+    const onOpenChange = vi.fn();
+    const user = userEvent.setup();
+    renderWithProviders(
+      <ManageListsDialog
+        slug="club-ab12"
+        lists={rosterFixture.lists}
+        open
+        onOpenChange={onOpenChange}
+      />,
+    );
+    const dev = screen.getByLabelText("Name of the list Dev");
+    await user.clear(dev);
+    await user.type(dev, "Developers");
+    await user.keyboard("{Escape}");
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(
+      fetchMock.mock.calls.map(
+        ([url, init]) => `${init?.method} ${String(url)}`,
+      ),
+    ).toContain(`PATCH ${base}/lists/${IDS.dev}`);
+  });
 });

@@ -1,6 +1,7 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { ApiClientError } from "@/lib/api-client";
 import { IDS, rosterFixture } from "@/test/fixtures/roster";
 import { renderWithProviders } from "@/test/render";
 import { ListPicker } from "./list-picker";
@@ -57,6 +58,35 @@ describe("ListPicker", () => {
     expect(onChange).toHaveBeenLastCalledWith([
       "00000000-0000-4000-8000-0000000000d9",
     ]);
+  });
+
+  it("says why a list could not be created", async () => {
+    const onChange = vi.fn();
+    const onCreate = vi.fn(async () => {
+      throw new ApiClientError("lists_limit_reached", 409);
+    });
+    const user = userEvent.setup();
+    renderWithProviders(
+      <ListPicker
+        lists={rosterFixture.lists}
+        selectedIds={[]}
+        onChange={onChange}
+        onCreate={onCreate}
+        triggerLabel="Add to a list"
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Add to a list" }));
+    await user.type(
+      screen.getByPlaceholderText("Search or create a list"),
+      "Media",
+    );
+    await user.click(
+      screen.getByRole("option", { name: 'Create list "Media"' }),
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "You have the maximum number of lists. Delete one first.",
+    );
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it("selects one list and closes in single mode", async () => {
