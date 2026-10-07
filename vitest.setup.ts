@@ -26,8 +26,9 @@ class ResizeObserverStub {
 }
 globalThis.ResizeObserver ??= ResizeObserverStub;
 Element.prototype.scrollIntoView ??= () => {};
-// Radix Select uses pointer capture, which jsdom does not implement.
+// Radix Select and sonner's swipe-to-dismiss use pointer capture, which jsdom does not implement.
 Element.prototype.hasPointerCapture ??= () => false;
+Element.prototype.setPointerCapture ??= () => {};
 Element.prototype.releasePointerCapture ??= () => {};
 
 installMatchMedia();
