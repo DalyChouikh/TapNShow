@@ -2,6 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
@@ -10,8 +11,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ME_QUERY_KEY, useMe } from "@/hooks/use-me";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { ApiClientError, apiRequest } from "@/lib/api-client";
+import { cn } from "@/lib/utils";
 import { okSchema } from "@/shared/api/common";
 import { BottomBar } from "./bottom-bar";
+import { contentWidthFor } from "./nav-items";
 import { UserMenu } from "./user-menu";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 
@@ -27,6 +30,7 @@ export function WorkspaceShell({
   const queryClient = useQueryClient();
   const me = useMe();
   const workspace = useWorkspace(slug);
+  const pathname = usePathname();
   const remember = useMutation({
     mutationFn: (lastWorkspaceId: string) =>
       apiRequest("/api/me", {
@@ -79,7 +83,14 @@ export function WorkspaceShell({
         <WorkspaceSwitcher me={me.data} current={workspace.data} />
         <UserMenu me={me.data} />
       </header>
-      <main className="mx-auto max-w-md p-4">{children}</main>
+      <main
+        className={cn(
+          "mx-auto max-w-md p-4",
+          contentWidthFor(pathname, slug) === "wide" && "md:max-w-5xl",
+        )}
+      >
+        {children}
+      </main>
       <BottomBar role={workspace.data.myRole} slug={slug} />
     </div>
   );

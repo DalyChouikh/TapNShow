@@ -114,3 +114,45 @@ test("an organizer edits a person, adds one, and deletes with Undo", async ({
   await expect(page.getByText("2 people")).toBeVisible();
   await expectNoHorizontalScroll(page);
 });
+
+test("bulk actions on phones", async ({ page }) => {
+  const slug = await createWorkspace(page, "Bulk Club");
+  await seedRoster(slug, [
+    { fullName: "Inès Ben Salah", email: "ines@example.test" },
+    { fullName: "Sarra Khelifi", email: "sarra@example.test" },
+    { fullName: "Youssef Trabelsi", email: "youssef@example.test" },
+  ]);
+  await page.goto(`/w/${slug}/lists`);
+  await page.getByRole("button", { name: "Select" }).click();
+  await page.getByRole("checkbox", { name: "Select Inès Ben Salah" }).click();
+  await page.getByRole("checkbox", { name: "Select Sarra Khelifi" }).click();
+  await page.getByRole("button", { name: "Add to list" }).click();
+  await page.getByPlaceholder("Search or create a list").fill("Alumni");
+  await page.getByRole("option", { name: 'Create list "Alumni"' }).click();
+  await expect(page.getByText("2 people added to Alumni.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Alumni 2" })).toBeVisible();
+  await expectNoHorizontalScroll(page);
+});
+
+test.describe("wide screens", () => {
+  test.use({ viewport: { width: 1024, height: 800 } });
+
+  test("the grid edits a name in place", async ({ page }) => {
+    const slug = await createWorkspace(page, "Grid Club");
+    await seedRoster(slug, [
+      { fullName: "Youssef Trabelsi", email: "youssef@example.test" },
+    ]);
+    await page.goto(`/w/${slug}/lists`);
+    await page
+      .getByRole("button", { name: "Full name of Youssef Trabelsi" })
+      .click();
+    await page
+      .getByRole("textbox", { name: "Full name of Youssef Trabelsi" })
+      .fill("Youssef T.");
+    await page.keyboard.press("Enter");
+    await page.reload();
+    await expect(
+      page.getByRole("button", { name: "Full name of Youssef T." }),
+    ).toBeVisible();
+  });
+});

@@ -1,14 +1,24 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { toast } from "sonner";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { UNDO_DELETE_MS } from "@/config/roster";
 import { json, routeFetch } from "@/test/fetch";
+import { setWideViewport } from "@/test/match-media";
 import { IDS, rosterFixture } from "@/test/fixtures/roster";
 import { renderWithProviders } from "@/test/render";
 import { okContext } from "@/test/workspace-context-mock";
 import { RosterView } from "./roster-view";
 
+// Sonner keeps toasts in module state; one test's toast must not leak into the next.
+afterEach(() => {
+  toast.dismiss();
+});
+
 const owner = okContext.workspace;
+// Sonner renders toasts as list items too, so count only the roster's own list.
+const people = () =>
+  within(screen.getByRole("list", { name: "People" })).getAllByRole("listitem");
 const viewer = { ...owner, myRole: "viewer" as const };
 
 describe("RosterView", () => {
@@ -136,5 +146,65 @@ describe("RosterView", () => {
     );
     expect(screen.queryByRole("button", { name: "Add" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Manage" })).toBeNull();
+  });
+
+  it("selects cards on phones and shows the bar", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <RosterView workspace={owner} roster={rosterFixture} />,
+    );
+    await user.click(screen.getByRole("button", { name: "Select" }));
+    await user.click(
+      screen.getByRole("checkbox", { name: "Select Inès Ben Salah" }),
+    );
+    await user.click(
+      screen.getByRole("checkbox", { name: "Select Sarra Khelifi" }),
+    );
+    expect(screen.getByText("2 selected")).toBeInTheDocument();
+    expect(screen.getByTestId("selection-spacer")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Done" }));
+    expect(screen.queryByText("2 selected")).toBeNull();
+  });
+
+  it("shows the grid from md up", () => {
+    setWideViewport(true);
+    renderWithProviders(
+      <RosterView workspace={owner} roster={rosterFixture} />,
+    );
+    expect(screen.getByRole("table")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Select" })).toBeNull();
+  });
+
+  it("bulk deletes with the same Undo as single deletes", async () => {
+    routeFetch({
+      "GET /api/workspaces/club-ab12/contacts": json(rosterFixture),
+    });
+    const user = userEvent.setup();
+    renderWithProviders(
+      <RosterView workspace={owner} roster={rosterFixture} />,
+      { toaster: true },
+    );
+    await user.click(screen.getByRole("button", { name: "Select" }));
+    await user.click(
+      screen.getByRole("checkbox", { name: "Select Inès Ben Salah" }),
+    );
+    await user.click(
+      screen.getByRole("checkbox", { name: "Select Sarra Khelifi" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Delete 2" }));
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    expect(people()).toHaveLength(1);
+    await user.click(await screen.findByRole("button", { name: "Undo" }));
+    expect(people()).toHaveLength(3);
+  });
+
+  it("never shows selection or the grid's edit buttons to Viewers", () => {
+    setWideViewport(true);
+    renderWithProviders(
+      <RosterView workspace={viewer} roster={rosterFixture} />,
+    );
+    expect(screen.getByRole("table")).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox")).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Full name of/ })).toBeNull();
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { navItemsFor } from "./nav-items";
+import { contentWidthFor, navItemsFor } from "./nav-items";
 
 describe("navItemsFor", () => {
   it("gives Owners and Admins all five slots with + disabled until M4", () => {
@@ -19,5 +19,15 @@ describe("navItemsFor", () => {
       "lists",
       "settings",
     ]);
+  });
+});
+
+describe("contentWidthFor", () => {
+  it("gives the roster a wide page and keeps everything else phone-width", () => {
+    expect(contentWidthFor("/w/club-ab12/lists", "club-ab12")).toBe("wide");
+    expect(contentWidthFor("/w/club-ab12", "club-ab12")).toBe("narrow");
+    expect(contentWidthFor("/w/club-ab12/settings", "club-ab12")).toBe(
+      "narrow",
+    );
   });
 });

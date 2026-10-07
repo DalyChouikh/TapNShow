@@ -349,6 +349,24 @@
     "deleteList": "Delete {name}",
     "confirmDeleteList": "Delete {name}? Its people stay in the roster.",
     "confirmDeleteAction": "Delete list",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "select": "Select",
+    "doneSelecting": "Done",
+    "selectedCount": "{count} selected",
+    "clearSelection": "Clear",
+    "selectPerson": "Select {name}",
+    "selectAll": "Select everyone shown",
+    "bulkAdd": "Add to list",
+    "bulkRemove": "Remove from list",
+    "bulkDelete": "Delete {count}",
+    "bulkDeleteTitle": "Delete {count, plural, one {# person} other {# people}}?",
+    "bulkDeleteBody": "They are removed from every list. This can't be undone.",
+    "bulkAdded": "{count, plural, one {# person} other {# people}} added to {list}.",
+    "bulkRemoved": "{count, plural, one {# person} other {# people}} removed from {list}.",
+    "columnName": "Full name",
+    "columnEmail": "Email",
+    "columnLists": "Lists",
+    "sortBy": "Sort by {column}",
+    "editCell": "{column} of {name}"
   }
 }
