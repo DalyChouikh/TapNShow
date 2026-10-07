@@ -138,6 +138,27 @@ test("bulk actions on phones", async ({ page }) => {
 test.describe("wide screens", () => {
   test.use({ viewport: { width: 1024, height: 800 } });
 
+  test("the import dialog is centered and fully on screen", async ({
+    page,
+  }) => {
+    const slug = await createWorkspace(page, "Dialog Club");
+    await page.goto(`/w/${slug}/lists`);
+    await page.getByRole("button", { name: "Import" }).first().click();
+    const dialog = page.getByRole("dialog", { name: "Import people" });
+    await expect(dialog).toBeVisible();
+    await page.waitForTimeout(400);
+    const box = await dialog.boundingBox();
+    const viewport = page.viewportSize();
+    expect(box && viewport).toBeTruthy();
+    if (box && viewport) {
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+      expect(Math.abs(box.x + box.width / 2 - viewport.width / 2)).toBeLessThan(
+        4,
+      );
+    }
+  });
+
   test("the grid edits a name in place", async ({ page }) => {
     const slug = await createWorkspace(page, "Grid Club");
     await seedRoster(slug, [

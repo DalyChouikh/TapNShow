@@ -27,7 +27,7 @@ export function ListChips({
     <div
       role="group"
       aria-label={t("listChipsLabel")}
-      className="flex gap-2 overflow-x-auto pt-1 pb-2"
+      className="flex [scrollbar-width:none] gap-2 overflow-x-auto pt-1 pb-2 [&::-webkit-scrollbar]:hidden"
     >
       <Chip
         pressed={selectedListId === null}

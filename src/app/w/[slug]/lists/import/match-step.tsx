@@ -39,6 +39,7 @@ export function MatchStep({
   lists,
   alsoAddToListId,
   onAlsoAddChange,
+  onCreateList,
 }: {
   grid: SheetGrid;
   mapping: ColumnMapping;
@@ -48,6 +49,8 @@ export function MatchStep({
   lists: ListSummary[];
   alsoAddToListId: string | null;
   onAlsoAddChange: (listId: string | null) => void;
+  /** Creates a list (the API then knows its id, so it can be the "also add" target). */
+  onCreateList: (name: string) => Promise<{ id: string }>;
 }) {
   const t = useTranslations("ListsImport");
   const headerIndex = grid.findIndex((row) => row.some((cell) => cell !== ""));
@@ -134,6 +137,7 @@ export function MatchStep({
           lists={lists}
           selectedIds={alsoAddToListId ? [alsoAddToListId] : []}
           onChange={([listId]) => onAlsoAddChange(listId ?? null)}
+          onCreate={onCreateList}
           triggerLabel={t("alsoAddPick")}
         />
         {alsoAdd ? (

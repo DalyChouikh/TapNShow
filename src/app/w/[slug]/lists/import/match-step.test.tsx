@@ -13,20 +13,26 @@ const grid = parsePaste(
   "Prénom\tNom\tE-mail\tÉquipe\tPhone\nInès\tBen Salah\tines@example.com\tDev\t+216",
 );
 
-function Harness({ rowLimit = 2000 }) {
+const createdId = "00000000-0000-4000-8000-0000000000d9";
+
+function Harness({ rowLimit = 2000, lists = rosterFixture.lists }) {
   const [mapping, setMapping] = useState<ColumnMapping>(guessColumns(grid));
   const [alsoAdd, setAlsoAdd] = useState<string | null>(null);
   return (
-    <MatchStep
-      grid={grid}
-      mapping={mapping}
-      onMappingChange={setMapping}
-      rowCount={1}
-      rowLimit={rowLimit}
-      lists={rosterFixture.lists}
-      alsoAddToListId={alsoAdd}
-      onAlsoAddChange={setAlsoAdd}
-    />
+    <>
+      <output>{alsoAdd}</output>
+      <MatchStep
+        grid={grid}
+        mapping={mapping}
+        onMappingChange={setMapping}
+        rowCount={1}
+        rowLimit={rowLimit}
+        lists={lists}
+        alsoAddToListId={alsoAdd}
+        onAlsoAddChange={setAlsoAdd}
+        onCreateList={async () => ({ id: createdId })}
+      />
+    </>
   );
 }
 
@@ -73,5 +79,19 @@ describe("MatchStep", () => {
     expect(
       screen.getByRole("combobox", { name: "What is Column 1?" }),
     ).toBeInTheDocument();
+  });
+
+  it("can create the list to add everyone to, even with no lists yet", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<Harness lists={[]} />);
+    await user.click(screen.getByRole("button", { name: "Choose a list" }));
+    await user.type(
+      screen.getByPlaceholderText("Search or create a list"),
+      "Alumni",
+    );
+    await user.click(
+      screen.getByRole("option", { name: 'Create list "Alumni"' }),
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(createdId);
   });
 });

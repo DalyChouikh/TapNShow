@@ -93,6 +93,16 @@ describe("RosterView", () => {
     expect(screen.queryByRole("button", { name: /^No list/ })).toBeNull();
   });
 
+  it("scrolls the list chips sideways without a visible scrollbar", () => {
+    renderWithProviders(
+      <RosterView workspace={owner} roster={rosterFixture} />,
+    );
+    expect(screen.getByRole("group", { name: "Filter by list" })).toHaveClass(
+      "[scrollbar-width:none]",
+      "[&::-webkit-scrollbar]:hidden",
+    );
+  });
+
   it("says when nobody matches", async () => {
     const user = userEvent.setup();
     renderWithProviders(

@@ -16,11 +16,15 @@ export function PopoverTrigger(
   return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props} />;
 }
 
-/** Neobrutalist floating panel: outline, card radius, hard shadow; pops in unless reduced motion. */
+/**
+ * Neobrutalist floating panel: outline, card radius, hard shadow; pops in unless reduced motion.
+ * Keeps a 16 px gap from the screen edges when it has to shift to fit (phones).
+ */
 export function PopoverContent({
   className,
   align = "start",
   sideOffset = 6,
+  collisionPadding = 16,
   ...props
 }: ComponentProps<typeof PopoverPrimitive.Content>) {
   return (
@@ -29,6 +33,7 @@ export function PopoverContent({
         data-slot="popover-content"
         align={align}
         sideOffset={sideOffset}
+        collisionPadding={collisionPadding}
         className={cn(
           "z-50 w-72 origin-(--radix-popover-content-transform-origin) rounded-card border-[length:var(--tn-border-width)] border-outline bg-surface p-2 text-ink shadow-brutal outline-hidden data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 motion-reduce:animate-none",
           className,

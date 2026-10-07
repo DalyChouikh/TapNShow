@@ -60,6 +60,47 @@ describe("ListPicker", () => {
     ]);
   });
 
+  it("offers to create a list even when there are no lists yet", async () => {
+    const onCreate = vi.fn(async () => ({
+      id: "00000000-0000-4000-8000-0000000000d9",
+    }));
+    const user = userEvent.setup();
+    renderWithProviders(
+      <ListPicker
+        lists={[]}
+        selectedIds={[]}
+        onChange={vi.fn()}
+        onCreate={onCreate}
+        triggerLabel="Add to a list"
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Add to a list" }));
+    await user.type(
+      screen.getByPlaceholderText("Search or create a list"),
+      "Alumni",
+    );
+    expect(
+      screen.getByRole("option", { name: 'Create list "Alumni"' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/No list matches/)).toBeNull();
+  });
+
+  it("does not promise creation when the picker cannot create lists", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <ListPicker
+        lists={[]}
+        selectedIds={[]}
+        onChange={vi.fn()}
+        triggerLabel="Choose a list"
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Choose a list" }));
+    await user.type(screen.getByPlaceholderText("Search lists"), "Alumni");
+    expect(screen.getByText("No list matches.")).toBeInTheDocument();
+    expect(screen.queryByText(/create one/)).toBeNull();
+  });
+
   it("says why a list could not be created", async () => {
     const onChange = vi.fn();
     const onCreate = vi.fn(async () => {
@@ -105,5 +146,21 @@ describe("ListPicker", () => {
     await user.click(screen.getByRole("option", { name: "Design" }));
     expect(onChange).toHaveBeenCalledWith([IDS.design]);
     expect(screen.queryByRole("option", { name: "Design" })).toBeNull();
+  });
+
+  it("keeps the highlighted option off the popover's edges", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <ListPicker
+        lists={rosterFixture.lists}
+        selectedIds={[]}
+        onChange={vi.fn()}
+        triggerLabel="Add to a list"
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Add to a list" }));
+    const panel = screen.getByRole("dialog");
+    expect(panel).toHaveClass("p-1.5");
+    expect(panel).not.toHaveClass("p-0");
   });
 });
