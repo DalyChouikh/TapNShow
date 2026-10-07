@@ -6,8 +6,6 @@ const publicEnvSchema = z.object({
   NEXT_PUBLIC_SENTRY_DSN: z.url().optional(),
   NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: z.string().min(1).optional(),
   NEXT_PUBLIC_GOOGLE_SIGN_IN_ENABLED: z.stringbool().default(false),
-  /** M3 rollout flag: the roster UI ships to production only when complete (removed in Task 10). */
-  NEXT_PUBLIC_ROSTER_ENABLED: z.stringbool().default(false),
 });
 
 /** Environment variables that are safe to expose to the browser. */
@@ -36,5 +34,4 @@ export const publicEnv: PublicEnv = parsePublicEnv({
     process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
   NEXT_PUBLIC_GOOGLE_SIGN_IN_ENABLED:
     process.env.NEXT_PUBLIC_GOOGLE_SIGN_IN_ENABLED,
-  NEXT_PUBLIC_ROSTER_ENABLED: process.env.NEXT_PUBLIC_ROSTER_ENABLED,
 });

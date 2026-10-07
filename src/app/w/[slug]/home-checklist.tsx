@@ -13,7 +13,6 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Sticker } from "@/components/ui/sticker";
-import { publicEnv } from "@/config/public-env";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
 
 type StepKey =
@@ -32,14 +31,12 @@ const STEPS: ReadonlyArray<{
     href: (slug) => `/w/${slug}/settings#people`,
     actionKey: "inviteCommitteeAction",
   },
-  publicEnv.NEXT_PUBLIC_ROSTER_ENABLED
-    ? {
-        key: "importMembers",
-        icon: UploadSimple,
-        href: (slug) => `/w/${slug}/lists`,
-        actionKey: "importMembersAction",
-      }
-    : { key: "importMembers", icon: UploadSimple },
+  {
+    key: "importMembers",
+    icon: UploadSimple,
+    href: (slug) => `/w/${slug}/lists`,
+    actionKey: "importMembersAction",
+  },
   { key: "connectGmail", icon: EnvelopeSimple },
   { key: "connectSheets", icon: Table },
 ];

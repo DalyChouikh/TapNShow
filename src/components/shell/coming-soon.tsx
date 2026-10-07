@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Sticker } from "@/components/ui/sticker";
 
 /** Styled empty state for destinations of later milestones (spec §4 Navigation). */
-export function ComingSoon({ area }: { area: "meetings" | "lists" }) {
+export function ComingSoon({ area }: { area: "meetings" }) {
   const t = useTranslations("ComingSoon");
   return (
     <Card as="section" className="flex flex-col items-start gap-3">

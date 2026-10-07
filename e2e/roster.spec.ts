@@ -1,3 +1,4 @@
+import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { expectNoHorizontalScroll } from "./helpers/layout";
 import { seedRoster } from "./helpers/seed";
@@ -155,4 +156,48 @@ test.describe("wide screens", () => {
       page.getByRole("button", { name: "Full name of Youssef T." }),
     ).toBeVisible();
   });
+});
+
+test("imports a CSV with a preview, and re-importing reports 0 new", async ({
+  page,
+}) => {
+  await createWorkspace(page, "Import Club");
+  await page
+    .getByRole("navigation", { name: "Workspace" })
+    .getByRole("link", { name: "Lists" })
+    .click();
+  const importOnce = async () => {
+    await page.getByRole("button", { name: "Import" }).first().click();
+    await page
+      .getByLabel("Choose a .csv or .xlsx")
+      .setInputFiles(path.join(__dirname, "fixtures", "roster.csv"));
+    await page.getByRole("button", { name: "Next" }).click();
+    await expect(
+      page.getByRole("combobox", { name: "What is Équipe?" }),
+    ).toHaveText(/Lists/);
+    await page.getByRole("button", { name: "Preview" }).click();
+    await expect(page.getByText("Step 3 of 3")).toBeVisible();
+    await expectNoHorizontalScroll(page);
+  };
+
+  await importOnce();
+  await expect(page.getByRole("button", { name: "4 New" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "1 Merged duplicates" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "1 Invalid, skipped" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Import 4 people" }).click();
+  await expect(
+    page.getByText("4 added, 0 updated, 4 lists created."),
+  ).toBeVisible();
+  await expect(page.getByText("4 people")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Dev 2" })).toBeVisible();
+
+  await importOnce();
+  await expect(page.getByRole("button", { name: "0 New" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Nothing to import" }),
+  ).toBeDisabled();
 });

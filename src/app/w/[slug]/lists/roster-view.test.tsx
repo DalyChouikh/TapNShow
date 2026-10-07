@@ -1,5 +1,6 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ComponentType } from "react";
 import { toast } from "sonner";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { UNDO_DELETE_MS } from "@/config/roster";
@@ -9,6 +10,23 @@ import { IDS, rosterFixture } from "@/test/fixtures/roster";
 import { renderWithProviders } from "@/test/render";
 import { okContext } from "@/test/workspace-context-mock";
 import { RosterView } from "./roster-view";
+
+// next/dynamic needs the Next compiler; React.lazy gives the same deferred loading under Vitest.
+vi.mock("next/dynamic", async () => {
+  const { createElement, lazy, Suspense } = await import("react");
+  return {
+    default: (loader: () => Promise<ComponentType<object>>) => {
+      const Lazy = lazy(async () => ({ default: await loader() }));
+      return function Dynamic(props: object) {
+        return createElement(
+          Suspense,
+          { fallback: null },
+          createElement(Lazy, props),
+        );
+      };
+    },
+  };
+});
 
 // Sonner keeps toasts in module state; one test's toast must not leak into the next.
 afterEach(() => {
@@ -206,5 +224,20 @@ describe("RosterView", () => {
     expect(screen.getByRole("table")).toBeInTheDocument();
     expect(screen.queryByRole("checkbox")).toBeNull();
     expect(screen.queryByRole("button", { name: /^Full name of/ })).toBeNull();
+  });
+
+  it("opens the import dialog from the header and the empty state", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <RosterView workspace={owner} roster={rosterFixture} />,
+    );
+    await user.click(screen.getByRole("button", { name: "Import" }));
+    expect(
+      await screen.findByRole(
+        "dialog",
+        { name: "Import people" },
+        { timeout: 5000 },
+      ),
+    ).toBeInTheDocument();
   });
 });
