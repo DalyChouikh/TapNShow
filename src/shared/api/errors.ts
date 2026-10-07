@@ -34,6 +34,7 @@ export const API_ERROR_CODES = [
   "lists_limit_reached",
   "list_name_taken",
   "import_too_many_rows",
+  "owner_only",
 ] as const;
 
 /** An API error code. */
@@ -73,6 +74,7 @@ export const API_ERROR_STATUS: Record<ApiErrorCode, number> = {
   lists_limit_reached: 409,
   list_name_taken: 409,
   import_too_many_rows: 400,
+  owner_only: 403,
 };
 
 /** Body of every non-2xx API response. */
