@@ -65,6 +65,29 @@
       "button": "Accept invite",
       "expiry": "The link works once and expires in {days} days. Sign in with this email address to accept.",
       "fallback": "If the button doesn't work, copy this link:"
+    },
+    "meetingInvite": {
+      "preview": "{workspace} invites you: {date}, {time}",
+      "invitedBy": "{workspace} invites you",
+      "greeting": "Hi {name},",
+      "when": "When",
+      "whenValue": "{date}, {start}–{end} ({zone})",
+      "where": "Where",
+      "joinOnline": "Join online",
+      "agenda": "Agenda",
+      "deadline": "Please answer by {deadline}.",
+      "noAnswer": "No answer needed.",
+      "choice": {
+        "attending": "I'm going",
+        "late": "I'll be late",
+        "absent": "I can't come",
+        "going": "Going",
+        "not_going": "Not going"
+      },
+      "visibility": "Your answer is visible to {workspace} organizers.",
+      "sentFrom": "Sent from {email} with {appName}.",
+      "unsubscribe": "Unsubscribe from {workspace}",
+      "report": "Not my group"
     }
   },
   "ApiErrors": {

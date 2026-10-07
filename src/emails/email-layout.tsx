@@ -19,10 +19,16 @@ export function EmailLayout({
   preview,
   heading,
   children,
+  sticker,
+  footer,
 }: {
   preview: string;
   heading: string;
   children: ReactNode;
+  /** Text in the top sticker (meeting invites show the workspace name). */
+  sticker?: string;
+  /** Footer content (meeting invites carry their opt-out links). */
+  footer?: ReactNode;
 }) {
   const tr = getEmailTranslator();
   return (
@@ -49,7 +55,7 @@ export function EmailLayout({
               padding: "6px 12px",
             }}
           >
-            {APP_NAME}
+            {sticker ?? APP_NAME}
           </Text>
           <Section
             style={{ ...brutalBox(t.surface, t.radiusCard), padding: "24px" }}
@@ -75,7 +81,7 @@ export function EmailLayout({
               marginTop: "20px",
             }}
           >
-            {tr("footer", { appName: APP_NAME })}
+            {footer ?? tr("footer", { appName: APP_NAME })}
           </Text>
         </Container>
       </Body>
