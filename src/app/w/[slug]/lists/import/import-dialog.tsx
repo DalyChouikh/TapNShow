@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useImportContacts } from "@/hooks/use-roster";
+import { useCreateList, useImportContacts } from "@/hooks/use-roster";
 import { ApiClientError } from "@/lib/api-client";
 import { buildImportRows } from "@/lib/import/build-import-rows";
 import { guessColumns, mappingProblem } from "@/lib/import/guess-columns";
@@ -45,6 +45,7 @@ export function ImportDialog({
   const t = useTranslations("ListsImport");
   const tErrors = useTranslations("ApiErrors");
   const importContacts = useImportContacts(slug);
+  const createList = useCreateList(slug);
   const [step, setStep] = useState<Step>(1);
   const [source, setSource] = useState(initialSource);
   const [sheets, setSheets] = useState<ImportSheet[]>([]);
@@ -123,7 +124,7 @@ export function ImportDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="inset-0 max-h-dvh rounded-none sm:inset-x-auto sm:top-1/2 sm:bottom-auto sm:max-h-[90dvh] sm:max-w-2xl sm:rounded-card">
+      <DialogContent className="inset-0 max-h-dvh rounded-none sm:max-h-[90dvh] sm:max-w-2xl sm:rounded-card">
         <DialogHeader>
           <DialogTitle>{t("title")}</DialogTitle>
           <DialogDescription>{t("stepOf", { step })}</DialogDescription>
@@ -150,6 +151,7 @@ export function ImportDialog({
             lists={roster.lists}
             alsoAddToListId={alsoAddToListId}
             onAlsoAddChange={setAlsoAddToListId}
+            onCreateList={(name) => createList.mutateAsync(name)}
           />
         ) : null}
         {step === 3 && preview ? (

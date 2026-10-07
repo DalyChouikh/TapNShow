@@ -368,7 +368,9 @@
     "editCell": "{column} of {name}",
     "import": "Import",
     "paste": "Paste from Sheets",
-    "addPersonToList": "Add {name} to a list"
+    "addPersonToList": "Add {name} to a list",
+    "searchListsOnly": "Search lists",
+    "noListsMatch": "No list matches."
   },
   "ListsImport": {
     "title": "Import people",

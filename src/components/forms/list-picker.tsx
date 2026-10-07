@@ -109,15 +109,19 @@ export function ListPicker({
           {triggerLabel}
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[min(20rem,calc(100vw-2rem))] p-0">
+      <PopoverContent className="w-[min(20rem,calc(100vw-2rem))] p-1.5">
         <Command>
           <CommandInput
-            placeholder={t("searchLists")}
+            placeholder={onCreate ? t("searchLists") : t("searchListsOnly")}
             value={search}
             onValueChange={setSearch}
           />
           <CommandList>
-            <CommandEmpty>{t("noLists")}</CommandEmpty>
+            {canCreate ? null : (
+              <CommandEmpty>
+                {onCreate ? t("noLists") : t("noListsMatch")}
+              </CommandEmpty>
+            )}
             {lists.map((list) => (
               <CommandItem
                 key={list.id}

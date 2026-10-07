@@ -61,7 +61,7 @@ export function TimezonePicker({
         </PopoverTrigger>
         <PopoverContent
           id={listId}
-          className="w-[min(22rem,calc(100vw-2rem))] p-0"
+          className="w-[min(22rem,calc(100vw-2rem))] p-1.5"
         >
           <Command>
             <CommandInput placeholder={t("search")} />
