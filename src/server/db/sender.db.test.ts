@@ -55,40 +55,51 @@ beforeEach(async () => {
 });
 
 describe("google_connections", () => {
-  it("saves a connection once per Google account and reactivates it on reconnect", async () => {
-    const first = await owner.client.rpc("save_google_connection", {
-      p_google_sub: "sub-1",
-      p_google_email: " Club@Gmail.com ",
-      p_scopes: ["openid", "email", GMAIL_SEND],
-      p_token_encrypted: "v1.a.b.c",
-    });
+  it("is saved only by the server, for the verified user, once per Google account", async () => {
+    const save = (token: string) =>
+      adminClient().rpc("save_google_connection", {
+        p_user: owner.id,
+        p_google_sub: "sub-1",
+        p_google_email: " Club@Gmail.com ",
+        p_scopes: ["openid", "email", GMAIL_SEND],
+        p_token_encrypted: token,
+      });
+    const first = await save("v1.a.b.c");
     expect(first.error).toBeNull();
     await adminClient()
       .from("google_connections")
       .update({ status: "broken", broken_reason: "invalid_grant" })
       .eq("id", first.data ?? "");
-    const second = await owner.client.rpc("save_google_connection", {
-      p_google_sub: "sub-1",
-      p_google_email: "club@gmail.com",
-      p_scopes: ["openid", "email", GMAIL_SEND],
-      p_token_encrypted: "v1.d.e.f",
-    });
+    const second = await save("v1.d.e.f");
     expect(second.data).toBe(first.data);
     const row = await owner.client
       .from("google_connections")
-      .select("google_email, status, broken_reason")
+      .select("google_email, status, broken_reason, user_id")
       .eq("id", first.data ?? "")
       .single();
     expect(row.data).toEqual({
       google_email: "club@gmail.com",
       status: "active",
       broken_reason: null,
+      user_id: owner.id,
     });
+  });
+
+  it("refuses signed-in callers, so no one can claim another Google account", async () => {
+    const forged = await owner.client.rpc("save_google_connection", {
+      p_user: owner.id,
+      p_google_sub: "someone-elses-sub",
+      p_google_email: "president@example.test",
+      p_scopes: ["openid", "email", GMAIL_SEND],
+      p_token_encrypted: "v1.a.b.c",
+    });
+    expect(forged.error?.code).toBe("42501");
   });
 
   it("refuses a connection without gmail.send", async () => {
     await expectAppError(
-      owner.client.rpc("save_google_connection", {
+      adminClient().rpc("save_google_connection", {
+        p_user: owner.id,
         p_google_sub: "sub-2",
         p_google_email: "club@gmail.com",
         p_scopes: ["openid", "email"],

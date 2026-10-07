@@ -27,7 +27,6 @@ const PRIVATE_FUNCTIONS_FOR_AUTHENTICATED = [
   "renew_invite",
   "revoke_invite",
   "role_of",
-  "save_google_connection",
   "set_workspace_sender",
   "transfer_ownership",
   "valid_delay_options",
