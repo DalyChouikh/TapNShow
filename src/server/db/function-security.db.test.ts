@@ -10,10 +10,13 @@ const names = z.array(z.object({ name: z.string() }));
  */
 const PRIVATE_FUNCTIONS_FOR_AUTHENTICATED = [
   "accept_invite",
+  "add_meeting_people",
   "app_limit",
+  "audience_members",
   "change_role",
   "consume_invite_email",
   "create_invite",
+  "create_meeting",
   "create_workspace",
   "delete_workspace",
   "disconnect_google_connection",
@@ -27,6 +30,7 @@ const PRIVATE_FUNCTIONS_FOR_AUTHENTICATED = [
   "renew_invite",
   "revoke_invite",
   "role_of",
+  "set_meeting_audience",
   "set_workspace_sender",
   "transfer_ownership",
   "valid_delay_options",
