@@ -10,7 +10,9 @@ const names = z.array(z.object({ name: z.string() }));
  */
 const PRIVATE_FUNCTIONS_FOR_AUTHENTICATED = [
   "accept_invite",
+  "add_meeting_people",
   "app_limit",
+  "audience_members",
   "change_role",
   "consume_invite_email",
   "create_invite",

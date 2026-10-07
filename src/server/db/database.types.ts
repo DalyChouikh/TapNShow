@@ -7,13 +7,13 @@ export type Database = {
           Tables: {
             "contacts": {
                   Row: {
-                    "created_at": string,"email": string,"full_name": string,"id": string,"is_adhoc": boolean,"unsubscribed_at": string | null,"updated_at": string,"user_id": string | null,"workspace_id": string
+                    "created_at": string,"email": string,"full_name": string,"id": string,"is_adhoc": boolean,"unsubscribed_at": string | null,"unsubscribed_via": Database["public"]['Enums']["unsubscribe_via"] | null,"updated_at": string,"user_id": string | null,"workspace_id": string
                   }
                   Insert: {
-                    "created_at"?: string,"email": string,"full_name": string,"id"?: string,"is_adhoc"?: boolean,"unsubscribed_at"?: string | null,"updated_at"?: string,"user_id"?: string | null,"workspace_id": string
+                    "created_at"?: string,"email": string,"full_name": string,"id"?: string,"is_adhoc"?: boolean,"unsubscribed_at"?: string | null,"unsubscribed_via"?: Database["public"]['Enums']["unsubscribe_via"] | null,"updated_at"?: string,"user_id"?: string | null,"workspace_id": string
                   }
                   Update: {
-                    "created_at"?: string,"email"?: string,"full_name"?: string,"id"?: string,"is_adhoc"?: boolean,"unsubscribed_at"?: string | null,"updated_at"?: string,"user_id"?: string | null,"workspace_id"?: string
+                    "created_at"?: string,"email"?: string,"full_name"?: string,"id"?: string,"is_adhoc"?: boolean,"unsubscribed_at"?: string | null,"unsubscribed_via"?: Database["public"]['Enums']["unsubscribe_via"] | null,"updated_at"?: string,"user_id"?: string | null,"workspace_id"?: string
                   }
                   Relationships: [
                     {
@@ -75,6 +75,106 @@ isOneToOne: false
                   Relationships: [
                     {
       foreignKeyName: "lists_workspace_id_fkey"
+      columns: ["workspace_id"]
+isOneToOne: false
+      referencedRelation: "workspaces"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"meeting_audience": {
+                  Row: {
+                    "list_id": string,"meeting_id": string,"workspace_id": string
+                  }
+                  Insert: {
+                    "list_id": string,"meeting_id": string,"workspace_id": string
+                  }
+                  Update: {
+                    "list_id"?: string,"meeting_id"?: string,"workspace_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "meeting_audience_list_id_workspace_id_fkey"
+      columns: ["list_id","workspace_id"]
+isOneToOne: false
+      referencedRelation: "lists"
+      referencedColumns: ["id","workspace_id"]
+    },{
+      foreignKeyName: "meeting_audience_meeting_id_workspace_id_fkey"
+      columns: ["meeting_id","workspace_id"]
+isOneToOne: false
+      referencedRelation: "meetings"
+      referencedColumns: ["id","workspace_id"]
+    }
+                  ]
+                },"meeting_audience_people": {
+                  Row: {
+                    "contact_id": string,"meeting_id": string,"mode": Database["public"]['Enums']["audience_mode"],"workspace_id": string
+                  }
+                  Insert: {
+                    "contact_id": string,"meeting_id": string,"mode": Database["public"]['Enums']["audience_mode"],"workspace_id": string
+                  }
+                  Update: {
+                    "contact_id"?: string,"meeting_id"?: string,"mode"?: Database["public"]['Enums']["audience_mode"],"workspace_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "meeting_audience_people_contact_id_workspace_id_fkey"
+      columns: ["contact_id","workspace_id"]
+isOneToOne: false
+      referencedRelation: "contacts"
+      referencedColumns: ["id","workspace_id"]
+    },{
+      foreignKeyName: "meeting_audience_people_meeting_id_workspace_id_fkey"
+      columns: ["meeting_id","workspace_id"]
+isOneToOne: false
+      referencedRelation: "meetings"
+      referencedColumns: ["id","workspace_id"]
+    }
+                  ]
+                },"meeting_invitees": {
+                  Row: {
+                    "contact_id": string,"email_error": string | null,"email_status": Database["public"]['Enums']["invitee_email_status"],"id": string,"invited_at": string,"meeting_id": string,"sent_at": string | null,"token_hash": string | null,"workspace_id": string
+                  }
+                  Insert: {
+                    "contact_id": string,"email_error"?: string | null,"email_status"?: Database["public"]['Enums']["invitee_email_status"],"id"?: string,"invited_at"?: string,"meeting_id": string,"sent_at"?: string | null,"token_hash"?: string | null,"workspace_id": string
+                  }
+                  Update: {
+                    "contact_id"?: string,"email_error"?: string | null,"email_status"?: Database["public"]['Enums']["invitee_email_status"],"id"?: string,"invited_at"?: string,"meeting_id"?: string,"sent_at"?: string | null,"token_hash"?: string | null,"workspace_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "meeting_invitees_contact_id_workspace_id_fkey"
+      columns: ["contact_id","workspace_id"]
+isOneToOne: false
+      referencedRelation: "contacts"
+      referencedColumns: ["id","workspace_id"]
+    },{
+      foreignKeyName: "meeting_invitees_meeting_id_workspace_id_fkey"
+      columns: ["meeting_id","workspace_id"]
+isOneToOne: false
+      referencedRelation: "meetings"
+      referencedColumns: ["id","workspace_id"]
+    }
+                  ]
+                },"meetings": {
+                  Row: {
+                    "agenda_md": string,"comments_enabled": boolean,"created_at": string,"created_by": string | null,"delay_options": (number)[],"duration_minutes": number,"footer_note": string,"gmail_root_message_id": string | null,"gmail_thread_id": string | null,"ics_sequence": number,"ics_uid": string,"id": string,"location_mode": Database["public"]['Enums']["location_mode"],"location_text": string,"meeting_url": string,"reason_required": boolean,"response_deadline": string | null,"response_mode": Database["public"]['Enums']["response_mode"],"sent_at": string | null,"starts_at": string | null,"status": Database["public"]['Enums']["meeting_status"],"thread_connection_id": string | null,"timezone": string,"title": string,"updated_at": string,"workspace_id": string
+                  }
+                  Insert: {
+                    "agenda_md"?: string,"comments_enabled": boolean,"created_at"?: string,"created_by"?: string | null,"delay_options"?: (number)[],"duration_minutes": number,"footer_note"?: string,"gmail_root_message_id"?: string | null,"gmail_thread_id"?: string | null,"ics_sequence"?: number,"ics_uid"?: string,"id"?: string,"location_mode"?: Database["public"]['Enums']["location_mode"],"location_text"?: string,"meeting_url"?: string,"reason_required": boolean,"response_deadline"?: string | null,"response_mode": Database["public"]['Enums']["response_mode"],"sent_at"?: string | null,"starts_at"?: string | null,"status"?: Database["public"]['Enums']["meeting_status"],"thread_connection_id"?: string | null,"timezone": string,"title"?: string,"updated_at"?: string,"workspace_id": string
+                  }
+                  Update: {
+                    "agenda_md"?: string,"comments_enabled"?: boolean,"created_at"?: string,"created_by"?: string | null,"delay_options"?: (number)[],"duration_minutes"?: number,"footer_note"?: string,"gmail_root_message_id"?: string | null,"gmail_thread_id"?: string | null,"ics_sequence"?: number,"ics_uid"?: string,"id"?: string,"location_mode"?: Database["public"]['Enums']["location_mode"],"location_text"?: string,"meeting_url"?: string,"reason_required"?: boolean,"response_deadline"?: string | null,"response_mode"?: Database["public"]['Enums']["response_mode"],"sent_at"?: string | null,"starts_at"?: string | null,"status"?: Database["public"]['Enums']["meeting_status"],"thread_connection_id"?: string | null,"timezone"?: string,"title"?: string,"updated_at"?: string,"workspace_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "meetings_thread_connection_id_fkey"
+      columns: ["thread_connection_id"]
+isOneToOne: false
+      referencedRelation: "google_connections"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "meetings_workspace_id_fkey"
       columns: ["workspace_id"]
 isOneToOne: false
       referencedRelation: "workspaces"
@@ -185,6 +285,9 @@ isOneToOne: false
             "accept_invite":
 { Args: { "p_token_hash": string }; Returns: string
                            },
+"add_meeting_people":
+{ Args: { "p_meeting": string,"p_people": Json,"p_save_to_roster": boolean }; Returns: Json
+                           },
 "bulk_contacts":
 { Args: { "p_action": string,"p_contact_ids": (string)[],"p_list_id"?: string,"p_workspace": string }; Returns: number
                            },
@@ -199,6 +302,9 @@ isOneToOne: false
                            },
 "create_invite":
 { Args: { "p_email": string,"p_role": Database["public"]['Enums']["workspace_role"],"p_token_hash": string,"p_workspace": string }; Returns: string
+                           },
+"create_meeting":
+{ Args: { "p_workspace": string }; Returns: string
                            },
 "create_workspace":
 { Args: { "p_name": string,"p_slug": string,"p_timezone": string }; Returns: {
@@ -243,10 +349,16 @@ isOneToOne: false
 "leave_workspace":
 { Args: { "p_workspace": string }; Returns: undefined
                            },
+"list_meetings":
+{ Args: { "p_workspace": string }; Returns: Json
+                           },
 "list_members":
 { Args: { "p_workspace": string }; Returns: {
               "avatar_url": string,"can_check_in": boolean,"display_name": string,"email": string,"joined_at": string,"role": Database["public"]['Enums']["workspace_role"],"user_id": string
             }[]
+                           },
+"meeting_audience":
+{ Args: { "p_meeting": string }; Returns: Json
                            },
 "remove_member":
 { Args: { "p_user": string,"p_workspace": string }; Returns: undefined
@@ -266,6 +378,9 @@ isOneToOne: false
 "set_contact_lists":
 { Args: { "p_contact": string,"p_list_ids": (string)[] }; Returns: undefined
                            },
+"set_meeting_audience":
+{ Args: { "p_exclude": (string)[],"p_include": (string)[],"p_list_ids": (string)[],"p_meeting": string }; Returns: undefined
+                           },
 "set_workspace_sender":
 { Args: { "p_connection": string,"p_workspace": string }; Returns: undefined
                            },
@@ -277,7 +392,7 @@ isOneToOne: false
                            }
           }
           Enums: {
-            "connection_status": "active"|"broken","location_mode": "in_person"|"online"|"hybrid","response_mode": "announcement"|"rsvp"|"attendance","workspace_role": "owner"|"admin"|"viewer"
+            "audience_mode": "include"|"exclude","connection_status": "active"|"broken","invitee_email_status": "queued"|"sent"|"skipped"|"failed"|"unknown","location_mode": "in_person"|"online"|"hybrid","meeting_status": "draft"|"scheduled"|"cancelled","response_mode": "announcement"|"rsvp"|"attendance","unsubscribe_via": "link"|"report","workspace_role": "owner"|"admin"|"viewer"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -393,7 +508,7 @@ export type CompositeTypes<
 export const Constants = {
   "public": {
           Enums: {
-            "connection_status": ["active", "broken"],"location_mode": ["in_person", "online", "hybrid"],"response_mode": ["announcement", "rsvp", "attendance"],"workspace_role": ["owner", "admin", "viewer"]
+            "audience_mode": ["include", "exclude"],"connection_status": ["active", "broken"],"invitee_email_status": ["queued", "sent", "skipped", "failed", "unknown"],"location_mode": ["in_person", "online", "hybrid"],"meeting_status": ["draft", "scheduled", "cancelled"],"response_mode": ["announcement", "rsvp", "attendance"],"unsubscribe_via": ["link", "report"],"workspace_role": ["owner", "admin", "viewer"]
           }
         }
 } as const
