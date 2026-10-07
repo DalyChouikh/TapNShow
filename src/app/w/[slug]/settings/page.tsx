@@ -34,7 +34,11 @@ export default function SettingsPage() {
           myId={me.data.userId}
           members={members.data}
         />
-      ) : null}
+      ) : (
+        <div data-testid="danger-zone-skeleton">
+          <Skeleton className="h-40 w-full" />
+        </div>
+      )}
     </div>
   );
 }
