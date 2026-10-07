@@ -62,7 +62,7 @@
 | 10 | Task 10 — Dispatcher service, `/api/internal/dispatch`, broken-sender alert | 6, 7, 8, 9 |
 | 11 | Task 11 — Meetings API, shared schemas, hooks, email preview | 6, 8, 10 |
 | 12 | Task 12 — UI primitives: DatePicker, TimePicker, MarkdownEditor, ConfirmDialog | 8 |
-| 13 | Task 13 — Wizard shell, Details + Responses steps, Meetings list, "+" | 11, 12 |
+| 13 | Task 13 — Wizard shell, Details + Responses steps, Meetings list (draft menu), "+" | 11, 12 |
 | 14 | Task 14 — Audience step and "Add people" sheet | 13 |
 | 15 | Task 15 — Review step, Send confirm, meeting page with progress, Invite more | 14 |
 | 16 | Task 16 — Settings: Sending + Meeting defaults cards; Home checklist and needs-attention | 4, 12 |
@@ -83,7 +83,8 @@ gh api -X POST repos/DalyChouikh/TapNShow/issues/6/sub_issues -F sub_issue_id="$
 - [ ] Tick "Plan written for M4" in epic #6's body.
 - [ ] #119: comment that its items are Tasks 18 and 19 of this plan; close it when both merge.
 - [ ] Ledger: `.superpowers/sdd/2026-10-07-m4-meetings-and-sending/progress.md` (git-ignored) with one line per task and every `Ruling:`.
-- [ ] **From-name check (spec §9, before Task 9 merges).** The owner adds the sender address of the S4 "In production" token to `spikes/s4-gmail/.env` as `S4_FROM=` (`! nano spikes/s4-gmail/.env`; never printed). Run a throwaway variant of `thread.ts` that sends one email with `From: "TapNShow Name Test" <$S4_FROM>` to `S4_TO+tn5`. The owner reports the From line the recipient sees. Record in the ledger: `Ruling: From display name kept = yes|no`. If **no**, Task 9 still sets the header (harmless) and the Review step's sender line shows the account's own name instead of the workspace name (Task 15 reads `fromNameKept` from `src/config/meetings.ts`).
+- [ ] **From-name check** happens during Task 10's first real send (grilling 2026-10-07): record `Ruling: From display name kept = yes|no` in the ledger. If **no**, the Review step's sender line shows only the address (`FROM_NAME_KEPT = false` in `src/config/meetings.ts`, Task 15); the header is still set (harmless).
+- [ ] **Grilling rulings (2026-10-07):** "+" creates the draft at once; untitled drafts with no date are hidden from Drafts and deleted after 24 h by housekeeping (Task 6, Task 13). Draft cards get a "…" menu with Delete (Task 13). First real Google connect right after Task 4 (Task 4 Step 17). First real send by dev script right after Task 10 (Task 10 Step 11). Limits unchanged.
 
 ## File Structure
 
@@ -2606,7 +2607,14 @@ export function useUpdateMeetingDefaults(slug: string) {
 
 - [ ] **Step 15: Run** — `bun run test src/app/api src/lib src/shared` → PASS; `bun run lint && bun run typecheck && bun run format:check` → PASS.
 
-- [ ] **Step 16: Commit, PR, merge** — `feat(api): workspace sender, meeting defaults and the Gmail connect flow`. Manual check on localhost after merge is part of Task 20 (needs the redirect URI in Google Cloud).
+- [ ] **Step 16: Commit, PR, merge** — `feat(api): workspace sender, meeting defaults and the Gmail connect flow`.
+
+- [ ] **Step 17: First real Google round trip (grilling 2026-10-07; owner + agent, nothing is sent)** —
+  1. The owner adds the redirect URIs to `tapnshow-web`: Google Cloud console → project `tapnshow` → Google Auth Platform → Clients → `tapnshow-web` → Authorized redirect URIs → **Add URI** `https://tapnshow.vercel.app/api/integrations/google/callback` → **Add URI** `http://localhost:3000/api/integrations/google/callback` → **Save** (can take a few minutes).
+  2. The agent generates the **preview/local** secret set (Task 20 Step 4's script, preview half only) into `~/.config/tapnshow/m4-secrets.preview.env` and `.env.local` (active values + backup block) in the same step, and sets `NEXT_PUBLIC_GMAIL_CONNECT_ENABLED=true` in `.env.local`.
+  3. `bun run dev`; the owner signs in on `http://localhost:3000` (preview database), opens a throwaway workspace they own, and visits `/api/integrations/google/connect?workspace=<slug>` (the Settings card arrives in Task 16). They report what Google's screens showed (unverified-app warning, the permission list). Expected: redirect back with `?gmail=connected`; `select google_email, status, granted_scopes from google_connections` on preview (agent, `--agent no`, emails not pasted in chat) shows one active row with `gmail.send`.
+  4. Test the failure paths once: cancel on Google's screen → `gmail_error=cancelled`; untick "Send email" → `gmail_error=scope_denied`.
+  5. Stop the dev server. Record the outcome in the ledger.
 
 ---
 
@@ -3553,7 +3561,7 @@ to authenticated;
     - `dispatch_release(p_run uuid) returns void` — drops this run's sender leases.
   - Triggers: changing a workspace's sender to a non-null value, or a connection going `broken` → `active`, moves that workspace's `paused` jobs back to `pending` now.
   - `private.kick_dispatcher()` + cron job `tn-dispatch` (`* * * * *`): when jobs are due and Vault holds `tn_dispatch_url` and `tn_dispatch_secret`, `net.http_post` to the dispatcher (10 s timeout); otherwise nothing (local, CI, preview).
-  - `private.housekeeping()` also deletes `done`/`failed` jobs and `send_log` rows older than 30 days and stale leases.
+  - `private.housekeeping()` also deletes `done`/`failed` jobs and `send_log` rows older than 30 days, stale leases, and drafts with no title and no date older than 24 hours.
 
 - [ ] **Step 1: Test helper** — `src/test/db/outbox.ts`:
 ```ts
@@ -3892,6 +3900,16 @@ describe("cron kick and security", () => {
     } finally {
       runLocalSql("delete from vault.secrets where name in ('tn_dispatch_url', 'tn_dispatch_secret')");
     }
+  });
+
+  it("cleans up empty drafts after a day and keeps everything else", async () => {
+    const empty = await seedMeeting(workspace.id, { title: "", starts_at: null });
+    const named = await seedMeeting(workspace.id, { title: "Named", starts_at: null });
+    const fresh = await seedMeeting(workspace.id, { title: "", starts_at: null });
+    runLocalSql(`update public.meetings set created_at = now() - interval '25 hours' where id in ('${empty}', '${named}')`);
+    runLocalSql("select private.housekeeping()");
+    const { data } = await adminClient().from("meetings").select("id").in("id", [empty, named, fresh]);
+    expect((data ?? []).map((r) => r.id).sort()).toEqual([named, fresh].sort());
   });
 
   it("keeps dispatcher functions away from signed-in users", async () => {
@@ -4511,6 +4529,9 @@ begin
   delete from public.outbox_jobs j where j.status in ('done', 'failed') and j.updated_at < pg_catalog.now() - interval '30 days';
   delete from public.send_log s where s.sent_at < pg_catalog.now() - interval '30 days';
   delete from public.sender_leases l where l.locked_until < pg_catalog.now() - interval '1 day';
+  -- "+" creates a draft at once (grilling 2026-10-07); one left untitled and undated is litter.
+  delete from public.meetings m
+  where m.status = 'draft' and m.title = '' and m.starts_at is null and m.created_at < pg_catalog.now() - interval '24 hours';
 end;
 $$;
 
@@ -5644,7 +5665,7 @@ export async function sendGmailMessage(
 ```
 Run → PASS.
 
-- [ ] **Step 5: From-name ruling** — check the ledger for the Tracking step's `Ruling: From display name kept = …`. If it is not recorded yet, do the check now (Tracking section) before merging; this task's code is the same either way.
+- [ ] **Step 5: From name** — the code always sets `"<Workspace>" <address>`; whether Gmail keeps the name is checked at Task 10 Step 11 (first real send).
 
 - [ ] **Step 6: Run and commit** — `bun run test src/server/gmail && bun run lint && bun run typecheck` → PASS. Commit `feat(pipeline): MIME builder and Gmail REST client`, PR, merge.
 
@@ -6563,6 +6584,11 @@ describe("dispatcher against the database", () => {
 Run: `bun run test:db -- src/server/dispatch/run-dispatch.db.test.ts` → PASS (the DB config runs `*.db.test.ts` in Node; React Email renders there too).
 
 - [ ] **Step 10: Run everything and commit** — `bun run test && bun run test:db && bun run lint && bun run typecheck` → PASS. Update the JSDoc of `createSupabaseAdminClient` ("Allowed callers (spec §11): the outbox dispatcher (`src/server/dispatch`), the public token API (`src/app/api/r`), and the health probe"). Commit `feat(pipeline): dispatcher run, internal dispatch route and broken-sender alert`, PR, merge.
+
+- [ ] **Step 11: First real send (grilling 2026-10-07; to the owner's own test addresses only)** — ask the owner which addresses to use (never the club roster) and that they are ready. On localhost against the **preview** database, with the connection from Task 4 Step 17:
+  1. A throwaway script in the scratchpad (not committed) uses the service role to create, in the owner's throwaway workspace, contacts for the test addresses, a meeting tomorrow (attendance mode, an agenda with a list and a link), the invitees and their `invite` jobs (rows like `send_meeting` writes), then calls `runDispatch(createDispatchDeps(), DISPATCH_OPTIONS)` once, run with `bun` from the repo root so `.env.local` loads (never `source` it).
+  2. The owner checks: the emails arrived; the From line shows the workspace name (→ `Ruling: From display name kept = yes|no`, set `FROM_NAME_KEPT` when Task 15 creates it); the sender's Sent folder shows **one** conversation; buttons, layout and agenda render in Gmail web and the phone app; Gmail's own Unsubscribe (if shown) and the footer links reach `/u/…` and `/report/…` (404 until Task 17 — expected now; re-checked after Task 17).
+  3. The agent checks `meeting_invitees` (`sent`, token hashes set), `send_log` (one row per email) and `meetings.gmail_thread_id`. Delete the throwaway rows afterwards. Record the results (no addresses) in the ledger.
 
 ---
 
@@ -8368,13 +8394,13 @@ Add minimal `.agenda-preview` styles (`ul` disc + left padding, `ol` decimal, `a
 **Labels:** `area:ui`
 
 **Files:**
-- Create: `src/lib/meetings/partition.ts` (+ test), `src/app/w/[slug]/meetings/meetings-list.tsx` (+ test), `src/app/w/[slug]/meetings/new/page.tsx` (+ test), `src/app/w/[slug]/meetings/[id]/edit/page.tsx`, `…/edit/wizard-steps.ts` (+ test), `…/edit/wizard-shell.tsx` (+ test), `…/edit/wizard-footer.tsx`, `…/edit/details-form.ts` (+ test), `…/edit/details-step.tsx` (+ test), `…/edit/responses-form.ts` (+ test), `…/edit/responses-step.tsx` (+ test), `…/edit/audience-step.tsx` and `…/edit/review-step.tsx` (placeholders replaced by Tasks 14 and 15)
+- Create: `src/lib/meetings/partition.ts` (+ test), `src/app/w/[slug]/meetings/meetings-list.tsx` (+ test), `src/app/w/[slug]/meetings/draft-menu.tsx` (+ test), `src/app/w/[slug]/meetings/new/page.tsx` (+ test), `src/app/w/[slug]/meetings/[id]/edit/page.tsx`, `…/edit/wizard-steps.ts` (+ test), `…/edit/wizard-shell.tsx` (+ test), `…/edit/wizard-footer.tsx`, `…/edit/details-form.ts` (+ test), `…/edit/details-step.tsx` (+ test), `…/edit/responses-form.ts` (+ test), `…/edit/responses-step.tsx` (+ test), `…/edit/audience-step.tsx` and `…/edit/review-step.tsx` (placeholders replaced by Tasks 14 and 15)
 - Modify: `src/app/w/[slug]/meetings/page.tsx`, `src/components/shell/nav-items.ts` (+ test), `src/components/shell/bottom-bar.tsx` (+ test), `messages/en.json` (`Meetings`, `Wizard`)
 
 **Interfaces:**
 - Consumes: Task 11 hooks and schemas; Task 12 `DatePicker`, `TimePicker`, `MarkdownEditor`; Task 8 `formatMeetingWhen`, `zonedWallTimeToUtc`, `utcToZonedParts`; Task 4 `DELAY_OPTION_CHOICES`, `DELAY_OPTIONS_MAX`, `DURATION_CHOICES`; M2 `TimezonePicker`, `useWorkspace`, `SegmentedControl`, `Chip`, `Switch`, `Input`.
 - Produces:
-  - `partitionMeetings(meetings: MeetingSummary[], now: Date): { upcoming; drafts; past }` — drafts = `draft`; upcoming = `scheduled` and end time after `now` (soonest first); past = the rest (latest first).
+  - `partitionMeetings(meetings: MeetingSummary[], now: Date): { upcoming; drafts; past }` — drafts = `draft` with a title or a date (untitled, undated drafts are hidden; housekeeping deletes them after 24 h); upcoming = `scheduled` and end time after `now` (soonest first); past = the rest (latest first).
   - `navItemsFor(role, slug, meetingsEnabled: boolean)` — "+" `enabled` only when the flag is on (Viewers still never see it).
   - Route `/w/[slug]/meetings/new`: creates a draft once and replaces the URL with `/w/[slug]/meetings/<id>/edit?step=details`.
   - Wizard steps: `WIZARD_STEPS = ["details", "audience", "responses", "review"]` for drafts; `INVITE_MORE_STEPS = ["audience", "review"]` for scheduled meetings; `stepsFor(status)`, `resolveStep(param: string | null, steps)`.
@@ -8489,6 +8515,7 @@ describe("partitionMeetings", () => {
     const result = partitionMeetings(
       [
         at("d", "draft", null),
+        { ...at("", "draft", null), id: "empty", title: "" },
         at("later", "scheduled", "2026-10-20T17:00:00Z"),
         at("soon", "scheduled", "2026-10-08T17:00:00Z"),
         at("running", "scheduled", "2026-10-07T11:30:00Z", 60),
@@ -8626,7 +8653,8 @@ const startOf = (m: MeetingSummary) => (m.startsAt ? new Date(m.startsAt).getTim
 
 /** Meetings page tabs (spec §10): Drafts, Upcoming (soonest first, including one in progress), Past. */
 export function partitionMeetings(meetings: MeetingSummary[], now: Date) {
-  const drafts = meetings.filter((m) => m.status === "draft");
+  // An untitled, undated draft is a "+" tap that went nowhere; housekeeping deletes it after 24 h.
+  const drafts = meetings.filter((m) => m.status === "draft" && (m.title !== "" || m.startsAt !== null));
   const upcoming = meetings
     .filter((m) => m.status === "scheduled" && m.startsAt && isAfter(addMinutes(new Date(m.startsAt), m.durationMinutes), now))
     .sort((a, b) => startOf(a) - startOf(b));
@@ -8898,6 +8926,9 @@ export function MeetingsList({ slug }: { slug: string }) {
                     </span>
                   </Card>
                 </Link>
+                {meeting.status === "draft" && canEdit ? (
+                  <DraftMenu slug={slug} meetingId={meeting.id} title={meeting.title || t("untitled")} />
+                ) : null}
               </li>
             );
           })}
@@ -8907,6 +8938,8 @@ export function MeetingsList({ slug }: { slug: string }) {
   );
 }
 ```
+Draft cards are wrapped in `<li className="relative">` and `DraftMenu` (`src/app/w/[slug]/meetings/draft-menu.tsx`) sits at the card's top-right corner: a 44 px "…" button (`DotsThree` icon, `aria-label` "Draft actions for <title>") opening the existing `DropdownMenu` (`p-1.5` inner padding) with **Delete draft**, which opens `ConfirmDialog` (Task 12) titled "Delete this draft?" (tone danger) and calls `useDeleteMeeting(slug).mutate(meetingId)`. Messages: `Meetings.draftActions` ("Draft actions for {title}") and reuse `Wizard.review.deleteTitle` / `deleteBody` / `deleteDraft`. `draft-menu.test.tsx`: opening the menu and confirming sends `DELETE …/meetings/<id>`; cancelling sends nothing.
+
 Test (`meetings-list.test.tsx`, with `routeFetch` for `GET /api/workspaces/robotics-cd34` (`workspaceFixture`) and `GET …/meetings`): shows "Weekly sync" under Upcoming with "1 of 2 sent"; switching to Drafts shows "Untitled draft"; a Viewer fixture (`{ ...workspaceFixture, myRole: "viewer" }`) has no Drafts tab and no "New meeting".
 
 `src/app/w/[slug]/meetings/new/page.tsx`:
@@ -10141,8 +10174,8 @@ export function quotaLine(input: { toSend: number; sentLast24h: number; dailyLim
 Append to `src/config/meetings.ts` (value from the ledger ruling):
 ```ts
 /**
- * Whether Gmail keeps a custom From display name set by the Gmail API (checked before Task 9; see the
- * M4 ledger). When false, the Review step shows only the address.
+ * Whether Gmail keeps a custom From display name set by the Gmail API (checked at Task 10's first
+ * real send; see the M4 ledger). When false, the Review step shows only the address.
  */
 export const FROM_NAME_KEPT = true;
 ```
@@ -11747,7 +11780,7 @@ with the two constants exported from `e2e/helpers/seed-sender.ts` (fixed test-on
   A second test: an Admin of a workspace with no sender reaches Review and sees "Ask … to connect Gmail to send. You can save this draft." with no Send button.
   Run: stop any dev server (`ss -ltnp`, kill by PID), then `bun run test:e2e` → all projects PASS. CI's `db` job runs it too.
 
-- [ ] **Step 4: Secrets (no value is ever printed)** — generate two sets (Production, and Preview + local) with a script that writes straight into chmod-600 files:
+- [ ] **Step 4: Secrets (no value is ever printed)** — the preview/local set exists since Task 4 Step 17; generate the Production set the same way (and the preview one only if missing) with a script that writes straight into chmod-600 files:
 ```bash
 umask 077
 for target in production preview; do
@@ -11771,7 +11804,7 @@ done
   Repeat with the preview file and `preview`. Add the plain flag: `timeout 60 vercel env add NEXT_PUBLIC_GMAIL_CONNECT_ENABLED production --value true --no-sensitive --yes --non-interactive --scope dalychouikhs-projects`, and `NEXT_PUBLIC_GMAIL_CONNECT_ENABLED=true` in `.env.local`. Verify names only: `vercel env ls --scope dalychouikhs-projects`.
   **Note:** rotating `INVITE_TOKEN_SECRET` later invalidates every personal link already sent; rotating `GOOGLE_TOKEN_ENCRYPTION_KEY` breaks every stored connection (Owners must reconnect). Write both facts next to the backup block in `.env.local`.
 
-- [ ] **Step 5: Google Cloud (owner does this; give these exact steps)** — Google Cloud console → project `tapnshow` → Google Auth Platform → Clients → `tapnshow-web` → Authorized redirect URIs → **Add URI**: `https://tapnshow.vercel.app/api/integrations/google/callback`, then **Add URI**: `http://localhost:3000/api/integrations/google/callback` → **Save**. Changes can take a few minutes. Data Access already lists `gmail.send`; nothing else changes (Audience stays "In production", unverified). Then the owner tests the connect flow on localhost against the preview project with their own Gmail and reports what the consent screens showed.
+- [ ] **Step 5: Google Cloud** — already done in Task 4 Step 17; confirm both URIs are still listed on `tapnshow-web` and that the Audience is still "In production" (unverified).
 
 - [ ] **Step 6: Vault on production (dispatcher cron)** — write the SQL to a chmod-600 file in the scratchpad (never on the command line), run it, delete it:
 ```bash
