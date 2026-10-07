@@ -26,6 +26,15 @@ begin
   if new.is_adhoc and not old.is_adhoc then
     raise exception 'tn:invalid_input' using errcode = 'P0001';
   end if;
+  -- A guest joining the roster counts like an insert; the insert-time cap trigger never sees it
+  -- (security review: create guests, then flip them, would bypass the contacts cap).
+  if old.is_adhoc and not new.is_adhoc then
+    perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext('roster:contacts:' || new.workspace_id::text));
+    if (select count(*) from public.contacts c where c.workspace_id = new.workspace_id and not c.is_adhoc)
+        >= private.app_limit('contacts_per_workspace_max') then
+      raise exception 'tn:contacts_limit_reached' using errcode = 'P0001';
+    end if;
+  end if;
   return new;
 end;
 $$;
@@ -122,27 +131,18 @@ revoke all on table public.meetings, public.meeting_audience, public.meeting_aud
   from anon, authenticated;
 grant select on table public.meetings, public.meeting_audience, public.meeting_audience_people, public.meeting_invitees
   to authenticated;
-grant insert (workspace_id, title, agenda_md, starts_at, duration_minutes, timezone, location_mode, location_text,
-              meeting_url, response_mode, response_deadline, delay_options, reason_required, comments_enabled,
-              footer_note, created_by),
-      update (title, agenda_md, starts_at, duration_minutes, timezone, location_mode, location_text, meeting_url,
+-- No direct inserts: create_meeting (definer) applies the hourly limit (security review).
+grant update (title, agenda_md, starts_at, duration_minutes, timezone, location_mode, location_text, meeting_url,
               response_mode, response_deadline, delay_options, reason_required, comments_enabled, footer_note),
       delete
   on table public.meetings to authenticated;
-grant insert (workspace_id, meeting_id, list_id), delete on table public.meeting_audience to authenticated;
-grant insert (workspace_id, meeting_id, contact_id, mode), update (mode), delete
-  on table public.meeting_audience_people to authenticated;
+-- Audience rows are written only by set_meeting_audience / add_meeting_people (definer), which
+-- enforce the per-meeting cap (security review).
 grant all on table public.meetings, public.meeting_audience, public.meeting_audience_people, public.meeting_invitees
   to service_role;
 
 create policy meetings_select_members on public.meetings
   for select to authenticated using (private.is_member(workspace_id));
-create policy meetings_insert_managers on public.meetings
-  for insert to authenticated
-  with check (
-    private.is_member(workspace_id, array['owner', 'admin']::public.workspace_role[])
-    and created_by = (select auth.uid())
-  );
 create policy meetings_update_drafts on public.meetings
   for update to authenticated
   using (status = 'draft' and private.is_member(workspace_id, array['owner', 'admin']::public.workspace_role[]))
@@ -153,44 +153,8 @@ create policy meetings_delete_drafts on public.meetings
 
 create policy meeting_audience_select_members on public.meeting_audience
   for select to authenticated using (private.is_member(workspace_id));
-create policy meeting_audience_write_managers on public.meeting_audience
-  for insert to authenticated
-  with check (
-    private.is_member(workspace_id, array['owner', 'admin']::public.workspace_role[])
-    and exists (select 1 from public.meetings m where m.id = meeting_id and m.status in ('draft', 'scheduled'))
-  );
-create policy meeting_audience_delete_managers on public.meeting_audience
-  for delete to authenticated
-  using (
-    private.is_member(workspace_id, array['owner', 'admin']::public.workspace_role[])
-    and exists (select 1 from public.meetings m where m.id = meeting_id and m.status in ('draft', 'scheduled'))
-  );
-
 create policy meeting_audience_people_select_members on public.meeting_audience_people
   for select to authenticated using (private.is_member(workspace_id));
-create policy meeting_audience_people_insert_managers on public.meeting_audience_people
-  for insert to authenticated
-  with check (
-    private.is_member(workspace_id, array['owner', 'admin']::public.workspace_role[])
-    and exists (select 1 from public.meetings m where m.id = meeting_id and m.status in ('draft', 'scheduled'))
-  );
-create policy meeting_audience_people_update_managers on public.meeting_audience_people
-  for update to authenticated
-  using (
-    private.is_member(workspace_id, array['owner', 'admin']::public.workspace_role[])
-    and exists (select 1 from public.meetings m where m.id = meeting_id and m.status in ('draft', 'scheduled'))
-  )
-  with check (
-    private.is_member(workspace_id, array['owner', 'admin']::public.workspace_role[])
-    and exists (select 1 from public.meetings m where m.id = meeting_id and m.status in ('draft', 'scheduled'))
-  );
-create policy meeting_audience_people_delete_managers on public.meeting_audience_people
-  for delete to authenticated
-  using (
-    private.is_member(workspace_id, array['owner', 'admin']::public.workspace_role[])
-    and exists (select 1 from public.meetings m where m.id = meeting_id and m.status in ('draft', 'scheduled'))
-  );
-
 create policy meeting_invitees_select_members on public.meeting_invitees
   for select to authenticated using (private.is_member(workspace_id));
 
@@ -254,10 +218,10 @@ as $$
   where x.mode is not null or x.list_ids <> '{}' or x.invited;
 $$;
 
-create function public.create_meeting(p_workspace uuid)
+create function private.create_meeting(p_workspace uuid)
 returns uuid
 language plpgsql
-security invoker
+security definer
 set search_path = ''
 as $$
 declare
@@ -282,10 +246,10 @@ begin
 end;
 $$;
 
-create function public.set_meeting_audience(p_meeting uuid, p_list_ids uuid[], p_include uuid[], p_exclude uuid[])
+create function private.set_meeting_audience(p_meeting uuid, p_list_ids uuid[], p_include uuid[], p_exclude uuid[])
 returns void
 language plpgsql
-security invoker
+security definer
 set search_path = ''
 as $$
 declare
@@ -296,7 +260,7 @@ declare
   v_exclude uuid[] := coalesce(p_exclude, '{}');
 begin
   select m.workspace_id, m.status into v_workspace, v_status from public.meetings m where m.id = p_meeting;
-  if v_workspace is null then
+  if v_workspace is null or not private.is_member(v_workspace) then
     raise exception 'tn:not_found' using errcode = 'P0001';
   end if;
   if not private.is_member(v_workspace, array['owner', 'admin']::public.workspace_role[]) then
@@ -402,6 +366,14 @@ begin
   return pg_catalog.jsonb_build_object('contact_ids', pg_catalog.to_jsonb(v_ids));
 end;
 $$;
+
+create function public.create_meeting(p_workspace uuid)
+returns uuid language sql security invoker set search_path = ''
+as $$ select private.create_meeting(p_workspace) $$;
+
+create function public.set_meeting_audience(p_meeting uuid, p_list_ids uuid[], p_include uuid[], p_exclude uuid[])
+returns void language sql security invoker set search_path = ''
+as $$ select private.set_meeting_audience(p_meeting, p_list_ids, p_include, p_exclude) $$;
 
 create function public.add_meeting_people(p_meeting uuid, p_people jsonb, p_save_to_roster boolean)
 returns jsonb language sql security invoker set search_path = ''
@@ -732,7 +704,9 @@ $$;
 revoke execute on all functions in schema private from public, anon;
 grant execute on function
   private.audience_members(uuid),
-  private.add_meeting_people(uuid, jsonb, boolean)
+  private.add_meeting_people(uuid, jsonb, boolean),
+  private.create_meeting(uuid),
+  private.set_meeting_audience(uuid, uuid[], uuid[], uuid[])
 to authenticated;
 grant execute on function private.audience_members(uuid) to service_role;
 

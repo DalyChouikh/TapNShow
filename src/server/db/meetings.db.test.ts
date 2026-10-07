@@ -7,6 +7,7 @@ import {
   type TestUser,
 } from "@/test/db/clients";
 import { addToList, seedMeeting } from "@/test/db/meetings";
+import { queryLocalSql, runLocalSql } from "@/test/db/sql";
 import { seedContacts, seedList } from "@/test/db/roster";
 import {
   addMember,
@@ -355,6 +356,73 @@ describe("add_meeting_people", () => {
       }),
       "forbidden",
     );
+  });
+});
+
+describe("writes go through the functions (security review)", () => {
+  it("refuses direct meeting inserts, so the hourly limit cannot be skipped", async () => {
+    const direct = await admin.client.from("meetings").insert({
+      workspace_id: workspace.id,
+      duration_minutes: 60,
+      timezone: "Africa/Tunis",
+      response_mode: "attendance",
+      reason_required: true,
+      comments_enabled: false,
+      created_by: admin.id,
+    });
+    expect(direct.error?.code).toBe("42501");
+  });
+
+  it("refuses direct audience writes, so the per-meeting cap cannot be skipped", async () => {
+    const meeting = await seedMeeting(workspace.id);
+    const [a] = await seedContacts(workspace.id, 1, "direct");
+    const list = await seedList(workspace.id, "Direct");
+    const people = await admin.client
+      .from("meeting_audience_people")
+      .insert({
+        workspace_id: workspace.id,
+        meeting_id: meeting,
+        contact_id: a,
+        mode: "include",
+      });
+    expect(people.error?.code).toBe("42501");
+    const lists = await admin.client
+      .from("meeting_audience")
+      .insert({
+        workspace_id: workspace.id,
+        meeting_id: meeting,
+        list_id: list,
+      });
+    expect(lists.error?.code).toBe("42501");
+  });
+
+  it("counts a guest joining the roster against the contacts cap, on every path", async () => {
+    const [{ value }] = queryLocalSql(
+      "select value from private.app_limits where name = 'contacts_per_workspace_max'",
+      z.array(z.object({ value: z.number() })).length(1),
+    );
+    const meeting = await seedMeeting(workspace.id);
+    await admin.client.rpc("add_meeting_people", {
+      p_meeting: meeting,
+      p_people: [{ email: "guest-cap@uni.tn", full_name: "Guest" }],
+      p_save_to_roster: false,
+    });
+    await seedContacts(workspace.id, 2, "cap-roster");
+    runLocalSql(
+      "update private.app_limits set value = 2 where name = 'contacts_per_workspace_max'",
+    );
+    try {
+      const flip = await admin.client
+        .from("contacts")
+        .update({ is_adhoc: false })
+        .eq("workspace_id", workspace.id)
+        .eq("email", "guest-cap@uni.tn");
+      expect(flip.error?.message).toBe("tn:contacts_limit_reached");
+    } finally {
+      runLocalSql(
+        `update private.app_limits set value = ${value} where name = 'contacts_per_workspace_max'`,
+      );
+    }
   });
 });
 
