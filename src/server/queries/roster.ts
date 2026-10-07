@@ -2,6 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { Database } from "@/server/db/database.types";
+import { sqlNullable } from "@/server/db/rpc-args";
 import {
   importReasonSchema,
   type ImportResult,
@@ -96,21 +97,17 @@ const dbImportResultSchema = z
     })),
   }));
 
-/**
- * The whole roster through `roster()` (one jsonb value, so the 1,000-row Data API cap never applies).
- * @throws Error with the database message
- */
+/** The whole roster through `roster()` (one jsonb value, so the 1,000-row Data API cap never applies). */
 export async function getRoster(
   client: Client,
   workspaceId: string,
-): Promise<Roster> {
+): Promise<{ data: Roster; error: null } | { data: null; error: DbError }> {
   const { data, error } = await client.rpc("roster", {
     p_workspace: workspaceId,
   });
-  if (error) {
-    throw new Error(error.message);
-  }
-  return dbRosterSchema.parse(data);
+  return error
+    ? { data: null, error }
+    : { data: dbRosterSchema.parse(data), error: null };
 }
 
 /** `import_contacts` (dry run = preview; commit = apply). */
@@ -141,7 +138,10 @@ export async function importContacts(
     : { data: dbImportResultSchema.parse(data), error: null };
 }
 
-/** Renames a person or changes their email (RLS: Owner/Admin). Empty `data` means not found. */
+/**
+ * `update_contact`: name, email and lists in one transaction, scoped to `workspaceId`.
+ * An omitted field is left unchanged; `tn:not_found` when the person or a list is elsewhere.
+ */
 export function updateContact(
   client: Client,
   input: {
@@ -149,25 +149,15 @@ export function updateContact(
     contactId: string;
     fullName?: string;
     email?: string;
+    listIds?: string[];
   },
-) {
-  return client
-    .from("contacts")
-    .update({ full_name: input.fullName, email: input.email })
-    .eq("id", input.contactId)
-    .eq("workspace_id", input.workspaceId)
-    .select("id");
-}
-
-/** `set_contact_lists`: the person's lists become exactly `listIds`. */
-export function setContactLists(
-  client: Client,
-  contactId: string,
-  listIds: string[],
-) {
-  return client.rpc("set_contact_lists", {
-    p_contact: contactId,
-    p_list_ids: listIds,
+): PromiseLike<{ error: DbError | null }> {
+  return client.rpc("update_contact", {
+    p_workspace: input.workspaceId,
+    p_contact: input.contactId,
+    p_full_name: sqlNullable(input.fullName),
+    p_email: sqlNullable(input.email),
+    p_list_ids: sqlNullable(input.listIds),
   });
 }
 
