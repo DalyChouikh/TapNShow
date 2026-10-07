@@ -432,10 +432,31 @@ describe("import_contacts guards", () => {
     );
   });
 
+  it("counts single adds against their own limit, not the import budget", async () => {
+    for (let n = 0; n < 30; n += 1) {
+      await run(
+        [{ row: 1, full_name: `Person ${n}`, email: `p${n}@example.com` }],
+        false,
+      );
+    }
+    await expect(
+      run(
+        [
+          { row: 1, full_name: "A", email: "a@example.com" },
+          { row: 2, full_name: "B", email: "b@example.com" },
+        ],
+        false,
+      ),
+    ).resolves.toMatchObject({ summary: { new: 2 } });
+  });
+
   it("limits commits to 30 per hour, separately from previews", async () => {
     for (let n = 0; n < 30; n += 1) {
       await run(
-        [{ row: 1, full_name: "Same", email: "same@example.com" }],
+        [
+          { row: 1, full_name: "Same", email: "same@example.com" },
+          { row: 2, full_name: "Other", email: "other@example.com" },
+        ],
         false,
       );
     }
