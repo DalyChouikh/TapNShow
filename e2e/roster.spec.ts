@@ -1,7 +1,7 @@
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { expectNoHorizontalScroll } from "./helpers/layout";
-import { seedRoster } from "./helpers/seed";
+import { seedMember, seedRoster } from "./helpers/seed";
 import { signInWithCode, uniqueEmail } from "./helpers/sign-in";
 
 const LONG_NAME = "Mohamed Ali Ben Abdallah El Kefi";
@@ -221,4 +221,35 @@ test("imports a CSV with a preview, and re-importing reports 0 new", async ({
   await expect(
     page.getByRole("button", { name: "Nothing to import" }),
   ).toBeDisabled();
+});
+
+test("a Viewer sees the roster read-only", async ({
+  page,
+  browser,
+}, testInfo) => {
+  const slug = await createWorkspace(page, "Viewer Club");
+  await seedRoster(slug, [
+    { fullName: "Inès Ben Salah", email: "ines@example.test", lists: ["Dev"] },
+  ]);
+  const viewer = await seedMember(slug, "viewer", "Vic Viewer");
+
+  const context = await browser.newContext({ ...testInfo.project.use });
+  const viewerPage = await context.newPage();
+  await signInWithCode(viewerPage, viewer.email, { startPath: "/login" });
+  await viewerPage.goto(`/w/${slug}/lists`);
+  await expect(viewerPage.getByText("1 person")).toBeVisible();
+  await expect(viewerPage.getByRole("button", { name: "Import" })).toHaveCount(
+    0,
+  );
+  await expect(
+    viewerPage.getByRole("button", { name: "Add", exact: true }),
+  ).toHaveCount(0);
+  await expect(viewerPage.getByRole("button", { name: "Select" })).toHaveCount(
+    0,
+  );
+  await viewerPage.getByRole("button", { name: /Inès Ben Salah/ }).click();
+  await expect(
+    viewerPage.getByText("Only Owners and Admins can edit the roster."),
+  ).toBeVisible();
+  await context.close();
 });
