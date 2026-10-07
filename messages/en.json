@@ -180,9 +180,7 @@
   },
   "ComingSoon": {
     "meetingsTitle": "Meetings arrive soon",
-    "meetingsBody": "Creating and sending meetings is the next big step.",
-    "listsTitle": "Member lists arrive soon",
-    "listsBody": "Soon you'll import your members from a spreadsheet here."
+    "meetingsBody": "Creating and sending meetings is the next big step."
   },
   "Settings": {
     "title": "Settings",
@@ -367,6 +365,81 @@
     "columnEmail": "Email",
     "columnLists": "Lists",
     "sortBy": "Sort by {column}",
-    "editCell": "{column} of {name}"
+    "editCell": "{column} of {name}",
+    "import": "Import",
+    "paste": "Paste from Sheets"
+  },
+  "ListsImport": {
+    "title": "Import people",
+    "stepOf": "Step {step} of 3",
+    "sourceLabel": "Import from",
+    "sourceFile": "File",
+    "sourcePaste": "Paste",
+    "dropTitle": "Choose a .csv or .xlsx",
+    "dropHint": "Up to {megabytes} MB. The file stays on your device.",
+    "fileChosen": "{name}: {rows, plural, one {# row} other {# rows}}",
+    "sheetLabel": "Sheet",
+    "pasteLabel": "Paste rows",
+    "pasteHint": "Copy the cells in Google Sheets or Excel, then paste them here.",
+    "fileErrors": {
+      "too_large": "This file is bigger than {megabytes} MB.",
+      "xls": "Old .xls files can't be read. Save it as .xlsx or CSV and try again.",
+      "unsupported": "Choose a .csv or .xlsx file.",
+      "unreadable": "This file couldn't be read. Is it really an .xlsx file?",
+      "empty": "This file has no rows."
+    },
+    "next": "Next",
+    "back": "Back",
+    "previewAction": "Preview",
+    "matchIntro": "We matched your columns from their names. {rows, plural, one {# row} other {# rows}} to import.",
+    "headerSwitch": "First row is headers",
+    "columnN": "Column {n}",
+    "columnTarget": "What is {column}?",
+    "sampleEmpty": "(empty)",
+    "targets": {
+      "fullName": "Full name",
+      "email": "Email",
+      "lists": "Lists",
+      "ignore": "Ignore"
+    },
+    "alsoAdd": "Also add everyone to",
+    "alsoAddPick": "Choose a list",
+    "alsoAddClear": "No list",
+    "problems": {
+      "no_email": "Match one column to Email.",
+      "several_emails": "Only one column can be Email.",
+      "too_many_rows": "{rows} rows is more than the {max} allowed in one import. Split the sheet and import each part.",
+      "no_rows": "There are no rows to import."
+    },
+    "tiles": {
+      "new": "New",
+      "updated": "Updated",
+      "unchanged": "Unchanged",
+      "merged": "Merged duplicates",
+      "invalid": "Invalid, skipped"
+    },
+    "showAll": "Show all rows",
+    "newLists": "New lists:",
+    "limitContacts": "This import would go past your roster limit of {max} people.",
+    "limitLists": "This import would go past the limit of {max} lists.",
+    "rowLabel": "Row {row}",
+    "tags": {
+      "new": "NEW",
+      "updated": "UPDATED",
+      "unchanged": "SAME",
+      "invalid": "INVALID"
+    },
+    "reasons": {
+      "email_missing": "No email",
+      "email_invalid": "\"{email}\" is not an email address",
+      "name_missing": "No name for a new person",
+      "name_too_long": "The name is longer than 120 characters",
+      "list_name_too_long": "A list name is longer than 60 characters"
+    },
+    "addedLists": "Adds {lists}",
+    "renamed": "{from} → {to}",
+    "mergedRows": "Merged with {rows, plural, one {row} other {rows}} {list}",
+    "importAction": "{count, plural, =0 {Nothing to import} one {Import # person} other {Import # people}}",
+    "done": "{added} added, {updated} updated{lists, plural, =0 {} one {, # list created} other {, # lists created}}."
   }
 }

@@ -1,6 +1,7 @@
 "use client";
 
-import { Plus } from "@phosphor-icons/react";
+import { Plus, UploadSimple } from "@phosphor-icons/react";
+import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,12 @@ import { RosterGrid } from "./roster-grid";
 import { SelectionBar } from "./selection-bar";
 import { useDeferredDelete } from "./use-deferred-delete";
 
+// The import wizard and its parsers load only when someone opens it (spec §10).
+const ImportDialog = dynamic(
+  () => import("./import/import-dialog").then((module) => module.ImportDialog),
+  { ssr: false },
+);
+
 /** The roster page body (spec §7.14): search, list chips, people, and the editors. */
 export function RosterView({
   workspace,
@@ -36,6 +43,7 @@ export function RosterView({
   const [openContactId, setOpenContactId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [managing, setManaging] = useState(false);
+  const [importing, setImporting] = useState<"file" | "paste" | null>(null);
   const [selecting, setSelecting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(
     new Set(),
@@ -80,7 +88,7 @@ export function RosterView({
 
   return (
     <section className="flex min-w-0 flex-col gap-3">
-      <div className="flex items-end justify-between gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-3xl">{t("title")}</h1>
           <p className="text-sm text-muted-ink">
@@ -88,19 +96,31 @@ export function RosterView({
           </p>
         </div>
         {canEdit ? (
-          <Button tone="primary" onClick={() => setAdding(true)}>
-            <Plus weight="bold" aria-hidden />
-            {t("add")}
-          </Button>
+          <div className="flex shrink-0 gap-2">
+            <Button onClick={() => setImporting("file")}>
+              <UploadSimple weight="bold" aria-hidden />
+              {t("import")}
+            </Button>
+            <Button tone="primary" onClick={() => setAdding(true)}>
+              <Plus weight="bold" aria-hidden />
+              {t("add")}
+            </Button>
+          </div>
         ) : null}
       </div>
       {people.length === 0 && live.lists.length === 0 ? (
         <RosterEmpty
           canEdit={canEdit}
           actions={
-            <Button tone="primary" onClick={() => setAdding(true)}>
-              {t("add")}
-            </Button>
+            <>
+              <Button tone="primary" onClick={() => setImporting("file")}>
+                {t("import")}
+              </Button>
+              <Button onClick={() => setImporting("paste")}>
+                {t("paste")}
+              </Button>
+              <Button onClick={() => setAdding(true)}>{t("add")}</Button>
+            </>
           }
         />
       ) : (
@@ -217,6 +237,15 @@ export function RosterView({
             open={managing}
             onOpenChange={setManaging}
           />
+          {importing ? (
+            <ImportDialog
+              slug={workspace.slug}
+              roster={live}
+              initialSource={importing}
+              open
+              onOpenChange={(open) => (open ? undefined : setImporting(null))}
+            />
+          ) : null}
         </>
       ) : null}
     </section>
