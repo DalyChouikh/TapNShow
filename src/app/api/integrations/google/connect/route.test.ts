@@ -88,6 +88,23 @@ describe("GET /api/integrations/google/connect", () => {
     );
   });
 
+  it("never redirects off the site through a crafted workspace value", async () => {
+    mocks.enabled.value = false;
+    const { GET } = await import("./route");
+    for (const workspace of [
+      "..%2F..%2F%2Fevil.example",
+      "%2F%2Fevil.example",
+      "a%5C..%5C..%5Cevil.example",
+    ]) {
+      const location = new URL(
+        (await GET(request(`workspace=${workspace}`))).headers.get(
+          "location",
+        ) ?? "",
+      );
+      expect(location.origin).toBe("http://localhost:3000");
+    }
+  });
+
   it("sends signed-out visitors to sign in first", async () => {
     mocks.user.value = null;
     const { GET } = await import("./route");

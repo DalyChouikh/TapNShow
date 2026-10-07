@@ -15,6 +15,11 @@ describe("withQuery", () => {
     ).toBe("/w/club/meetings/1/edit?step=review&gmail_error=cancelled");
   });
 
+  it("never turns a path into another site's address", () => {
+    expect(withQuery("/w/../..//evil.example/x", "gmail", "1")).toBe("/");
+    expect(senderSettingsPath("../..//evil.example")).toBe("/welcome");
+  });
+
   it("points the connect flow back at Settings > Sending", () => {
     expect(senderSettingsPath("club")).toBe("/w/club/settings#sending");
   });
