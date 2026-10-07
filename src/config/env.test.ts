@@ -73,4 +73,19 @@ describe("parseServerEnv", () => {
       }),
     ).toThrow(/SMTP_PASS/);
   });
+
+  it("keeps the M4 secrets optional and defaults the Google API URLs", () => {
+    const env = parseServerEnv({ ...supabase, ...smtp });
+    expect(env.INVITE_TOKEN_SECRET).toBeUndefined();
+    expect(env.GMAIL_API_BASE_URL).toBe("https://gmail.googleapis.com");
+    expect(env.GOOGLE_OAUTH_TOKEN_URL).toBe(
+      "https://oauth2.googleapis.com/token",
+    );
+  });
+
+  it("rejects short M4 secrets and names them", () => {
+    expect(() =>
+      parseServerEnv({ ...supabase, ...smtp, DISPATCH_SECRET: "short" }),
+    ).toThrow(/DISPATCH_SECRET/);
+  });
 });
