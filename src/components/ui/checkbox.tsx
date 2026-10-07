@@ -1,6 +1,6 @@
 "use client";
 
-import { Check } from "@phosphor-icons/react";
+import { Check, Minus } from "@phosphor-icons/react";
 import { Checkbox as CheckboxPrimitive } from "radix-ui";
 import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
@@ -25,10 +25,19 @@ export function Checkbox({
     >
       <span
         aria-hidden
-        className="inline-flex size-6 items-center justify-center rounded-[8px] border-[length:var(--tn-border-width)] border-outline bg-surface text-on-fill shadow-brutal-sm transition-[transform,box-shadow,background-color] duration-300 ease-spring group-active:translate-y-0.5 group-active:shadow-none group-data-[state=checked]:bg-fill-primary motion-reduce:transition-none"
+        className="inline-flex size-6 items-center justify-center rounded-[8px] border-[length:var(--tn-border-width)] border-outline bg-surface text-on-fill shadow-brutal-sm transition-[transform,box-shadow,background-color] duration-300 ease-spring group-active:translate-y-0.5 group-active:shadow-none group-data-[state=checked]:bg-fill-primary group-data-[state=indeterminate]:bg-fill-primary motion-reduce:transition-none"
       >
         <CheckboxPrimitive.Indicator className="data-[state=checked]:animate-in data-[state=checked]:zoom-in-50 motion-reduce:animate-none">
-          <Check weight="bold" className="size-4" aria-hidden />
+          <Check
+            weight="bold"
+            className="size-4 group-data-[state=indeterminate]:hidden"
+            aria-hidden
+          />
+          <Minus
+            weight="bold"
+            className="hidden size-4 group-data-[state=indeterminate]:block"
+            aria-hidden
+          />
         </CheckboxPrimitive.Indicator>
       </span>
     </CheckboxPrimitive.Root>

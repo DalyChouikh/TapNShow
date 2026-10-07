@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { FillTone } from "@/design/tokens";
 import { cn } from "@/lib/utils";
+import { LIST_FILL } from "../list-tag";
 import type {
   ImportOutcome,
   ImportResult,
@@ -27,14 +28,6 @@ const TONE: Record<Tile, FillTone> = {
   merged: "warning",
   invalid: "danger",
 };
-const FILL: Record<FillTone, string> = {
-  primary: "bg-fill-primary",
-  success: "bg-fill-success",
-  warning: "bg-fill-warning",
-  danger: "bg-fill-danger",
-  info: "bg-fill-info",
-  neutral: "bg-fill-neutral",
-};
 const ROW_ESTIMATE_PX = 64;
 const OVERSCAN = 8;
 
@@ -53,9 +46,20 @@ export function PreviewStep({
   const t = useTranslations("ListsImport");
   const [tile, setTile] = useState<Tile | null>(null);
   const [scroller, setScroller] = useState<HTMLDivElement | null>(null);
-  const rows = result.rows.filter((row) => matches(tile, row));
+  // "Merged duplicates" counts absorbed input rows, so that filter lists one line per absorbed row (#119).
+  const mergedLines =
+    tile === "merged"
+      ? result.rows.flatMap((row) =>
+          row.mergedRows.map((absorbed) =>
+            t("mergedInto", { row: absorbed, into: row.row, email: row.email }),
+          ),
+        )
+      : [];
+  const rows =
+    tile === "merged" ? [] : result.rows.filter((row) => matches(tile, row));
+  const count = tile === "merged" ? mergedLines.length : rows.length;
   const virtualizer = useVirtualizer({
-    count: rows.length,
+    count,
     getScrollElement: () => scroller,
     estimateSize: () => ROW_ESTIMATE_PX,
     overscan: OVERSCAN,
@@ -94,7 +98,7 @@ export function PreviewStep({
             onClick={() => setTile(tile === key ? null : key)}
             className={cn(
               "flex flex-col items-start rounded-control border-[length:var(--tn-border-width)] border-outline px-3 py-2 text-left text-sm font-bold text-on-fill shadow-brutal-sm aria-pressed:translate-y-0.5 aria-pressed:shadow-none",
-              FILL[TONE[key]],
+              LIST_FILL[TONE[key]],
               key === "invalid" && "col-span-2",
             )}
           >
@@ -141,6 +145,19 @@ export function PreviewStep({
       >
         <ul className="relative" style={{ height: virtualizer.getTotalSize() }}>
           {virtualizer.getVirtualItems().map((item) => {
+            if (tile === "merged") {
+              return (
+                <li
+                  key={item.key}
+                  data-index={item.index}
+                  ref={virtualizer.measureElement}
+                  className="absolute top-0 left-0 w-full border-b-2 border-dashed border-fill-neutral px-3 py-2 text-sm break-all"
+                  style={{ transform: `translateY(${item.start}px)` }}
+                >
+                  {mergedLines[item.index]}
+                </li>
+              );
+            }
             const row = rows[item.index];
             const text = detail(row);
             return (
@@ -155,7 +172,7 @@ export function PreviewStep({
                   <span
                     className={cn(
                       "rounded-md border-2 border-outline px-1 text-xs font-bold text-on-fill",
-                      FILL[TONE[row.outcome]],
+                      LIST_FILL[TONE[row.outcome]],
                     )}
                   >
                     {t(`tags.${row.outcome}`)}

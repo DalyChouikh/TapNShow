@@ -135,6 +135,47 @@ test("bulk actions on phones", async ({ page }) => {
   await expectNoHorizontalScroll(page);
 });
 
+test("bulk delete with Undo keeps people, and without Undo removes them", async ({
+  page,
+}) => {
+  const slug = await createWorkspace(page, "Bulk Delete Club");
+  await seedRoster(slug, [
+    { fullName: "Inès Ben Salah", email: "ines@example.test" },
+    { fullName: "Sarra Khelifi", email: "sarra@example.test" },
+    { fullName: "Youssef Trabelsi", email: "youssef@example.test" },
+  ]);
+  await page.goto(`/w/${slug}/lists`);
+  const deleteTwo = async () => {
+    await page.getByRole("button", { name: "Select" }).click();
+    await page.getByRole("checkbox", { name: "Select Inès Ben Salah" }).click();
+    await page.getByRole("checkbox", { name: "Select Sarra Khelifi" }).click();
+    await page.getByRole("button", { name: "Delete 2" }).click();
+    await page
+      .getByRole("dialog", { name: "Delete 2 people?" })
+      .getByRole("button", { name: "Delete", exact: true })
+      .click();
+    await expect(page.getByText("1 person")).toBeVisible();
+  };
+
+  await deleteTwo();
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(page.getByText("3 people")).toBeVisible();
+  await page.reload();
+  await expect(page.getByText("3 people")).toBeVisible();
+
+  // The delete is sent when the Undo toast closes; wait for it before reloading.
+  const sent = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/contacts/bulk") &&
+      response.request().method() === "POST",
+    { timeout: 15_000 },
+  );
+  await deleteTwo();
+  expect((await sent).ok()).toBe(true);
+  await page.reload();
+  await expect(page.getByText("1 person")).toBeVisible();
+});
+
 test.describe("wide screens", () => {
   test.use({ viewport: { width: 1024, height: 800 } });
 

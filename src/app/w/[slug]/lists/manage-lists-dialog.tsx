@@ -55,7 +55,20 @@ export function ManageListsDialog({
       parsed.data !== sentNames.current.get(list.id)
     ) {
       sentNames.current.set(list.id, parsed.data);
-      rename.mutate({ id: list.id, name: parsed.data }, { onError: showError });
+      rename.mutate(
+        { id: list.id, name: parsed.data },
+        {
+          onError: (error) => {
+            // A refused name must not stay in the field looking saved (#119).
+            sentNames.current.delete(list.id);
+            const input = nameInputs.current.get(list.id);
+            if (input) {
+              input.value = list.name;
+            }
+            showError(error);
+          },
+        },
+      );
     }
   };
 

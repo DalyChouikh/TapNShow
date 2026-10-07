@@ -3,7 +3,8 @@ import { cn } from "@/lib/utils";
 import type { ListSummary } from "@/shared/api/roster";
 
 const TONES: readonly FillTone[] = ["primary", "success", "warning", "info"];
-const FILL: Record<FillTone, string> = {
+/** Tailwind fill class per tone (shared by list tags and the import preview). */
+export const LIST_FILL: Record<FillTone, string> = {
   primary: "bg-fill-primary",
   success: "bg-fill-success",
   warning: "bg-fill-warning",
@@ -33,7 +34,7 @@ export function ListTag({
     <span
       className={cn(
         "inline-flex max-w-full items-center truncate rounded-full border-2 border-outline px-2 text-xs font-bold text-on-fill",
-        FILL[listTone(list.id)],
+        LIST_FILL[listTone(list.id)],
         className,
       )}
     >
