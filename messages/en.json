@@ -43,7 +43,13 @@
     "pasteLabel": "Paste rows",
     "pasteHint": "Copied from Google Sheets or Excel",
     "dropTitle": "Choose a .csv or .xlsx",
-    "dropHint": "Up to 5 MB. Stays on your device."
+    "dropHint": "Up to 5 MB. Stays on your device.",
+    "pickers": "Date and time",
+    "markdown": "Markdown editor",
+    "confirm": "Confirm dialog",
+    "confirmOpen": "Open confirm",
+    "confirmTitle": "Send 30 invites from club@gmail.com now?",
+    "confirmAction": "Send 30 invites"
   },
   "Email": {
     "footer": "You got this email because this address was used on {appName}. If that wasn't you, you can ignore it.",
@@ -469,5 +475,23 @@
     "importAction": "{count, plural, =0 {Nothing to import} one {Import # person} other {Import # people}}",
     "done": "{added} added, {updated} updated{lists, plural, =0 {} one {, # list created} other {, # lists created}}.",
     "mergedInto": "Row {row} merged into row {into} ({email})"
+  },
+  "Pickers": {
+    "pickDate": "Pick a date",
+    "pickTime": "Pick a time",
+    "previousMonth": "Previous month",
+    "nextMonth": "Next month",
+    "timeSearch": "Type a time, e.g. 1830",
+    "useTime": "Use {time}",
+    "noTime": "Not a time. Try 1830 or 6:30 pm."
+  },
+  "MarkdownEditor": {
+    "write": "Write",
+    "preview": "Preview",
+    "bold": "Bold",
+    "italic": "Italic",
+    "list": "Bulleted list",
+    "link": "Link",
+    "empty": "Nothing to preview yet."
   }
 }
