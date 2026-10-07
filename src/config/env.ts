@@ -1,5 +1,6 @@
 import "server-only";
 import { z } from "zod";
+import { GOOGLE_TOKEN_ENDPOINT } from "./auth";
 import { blankToUndefined, formatEnvError, type EnvSource } from "./env-utils";
 
 const serverEnvSchema = z
@@ -23,6 +24,11 @@ const serverEnvSchema = z
     GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
     VERCEL_URL: z.string().min(1).optional(),
     VERCEL_BRANCH_URL: z.string().min(1).optional(),
+    GOOGLE_TOKEN_ENCRYPTION_KEY: z.string().min(1).optional(),
+    INVITE_TOKEN_SECRET: z.string().min(32).optional(),
+    DISPATCH_SECRET: z.string().min(32).optional(),
+    GMAIL_API_BASE_URL: z.url().default("https://gmail.googleapis.com"),
+    GOOGLE_OAUTH_TOKEN_URL: z.url().default(GOOGLE_TOKEN_ENDPOINT),
   })
   .superRefine((env, context) => {
     const pairs: ReadonlyArray<[keyof typeof env, keyof typeof env]> = [

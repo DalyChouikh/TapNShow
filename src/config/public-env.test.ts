@@ -40,4 +40,18 @@ describe("parsePublicEnv", () => {
       }).NEXT_PUBLIC_GOOGLE_SIGN_IN_ENABLED,
     ).toBe(true);
   });
+
+  it("keeps the M4 rollout flags off unless set", () => {
+    const env = parsePublicEnv({
+      NEXT_PUBLIC_APP_URL: "https://tapnshow.vercel.app",
+    });
+    expect(env.NEXT_PUBLIC_MEETINGS_ENABLED).toBe(false);
+    expect(env.NEXT_PUBLIC_GMAIL_CONNECT_ENABLED).toBe(false);
+    expect(
+      parsePublicEnv({
+        NEXT_PUBLIC_APP_URL: "https://tapnshow.vercel.app",
+        NEXT_PUBLIC_MEETINGS_ENABLED: "true",
+      }).NEXT_PUBLIC_MEETINGS_ENABLED,
+    ).toBe(true);
+  });
 });

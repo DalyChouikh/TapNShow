@@ -6,6 +6,8 @@ const publicEnvSchema = z.object({
   NEXT_PUBLIC_SENTRY_DSN: z.url().optional(),
   NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: z.string().min(1).optional(),
   NEXT_PUBLIC_GOOGLE_SIGN_IN_ENABLED: z.stringbool().default(false),
+  NEXT_PUBLIC_MEETINGS_ENABLED: z.stringbool().default(false),
+  NEXT_PUBLIC_GMAIL_CONNECT_ENABLED: z.stringbool().default(false),
 });
 
 /** Environment variables that are safe to expose to the browser. */
@@ -34,4 +36,7 @@ export const publicEnv: PublicEnv = parsePublicEnv({
     process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
   NEXT_PUBLIC_GOOGLE_SIGN_IN_ENABLED:
     process.env.NEXT_PUBLIC_GOOGLE_SIGN_IN_ENABLED,
+  NEXT_PUBLIC_MEETINGS_ENABLED: process.env.NEXT_PUBLIC_MEETINGS_ENABLED,
+  NEXT_PUBLIC_GMAIL_CONNECT_ENABLED:
+    process.env.NEXT_PUBLIC_GMAIL_CONNECT_ENABLED,
 });
