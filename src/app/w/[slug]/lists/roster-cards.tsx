@@ -17,10 +17,16 @@ export function RosterCards({
   contacts,
   lists,
   onOpen,
+  selection,
 }: {
   contacts: Contact[];
   lists: ListSummary[];
   onOpen: (contact: Contact) => void;
+  /** Select mode: cards become checkbox rows. */
+  selection?: {
+    selectedIds: ReadonlySet<string>;
+    onToggle: (contactId: string) => void;
+  };
 }) {
   const t = useTranslations("Lists");
   const [listElement, setListElement] = useState<HTMLUListElement | null>(null);
@@ -52,7 +58,19 @@ export function RosterCards({
             className="absolute top-0 left-0 w-full pb-3"
             style={{ transform: `translateY(${item.start - scrollMargin}px)` }}
           >
-            <ContactCard contact={contact} lists={lists} onOpen={onOpen} />
+            <ContactCard
+              contact={contact}
+              lists={lists}
+              onOpen={onOpen}
+              selection={
+                selection
+                  ? {
+                      selected: selection.selectedIds.has(contact.id),
+                      onToggle: () => selection.onToggle(contact.id),
+                    }
+                  : undefined
+              }
+            />
           </li>
         );
       })}
