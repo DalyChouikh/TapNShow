@@ -300,7 +300,7 @@ Open the PR (template filled; "Closes #<issue>"), wait for `quality` and `db`, s
   - Columns on `public.workspaces`: `sender_connection_id` (only through `set_workspace_sender`), `default_response_mode`, `default_delay_options`, `default_reason_required`, `default_comments_enabled`, `default_footer_note` (`''` = none), `default_duration_minutes` (updatable by Owner/Admin through the existing RLS policy).
   - Table `public.send_log` (`id`, `google_sub`, `workspace_id`, `job_id`, `sent_at`; service role only). Task 6 adds the foreign key from `job_id` to `outbox_jobs`.
   - RPCs (public invoker wrappers over private definer bodies):
-    - `save_google_connection(p_google_sub text, p_google_email text, p_scopes text[], p_token_encrypted text) returns uuid` — upsert by (caller, `google_sub`); resets `status` to `active`.
+    - `save_google_connection(p_user uuid, p_google_sub text, p_google_email text, p_scopes text[], p_token_encrypted text) returns uuid` — **service role only** (security review fix, migration `*_m4_save_connection_service_role.sql`): upsert by (`p_user`, `google_sub`); resets `status` to `active`.
     - `set_workspace_sender(p_workspace uuid, p_connection uuid) returns void` — Owner only (`tn:owner_only` for Admin/Viewer, `tn:forbidden` for non-members); the connection must be the caller's and active (`tn:not_found`).
     - `disconnect_google_connection(p_connection uuid) returns jsonb` — the caller's own connection only; deletes it and returns `{ "refresh_token_encrypted": "…", "google_sub": "…" }` (the route opens the token with its associated data and revokes it); `tn:not_found` otherwise. Workspaces using it get `sender_connection_id = null` (FK `on delete set null`).
     - `workspace_sender(p_workspace uuid) returns jsonb` — any member:
@@ -1793,12 +1793,17 @@ export async function setWorkspaceSender(
   return { error };
 }
 
-/** `save_google_connection()`: upsert by (caller, Google account); returns the connection id. */
+/**
+ * `save_google_connection()`: upsert by (user, Google account); returns the connection id.
+ * `client` must be the service-role client: the account id and email come from Google's verified
+ * ID token in the callback, never from a browser (security review 2026-10-07).
+ */
 export async function saveGoogleConnection(
   client: Client,
-  input: { googleSub: string; googleEmail: string; scopes: string[]; tokenEncrypted: string },
+  input: { userId: string; googleSub: string; googleEmail: string; scopes: string[]; tokenEncrypted: string },
 ): Promise<{ data: string | null; error: DbError | null }> {
   const { data, error } = await client.rpc("save_google_connection", {
+    p_user: input.userId,
     p_google_sub: input.googleSub,
     p_google_email: input.googleEmail,
     p_scopes: input.scopes,
@@ -2172,6 +2177,7 @@ vi.mock("@/server/http/require-user", () => ({ requireUser: async () => ({ id: "
 vi.mock("@/server/queries/workspaces", () => ({
   getWorkspaceBySlug: async () => ({ id: "w1", slug: "club-ab12", myRole: "owner" }),
 }));
+vi.mock("@/server/supabase/admin-client", () => ({ createSupabaseAdminClient: () => ({ admin: true }) }));
 vi.mock("@/server/queries/sender", () => ({
   saveGoogleConnection: mocks.save,
   setWorkspaceSender: mocks.setSender,
@@ -2203,8 +2209,9 @@ describe("GET /api/integrations/google/callback", () => {
     expect(response.headers.get("location")).toBe(
       "http://localhost:3000/w/club-ab12/settings?gmail=connected#sending",
     );
+    expect(mocks.save.mock.calls[0][0]).toEqual({ admin: true });
     const saved = mocks.save.mock.calls[0][1];
-    expect(saved).toMatchObject({ googleSub: "g-1", googleEmail: "club@gmail.com" });
+    expect(saved).toMatchObject({ userId: "user-1", googleSub: "g-1", googleEmail: "club@gmail.com" });
     expect(openSecret(saved.tokenEncrypted, KEY, connectionAssociatedData("user-1", "g-1"))).toBe("1//rt");
     expect(mocks.setSender).toHaveBeenCalledWith({}, "w1", "conn-1");
     expect(response.headers.get("set-cookie")).toMatch(/tn_gmail_connect=;/);
@@ -2363,6 +2370,7 @@ import {
 import { requireUser } from "@/server/http/require-user";
 import { saveGoogleConnection, setWorkspaceSender } from "@/server/queries/sender";
 import { getWorkspaceBySlug } from "@/server/queries/workspaces";
+import { createSupabaseAdminClient } from "@/server/supabase/admin-client";
 import { createSupabaseServerClient } from "@/server/supabase/server-client";
 import type { GmailConnectError } from "@/shared/api/sender";
 
@@ -2430,7 +2438,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return fail("failed");
   }
   const key = parseEncryptionKey(requireSecret("GOOGLE_TOKEN_ENCRYPTION_KEY", env));
-  const saved = await saveGoogleConnection(supabase, {
+  const saved = await saveGoogleConnection(createSupabaseAdminClient(), {
+    userId: user.id,
     googleSub: grant.claims.sub,
     googleEmail: grant.claims.email,
     scopes: grant.scopes,
@@ -3837,7 +3846,8 @@ describe("finish, retry, defer, broken", () => {
       await serviceRpc("dispatch_mark_broken", { p_run: run2, p_connection: connection, p_reason: "invalid_grant" }),
     );
     expect(again.newly_broken).toBe(false);
-    await owner.client.rpc("save_google_connection", {
+    await adminClient().rpc("save_google_connection", {
+      p_user: owner.id,
       p_google_sub: sub,
       p_google_email: "club@gmail.com",
       p_scopes: ["https://www.googleapis.com/auth/gmail.send"],
@@ -6508,7 +6518,8 @@ beforeEach(async () => {
   owner = await createTestUser({ fullName: "Owner" });
   workspace = await createWorkspaceAs(owner, "Dispatch Club");
   const sub = `sub-${crypto.randomUUID()}`;
-  const saved = await owner.client.rpc("save_google_connection", {
+  const saved = await adminClient().rpc("save_google_connection", {
+    p_user: owner.id,
     p_google_sub: sub,
     p_google_email: "club@gmail.com",
     p_scopes: ["https://www.googleapis.com/auth/gmail.send"],

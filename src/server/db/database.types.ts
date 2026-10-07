@@ -261,7 +261,7 @@ isOneToOne: false
 { Args: { "p_workspace": string }; Returns: Json
                            },
 "save_google_connection":
-{ Args: { "p_google_email": string,"p_google_sub": string,"p_scopes": (string)[],"p_token_encrypted": string }; Returns: string
+{ Args: { "p_google_email": string,"p_google_sub": string,"p_scopes": (string)[],"p_token_encrypted": string,"p_user": string }; Returns: string
                            },
 "set_contact_lists":
 { Args: { "p_contact": string,"p_list_ids": (string)[] }; Returns: undefined
