@@ -90,19 +90,17 @@ describe("exchangeGmailCode", () => {
   });
 
   it("reports a missing refresh token as null and hides Google's error body", async () => {
-    const noRefresh = vi
-      .fn<typeof fetch>()
-      .mockResolvedValue(
-        jsonResponse({
-          access_token: "at",
-          scope: "openid",
-          id_token: idToken({
-            sub: "1",
-            email: "a@b.co",
-            email_verified: true,
-          }),
+    const noRefresh = vi.fn<typeof fetch>().mockResolvedValue(
+      jsonResponse({
+        access_token: "at",
+        scope: "openid",
+        id_token: idToken({
+          sub: "1",
+          email: "a@b.co",
+          email_verified: true,
         }),
-      );
+      }),
+    );
     const grant = await exchangeGmailCode(
       {
         code: "c",
