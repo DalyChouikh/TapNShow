@@ -87,6 +87,24 @@ describe("EditableCell", () => {
     expect(onCommit).not.toHaveBeenCalled();
   });
 
+  it("returns focus to the cell after Enter or Escape", async () => {
+    const user = userEvent.setup();
+    renderCells();
+    await user.click(screen.getByRole("button", { name: "Full name of Inès" }));
+    await user.type(
+      screen.getByRole("textbox", { name: "Full name of Inès" }),
+      "!{Enter}",
+    );
+    expect(
+      screen.getByRole("button", { name: "Full name of Inès" }),
+    ).toHaveFocus();
+    await user.keyboard("{Enter}");
+    await user.keyboard("{Escape}");
+    expect(
+      screen.getByRole("button", { name: "Full name of Inès" }),
+    ).toHaveFocus();
+  });
+
   it("moves between cells with the arrow keys", async () => {
     const user = userEvent.setup();
     renderCells();

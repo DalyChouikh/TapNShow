@@ -252,7 +252,10 @@ export function RosterGrid({
                         onChange={(listIds) => save({ listIds })}
                         onCreate={(name) => createList.mutateAsync(name)}
                         triggerLabel={t("addToList")}
-                        triggerClassName="min-h-9 px-2 text-xs"
+                        triggerAriaLabel={t("addPersonToList", {
+                          name: contact.fullName,
+                        })}
+                        triggerClassName="px-2 text-xs"
                       />
                     ) : null}
                   </div>

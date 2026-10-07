@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentType } from "react";
 import { toast } from "sonner";
@@ -149,6 +149,40 @@ describe("RosterView", () => {
     expect(
       fetchMock.mock.calls.some(([, init]) => init?.method === "DELETE"),
     ).toBe(true);
+    vi.useRealTimers();
+  });
+
+  it("never sends a delete while its Undo is still on screen", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const fetchMock = routeFetch({
+      [`DELETE /api/workspaces/club-ab12/contacts/${IDS.ines}`]: json({
+        ok: true,
+      }),
+      "GET /api/workspaces/club-ab12/contacts": json(rosterFixture),
+    });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderWithProviders(
+      <RosterView workspace={owner} roster={rosterFixture} />,
+      { toaster: true },
+    );
+    await user.click(screen.getByRole("button", { name: /Inès Ben Salah/ }));
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    const undo = await screen.findByRole("button", { name: "Undo" });
+    // Hovering the toaster pauses sonner's timer (as do touch and a hidden tab).
+    const toaster = undo.closest("ol");
+    if (toaster) {
+      fireEvent.mouseEnter(toaster);
+    }
+    await vi.advanceTimersByTimeAsync(UNDO_DELETE_MS * 3);
+    expect(
+      fetchMock.mock.calls.some(([, init]) => init?.method === "DELETE"),
+    ).toBe(false);
+    await user.click(screen.getByRole("button", { name: "Undo" }));
+    expect(screen.getByRole("listitem", { name: /Inès/ })).toBeInTheDocument();
+    await vi.advanceTimersByTimeAsync(UNDO_DELETE_MS);
+    expect(
+      fetchMock.mock.calls.some(([, init]) => init?.method === "DELETE"),
+    ).toBe(false);
     vi.useRealTimers();
   });
 

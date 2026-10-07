@@ -39,6 +39,15 @@ describe("RosterGrid", () => {
     expect(within(table).getAllByRole("row")).toHaveLength(4);
   });
 
+  it("gives each row's list button a 44 px target and the person's name", () => {
+    renderGrid();
+    const button = screen.getByRole("button", {
+      name: "Add Inès Ben Salah to a list",
+    });
+    expect(button).toHaveClass("min-h-11");
+    expect(button).not.toHaveClass("min-h-9");
+  });
+
   it("edits a name in place and saves it", async () => {
     const fetchMock = routeFetch({
       [`PATCH /api/workspaces/club-ab12/contacts/${IDS.ines}`]: json({

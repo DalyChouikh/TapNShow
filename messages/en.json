@@ -367,7 +367,8 @@
     "sortBy": "Sort by {column}",
     "editCell": "{column} of {name}",
     "import": "Import",
-    "paste": "Paste from Sheets"
+    "paste": "Paste from Sheets",
+    "addPersonToList": "Add {name} to a list"
   },
   "ListsImport": {
     "title": "Import people",

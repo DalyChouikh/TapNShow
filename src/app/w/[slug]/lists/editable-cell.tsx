@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type KeyboardEvent } from "react";
+import { useRef, useState, type KeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
 
 const MOVES: Record<string, [number, number]> = {
@@ -54,6 +54,8 @@ export function EditableCell({
 }) {
   const [draft, setDraft] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Enter/Escape hand focus back to the cell so keyboard users keep their place.
+  const refocus = useRef(false);
 
   const finish = (commit: boolean) => {
     if (draft === null) {
@@ -62,6 +64,7 @@ export function EditableCell({
     if (commit && draft.trim() !== value) {
       const problem = validate(draft);
       if (problem) {
+        refocus.current = false;
         setError(problem);
         return;
       }
@@ -74,10 +77,12 @@ export function EditableCell({
   const onFieldKey = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") {
       event.preventDefault();
+      refocus.current = true;
       finish(true);
     } else if (event.key === "Escape") {
       event.preventDefault();
       event.stopPropagation();
+      refocus.current = true;
       setDraft(null);
       setError(null);
     }
@@ -104,6 +109,12 @@ export function EditableCell({
   return (
     <button
       type="button"
+      ref={(element) => {
+        if (element && refocus.current) {
+          refocus.current = false;
+          element.focus();
+        }
+      }}
       aria-label={label}
       data-cell={`${rowIndex}:${columnIndex}`}
       onClick={() => setDraft(value)}

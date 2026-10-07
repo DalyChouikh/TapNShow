@@ -2,7 +2,7 @@
 
 import { Trash } from "@phosphor-icons/react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,10 +39,25 @@ export function ManageListsDialog({
   const remove = useDeleteList(slug);
   const [newName, setNewName] = useState("");
   const [confirming, setConfirming] = useState<ListSummary | null>(null);
+  const nameInputs = useRef(new Map<string, HTMLInputElement>());
   const showError = (error: Error) =>
     toast.error(
       tErrors(error instanceof ApiClientError ? error.code : "internal"),
     );
+
+  // Last name sent per list, so a blur followed by closing does not rename twice.
+  const sentNames = useRef(new Map<string, string>());
+  const renameIfChanged = (list: ListSummary, raw: string) => {
+    const parsed = listNameSchema.safeParse(raw);
+    if (
+      parsed.success &&
+      parsed.data !== list.name &&
+      parsed.data !== sentNames.current.get(list.id)
+    ) {
+      sentNames.current.set(list.id, parsed.data);
+      rename.mutate({ id: list.id, name: parsed.data }, { onError: showError });
+    }
+  };
 
   const submitNew = () => {
     const parsed = listNameSchema.safeParse(newName);
@@ -55,7 +70,21 @@ export function ManageListsDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) {
+          // Closing removes a focused field without a blur in Safari and Firefox.
+          lists.forEach((list) => {
+            const input = nameInputs.current.get(list.id);
+            if (input) {
+              renameIfChanged(list, input.value);
+            }
+          });
+        }
+        onOpenChange(next);
+      }}
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{t("manageTitle")}</DialogTitle>
@@ -91,15 +120,14 @@ export function ManageListsDialog({
                   label={t("renameLabel", { name: list.name })}
                   hideLabel
                   defaultValue={list.name}
-                  onBlur={(event) => {
-                    const parsed = listNameSchema.safeParse(event.target.value);
-                    if (parsed.success && parsed.data !== list.name) {
-                      rename.mutate(
-                        { id: list.id, name: parsed.data },
-                        { onError: showError },
-                      );
+                  ref={(element) => {
+                    if (element) {
+                      nameInputs.current.set(list.id, element);
+                    } else {
+                      nameInputs.current.delete(list.id);
                     }
                   }}
+                  onBlur={(event) => renameIfChanged(list, event.target.value)}
                 />
               </div>
               <span className="pb-3 text-sm text-muted-ink">

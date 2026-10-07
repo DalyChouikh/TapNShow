@@ -1,4 +1,4 @@
-import type { InputHTMLAttributes } from "react";
+import type { InputHTMLAttributes, Ref } from "react";
 import { cn } from "@/lib/utils";
 
 type InputProps = InputHTMLAttributes<HTMLInputElement> & {
@@ -8,6 +8,8 @@ type InputProps = InputHTMLAttributes<HTMLInputElement> & {
   error?: string;
   /** Keeps the label for assistive tech but hides it visually (e.g. a search field). */
   hideLabel?: boolean;
+  /** The underlying input (React 19 passes `ref` as a prop). */
+  ref?: Ref<HTMLInputElement>;
 };
 
 /** Labelled text input with accessible hint and error wiring. */

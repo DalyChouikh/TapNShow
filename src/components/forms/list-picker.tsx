@@ -15,6 +15,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { ApiClientError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { listNameSchema, type ListSummary } from "@/shared/api/roster";
 
@@ -30,6 +31,7 @@ export function ListPicker({
   onCreate,
   mode = "multiple",
   triggerLabel,
+  triggerAriaLabel,
   triggerClassName,
   disabled = false,
 }: {
@@ -39,12 +41,16 @@ export function ListPicker({
   onCreate?: (name: string) => Promise<{ id: string }>;
   mode?: "multiple" | "single";
   triggerLabel: string;
+  /** Accessible name when the visible label is not unique (e.g. one picker per grid row). */
+  triggerAriaLabel?: string;
   triggerClassName?: string;
   disabled?: boolean;
 }) {
   const t = useTranslations("Lists");
+  const tErrors = useTranslations("ApiErrors");
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [createError, setCreateError] = useState<string | null>(null);
   const typed = listNameSchema.safeParse(search);
   const canCreate =
     onCreate !== undefined &&
@@ -68,9 +74,16 @@ export function ListPicker({
     if (!onCreate || !typed.success) {
       return;
     }
-    const created = await onCreate(typed.data);
-    setSearch("");
-    choose(created.id);
+    setCreateError(null);
+    try {
+      const created = await onCreate(typed.data);
+      setSearch("");
+      choose(created.id);
+    } catch (error) {
+      setCreateError(
+        tErrors(error instanceof ApiClientError ? error.code : "internal"),
+      );
+    }
   };
 
   return (
@@ -79,11 +92,13 @@ export function ListPicker({
       onOpenChange={(next) => {
         setOpen(next);
         setSearch("");
+        setCreateError(null);
       }}
     >
       <PopoverTrigger asChild>
         <button
           type="button"
+          aria-label={triggerAriaLabel}
           disabled={disabled}
           className={cn(
             "inline-flex min-h-11 items-center gap-1.5 rounded-full border-2 border-dashed border-outline px-3 text-sm font-bold text-ink disabled:opacity-50",
@@ -126,6 +141,11 @@ export function ListPicker({
               </CommandItem>
             ) : null}
           </CommandList>
+          {createError ? (
+            <p role="alert" className="px-3 pb-2 text-sm font-bold">
+              {createError}
+            </p>
+          ) : null}
         </Command>
       </PopoverContent>
     </Popover>

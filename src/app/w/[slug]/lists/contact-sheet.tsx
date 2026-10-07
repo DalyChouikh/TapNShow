@@ -2,7 +2,7 @@
 
 import { Trash, X } from "@phosphor-icons/react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ListPicker } from "@/components/forms/list-picker";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,15 +52,28 @@ export function ContactSheet({
   const createList = useCreateList(slug);
   const [errors, setErrors] = useState<Partial<Record<Field, string>>>({});
   const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [listsError, setListsError] = useState<string | null>(null);
+  const nameInput = useRef<HTMLInputElement>(null);
+  const emailInput = useRef<HTMLInputElement>(null);
   const current = roster.contacts.find((c) => c.id === contact.id) ?? contact;
   const own = roster.lists.filter((list) => current.listIds.includes(list.id));
 
-  const save = (patch: UpdateContactBody, field?: Field) => {
+  const save = (
+    patch: UpdateContactBody,
+    field?: Field,
+    onSaved?: () => void,
+  ) => {
     setSaveState("saving");
+    if (!field) {
+      setListsError(null);
+    }
     update.mutate(
       { id: contact.id, patch },
       {
-        onSuccess: () => setSaveState("saved"),
+        onSuccess: () => {
+          setSaveState("saved");
+          onSaved?.();
+        },
         onError: (error) => {
           setSaveState("idle");
           const { code, takenBy } = describeEditError(
@@ -73,13 +86,19 @@ export function ContactSheet({
             : tErrors(code);
           if (field) {
             setErrors((previous) => ({ ...previous, [field]: message }));
+          } else {
+            setListsError(message);
           }
         },
       },
     );
   };
 
-  const onBlur = (field: Field, raw: string) => {
+  /** Valid changed value of a field, `null` when unchanged, or `undefined` (error shown) when invalid. */
+  const changedValue = (
+    field: Field,
+    raw: string,
+  ): string | null | undefined => {
     const parsed = (
       field === "email" ? emailSchema : contactNameSchema
     ).safeParse(raw);
@@ -88,16 +107,48 @@ export function ContactSheet({
         ...previous,
         [field]: field === "email" ? t("invalidEmail") : t("invalidName"),
       }));
-      return;
+      return undefined;
     }
     setErrors((previous) => ({ ...previous, [field]: undefined }));
-    if (parsed.data !== current[field]) {
-      save({ [field]: parsed.data }, field);
+    return parsed.data === current[field] ? null : parsed.data;
+  };
+
+  /**
+   * Closing (Escape, overlay, swipe, close button) removes the focused field without a blur in
+   * Safari and Firefox, so save what changed first; an invalid field keeps the sheet open.
+   */
+  const close = () => {
+    const name = changedValue(
+      "fullName",
+      nameInput.current?.value ?? current.fullName,
+    );
+    const email = changedValue(
+      "email",
+      emailInput.current?.value ?? current.email,
+    );
+    if (name === undefined || email === undefined) {
+      return;
+    }
+    if (name === null && email === null) {
+      onClose();
+      return;
+    }
+    save(
+      { ...(name ? { fullName: name } : {}), ...(email ? { email } : {}) },
+      email ? "email" : "fullName",
+      onClose,
+    );
+  };
+
+  const onBlur = (field: Field, raw: string) => {
+    const value = changedValue(field, raw);
+    if (value) {
+      save({ [field]: value }, field);
     }
   };
 
   return (
-    <Dialog open onOpenChange={(open) => (open ? undefined : onClose())}>
+    <Dialog open onOpenChange={(open) => (open ? undefined : close())}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{canEdit ? t("editTitle") : t("viewTitle")}</DialogTitle>
@@ -109,6 +160,7 @@ export function ContactSheet({
           <div className="flex flex-col gap-4">
             <Input
               id="sheet-name"
+              ref={nameInput}
               label={t("nameLabel")}
               defaultValue={current.fullName}
               error={errors.fullName}
@@ -116,6 +168,7 @@ export function ContactSheet({
             />
             <Input
               id="sheet-email"
+              ref={emailInput}
               type="email"
               inputMode="email"
               autoComplete="off"
@@ -157,6 +210,11 @@ export function ContactSheet({
                   triggerLabel={t("addToList")}
                 />
               </div>
+              {listsError ? (
+                <p role="alert" className="text-sm font-bold">
+                  {listsError}
+                </p>
+              ) : null}
             </div>
             <div className="flex items-center justify-between gap-3">
               <Button tone="danger" onClick={() => onDelete(current)}>

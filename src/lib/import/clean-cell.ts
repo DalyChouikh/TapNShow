@@ -1,7 +1,10 @@
 import { format } from "date-fns";
 
-/** Zero-width and BOM characters that spreadsheets and copy-paste leave inside cells. */
-const INVISIBLE = /[​-‍⁠﻿]/g;
+/**
+ * Invisible characters that spreadsheets and copy-paste leave inside cells: zero-width spaces and
+ * joiners, bidi marks/embeddings/isolates (common in Arabic-locale sheets), soft hyphens and BOMs.
+ */
+const INVISIBLE = /[\u00AD\u200B-\u200F\u202A-\u202E\u2060-\u2069\uFEFF]/g;
 
 /** ISO day, so a date cell is readable and stable. */
 const DATE_FORMAT = "yyyy-MM-dd";
