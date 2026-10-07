@@ -99,7 +99,8 @@
     "contacts_limit_reached": "Your roster is full. Remove people before adding more.",
     "lists_limit_reached": "You have the maximum number of lists. Delete one first.",
     "list_name_taken": "A list with this name already exists.",
-    "import_too_many_rows": "This file has too many rows. Split it and import each part."
+    "import_too_many_rows": "This file has too many rows. Split it and import each part.",
+    "owner_only": "Only the workspace Owner can do this."
   },
   "Auth": {
     "title": "Sign in to {appName}",

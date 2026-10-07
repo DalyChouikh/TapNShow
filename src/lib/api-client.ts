@@ -22,7 +22,7 @@ export class ApiClientError extends Error {
 export async function apiRequest<T>(
   path: string,
   options: {
-    method?: "GET" | "POST" | "PATCH" | "DELETE";
+    method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
     body?: object;
     schema: z.ZodType<T>;
     onUnauthenticated?: () => void;
