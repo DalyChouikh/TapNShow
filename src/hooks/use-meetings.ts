@@ -194,6 +194,18 @@ export function useSendMeeting(slug: string, id: string) {
         body: {},
         schema: sendResultSchema,
       }),
+    onSuccess: () => {
+      // The meeting page sends drafts back to the editor: mark it sent before navigating there.
+      queryClient.setQueryData<Meeting>(meetingQueryKey(slug, id), (meeting) =>
+        meeting && meeting.status === "draft"
+          ? {
+              ...meeting,
+              status: "scheduled",
+              sentAt: new Date().toISOString(),
+            }
+          : meeting,
+      );
+    },
     onSettled: () => {
       for (const key of [
         meetingQueryKey(slug, id),
