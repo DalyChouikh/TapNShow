@@ -43,3 +43,13 @@ export const DISPATCH_LEASE_SECONDS = 70;
 export const THROTTLE_DEFER_MS = 3_600_000;
 /** Google's token endpoint failed transiently: retry that sender after this long. */
 export const REFRESH_FAILURE_DEFER_MS = 300_000;
+
+/** How often the meeting page refreshes while emails are queued. */
+export const PROGRESS_POLL_MS = 3_000;
+/** Field limits (mirror the database checks on `meetings`). */
+export const TITLE_MAX = 120;
+export const AGENDA_MAX = 5_000;
+export const LOCATION_MAX = 200;
+export const MEETING_URL_MAX = 500;
+/** "Add people" accepts this many rows per save (`meeting_people_per_call_max`). */
+export const PEOPLE_PER_ADD_MAX = 50;

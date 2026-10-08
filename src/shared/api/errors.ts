@@ -35,6 +35,13 @@ export const API_ERROR_CODES = [
   "list_name_taken",
   "import_too_many_rows",
   "owner_only",
+  "sender_not_connected",
+  "sender_broken",
+  "meeting_not_draft",
+  "meeting_in_past",
+  "meeting_incomplete",
+  "too_many_invitees",
+  "nothing_to_send",
 ] as const;
 
 /** An API error code. */
@@ -75,6 +82,13 @@ export const API_ERROR_STATUS: Record<ApiErrorCode, number> = {
   list_name_taken: 409,
   import_too_many_rows: 400,
   owner_only: 403,
+  sender_not_connected: 409,
+  sender_broken: 409,
+  meeting_not_draft: 409,
+  meeting_in_past: 409,
+  meeting_incomplete: 400,
+  too_many_invitees: 409,
+  nothing_to_send: 409,
 };
 
 /** Body of every non-2xx API response. */
