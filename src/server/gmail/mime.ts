@@ -12,6 +12,8 @@ export type MeetingMimeInput = {
   messageId: string;
   inReplyTo: string | null;
   listUnsubscribeUrl: string;
+  /** A calendar invitation (spec §9): a `text/calendar` alternative plus an `invite.ics` attachment. */
+  calendar?: { method: "REQUEST" | "CANCEL"; ics: string };
 };
 
 /** A new RFC 5322 Message-ID on the app's own host. */
@@ -37,6 +39,15 @@ export async function buildMeetingMime(
     messageId: input.messageId,
     ...(input.inReplyTo
       ? { inReplyTo: input.inReplyTo, references: input.inReplyTo }
+      : {}),
+    ...(input.calendar
+      ? {
+          icalEvent: {
+            method: input.calendar.method,
+            filename: "invite.ics",
+            content: input.calendar.ics,
+          },
+        }
       : {}),
     headers: {
       "List-Unsubscribe": `<${input.listUnsubscribeUrl}>`,
