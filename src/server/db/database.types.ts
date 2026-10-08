@@ -5,7 +5,32 @@ export type Database = {
   
   "public": {
           Tables: {
-            "contacts": {
+            "abuse_reports": {
+                  Row: {
+                    "id": string,"invitee_id": string,"reported_at": string,"workspace_id": string
+                  }
+                  Insert: {
+                    "id"?: string,"invitee_id": string,"reported_at"?: string,"workspace_id": string
+                  }
+                  Update: {
+                    "id"?: string,"invitee_id"?: string,"reported_at"?: string,"workspace_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "abuse_reports_invitee_id_fkey"
+      columns: ["invitee_id"]
+isOneToOne: true
+      referencedRelation: "meeting_invitees"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "abuse_reports_workspace_id_fkey"
+      columns: ["workspace_id"]
+isOneToOne: false
+      referencedRelation: "workspaces"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"contacts": {
                   Row: {
                     "created_at": string,"email": string,"full_name": string,"id": string,"is_adhoc": boolean,"unsubscribed_at": string | null,"unsubscribed_via": Database["public"]['Enums']["unsubscribe_via"] | null,"updated_at": string,"user_id": string | null,"workspace_id": string
                   }
@@ -341,6 +366,9 @@ isOneToOne: false
 "check_ip_rate_limit":
 { Args: { "p_action": string,"p_ip": string }; Returns: boolean
                            },
+"check_token_rate_limit":
+{ Args: { "p_ip": string,"p_token_hash": string }; Returns: boolean
+                           },
 "consume_invite_email":
 { Args: { "p_workspace": string }; Returns: boolean
                            },
@@ -460,6 +488,15 @@ isOneToOne: false
                            },
 "set_workspace_sender":
 { Args: { "p_connection": string,"p_workspace": string }; Returns: undefined
+                           },
+"token_invitee":
+{ Args: { "p_token_hash": string }; Returns: Json
+                           },
+"token_resubscribe":
+{ Args: { "p_token_hash": string }; Returns: boolean
+                           },
+"token_unsubscribe":
+{ Args: { "p_token_hash": string,"p_via": Database["public"]['Enums']["unsubscribe_via"] }; Returns: boolean
                            },
 "transfer_ownership":
 { Args: { "p_confirm_name": string,"p_new_owner": string,"p_workspace": string }; Returns: undefined
