@@ -292,7 +292,7 @@
       "tipAdmins": "Admins of {workspace} can send meeting emails from this address.",
       "connected": "Gmail connected. You can send meetings now.",
       "error": {
-        "unavailable": "Gmail sending isn't available on this version of the site.",
+        "unavailable": "Connecting Gmail isn't available right now.",
         "owner_only": "Only the workspace Owner can connect Gmail.",
         "cancelled": "Connecting was cancelled. Nothing changed.",
         "scope_denied": "Google didn't give permission to send email. Try again and keep \"Send email on your behalf\" ticked.",
@@ -741,7 +741,7 @@
     "pausedBroken": "Paused: Gmail needs reconnecting.",
     "done": "{count, plural, one {# invite sent} other {# invites sent}}",
     "doneWithIssues": "{sent} sent · {failed} failed · {unknown} unknown",
-    "bounces": "Bounce notices arrive in the sender's Gmail; TapNShow can't read them.",
+    "bounces": "If an address doesn't exist, Gmail will tell you in your inbox.",
     "connect": "Connect Gmail",
     "inviteMore": "Invite more people",
     "status": {

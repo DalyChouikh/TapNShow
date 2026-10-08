@@ -52,7 +52,7 @@ describe("SendProgress", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Bounce notices arrive in the sender's Gmail; TapNShow can't read them.",
+        "If an address doesn't exist, Gmail will tell you in your inbox.",
       ),
     ).toBeInTheDocument();
   });

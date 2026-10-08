@@ -33,4 +33,14 @@ describe("SettingsSection", () => {
     );
     expect(screen.getByText("Members")).toBeInTheDocument();
   });
+
+  it("opens when an in-app link sets the hash right after it renders", async () => {
+    renderWithProviders(
+      <SettingsSection id="people" title="People" defaultOpen={false}>
+        <p>Members</p>
+      </SettingsSection>,
+    );
+    window.history.pushState(null, "", "/w/x/settings#people");
+    expect(await screen.findByText("Members")).toBeInTheDocument();
+  });
 });

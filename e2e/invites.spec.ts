@@ -1,6 +1,7 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { latestEmailText } from "./helpers/mailpit";
 import { signInWithCode, uniqueEmail } from "./helpers/sign-in";
+import { openSettingsSection } from "./helpers/settings";
 
 const INVITE_LINK = /(http:\/\/localhost:3000\/invite\/[A-Za-z0-9_-]{43})/;
 
@@ -16,6 +17,7 @@ async function ownerWithWorkspace(page: Page, name: string): Promise<void> {
     .getByRole("navigation", { name: "Workspace" })
     .getByRole("link", { name: "Settings" })
     .click();
+  await openSettingsSection(page, "People");
 }
 
 async function invite(

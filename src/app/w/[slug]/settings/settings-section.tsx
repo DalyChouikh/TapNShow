@@ -31,21 +31,24 @@ export function SettingsSection({
   className?: string;
   children: ReactNode;
 }) {
-  // Read once on mount: a `#<id>` link opens (and scrolls to) this section.
-  const [fromLink] = useState(() => pointsAt(id));
-  const [open, setOpen] = useState(() => defaultOpen || forceOpen || fromLink);
+  const [open, setOpen] = useState(
+    () => defaultOpen || forceOpen || pointsAt(id),
+  );
   useEffect(() => {
-    if (fromLink) {
-      document.getElementById(id)?.scrollIntoView({ block: "start" });
-    }
-    const onHash = () => {
+    const openIfLinked = () => {
       if (pointsAt(id)) {
         setOpen(true);
+        document.getElementById(id)?.scrollIntoView({ block: "start" });
       }
     };
-    window.addEventListener("hashchange", onHash);
-    return () => window.removeEventListener("hashchange", onHash);
-  }, [fromLink, id]);
+    // In-app links set the hash only after the new page first renders, so look again a frame later.
+    const frame = window.requestAnimationFrame(openIfLinked);
+    window.addEventListener("hashchange", openIfLinked);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("hashchange", openIfLinked);
+    };
+  }, [id]);
   return (
     <Card
       as="section"

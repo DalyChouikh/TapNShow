@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { seedMember } from "./helpers/seed";
 import { signInWithCode, uniqueEmail } from "./helpers/sign-in";
+import { openSettingsSection } from "./helpers/settings";
 
 async function createWorkspace(page: Page, name: string): Promise<string> {
   await signInWithCode(page, uniqueEmail("e2e-settings"), {
@@ -31,6 +32,7 @@ test("the Owner renames, changes the timezone, then deletes the workspace", asyn
     page.getByRole("button", { name: "Switch workspace" }),
   ).toContainText("Renamed Club");
 
+  await openSettingsSection(page, "Danger zone");
   await page.getByRole("button", { name: "Delete workspace" }).click();
   await page.getByLabel("Type Renamed Club to confirm").fill("Renamed Club");
   await page.getByRole("button", { name: "Confirm" }).click();
@@ -48,11 +50,13 @@ test("the Owner promotes a Viewer and transfers ownership to an Admin", async ({
   await seedMember(slug, "admin", "Ada Admin");
   await seedMember(slug, "viewer", "Vic Viewer");
   await page.goto(`/w/${slug}/settings`);
+  await openSettingsSection(page, "People");
 
   await page.getByRole("button", { name: "Actions for Vic Viewer" }).click();
   await page.getByRole("menuitem", { name: "Make Admin" }).click();
   await expect(page.getByText("Updated.")).toBeVisible();
 
+  await openSettingsSection(page, "Danger zone");
   await page.getByRole("button", { name: "Transfer ownership" }).click();
   await page.getByRole("combobox", { name: "New Owner" }).click();
   await page.getByRole("option", { name: "Ada Admin" }).click();
