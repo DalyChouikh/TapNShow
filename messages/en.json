@@ -731,5 +731,35 @@
       "added": "{count, plural, one {Added # person} other {Added # people}}",
       "person": "Person {number}"
     }
+  },
+  "MeetingPage": {
+    "progressTitle": "Invites",
+    "sending": "Sending {done} of {total}",
+    "leave": "You can leave this page.",
+    "queuedResume": "{count} queued, resumes about {time}",
+    "pausedMissing": "Paused: connect Gmail to send.",
+    "pausedBroken": "Paused: Gmail needs reconnecting.",
+    "done": "{count, plural, one {# invite sent} other {# invites sent}}",
+    "doneWithIssues": "{sent} sent · {failed} failed · {unknown} unknown",
+    "bounces": "Bounce notices arrive in the sender's Gmail; TapNShow can't read them.",
+    "connect": "Connect Gmail",
+    "inviteMore": "Invite more people",
+    "status": {
+      "queued": "Queued",
+      "sent": "Sent",
+      "skipped": "Skipped",
+      "failed": "Failed",
+      "unknown": "Delivery unknown"
+    },
+    "reason": {
+      "unsubscribed": "Unsubscribed",
+      "meeting_cancelled": "Meeting cancelled",
+      "meeting_started": "Meeting had started",
+      "delivery_unknown": "Check the Sent folder",
+      "other": "Gmail refused this address"
+    },
+    "invitees": "Invited people",
+    "yourTime": "your time: {time}",
+    "openLink": "Open the meeting link"
   }
 }
