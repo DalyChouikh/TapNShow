@@ -94,6 +94,14 @@
       "sentFrom": "Sent from {email} with {appName}.",
       "unsubscribe": "Unsubscribe from {workspace}",
       "report": "Not my group"
+    },
+    "senderBroken": {
+      "subject": "Gmail sending for {workspace} needs reconnecting",
+      "preview": "Meeting emails for {workspace} are paused until Gmail is reconnected.",
+      "heading": "Reconnect Gmail for {workspace}",
+      "body": "Google stopped accepting {appName}'s access to the Gmail account that sends {workspace}'s meeting emails, for example after a password change or if access was removed. Queued emails are paused and nothing is lost.",
+      "button": "Reconnect Gmail",
+      "fallback": "If the button doesn't work, copy this link:"
     }
   },
   "ApiErrors": {

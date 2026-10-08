@@ -30,3 +30,16 @@ export const RESPONSE_CHOICES: Record<ResponseMode, readonly ResponseChoice[]> =
 
 /** Time list step in the TimePicker (minutes). */
 export const TIME_STEP_MINUTES = 15;
+
+/** One dispatcher run sends for at most this long, leaving headroom under the 60 s route limit. */
+export const DISPATCH_BUDGET_MS = 50_000;
+/** Pause between two sends from one Gmail account (≤ 60/min, spec §8). */
+export const DISPATCH_PACE_MS = 1_000;
+/** Jobs claimed per sender per round (one budget's worth at the pace above). */
+export const DISPATCH_BATCH_SIZE = 50;
+/** Sender lease and job lock length; longer than the budget so a live run never loses them. */
+export const DISPATCH_LEASE_SECONDS = 70;
+/** Gmail said "slow down": that sender waits this long (its block lasts 1–24 h). */
+export const THROTTLE_DEFER_MS = 3_600_000;
+/** Google's token endpoint failed transiently: retry that sender after this long. */
+export const REFRESH_FAILURE_DEFER_MS = 300_000;
