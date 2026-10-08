@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Sticker } from "@/components/ui/sticker";
-import { useMeetings } from "@/hooks/use-meetings";
+import { useHasDrafts } from "@/hooks/use-meetings";
 import { gmailConnectHref, useWorkspaceSender } from "@/hooks/use-sender";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
 
@@ -14,16 +14,16 @@ import type { WorkspaceDetails } from "@/shared/api/workspaces";
 export function NeedsAttention({ workspace }: { workspace: WorkspaceDetails }) {
   const t = useTranslations("WorkspaceHome");
   const sender = useWorkspaceSender(workspace.slug);
-  const meetings = useMeetings(workspace.slug);
+  const isOwner = workspace.myRole === "owner";
+  const hasDrafts = useHasDrafts(
+    workspace.slug,
+    isOwner && sender.data !== undefined && !sender.data.sender,
+  );
   if (!sender.data || workspace.myRole === "viewer") {
     return null;
   }
-  const isOwner = workspace.myRole === "owner";
   const broken = sender.data.sender?.status === "broken";
-  const draftWaiting =
-    isOwner &&
-    !sender.data.sender &&
-    (meetings.data ?? []).some((m) => m.status === "draft");
+  const draftWaiting = isOwner && !sender.data.sender && hasDrafts;
   if (!broken && !draftWaiting) {
     return null;
   }

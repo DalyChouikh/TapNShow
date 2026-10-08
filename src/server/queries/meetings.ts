@@ -9,13 +9,21 @@ import {
   audienceSchema,
   type Meeting,
   meetingSchema,
-  meetingListSchema,
   type MeetingProgress,
   type MeetingSummary,
+  meetingStatusSchema,
+  type MeetingTab,
   progressSchema,
   sendResultSchema,
   type UpdateMeetingBody,
 } from "@/shared/api/meetings";
+import { sqlNullable } from "@/server/db/rpc-args";
+import { encodeCursor } from "@/server/http/pagination";
+import {
+  locationModeSchema,
+  responseModeSchema,
+} from "@/shared/api/meeting-settings";
+import type { Page } from "@/shared/api/pagination";
 import type { DbError } from "./roster";
 
 type Client = SupabaseClient<Database>;
@@ -89,35 +97,58 @@ export async function getMeeting(
   return { data: data ? toMeeting(data) : null, error: null };
 }
 
-/** All meetings of a workspace (cards). */
-export async function listMeetings(
+const meetingRowSchema = z.object({
+  id: z.uuid(),
+  title: z.string(),
+  starts_at: z.string().nullable(),
+  timezone: z.string(),
+  duration_minutes: z.number().int(),
+  status: meetingStatusSchema,
+  location_mode: locationModeSchema,
+  response_mode: responseModeSchema,
+  sort_key: z.string().nullable(),
+  counts: z.object({
+    invited: z.number().int(),
+    sent: z.number().int(),
+    queued: z.number().int(),
+    attending: z.number().int(),
+    late: z.number().int(),
+    absent: z.number().int(),
+    no_reply: z.number().int(),
+  }),
+});
+
+/** Keyset of the Meetings tabs: the sort time and the id of the last card shown. */
+export const meetingCursorSchema = z.tuple([
+  z.iso.datetime({ offset: true }),
+  z.uuid(),
+]);
+
+/** One page of a Meetings tab (`meetings_page`). */
+export async function listMeetingsPage(
   client: Client,
   workspaceId: string,
-): Promise<Result<MeetingSummary[]>> {
-  const { data, error } = await client.rpc("list_meetings", {
+  tab: MeetingTab,
+  limit: number,
+  after: [string, string] | null,
+): Promise<Result<Page<MeetingSummary>>> {
+  const { data, error } = await client.rpc("meetings_page", {
     p_workspace: workspaceId,
+    p_tab: tab,
+    p_after_key: sqlNullable(after?.[0] ?? null),
+    p_after_id: sqlNullable(after?.[1] ?? null),
+    p_limit: limit,
   });
   if (error) {
     return { data: null, error };
   }
-  const rows = z
-    .array(
-      z.object({
-        id: z.uuid(),
-        title: z.string(),
-        starts_at: z.string().nullable(),
-        timezone: z.string(),
-        duration_minutes: z.number().int(),
-        status: z.string(),
-        location_mode: z.string(),
-        invited_count: z.number().int(),
-        sent_count: z.number().int(),
-      }),
-    )
+  const parsed = z
+    .object({ has_more: z.boolean(), items: z.array(meetingRowSchema) })
     .parse(data);
+  const last = parsed.items.at(-1);
   return {
-    data: meetingListSchema.parse(
-      rows.map((r) => ({
+    data: {
+      items: parsed.items.map((r) => ({
         id: r.id,
         title: r.title,
         startsAt: r.starts_at,
@@ -125,10 +156,22 @@ export async function listMeetings(
         durationMinutes: r.duration_minutes,
         status: r.status,
         locationMode: r.location_mode,
-        invitedCount: r.invited_count,
-        sentCount: r.sent_count,
+        responseMode: r.response_mode,
+        counts: {
+          invited: r.counts.invited,
+          sent: r.counts.sent,
+          queued: r.counts.queued,
+          attending: r.counts.attending,
+          late: r.counts.late,
+          absent: r.counts.absent,
+          noReply: r.counts.no_reply,
+        },
       })),
-    ),
+      nextCursor:
+        parsed.has_more && last?.sort_key
+          ? encodeCursor([last.sort_key, last.id])
+          : null,
+    },
     error: null,
   };
 }

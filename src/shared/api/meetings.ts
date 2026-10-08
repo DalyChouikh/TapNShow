@@ -6,6 +6,7 @@ import {
   TITLE_MAX,
 } from "@/config/meetings";
 import { emailSchema } from "./common";
+import { pageSchema } from "./pagination";
 import {
   delayOptionsSchema,
   durationMinutesSchema,
@@ -48,6 +49,25 @@ export const meetingSchema = z.object({
 /** A meeting as the editor and meeting page see it. */
 export type Meeting = z.infer<typeof meetingSchema>;
 
+/** Meetings page tabs (spec §10). */
+export const meetingTabSchema = z.enum(["upcoming", "past", "drafts"]);
+/** A Meetings page tab. */
+export type MeetingTab = z.infer<typeof meetingTabSchema>;
+
+/** Answer and invite counts on a card (RSVP "not going" counts as absent). */
+export const meetingCountsSchema = z.object({
+  invited: z.number().int(),
+  sent: z.number().int(),
+  /** Invite emails still waiting to go out. */
+  queued: z.number().int(),
+  attending: z.number().int(),
+  late: z.number().int(),
+  absent: z.number().int(),
+  noReply: z.number().int(),
+});
+/** Counts on a meeting card. */
+export type MeetingCounts = z.infer<typeof meetingCountsSchema>;
+
 /** One card on the Meetings page. */
 export const meetingSummarySchema = z.object({
   id: z.uuid(),
@@ -57,13 +77,13 @@ export const meetingSummarySchema = z.object({
   durationMinutes: z.number().int(),
   status: meetingStatusSchema,
   locationMode: locationModeSchema,
-  invitedCount: z.number().int(),
-  sentCount: z.number().int(),
+  responseMode: responseModeSchema,
+  counts: meetingCountsSchema,
 });
 /** A meeting in the list. */
 export type MeetingSummary = z.infer<typeof meetingSummarySchema>;
-/** `GET …/meetings`. */
-export const meetingListSchema = z.array(meetingSummarySchema);
+/** `GET …/meetings?tab=`: one page of cards. */
+export const meetingPageSchema = pageSchema(meetingSummarySchema);
 
 /** `POST …/meetings` response (a new draft). */
 export const createMeetingResponseSchema = z.object({ id: z.uuid() });
