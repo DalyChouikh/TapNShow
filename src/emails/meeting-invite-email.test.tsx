@@ -110,6 +110,10 @@ describe("renderMeetingInviteEmail", () => {
     });
     expect(announcement.html).not.toContain("?choice=");
     expect(announcement.html).toContain("No answer needed.");
+    expect(announcement.html).toContain("Add to my calendar");
+    expect(announcement.html).toContain(
+      'href="https://tapnshow.vercel.app/r/TOKEN"',
+    );
   });
 
   it("escapes user text and refuses an unsafe meeting link", async () => {

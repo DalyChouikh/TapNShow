@@ -95,7 +95,18 @@
       "sentFrom": "Sent from {email} with {appName}.",
       "unsubscribe": "Unsubscribe from {workspace}",
       "report": "Not my group",
-      "joinOn": "Join on {platform}"
+      "joinOn": "Join on {platform}",
+      "addToCalendar": "Add to my calendar"
+    },
+    "calendarConfirm": {
+      "subjectRequest": "In your calendar: {title} · {date}, {time}",
+      "subjectCancel": "Removed from your calendar: {title} · {date}, {time}",
+      "preview": "{title}: {date}, {time}",
+      "greeting": "Hi {name},",
+      "requestBody": "Here is {title} for your calendar.",
+      "cancelBody": "You said you can't come, so {title} is no longer in your calendar.",
+      "notYet": "Not in your calendar yet? Open the invitation in this email and add it.",
+      "change": "Change your answer"
     },
     "senderBroken": {
       "subject": "Gmail sending for {workspace} needs reconnecting",
