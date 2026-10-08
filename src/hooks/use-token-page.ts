@@ -3,7 +3,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api-client";
 import { okSchema } from "@/shared/api/common";
-import { tokenInfoSchema } from "@/shared/api/tokens";
+import { answerSchema, type SubmitAnswerBody } from "@/shared/api/responses";
+import { type TokenInfo, tokenInfoSchema } from "@/shared/api/tokens";
 
 const key = (token: string) => ["token-page", token] as const;
 const noLogin = () => undefined;
@@ -36,5 +37,41 @@ export function useTokenAction(
         onUnauthenticated: noLogin,
       }),
     onSettled: () => queryClient.invalidateQueries({ queryKey: key(token) }),
+  });
+}
+
+/** Saves the member's answer and shows it at once (spec §7.3). */
+export function useSubmitAnswer(token: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: SubmitAnswerBody) =>
+      apiRequest(`/api/r/${token}/response`, {
+        method: "PUT",
+        body,
+        schema: answerSchema,
+        onUnauthenticated: noLogin,
+      }),
+    onSuccess: (answer) =>
+      queryClient.setQueryData<TokenInfo>(key(token), (info) =>
+        info ? { ...info, answer } : info,
+      ),
+  });
+}
+
+/** "Email me a calendar invite" on an announcement. */
+export function useRequestCalendar(token: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      apiRequest(`/api/r/${token}/calendar`, {
+        method: "POST",
+        body: {},
+        schema: okSchema,
+        onUnauthenticated: noLogin,
+      }),
+    onSuccess: () =>
+      queryClient.setQueryData<TokenInfo>(key(token), (info) =>
+        info ? { ...info, calendarRequested: true } : info,
+      ),
   });
 }

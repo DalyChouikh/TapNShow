@@ -42,6 +42,10 @@ export const API_ERROR_CODES = [
   "meeting_incomplete",
   "too_many_invitees",
   "nothing_to_send",
+  "answers_closed",
+  "invalid_choice",
+  "delay_required",
+  "reason_required",
 ] as const;
 
 /** An API error code. */
@@ -89,6 +93,10 @@ export const API_ERROR_STATUS: Record<ApiErrorCode, number> = {
   meeting_incomplete: 400,
   too_many_invitees: 409,
   nothing_to_send: 409,
+  answers_closed: 409,
+  invalid_choice: 400,
+  delay_required: 400,
+  reason_required: 400,
 };
 
 /** Body of every non-2xx API response. */
