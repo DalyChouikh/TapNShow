@@ -6,7 +6,10 @@ import {
 import { emailSchema } from "./common";
 
 /** A person's full name (matches the database check: trimmed, 1–120 characters). */
-export const contactNameSchema = z.string().trim().min(1).max(120);
+export const contactNameSchema = z
+  .string()
+  .transform((name) => name.trim().replace(/\s+/g, " "))
+  .pipe(z.string().min(1).max(120));
 
 /** A list name (matches the database check: trimmed, 1–60 characters). */
 export const listNameSchema = z.string().trim().min(1).max(60);

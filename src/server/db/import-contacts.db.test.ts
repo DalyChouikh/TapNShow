@@ -8,6 +8,7 @@ import {
   type TestUser,
 } from "@/test/db/clients";
 import { seedContacts, seedList } from "@/test/db/roster";
+import { queryLocalSql, runLocalSql } from "@/test/db/sql";
 import {
   addMember,
   createWorkspaceAs,
@@ -469,5 +470,65 @@ describe("import_contacts guards", () => {
       "rate_limited",
     );
     await expect(run([], true)).resolves.toMatchObject({ summary: { new: 0 } });
+  });
+});
+
+describe("the contacts cap under concurrent imports (spec §12)", () => {
+  it("lets only one of two concurrent imports cross the cap", async () => {
+    const admin = await createTestUser({ fullName: "Admin" });
+    await addMember(workspace.id, admin.id, "admin");
+    const [{ value }] = queryLocalSql(
+      "select value from private.app_limits where name = 'contacts_per_workspace_max'",
+      z.array(z.object({ value: z.number() })).length(1),
+    );
+    runLocalSql(
+      "update private.app_limits set value = 10 where name = 'contacts_per_workspace_max'",
+    );
+    try {
+      await seedContacts(workspace.id, 6, "cap");
+      const rows = (prefix: string) =>
+        Array.from({ length: 3 }, (_, n) => ({
+          row: n + 2,
+          email: `${prefix}-${n}-${crypto.randomUUID().slice(0, 6)}@example.test`,
+          full_name: `${prefix} ${n}`,
+          lists: [],
+        }));
+      const results = await Promise.all([
+        admin.client.rpc("import_contacts", {
+          p_workspace: workspace.id,
+          p_rows: rows("a"),
+          p_dry_run: false,
+        }),
+        owner.client.rpc("import_contacts", {
+          p_workspace: workspace.id,
+          p_rows: rows("b"),
+          p_dry_run: false,
+        }),
+      ]);
+      expect(results.filter((r) => r.error === null)).toHaveLength(1);
+      expect(results.find((r) => r.error)?.error?.message).toBe(
+        "tn:contacts_limit_reached",
+      );
+      const { count } = await adminClient()
+        .from("contacts")
+        .select("id", { count: "exact", head: true })
+        .eq("workspace_id", workspace.id);
+      expect(count).toBe(9);
+    } finally {
+      runLocalSql(
+        `update private.app_limits set value = ${value} where name = 'contacts_per_workspace_max'`,
+      );
+    }
+  });
+});
+
+describe("import_contacts plan shape (#119)", () => {
+  it("runs without nested loops so a re-import never goes quadratic on stale statistics", () => {
+    const rows = queryLocalSql(
+      `select coalesce(p.proconfig, '{}') as config from pg_catalog.pg_proc p
+       where p.oid = 'public.import_contacts(uuid, jsonb, boolean, uuid)'::regprocedure`,
+      z.array(z.object({ config: z.array(z.string()) })),
+    );
+    expect(rows[0]?.config).toContain("enable_nestloop=off");
   });
 });

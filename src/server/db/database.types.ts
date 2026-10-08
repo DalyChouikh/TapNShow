@@ -464,6 +464,9 @@ isOneToOne: false
 "transfer_ownership":
 { Args: { "p_confirm_name": string,"p_new_owner": string,"p_workspace": string }; Returns: undefined
                            },
+"update_contact":
+{ Args: { "p_contact": string,"p_email": string,"p_full_name": string,"p_list_ids": (string)[],"p_workspace": string }; Returns: undefined
+                           },
 "workspace_sender":
 { Args: { "p_workspace": string }; Returns: Json
                            }

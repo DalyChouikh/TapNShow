@@ -10,6 +10,9 @@ import {
 describe("roster schemas", () => {
   it("trims names and enforces the database lengths", () => {
     expect(contactNameSchema.parse("  Inès  ")).toBe("Inès");
+    // Same normalization as import_contacts, so an edited double space is not "updated" on re-import.
+    expect(contactNameSchema.parse("Nour  Ben   Ali ")).toBe("Nour Ben Ali");
+    expect(contactNameSchema.safeParse("   ").success).toBe(false);
     expect(contactNameSchema.safeParse("x".repeat(121)).success).toBe(false);
     expect(listNameSchema.safeParse("y".repeat(61)).success).toBe(false);
     expect(listNameSchema.safeParse("   ").success).toBe(false);

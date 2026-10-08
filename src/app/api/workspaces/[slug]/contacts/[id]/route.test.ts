@@ -7,9 +7,9 @@ type Result = {
   error: { code?: string; message: string } | null;
 };
 const found: Result = { data: [{ id: IDS.ines }], error: null };
+const done = { error: null };
 const mocks = vi.hoisted(() => ({
   updateContact: vi.fn(),
-  setContactLists: vi.fn(),
   deleteContact: vi.fn(),
 }));
 vi.mock("@/server/http/workspace-context", () => ({
@@ -21,8 +21,7 @@ const ctx = { params: Promise.resolve({ slug: "club-ab12", id: IDS.ines }) };
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.updateContact.mockResolvedValue(found);
-  mocks.setContactLists.mockResolvedValue({ error: null });
+  mocks.updateContact.mockResolvedValue(done);
   mocks.deleteContact.mockResolvedValue(found);
 });
 
@@ -40,18 +39,27 @@ describe("/api/workspaces/[slug]/contacts/[id]", () => {
         contactId: IDS.ines,
         fullName: "Inès B.",
         email: undefined,
+        listIds: undefined,
       },
     );
-    expect(mocks.setContactLists).not.toHaveBeenCalled();
   });
 
-  it("PATCH with listIds only replaces the lists", async () => {
+  it("PATCH with listIds only replaces the lists in the slug's workspace", async () => {
     const { PATCH } = await import("./route");
     expect(
       (await PATCH(jsonRequest("PATCH", { listIds: [IDS.dev] }), ctx)).status,
     ).toBe(200);
-    expect(mocks.updateContact).not.toHaveBeenCalled();
-    expect(mocks.setContactLists).toHaveBeenCalledWith({}, IDS.ines, [IDS.dev]);
+    expect(mocks.updateContact).toHaveBeenCalledTimes(1);
+    expect(mocks.updateContact).toHaveBeenCalledWith(
+      {},
+      {
+        workspaceId: "w1",
+        contactId: IDS.ines,
+        fullName: undefined,
+        email: undefined,
+        listIds: [IDS.dev],
+      },
+    );
   });
 
   it("PATCH reports a taken email and an unknown person", async () => {
@@ -68,7 +76,9 @@ describe("/api/workspaces/[slug]/contacts/[id]", () => {
     expect(await taken.json()).toEqual({
       error: { code: "contact_email_taken" },
     });
-    mocks.updateContact.mockResolvedValueOnce({ data: [], error: null });
+    mocks.updateContact.mockResolvedValueOnce({
+      error: { code: "P0001", message: "tn:not_found" },
+    });
     expect(
       (await PATCH(jsonRequest("PATCH", { fullName: "X" }), ctx)).status,
     ).toBe(404);

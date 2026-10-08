@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { fromDatabaseError } from "@/server/http/errors";
 import { loadWorkspaceContext } from "@/server/http/workspace-context";
 import { getRoster } from "@/server/queries/roster";
 
@@ -12,7 +13,9 @@ export async function GET(
   if (!context.ok) {
     return context.response;
   }
-  return NextResponse.json(
-    await getRoster(context.supabase, context.workspace.id),
+  const { data, error } = await getRoster(
+    context.supabase,
+    context.workspace.id,
   );
+  return error ? fromDatabaseError(error) : NextResponse.json(data);
 }
