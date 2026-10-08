@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { FillTone } from "@/design/tokens";
 import { cn } from "@/lib/utils";
-import { LIST_FILL } from "../list-tag";
+import { LIST_FILL } from "@/components/forms/list-tag";
 import type {
   ImportOutcome,
   ImportResult,

@@ -25,7 +25,7 @@ import {
 } from "@/shared/api/roster";
 import { describeEditError } from "./describe-edit-error";
 import { EditableCell } from "./editable-cell";
-import { ListTag } from "./list-tag";
+import { ListTag } from "@/components/forms/list-tag";
 
 const features = tableFeatures({
   rowSortingFeature,

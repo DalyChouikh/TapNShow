@@ -20,7 +20,7 @@ import { useCreateList, useImportContacts } from "@/hooks/use-roster";
 import { ApiClientError } from "@/lib/api-client";
 import { emailSchema } from "@/shared/api/common";
 import { contactNameSchema, type Roster } from "@/shared/api/roster";
-import { ListTag } from "./list-tag";
+import { ListTag } from "@/components/forms/list-tag";
 
 const schema = z.object({ fullName: contactNameSchema, email: emailSchema });
 type Values = z.input<typeof schema>;

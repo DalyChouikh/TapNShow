@@ -53,3 +53,6 @@ export const LOCATION_MAX = 200;
 export const MEETING_URL_MAX = 500;
 /** "Add people" accepts this many rows per save (`meeting_people_per_call_max`). */
 export const PEOPLE_PER_ADD_MAX = 50;
+
+/** Audience rows shown before "Show N more". */
+export const AUDIENCE_PAGE_SIZE = 50;

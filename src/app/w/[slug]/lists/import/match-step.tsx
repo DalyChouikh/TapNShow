@@ -18,7 +18,7 @@ import type {
   SheetGrid,
 } from "@/lib/import/types";
 import type { ListSummary } from "@/shared/api/roster";
-import { ListTag } from "../list-tag";
+import { ListTag } from "@/components/forms/list-tag";
 
 const TARGETS: readonly ColumnTarget[] = [
   "fullName",

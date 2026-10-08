@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import type { Contact, ListSummary } from "@/shared/api/roster";
-import { ListTag } from "./list-tag";
+import { ListTag } from "@/components/forms/list-tag";
 
 const CARD =
   "flex w-full min-w-0 items-center gap-3 rounded-card border-[length:var(--tn-border-width)] border-outline bg-surface p-3 text-left shadow-brutal-sm";
