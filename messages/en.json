@@ -692,6 +692,44 @@
       "confirmBody": "Each person gets their own email with their personal answer link.",
       "sending": "{count, plural, one {Sending # invite} other {Sending # invites}}",
       "addDate": "Add a date and time to see the email."
+    },
+    "audience": {
+      "lists": "Lists",
+      "count": "{count, plural, one {# person} other {# people}}",
+      "overlap": "{count} in more than one list",
+      "unsubscribed": "{count, plural, one {# unsubscribed person won't be emailed} other {# unsubscribed people won't be emailed}}",
+      "search": "Search the {count} invited",
+      "noPeople": "Pick a list or add people.",
+      "noMatch": "Nobody matches.",
+      "showMore": "Show {count} more",
+      "include": "Invite {name}",
+      "markUnsubscribed": "Unsubscribed",
+      "markReported": "Reported: not my group",
+      "markInvited": "Already invited",
+      "extra": "Extra people ({count})",
+      "addPeople": "Add people",
+      "next": "{count, plural, =0 {Nobody to invite} one {Next: # person} other {Next: # people}}",
+      "nextReview": "{count, plural, =0 {Nobody new} one {Review: # new} other {Review: # new}}",
+      "tooMany": "One meeting can invite up to {max} people."
+    },
+    "addPeople": {
+      "title": "Add people",
+      "description": "Not in your roster yet, or not in the lists you picked. Add several at once.",
+      "fullName": "Full name",
+      "email": "Email",
+      "remove": "Remove person {number}",
+      "another": "Another person",
+      "paste": "Paste a list",
+      "pasteLabel": "One person per line: name, email",
+      "pastePlaceholder": "Nour Hamdi, nour@uni.tn\nSami Trabelsi <sami@uni.tn>",
+      "usePaste": "Use these {count}",
+      "saveToRoster": "Save to roster",
+      "saveToRosterOff": "Off: invited to this meeting only",
+      "submit": "{count, plural, =0 {Add people} one {Add # person} other {Add # people}}",
+      "nameMissing": "Add a name.",
+      "emailInvalid": "Check this email.",
+      "added": "{count, plural, one {Added # person} other {Added # people}}",
+      "person": "Person {number}"
     }
   }
 }

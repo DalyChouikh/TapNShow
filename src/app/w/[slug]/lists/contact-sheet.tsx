@@ -22,7 +22,7 @@ import {
   type UpdateContactBody,
 } from "@/shared/api/roster";
 import { describeEditError } from "./describe-edit-error";
-import { ListTag } from "./list-tag";
+import { ListTag } from "@/components/forms/list-tag";
 
 type Field = "fullName" | "email";
 type SaveState = "idle" | "saving" | "saved";

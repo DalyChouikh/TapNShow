@@ -8,6 +8,7 @@ import { okSchema } from "@/shared/api/common";
 import {
   type AddPeopleBody,
   addPeopleResponseSchema,
+  type Audience,
   type AudienceBody,
   audienceSchema,
   createMeetingResponseSchema,
@@ -119,18 +120,29 @@ export function useMeetingAudience(slug: string, id: string) {
   });
 }
 
-/** Replaces lists / include / exclude; the response is the new audience. */
+/**
+ * Replaces lists / include / exclude; the response is the new audience. Takes an edit of the current
+ * audience: saves run one at a time and each edit applies to the latest saved audience, so quick taps
+ * never undo each other.
+ */
 export function useSetAudience(slug: string, id: string) {
   const queryClient = useQueryClient();
+  const key = audienceQueryKey(slug, id);
   return useMutation({
-    mutationFn: (body: AudienceBody) =>
-      apiRequest(`${base(slug)}/${id}/audience`, {
+    scope: { id: `meeting-audience-${slug}-${id}` },
+    mutationFn: (edit: (audience: Audience) => AudienceBody) => {
+      const current = queryClient.getQueryData<Audience>(key);
+      if (!current) {
+        throw new Error("audience not loaded");
+      }
+      return apiRequest(`${base(slug)}/${id}/audience`, {
         method: "PUT",
-        body,
+        body: edit(current),
         schema: audienceSchema,
-      }),
+      });
+    },
     onSuccess: (audience) => {
-      queryClient.setQueryData(audienceQueryKey(slug, id), audience);
+      queryClient.setQueryData(key, audience);
       void queryClient.invalidateQueries({
         queryKey: previewQueryKey(slug, id),
       });
