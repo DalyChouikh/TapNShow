@@ -18,10 +18,11 @@ test("the workspace shell: header, bottom bar, Home, placeholders, not found", a
   await expect(switcher).toContainText("Owner");
 
   const nav = page.getByRole("navigation", { name: "Workspace" });
-  await expect(nav.getByRole("link")).toHaveCount(4);
-  await expect(
-    nav.getByRole("button", { name: "New meeting" }),
-  ).toHaveAttribute("aria-disabled", "true");
+  await expect(nav.getByRole("link")).toHaveCount(5);
+  await expect(nav.getByRole("link", { name: "New meeting" })).toHaveAttribute(
+    "href",
+    /\/meetings\/new$/,
+  );
   await expect(nav.getByRole("link", { name: "Home" })).toHaveAttribute(
     "aria-current",
     "page",
@@ -37,7 +38,7 @@ test("the workspace shell: header, bottom bar, Home, placeholders, not found", a
 
   await nav.getByRole("link", { name: "Meetings" }).click();
   await expect(
-    page.getByRole("heading", { name: "Meetings arrive soon" }),
+    page.getByRole("heading", { level: 1, name: "Meetings" }),
   ).toBeVisible();
 
   await page.goto("/w/unknown-zzzz");

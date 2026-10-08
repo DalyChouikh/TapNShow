@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { z } from "zod";
+import { startFakeGmail } from "./helpers/fake-gmail";
 
 /** Code requests one local e2e run may make from the shared "unknown" IP. */
 const E2E_OTP_REQUESTS_PER_HOUR = 1000;
@@ -24,7 +25,7 @@ const limitRowsSchema = z.array(z.object({ value: z.number() })).length(1);
  * sign-in code requests. Raise that limit for the run (and clear old counters), then restore the
  * original value so DB tests keep checking the real limit. CI starts from a fresh stack anyway.
  */
-export default function globalSetup(): () => void {
+export default async function globalSetup(): Promise<() => Promise<void>> {
   const original = limitRowsSchema.parse(
     JSON.parse(
       localSql(
@@ -36,9 +37,12 @@ export default function globalSetup(): () => void {
   localSql(
     `update private.app_limits set value = ${E2E_OTP_REQUESTS_PER_HOUR} where name = 'otp_send_per_ip_per_hour'`,
   );
-  return () => {
+  // Fake Google token endpoint + Gmail API for the meetings story (no real email leaves e2e).
+  const fakeGmail = await startFakeGmail();
+  return async () => {
     localSql(
       `update private.app_limits set value = ${original} where name = 'otp_send_per_ip_per_hour'`,
     );
+    await new Promise<void>((resolve) => fakeGmail.close(() => resolve()));
   };
 }
