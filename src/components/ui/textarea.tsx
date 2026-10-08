@@ -1,4 +1,4 @@
-import type { TextareaHTMLAttributes } from "react";
+import type { Ref, TextareaHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
 type TextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
@@ -6,6 +6,8 @@ type TextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   label: string;
   hint?: string;
   error?: string;
+  /** The underlying textarea (React 19 passes `ref` as a prop). */
+  ref?: Ref<HTMLTextAreaElement>;
 };
 
 /** Labelled multi-line field with the same outline, shadow, hint and error wiring as `Input`. */

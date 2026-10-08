@@ -12,17 +12,21 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { ConfirmStamp } from "@/components/motion/confirm-stamp";
 import { Stagger, StaggerItem } from "@/components/motion/stagger";
+import { ConfirmDialog } from "@/components/forms/confirm-dialog";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Chip } from "@/components/ui/chip";
+import { DatePicker } from "@/components/ui/date-picker";
 import { FileDropZone } from "@/components/ui/file-drop-zone";
 import { Input } from "@/components/ui/input";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Sticker } from "@/components/ui/sticker";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { TimePicker } from "@/components/ui/time-picker";
 import { FILL_TONES } from "@/design/tokens";
 
 type Choice = "none" | "attend" | "late";
@@ -34,6 +38,10 @@ export function DesignShowcase() {
   const [choice, setChoice] = useState<Choice>("none");
   const [delay, setDelay] = useState<(typeof DELAYS)[number] | null>(null);
   const [source, setSource] = useState("file");
+  const [date, setDate] = useState<string | null>("2026-10-09");
+  const [time, setTime] = useState<string | null>("18:00");
+  const [agenda, setAgenda] = useState("- Recap\n- **Hackathon** teams");
+  const [confirming, setConfirming] = useState(false);
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-6 px-4 py-6">
@@ -188,6 +196,66 @@ export function DesignShowcase() {
               hint={t("dropHint")}
               accept=".csv,.xlsx"
               onFile={() => undefined}
+            />
+          </Card>
+        </StaggerItem>
+        <StaggerItem>
+          <Card
+            as="section"
+            aria-label={t("pickers")}
+            className="flex flex-col gap-3"
+          >
+            <h2 className="font-bold">{t("pickers")}</h2>
+            <div className="grid grid-cols-2 gap-3">
+              <DatePicker
+                id="demo-date"
+                label={t("pickers")}
+                value={date}
+                today="2026-10-07"
+                min="2026-10-07"
+                onChange={setDate}
+              />
+              <TimePicker
+                id="demo-time"
+                label={t("pickers")}
+                value={time}
+                onChange={setTime}
+              />
+            </div>
+          </Card>
+        </StaggerItem>
+        <StaggerItem>
+          <Card
+            as="section"
+            aria-label={t("markdown")}
+            className="flex flex-col gap-3"
+          >
+            <h2 className="font-bold">{t("markdown")}</h2>
+            <MarkdownEditor
+              id="demo-agenda"
+              label={t("markdown")}
+              value={agenda}
+              onChange={setAgenda}
+              maxLength={5000}
+            />
+          </Card>
+        </StaggerItem>
+        <StaggerItem>
+          <Card
+            as="section"
+            aria-label={t("confirm")}
+            className="flex flex-col gap-3"
+          >
+            <h2 className="font-bold">{t("confirm")}</h2>
+            <Button tone="primary" onClick={() => setConfirming(true)}>
+              {t("confirmOpen")}
+            </Button>
+            <ConfirmDialog
+              open={confirming}
+              onOpenChange={setConfirming}
+              title={t("confirmTitle")}
+              confirmLabel={t("confirmAction")}
+              onConfirm={() => setConfirming(false)}
             />
           </Card>
         </StaggerItem>

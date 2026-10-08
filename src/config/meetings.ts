@@ -27,3 +27,6 @@ export const RESPONSE_CHOICES: Record<ResponseMode, readonly ResponseChoice[]> =
     rsvp: ["going", "not_going"],
     attendance: ["attending", "late", "absent"],
   };
+
+/** Time list step in the TimePicker (minutes). */
+export const TIME_STEP_MINUTES = 15;

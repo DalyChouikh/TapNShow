@@ -40,4 +40,11 @@ describe("DesignShowcase response demo", () => {
       screen.getByRole("radiogroup", { name: "Source" }),
     ).toBeInTheDocument();
   });
+
+  it("shows the M4 primitives", () => {
+    renderWithProviders(<DesignShowcase />);
+    for (const name of ["Date and time", "Markdown editor", "Confirm dialog"]) {
+      expect(screen.getByRole("heading", { name })).toBeInTheDocument();
+    }
+  });
 });

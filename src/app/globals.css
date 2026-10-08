@@ -68,3 +68,24 @@
     outline-offset: 2px;
   }
 }
+
+/* Agenda preview (MarkdownEditor): preflight removes list markers and link styling. */
+.agenda-preview p {
+  margin: 0 0 0.5rem;
+}
+.agenda-preview ul,
+.agenda-preview ol {
+  margin: 0 0 0.5rem;
+  padding-left: 1.25rem;
+}
+.agenda-preview ul {
+  list-style: disc;
+}
+.agenda-preview ol {
+  list-style: decimal;
+}
+.agenda-preview a {
+  font-weight: 700;
+  text-decoration: underline;
+  overflow-wrap: anywhere;
+}
