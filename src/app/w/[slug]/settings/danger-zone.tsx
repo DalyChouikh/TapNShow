@@ -6,7 +6,6 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { ConfirmNameDialog } from "@/components/forms/confirm-name-dialog";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -28,16 +27,19 @@ import { ApiClientError, apiRequest } from "@/lib/api-client";
 import { okSchema } from "@/shared/api/common";
 import type { Member } from "@/shared/api/members";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
+import { SettingsSection } from "./settings-section";
 
 type Open = "leave" | "transfer" | "delete" | null;
 
 /** Settings > Danger zone (spec §7.11): Owner transfers or deletes; everyone else can leave. */
 export function DangerZone({
   workspace,
+  defaultOpen = true,
   myId,
   members,
 }: {
   workspace: WorkspaceDetails;
+  defaultOpen?: boolean;
   myId: string;
   members: Member[];
 }) {
@@ -98,14 +100,7 @@ export function DangerZone({
   });
 
   return (
-    <Card
-      as="section"
-      aria-labelledby="danger-title"
-      className="flex flex-col gap-3"
-    >
-      <h2 id="danger-title" className="font-display text-xl">
-        {t("title")}
-      </h2>
+    <SettingsSection id="danger" title={t("title")} defaultOpen={defaultOpen}>
       {workspace.myRole === "owner" ? (
         <>
           <Button tone="warning" onClick={() => setOpen("transfer")}>
@@ -195,6 +190,6 @@ export function DangerZone({
         error={errorText(remove.error)}
         onConfirm={(typed) => remove.mutate(typed)}
       />
-    </Card>
+    </SettingsSection>
   );
 }

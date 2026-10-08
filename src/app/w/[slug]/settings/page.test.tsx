@@ -72,5 +72,15 @@ describe("/w/[slug]/settings", () => {
     expect(
       await screen.findByRole("heading", { name: "Meeting defaults" }),
     ).toBeInTheDocument();
+    for (const name of ["Sending", "Meeting defaults", "People"]) {
+      expect(screen.getByRole("button", { name })).toHaveAttribute(
+        "aria-expanded",
+        "false",
+      );
+    }
+    expect(screen.getByRole("button", { name: "General" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
   });
 });

@@ -290,8 +290,6 @@
       "disconnected": "Gmail disconnected",
       "tipGroup": "Tip: connect your group's own Gmail (for example the club's account), not a personal one. Each meeting's emails appear as one conversation in its Sent folder.",
       "tipAdmins": "Admins of {workspace} can send meeting emails from this address.",
-      "unverifiedTitle": "Google shows \"Google hasn't verified this app\"",
-      "unverifiedBody": "That's expected while TapNShow waits for Google's review. Click Advanced, then Go to tapnshow.vercel.app, then allow \"Send email on your behalf\".",
       "connected": "Gmail connected. You can send meetings now.",
       "error": {
         "unavailable": "Gmail sending isn't available on this version of the site.",

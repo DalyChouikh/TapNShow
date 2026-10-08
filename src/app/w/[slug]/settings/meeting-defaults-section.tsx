@@ -4,7 +4,6 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { SwitchRow } from "@/components/forms/switch-row";
-import { Card } from "@/components/ui/card";
 import { Chip } from "@/components/ui/chip";
 import { Input } from "@/components/ui/input";
 import { SegmentedControl } from "@/components/ui/segmented-control";
@@ -25,12 +24,15 @@ import {
   type UpdateMeetingDefaultsBody,
 } from "@/shared/api/meeting-settings";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
+import { SettingsSection } from "./settings-section";
 
 /** Settings > Meeting defaults (spec §7.2): each change saves at once; Viewers read only. */
 export function MeetingDefaultsSection({
   workspace,
+  defaultOpen = true,
 }: {
   workspace: WorkspaceDetails;
+  defaultOpen?: boolean;
 }) {
   const t = useTranslations("Settings.defaults");
   const tw = useTranslations("Wizard");
@@ -66,23 +68,28 @@ export function MeetingDefaultsSection({
   };
   if (readOnly) {
     return (
-      <Card as="section" className="flex flex-col gap-2">
-        <h2 className="font-display text-xl">{t("title")}</h2>
+      <SettingsSection
+        id="meeting-defaults"
+        title={t("title")}
+        defaultOpen={defaultOpen}
+        className="gap-2"
+      >
         <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
           <dt className="font-bold">{tw("responses.mode")}</dt>
           <dd>{tw(`review.mode.${value.responseMode}`)}</dd>
           <dt className="font-bold">{t("duration")}</dt>
           <dd>{minutes(value.durationMinutes)}</dd>
         </dl>
-      </Card>
+      </SettingsSection>
     );
   }
   return (
-    <Card as="section" className="flex flex-col gap-4">
-      <div>
-        <h2 className="font-display text-xl">{t("title")}</h2>
-        <p className="text-sm text-muted-ink">{t("help")}</p>
-      </div>
+    <SettingsSection
+      id="meeting-defaults"
+      title={t("title")}
+      defaultOpen={defaultOpen}
+    >
+      <p className="text-sm text-muted-ink">{t("help")}</p>
       <SegmentedControl
         label={tw("responses.mode")}
         value={value.responseMode}
@@ -156,6 +163,6 @@ export function MeetingDefaultsSection({
           ))}
         </div>
       </fieldset>
-    </Card>
+    </SettingsSection>
   );
 }

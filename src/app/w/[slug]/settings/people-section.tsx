@@ -8,7 +8,6 @@ import { toast } from "sonner";
 import { RoleBadge } from "@/components/shell/role-badge";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -29,14 +28,17 @@ import { memberActions, type MemberAction } from "@/lib/member-actions";
 import { okSchema } from "@/shared/api/common";
 import type { Member } from "@/shared/api/members";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
+import { SettingsSection } from "./settings-section";
 
 /** Settings > People: members, role badges, allowed row actions. Task 12 adds invites as `children`. */
 export function PeopleSection({
   workspace,
+  defaultOpen = true,
   myId,
   children,
 }: {
   workspace: WorkspaceDetails;
+  defaultOpen?: boolean;
   myId: string;
   children?: ReactNode;
 }) {
@@ -103,15 +105,7 @@ export function PeopleSection({
       : t(action);
 
   return (
-    <Card
-      as="section"
-      id="people"
-      aria-labelledby="people-title"
-      className="flex scroll-mt-24 flex-col gap-4"
-    >
-      <h2 id="people-title" className="font-display text-xl">
-        {t("title")}
-      </h2>
+    <SettingsSection id="people" title={t("title")} defaultOpen={defaultOpen}>
       {members.data ? (
         <ul className="flex flex-col gap-3">
           {members.data.map((member) => {
@@ -190,6 +184,6 @@ export function PeopleSection({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Card>
+    </SettingsSection>
   );
 }

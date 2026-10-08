@@ -1,13 +1,13 @@
 "use client";
 
-import { CaretRight, EnvelopeSimple, Warning } from "@phosphor-icons/react";
+import { EnvelopeSimple, Warning } from "@phosphor-icons/react";
 import { format } from "date-fns";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/forms/confirm-dialog";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sticker } from "@/components/ui/sticker";
 import { cn } from "@/lib/utils";
@@ -19,6 +19,7 @@ import {
 } from "@/hooks/use-sender";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
 import { GmailConnectResult } from "./gmail-connect-result";
+import { SettingsSection } from "./settings-section";
 
 type Pending =
   | { kind: "use"; id: string; email: string }
@@ -27,8 +28,17 @@ type Pending =
   | null;
 
 /** Settings > Sending (spec §7.15): the workspace's sender Gmail. Only the Owner changes it. */
-export function SendingSection({ workspace }: { workspace: WorkspaceDetails }) {
+export function SendingSection({
+  workspace,
+  defaultOpen = true,
+}: {
+  workspace: WorkspaceDetails;
+  defaultOpen?: boolean;
+}) {
   const t = useTranslations("Settings.sending");
+  const params = useSearchParams();
+  // Coming back from Google: the result shows inside this section.
+  const returning = params.has("gmail") || params.has("gmail_error");
   const sender = useWorkspaceSender(workspace.slug);
   const setSender = useSetSender(workspace.slug);
   const disconnect = useDisconnectGmail(workspace.slug);
@@ -46,13 +56,13 @@ export function SendingSection({ workspace }: { workspace: WorkspaceDetails }) {
     ? myConnections.find((c) => c.id === current.connectionId)
     : undefined;
   return (
-    <Card
-      as="section"
+    <SettingsSection
       id="sending"
-      className="flex scroll-mt-20 flex-col gap-3"
-    >
-      <GmailConnectResult />
-      <div className="flex items-center gap-3">
+      title={t("title")}
+      defaultOpen={defaultOpen}
+      forceOpen={returning}
+      className="gap-3"
+      icon={
         <Sticker tone={current?.status === "broken" ? "warning" : "primary"}>
           {current?.status === "broken" ? (
             <Warning weight="bold" />
@@ -60,8 +70,9 @@ export function SendingSection({ workspace }: { workspace: WorkspaceDetails }) {
             <EnvelopeSimple weight="bold" />
           )}
         </Sticker>
-        <h2 className="font-display text-xl">{t("title")}</h2>
-      </div>
+      }
+    >
+      <GmailConnectResult />
       {current ? (
         <div className="flex flex-col gap-1">
           <p className="font-bold break-words">
@@ -127,17 +138,6 @@ export function SendingSection({ workspace }: { workspace: WorkspaceDetails }) {
           <p className="text-sm text-muted-ink">
             {t("tipAdmins", { workspace: workspace.name })}
           </p>
-          <details className="group rounded-control border-[length:var(--tn-border-width)] border-outline p-3 text-sm">
-            <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 font-bold [&::-webkit-details-marker]:hidden">
-              <CaretRight
-                weight="bold"
-                aria-hidden
-                className="shrink-0 transition-transform group-open:rotate-90 motion-reduce:transition-none"
-              />
-              {t("unverifiedTitle")}
-            </summary>
-            <p className="mt-2">{t("unverifiedBody")}</p>
-          </details>
         </div>
       ) : (
         <p className="text-sm text-muted-ink">
@@ -213,6 +213,6 @@ export function SendingSection({ workspace }: { workspace: WorkspaceDetails }) {
           })
         }
       />
-    </Card>
+    </SettingsSection>
   );
 }

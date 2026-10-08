@@ -15,7 +15,10 @@ import { MeetingDefaultsSection } from "./meeting-defaults-section";
 import { PeopleSection } from "./people-section";
 import { SendingSection } from "./sending-section";
 
-/** `/w/[slug]/settings` (spec §10): General, Sending, Meeting defaults, People, Danger zone. */
+/**
+ * `/w/[slug]/settings` (spec §10): General, Sending, Meeting defaults, People, Danger zone. Only
+ * General starts open; the rest fold under their headings (a `#section` link opens its own).
+ */
 export default function SettingsPage() {
   const t = useTranslations("Settings");
   const { slug } = useParams<{ slug: string }>();
@@ -33,17 +36,25 @@ export default function SettingsPage() {
         <>
           {/* SendingSection reads ?gmail=… through useSearchParams. */}
           <Suspense fallback={<Skeleton className="h-40 w-full" />}>
-            <SendingSection workspace={workspace.data} />
+            <SendingSection workspace={workspace.data} defaultOpen={false} />
           </Suspense>
-          <MeetingDefaultsSection workspace={workspace.data} />
+          <MeetingDefaultsSection
+            workspace={workspace.data}
+            defaultOpen={false}
+          />
         </>
       ) : null}
-      <PeopleSection workspace={workspace.data} myId={me.data.userId}>
+      <PeopleSection
+        workspace={workspace.data}
+        myId={me.data.userId}
+        defaultOpen={false}
+      >
         <InvitesPanel workspace={workspace.data} />
       </PeopleSection>
       {members.data ? (
         <DangerZone
           workspace={workspace.data}
+          defaultOpen={false}
           myId={me.data.userId}
           members={members.data}
         />

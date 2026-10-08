@@ -8,7 +8,6 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { TimezonePicker } from "@/components/forms/timezone-picker";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ME_QUERY_KEY } from "@/hooks/use-me";
 import { workspaceQueryKey } from "@/hooks/use-workspace";
@@ -19,6 +18,7 @@ import {
   workspaceNameSchema,
   type WorkspaceDetails,
 } from "@/shared/api/workspaces";
+import { SettingsSection } from "./settings-section";
 
 const schema = z.object({
   name: workspaceNameSchema,
@@ -27,7 +27,13 @@ const schema = z.object({
 type Values = z.input<typeof schema>;
 
 /** Settings > General: name and timezone (Owner/Admin), read-only for Viewers. */
-export function GeneralSection({ workspace }: { workspace: WorkspaceDetails }) {
+export function GeneralSection({
+  workspace,
+  defaultOpen = true,
+}: {
+  workspace: WorkspaceDetails;
+  defaultOpen?: boolean;
+}) {
   const t = useTranslations("Settings.general");
   const tErrors = useTranslations("ApiErrors");
   const queryClient = useQueryClient();
@@ -59,14 +65,7 @@ export function GeneralSection({ workspace }: { workspace: WorkspaceDetails }) {
   });
 
   return (
-    <Card
-      as="section"
-      aria-labelledby="general-title"
-      className="flex flex-col gap-4"
-    >
-      <h2 id="general-title" className="font-display text-xl">
-        {t("title")}
-      </h2>
+    <SettingsSection id="general" title={t("title")} defaultOpen={defaultOpen}>
       {workspace.myRole === "viewer" ? (
         <>
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
@@ -105,6 +104,6 @@ export function GeneralSection({ workspace }: { workspace: WorkspaceDetails }) {
           </Button>
         </form>
       )}
-    </Card>
+    </SettingsSection>
   );
 }

@@ -56,9 +56,7 @@ describe("SendingSection", () => {
     expect(
       screen.getByText(/connect your group's own Gmail/),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(/Google hasn't verified this app/),
-    ).toBeInTheDocument();
+    expect(screen.queryByText(/verified/)).toBeNull();
   });
 
   it("shows the sender, usage and lets the person who connected it disconnect after confirming", async () => {
