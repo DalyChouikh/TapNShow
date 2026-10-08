@@ -13,11 +13,14 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Sticker } from "@/components/ui/sticker";
+import { publicEnv } from "@/config/public-env";
+import { useWorkspaceSender } from "@/hooks/use-sender";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
 
 type StepKey =
   "inviteCommittee" | "importMembers" | "connectGmail" | "connectSheets";
-type ActionKey = "inviteCommitteeAction" | "importMembersAction";
+type ActionKey =
+  "inviteCommitteeAction" | "importMembersAction" | "connectGmailAction";
 
 const STEPS: ReadonlyArray<{
   key: StepKey;
@@ -37,13 +40,22 @@ const STEPS: ReadonlyArray<{
     href: (slug) => `/w/${slug}/lists`,
     actionKey: "importMembersAction",
   },
-  { key: "connectGmail", icon: EnvelopeSimple },
+  // Gmail sending ships with the M4 meetings flag.
+  publicEnv.NEXT_PUBLIC_MEETINGS_ENABLED
+    ? {
+        key: "connectGmail",
+        icon: EnvelopeSimple,
+        href: (slug) => `/w/${slug}/settings#sending`,
+        actionKey: "connectGmailAction",
+      }
+    : { key: "connectGmail", icon: EnvelopeSimple },
   { key: "connectSheets", icon: Table },
 ];
 
 /** Home (spec §7.1): onboarding checklist for Owners/Admins, a short welcome for Viewers. */
 export function HomeChecklist({ workspace }: { workspace: WorkspaceDetails }) {
   const t = useTranslations("WorkspaceHome");
+  const sender = useWorkspaceSender(workspace.slug);
   if (workspace.myRole === "viewer") {
     return (
       <Card as="section" className="flex flex-col gap-3">
@@ -71,7 +83,14 @@ export function HomeChecklist({ workspace }: { workspace: WorkspaceDetails }) {
                 <Glyph weight="bold" />
               </Sticker>
               <span className="flex-1 font-bold">{t(key)}</span>
-              {href && actionKey ? (
+              {key === "connectGmail" && href ? (
+                <GmailStatus
+                  workspace={workspace}
+                  active={sender.data?.sender?.status === "active"}
+                  ownerName={sender.data?.ownerName}
+                  href={href(workspace.slug)}
+                />
+              ) : href && actionKey ? (
                 <Button asChild tone="primary">
                   <Link href={href(workspace.slug)}>{t(actionKey)}</Link>
                 </Button>
@@ -85,5 +104,39 @@ export function HomeChecklist({ workspace }: { workspace: WorkspaceDetails }) {
         </ul>
       </Card>
     </section>
+  );
+}
+
+/** The Gmail step: Done once a sender is active; the Owner connects, Admins are told who does. */
+function GmailStatus({
+  workspace,
+  active,
+  ownerName,
+  href,
+}: {
+  workspace: WorkspaceDetails;
+  active: boolean;
+  ownerName: string | undefined;
+  href: string;
+}) {
+  const t = useTranslations("WorkspaceHome");
+  if (active) {
+    return (
+      <span className="rounded-full border-2 border-outline bg-fill-success px-2 text-xs font-bold text-on-fill">
+        {t("done")}
+      </span>
+    );
+  }
+  if (workspace.myRole !== "owner") {
+    return ownerName ? (
+      <span className="max-w-32 text-right text-sm text-muted-ink">
+        {t("ownerConnects", { owner: ownerName })}
+      </span>
+    ) : null;
+  }
+  return (
+    <Button asChild tone="primary">
+      <Link href={href}>{t("connectGmailAction")}</Link>
+    </Button>
   );
 }

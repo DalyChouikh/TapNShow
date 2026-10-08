@@ -263,6 +263,50 @@
       "typeName": "Type {workspace} to confirm",
       "confirm": "Confirm",
       "choose": "Choose an Admin"
+    },
+    "sending": {
+      "title": "Sending",
+      "none": "No Gmail connected yet. Meeting invites can't be sent until the Owner connects one.",
+      "from": "Sending from {workspace} <{email}>",
+      "connectedBy": "Connected by {name} on {date}",
+      "usage": "{sent} of {limit} emails in the last 24 hours",
+      "active": "Active",
+      "broken": "Needs reconnecting",
+      "brokenHelp": "Google stopped accepting access to this Gmail (for example after a password change). Queued emails wait until it is reconnected.",
+      "askOwner": "Only {owner}, the Owner, can connect or change the sending Gmail.",
+      "connect": "Connect Gmail",
+      "reconnect": "Reconnect Gmail",
+      "replace": "Use a different Gmail",
+      "use": "Use {email}",
+      "useTitle": "Send {workspace}'s emails from {email}?",
+      "useBody": "Queued and future meeting emails go out from this address.",
+      "replaceTitle": "Connect a different Gmail for {workspace}?",
+      "replaceBody": "Google will ask which account to use. Emails already sent stay in the old account's Sent folder.",
+      "replaceAction": "Continue to Google",
+      "disconnect": "Disconnect {email}",
+      "disconnectTitle": "Disconnect {email}?",
+      "disconnectBody": "Sending pauses in: {workspaces}. Nothing queued is lost; it waits until a Gmail is connected again.",
+      "disconnectAction": "Disconnect",
+      "disconnected": "Gmail disconnected",
+      "tipGroup": "Tip: connect your group's own Gmail (for example the club's account), not a personal one. Each meeting's emails appear as one conversation in its Sent folder.",
+      "tipAdmins": "Admins of {workspace} can send meeting emails from this address.",
+      "unverifiedTitle": "Google shows \"Google hasn't verified this app\"",
+      "unverifiedBody": "That's expected while TapNShow waits for Google's review. Click Advanced, then Go to tapnshow.vercel.app, then allow \"Send email on your behalf\".",
+      "connected": "Gmail connected. You can send meetings now.",
+      "error": {
+        "unavailable": "Gmail sending isn't available on this version of the site.",
+        "owner_only": "Only the workspace Owner can connect Gmail.",
+        "cancelled": "Connecting was cancelled. Nothing changed.",
+        "scope_denied": "Google didn't give permission to send email. Try again and keep \"Send email on your behalf\" ticked.",
+        "no_refresh_token": "Google didn't return lasting access. Try again; if it keeps happening, remove TapNShow at myaccount.google.com/permissions first.",
+        "failed": "Connecting Gmail failed. Try again."
+      }
+    },
+    "defaults": {
+      "title": "Meeting defaults",
+      "help": "New meetings start with these. Each meeting can change them.",
+      "saved": "Saved",
+      "duration": "Default duration"
     }
   },
   "WorkspaceHome": {
@@ -276,7 +320,16 @@
     "soon": "Coming soon",
     "viewerTitle": "You're a Viewer in {workspace}",
     "viewerBody": "You'll see meetings, answers and reasons here once organizers start sending invites.",
-    "importMembersAction": "Import"
+    "importMembersAction": "Import",
+    "connectGmailAction": "Connect",
+    "done": "Done",
+    "ownerConnects": "{owner} connects Gmail",
+    "attentionTitle": "Needs attention",
+    "attentionBroken": "Gmail sending needs reconnecting. Queued invites are paused.",
+    "attentionDraft": "A draft is waiting: connect Gmail to send it.",
+    "attentionAskOwner": "Ask {owner} to reconnect Gmail.",
+    "reconnect": "Reconnect",
+    "connect": "Connect Gmail"
   },
   "Invites": {
     "title": "Invites",

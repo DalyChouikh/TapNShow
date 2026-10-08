@@ -2,16 +2,20 @@
 
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { publicEnv } from "@/config/public-env";
 import { useMe } from "@/hooks/use-me";
 import { useMembers } from "@/hooks/use-members";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { DangerZone } from "./danger-zone";
 import { GeneralSection } from "./general-section";
 import { InvitesPanel } from "./invites-panel";
+import { MeetingDefaultsSection } from "./meeting-defaults-section";
 import { PeopleSection } from "./people-section";
+import { SendingSection } from "./sending-section";
 
-/** `/w/[slug]/settings` (spec §10): General, People, Danger zone. */
+/** `/w/[slug]/settings` (spec §10): General, Sending, Meeting defaults, People, Danger zone. */
 export default function SettingsPage() {
   const t = useTranslations("Settings");
   const { slug } = useParams<{ slug: string }>();
@@ -25,6 +29,15 @@ export default function SettingsPage() {
     <div className="flex flex-col gap-4">
       <h1 className="font-display text-3xl">{t("title")}</h1>
       <GeneralSection key={workspace.data.id} workspace={workspace.data} />
+      {publicEnv.NEXT_PUBLIC_MEETINGS_ENABLED ? (
+        <>
+          {/* SendingSection reads ?gmail=… through useSearchParams. */}
+          <Suspense fallback={<Skeleton className="h-40 w-full" />}>
+            <SendingSection workspace={workspace.data} />
+          </Suspense>
+          <MeetingDefaultsSection workspace={workspace.data} />
+        </>
+      ) : null}
       <PeopleSection workspace={workspace.data} myId={me.data.userId}>
         <InvitesPanel workspace={workspace.data} />
       </PeopleSection>

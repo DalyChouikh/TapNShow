@@ -7,6 +7,8 @@ import SettingsPage from "./page";
 vi.mock("next/navigation", () => ({
   useParams: () => ({ slug: "club-ab12" }),
   useRouter: () => ({ replace: vi.fn() }),
+  usePathname: () => "/w/club-ab12/settings",
+  useSearchParams: () => new URLSearchParams(),
 }));
 afterEach(() => vi.unstubAllGlobals());
 
@@ -36,12 +38,39 @@ describe("/w/[slug]/settings", () => {
         if (url.endsWith("/invites")) {
           return new Response("[]");
         }
+        if (url.endsWith("/sender")) {
+          return new Response(
+            JSON.stringify({
+              sender: null,
+              ownerName: "Me",
+              myConnections: [],
+            }),
+          );
+        }
+        if (url.endsWith("/meeting-defaults")) {
+          return new Response(
+            JSON.stringify({
+              responseMode: "attendance",
+              delayOptions: [5, 10],
+              reasonRequired: true,
+              commentsEnabled: false,
+              footerNote: "",
+              durationMinutes: 60,
+            }),
+          );
+        }
         return new Response(JSON.stringify(workspaceFixture));
       }),
     );
     renderWithProviders(<SettingsPage />);
     expect(
       await screen.findByTestId("danger-zone-skeleton"),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Sending" }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Meeting defaults" }),
     ).toBeInTheDocument();
   });
 });
