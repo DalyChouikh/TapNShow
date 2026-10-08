@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import type { Contact, ListSummary } from "@/shared/api/roster";
+import { ContactMark } from "@/components/forms/contact-mark";
 import { ListTag } from "@/components/forms/list-tag";
 
 const CARD =
@@ -24,6 +25,7 @@ function CardBody({
   return (
     <span className="flex min-w-0 flex-1 flex-col gap-1">
       <span className="font-bold break-words">{contact.fullName}</span>
+      <ContactMark contact={contact} />
       <span
         className={cn(
           "text-sm break-all",

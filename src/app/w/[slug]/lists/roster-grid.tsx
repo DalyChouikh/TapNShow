@@ -25,6 +25,7 @@ import {
 } from "@/shared/api/roster";
 import { describeEditError } from "./describe-edit-error";
 import { EditableCell } from "./editable-cell";
+import { ContactMark } from "@/components/forms/contact-mark";
 import { ListTag } from "@/components/forms/list-tag";
 
 const features = tableFeatures({
@@ -211,6 +212,9 @@ export function RosterGrid({
                         rowIndex={item.index}
                         columnIndex={1}
                       />
+                      <span className="block px-2">
+                        <ContactMark contact={contact} />
+                      </span>
                     </td>
                     <td className="p-1">
                       <EditableCell
@@ -239,6 +243,9 @@ export function RosterGrid({
                       >
                         {contact.fullName}
                       </button>
+                      <span className="block px-2">
+                        <ContactMark contact={contact} />
+                      </span>
                     </td>
                     <td className="truncate p-2 text-sm">{contact.email}</td>
                   </>

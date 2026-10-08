@@ -39,4 +39,18 @@ describe("scrubUrl", () => {
     ).toBe("https://tapnshow.vercel.app/invite/[REDACTED]?next=1");
     expect(scrubUrl("/invite/[token]")).toBe("/invite/[token]");
   });
+
+  describe("scrubUrl public token pages (M4)", () => {
+    it("redacts unsubscribe, report and token API links", () => {
+      expect(scrubUrl("/u/abc")).toBe("/u/[REDACTED]");
+      expect(scrubUrl("/report/abc?x=1")).toBe("/report/[REDACTED]?x=1");
+      expect(scrubUrl("/api/r/abc/unsubscribe")).toBe(
+        "/api/r/[REDACTED]/unsubscribe",
+      );
+      expect(scrubUrl("https://tapnshow.vercel.app/r/abc?choice=late")).toBe(
+        "https://tapnshow.vercel.app/r/[REDACTED]?choice=late",
+      );
+      expect(scrubUrl("/w/club/lists")).toBe("/w/club/lists");
+    });
+  });
 });

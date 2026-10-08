@@ -13,6 +13,8 @@ const AMIRA: Contact = {
   email: "amira@example.test",
   fullName: "Amira",
   listIds: [],
+  unsubscribed: false,
+  reported: false,
 };
 
 function RosterPage({ slug }: { slug: string }) {
