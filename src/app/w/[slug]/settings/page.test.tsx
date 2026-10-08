@@ -56,6 +56,8 @@ describe("/w/[slug]/settings", () => {
               commentsEnabled: false,
               footerNote: "",
               durationMinutes: 60,
+              onlineText: "",
+              meetingUrl: "",
             }),
           );
         }

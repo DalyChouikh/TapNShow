@@ -21,6 +21,7 @@ export const meetingFixture: Meeting = {
   timezone: "Africa/Tunis",
   locationMode: "in_person",
   locationText: "Room B12",
+  onlineText: "",
   meetingUrl: "",
   responseMode: "attendance",
   responseDeadline: null,

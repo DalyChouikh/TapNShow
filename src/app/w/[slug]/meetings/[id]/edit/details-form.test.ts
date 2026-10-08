@@ -14,6 +14,7 @@ const valid: DetailsValues = {
   durationMinutes: 60,
   locationMode: "in_person",
   locationText: "Room B12",
+  onlineText: "",
   meetingUrl: "",
   agendaMd: "",
 };
@@ -53,7 +54,14 @@ describe("validateDetails", () => {
         { ...valid, locationMode: "online", meetingUrl: "" },
         now,
       ),
-    ).toEqual({ meetingUrl: "linkRequired" });
+    ).toEqual({ onlineText: "onlineRequired" });
+    // An online place in words is enough (e.g. the club's Discord); a link is optional.
+    expect(
+      validateDetails(
+        { ...valid, locationMode: "online", onlineText: " Club Discord " },
+        now,
+      ),
+    ).toEqual({});
     expect(validateDetails({ ...valid, durationMinutes: 3 }, now)).toEqual({
       durationMinutes: "durationRange",
     });
@@ -68,5 +76,8 @@ describe("detailsPatch", () => {
       timezone: "Africa/Tunis",
     });
     expect(detailsPatch({ ...valid, date: null }).startsAt).toBeNull();
+    expect(
+      detailsPatch({ ...valid, onlineText: " Club Discord " }).onlineText,
+    ).toBe("Club Discord");
   });
 });

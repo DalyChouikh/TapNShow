@@ -22,7 +22,7 @@ type Client = SupabaseClient<Database>;
 type Result<T> = { data: T | null; error: DbError | null };
 
 const MEETING_COLUMNS =
-  "id, workspace_id, title, agenda_md, starts_at, duration_minutes, timezone, location_mode, location_text, meeting_url, response_mode, response_deadline, delay_options, reason_required, comments_enabled, footer_note, status, sent_at";
+  "id, workspace_id, title, agenda_md, starts_at, duration_minutes, timezone, location_mode, location_text, online_text, meeting_url, response_mode, response_deadline, delay_options, reason_required, comments_enabled, footer_note, status, sent_at";
 
 type MeetingRow = Database["public"]["Tables"]["meetings"]["Row"];
 
@@ -37,6 +37,7 @@ function toMeeting(
     | "timezone"
     | "location_mode"
     | "location_text"
+    | "online_text"
     | "meeting_url"
     | "response_mode"
     | "response_deadline"
@@ -57,6 +58,7 @@ function toMeeting(
     timezone: row.timezone,
     locationMode: row.location_mode,
     locationText: row.location_text,
+    onlineText: row.online_text,
     meetingUrl: row.meeting_url,
     responseMode: row.response_mode,
     responseDeadline: row.response_deadline,
@@ -159,6 +161,7 @@ export async function updateMeeting(
       timezone: patch.timezone,
       location_mode: patch.locationMode,
       location_text: patch.locationText,
+      online_text: patch.onlineText,
       meeting_url: patch.meetingUrl,
       response_mode: patch.responseMode,
       response_deadline: patch.responseDeadline,

@@ -11,6 +11,7 @@ import type { LocationMode, ResponseMode } from "@/shared/api/meeting-settings";
 import { EmailLayout } from "./email-layout";
 import { brutalBox, emailTheme as t } from "./theme";
 import { getEmailTranslator } from "./translator";
+import { meetingPlatform } from "@/lib/meetings/platform";
 
 /** Everything one personal invite needs (spec §9 Meeting invite email). */
 export type MeetingInviteEmailProps = {
@@ -25,6 +26,7 @@ export type MeetingInviteEmailProps = {
     timezone: string;
     locationMode: LocationMode;
     locationText: string;
+    onlineText: string;
     meetingUrl: string;
     responseMode: ResponseMode;
     responseDeadline: string | null;
@@ -63,8 +65,11 @@ export function MeetingInviteEmail({
   const choices = RESPONSE_CHOICES[meeting.responseMode];
   const showPlace =
     meeting.locationMode !== "online" && meeting.locationText !== "";
+  const showOnline =
+    meeting.locationMode !== "in_person" && meeting.onlineText !== "";
   const showLink =
     meeting.locationMode !== "in_person" && SAFE_URL.test(meeting.meetingUrl);
+  const platform = showLink ? meetingPlatform(meeting.meetingUrl) : null;
   return (
     <EmailLayout
       sticker={workspaceName}
@@ -111,17 +116,20 @@ export function MeetingInviteEmail({
           zone: when.zone,
         })}
       </Text>
-      {showPlace || showLink ? (
+      {showPlace || showOnline || showLink ? (
         <Text style={label}>{tr("meetingInvite.where")}</Text>
       ) : null}
       {showPlace ? <Text style={body}>{meeting.locationText}</Text> : null}
+      {showOnline ? <Text style={body}>{meeting.onlineText}</Text> : null}
       {showLink ? (
         <Text style={body}>
           <Link
             href={meeting.meetingUrl}
             style={{ color: t.ink, fontWeight: 700 }}
           >
-            {tr("meetingInvite.joinOnline")}
+            {platform
+              ? tr("meetingInvite.joinOn", { platform })
+              : tr("meetingInvite.joinOnline")}
           </Link>
         </Text>
       ) : null}

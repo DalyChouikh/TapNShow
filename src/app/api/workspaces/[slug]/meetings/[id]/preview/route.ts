@@ -47,6 +47,7 @@ export async function GET(
       timezone: meeting.timezone,
       locationMode: meeting.locationMode,
       locationText: meeting.locationText,
+      onlineText: meeting.onlineText,
       meetingUrl: meeting.meetingUrl,
       responseMode: meeting.responseMode,
       responseDeadline: meeting.responseDeadline,

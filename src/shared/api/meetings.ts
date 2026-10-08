@@ -2,7 +2,6 @@ import { z } from "zod";
 import {
   AGENDA_MAX,
   LOCATION_MAX,
-  MEETING_URL_MAX,
   PEOPLE_PER_ADD_MAX,
   TITLE_MAX,
 } from "@/config/meetings";
@@ -12,6 +11,8 @@ import {
   durationMinutesSchema,
   footerNoteSchema,
   locationModeSchema,
+  meetingUrlSchema,
+  onlineTextSchema,
   responseModeSchema,
 } from "./meeting-settings";
 import { timezoneSchema } from "./workspaces";
@@ -19,11 +20,7 @@ import { timezoneSchema } from "./workspaces";
 /** Lifecycle of a meeting. */
 export const meetingStatusSchema = z.enum(["draft", "scheduled", "cancelled"]);
 
-/** A meeting link: empty, or an http(s) URL (the database check agrees). */
-export const meetingUrlSchema = z.union([
-  z.literal(""),
-  z.url({ protocol: /^https?$/ }).max(MEETING_URL_MAX),
-]);
+export { meetingUrlSchema } from "./meeting-settings";
 
 const isoInstant = z.iso.datetime({ offset: true });
 
@@ -37,6 +34,7 @@ export const meetingSchema = z.object({
   timezone: z.string(),
   locationMode: locationModeSchema,
   locationText: z.string(),
+  onlineText: z.string(),
   meetingUrl: z.string(),
   responseMode: responseModeSchema,
   responseDeadline: z.string().nullable(),
@@ -80,6 +78,7 @@ export const updateMeetingBodySchema = z
     timezone: timezoneSchema,
     locationMode: locationModeSchema,
     locationText: z.string().trim().max(LOCATION_MAX),
+    onlineText: onlineTextSchema,
     meetingUrl: meetingUrlSchema,
     responseMode: responseModeSchema,
     responseDeadline: isoInstant.nullable(),

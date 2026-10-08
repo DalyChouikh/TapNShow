@@ -1,13 +1,20 @@
 "use client";
 
-import { ArrowSquareOut, CalendarDots, MapPin } from "@phosphor-icons/react";
+import {
+  ArrowSquareOut,
+  CalendarDots,
+  Globe,
+  MapPin,
+} from "@phosphor-icons/react";
 import { useTranslations } from "next-intl";
 import { formatMeetingWhen } from "@/lib/meetings/format";
 import type { TokenInfo } from "@/shared/api/tokens";
+import { meetingPlatform } from "@/lib/meetings/platform";
 
 /** The meeting basics on a public page: title, when (in its own zone), where. */
 export function MeetingCard({ meeting }: { meeting: TokenInfo["meeting"] }) {
   const t = useTranslations("TokenPages");
+  const platform = meetingPlatform(meeting.meetingUrl);
   const when = meeting.startsAt
     ? formatMeetingWhen({ ...meeting, startsAt: meeting.startsAt })
     : null;
@@ -35,6 +42,15 @@ export function MeetingCard({ meeting }: { meeting: TokenInfo["meeting"] }) {
           </span>
         </p>
       ) : null}
+      {meeting.locationMode !== "in_person" && meeting.onlineText ? (
+        <p className="flex items-start gap-2 break-words">
+          <Globe weight="bold" aria-hidden className="mt-1 shrink-0" />
+          <span>
+            <span className="sr-only">{t("where")}: </span>
+            {meeting.onlineText}
+          </span>
+        </p>
+      ) : null}
       {meeting.locationMode !== "in_person" && meeting.meetingUrl ? (
         <a
           href={meeting.meetingUrl}
@@ -43,7 +59,7 @@ export function MeetingCard({ meeting }: { meeting: TokenInfo["meeting"] }) {
           className="flex min-h-11 items-center gap-2 font-bold underline"
         >
           <ArrowSquareOut weight="bold" aria-hidden className="shrink-0" />
-          {t("join")}
+          {platform ? t("joinOn", { platform }) : t("join")}
         </a>
       ) : null}
     </div>

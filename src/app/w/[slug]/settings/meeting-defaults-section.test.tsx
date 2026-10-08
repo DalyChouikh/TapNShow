@@ -14,6 +14,8 @@ const defaults = {
   commentsEnabled: false,
   footerNote: "",
   durationMinutes: 60,
+  onlineText: "",
+  meetingUrl: "",
 };
 
 function setup(workspace = workspaceFixture) {
@@ -58,5 +60,36 @@ describe("MeetingDefaultsSection", () => {
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "20 min" })).toBeNull();
     expect(screen.queryByRole("switch")).toBeNull();
+  });
+
+  it("saves the usual online place and link when leaving each field", async () => {
+    const patches = setup();
+    await userEvent.type(
+      await screen.findByLabelText("Usual online place"),
+      " Club Discord ",
+    );
+    await userEvent.tab();
+    await userEvent.type(
+      screen.getByLabelText("Usual online link (optional)"),
+      "https://discord.gg/abc123",
+    );
+    await userEvent.tab();
+    expect(patches()).toEqual([
+      { onlineText: "Club Discord" },
+      { meetingUrl: "https://discord.gg/abc123" },
+    ]);
+  });
+
+  it("refuses a link that is not a web address", async () => {
+    const patches = setup();
+    await userEvent.type(
+      await screen.findByLabelText("Usual online link (optional)"),
+      "discord.gg/abc",
+    );
+    await userEvent.tab();
+    expect(
+      screen.getByText("Use a link that starts with https://"),
+    ).toBeInTheDocument();
+    expect(patches()).toEqual([]);
   });
 });

@@ -13,6 +13,7 @@ export const tokenInfoFixture: TokenInfo = {
     durationMinutes: 60,
     locationMode: "in_person",
     locationText: "Room B12",
+    onlineText: "",
     meetingUrl: "",
     status: "scheduled",
   },

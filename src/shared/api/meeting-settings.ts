@@ -4,6 +4,8 @@ import {
   DURATION_MAX,
   DURATION_MIN,
   FOOTER_NOTE_MAX,
+  LOCATION_MAX,
+  MEETING_URL_MAX,
 } from "@/config/meetings";
 
 /** How members answer (spec §4 Response modes). */
@@ -37,6 +39,15 @@ export const durationMinutesSchema = z
   .min(DURATION_MIN)
   .max(DURATION_MAX);
 
+/** A meeting link: empty, or an http(s) URL (the database check agrees). */
+export const meetingUrlSchema = z.union([
+  z.literal(""),
+  z.url({ protocol: /^https?$/ }).max(MEETING_URL_MAX),
+]);
+
+/** Where an online meeting happens, in words (e.g. "Club Discord, Meetings voice channel"). */
+export const onlineTextSchema = z.string().trim().max(LOCATION_MAX);
+
 /** Settings > Meeting defaults (spec §7.2, §6 workspaces). */
 export const meetingDefaultsSchema = z.object({
   responseMode: responseModeSchema,
@@ -45,6 +56,10 @@ export const meetingDefaultsSchema = z.object({
   commentsEnabled: z.boolean(),
   footerNote: footerNoteSchema,
   durationMinutes: durationMinutesSchema,
+  /** The usual online place new meetings start with. */
+  onlineText: onlineTextSchema,
+  /** The usual online link new meetings start with. */
+  meetingUrl: meetingUrlSchema,
 });
 /** Workspace meeting defaults. */
 export type MeetingDefaults = z.infer<typeof meetingDefaultsSchema>;

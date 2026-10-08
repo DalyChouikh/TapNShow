@@ -79,7 +79,8 @@ describe("DetailsStep", () => {
     setup();
     expect(screen.getByLabelText("Place")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("radio", { name: "Online" }));
-    expect(screen.getByLabelText("Meeting link")).toBeInTheDocument();
+    expect(screen.getByLabelText("Where online?")).toBeInTheDocument();
+    expect(screen.getByLabelText("Link (optional)")).toBeInTheDocument();
     expect(screen.queryByLabelText("Place")).toBeNull();
   });
 });

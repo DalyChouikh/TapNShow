@@ -1,14 +1,16 @@
 "use client";
 
-import { ArrowSquareOut, MapPin } from "@phosphor-icons/react";
+import { ArrowSquareOut, Globe, MapPin } from "@phosphor-icons/react";
 import { useTranslations } from "next-intl";
 import { formatMeetingWhen } from "@/lib/meetings/format";
 import { browserTimezone } from "@/lib/timezones";
 import type { Meeting } from "@/shared/api/meetings";
+import { meetingPlatform } from "@/lib/meetings/platform";
 
 /** Title, when (with the viewer's own time if their zone differs) and where (spec §7.10). */
 export function MeetingHeader({ meeting }: { meeting: Meeting }) {
   const t = useTranslations("MeetingPage");
+  const platform = meetingPlatform(meeting.meetingUrl);
   const when = meeting.startsAt
     ? formatMeetingWhen({ ...meeting, startsAt: meeting.startsAt })
     : null;
@@ -40,6 +42,12 @@ export function MeetingHeader({ meeting }: { meeting: Meeting }) {
           {meeting.locationText}
         </p>
       ) : null}
+      {meeting.locationMode !== "in_person" && meeting.onlineText ? (
+        <p className="flex items-center gap-1 break-words">
+          <Globe weight="bold" aria-hidden className="shrink-0" />
+          {meeting.onlineText}
+        </p>
+      ) : null}
       {meeting.locationMode !== "in_person" && meeting.meetingUrl ? (
         <a
           href={meeting.meetingUrl}
@@ -48,7 +56,7 @@ export function MeetingHeader({ meeting }: { meeting: Meeting }) {
           className="flex min-h-11 items-center gap-1 font-bold break-all underline"
         >
           <ArrowSquareOut weight="bold" aria-hidden className="shrink-0" />
-          {t("openLink")}
+          {platform ? t("joinOn", { platform }) : t("openLink")}
         </a>
       ) : null}
     </header>

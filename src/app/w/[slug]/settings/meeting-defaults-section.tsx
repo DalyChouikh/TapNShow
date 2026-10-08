@@ -13,6 +13,8 @@ import {
   DELAY_OPTIONS_MAX,
   DURATION_CHOICES,
   FOOTER_NOTE_MAX,
+  LOCATION_MAX,
+  MEETING_URL_MAX,
 } from "@/config/meetings";
 import {
   useMeetingDefaults,
@@ -22,6 +24,7 @@ import {
   type MeetingDefaults,
   responseModeSchema,
   type UpdateMeetingDefaultsBody,
+  meetingUrlSchema,
 } from "@/shared/api/meeting-settings";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
 import { SettingsSection } from "./settings-section";
@@ -40,6 +43,9 @@ export function MeetingDefaultsSection({
   const defaults = useMeetingDefaults(workspace.slug);
   const update = useUpdateMeetingDefaults(workspace.slug);
   const [footer, setFooter] = useState<string | null>(null);
+  const [onlineText, setOnlineText] = useState<string | null>(null);
+  const [onlineLink, setOnlineLink] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState(false);
   if (!defaults.data) {
     return <Skeleton className="h-40 w-full" />;
   }
@@ -149,6 +155,48 @@ export function MeetingDefaultsSection({
           />
         </>
       ) : null}
+      <Input
+        id="default-online-place"
+        label={t("onlinePlace")}
+        hint={t("onlinePlaceHint")}
+        placeholder={tw("details.onlinePlacePlaceholder")}
+        maxLength={LOCATION_MAX}
+        value={onlineText ?? value.onlineText}
+        onChange={(event) => setOnlineText(event.target.value)}
+        onBlur={() => {
+          if (onlineText !== null && onlineText.trim() !== value.onlineText) {
+            save({ onlineText: onlineText.trim() });
+          }
+          setOnlineText(null);
+        }}
+      />
+      <Input
+        id="default-online-link"
+        type="url"
+        inputMode="url"
+        label={t("onlineLink")}
+        placeholder={tw("details.linkPlaceholder")}
+        maxLength={MEETING_URL_MAX}
+        value={onlineLink ?? value.meetingUrl}
+        error={linkError ? tw("errors.linkInvalid") : undefined}
+        onChange={(event) => {
+          setOnlineLink(event.target.value);
+          setLinkError(false);
+        }}
+        onBlur={() => {
+          if (onlineLink === null || onlineLink.trim() === value.meetingUrl) {
+            setOnlineLink(null);
+            return;
+          }
+          const parsed = meetingUrlSchema.safeParse(onlineLink.trim());
+          if (!parsed.success) {
+            setLinkError(true);
+            return;
+          }
+          save({ meetingUrl: parsed.data });
+          setOnlineLink(null);
+        }}
+      />
       <fieldset className="flex flex-col gap-2">
         <legend className="text-sm font-bold">{t("duration")}</legend>
         <div className="flex flex-wrap gap-2">
