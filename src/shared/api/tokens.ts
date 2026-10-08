@@ -18,6 +18,7 @@ export const tokenInfoSchema = z.object({
     durationMinutes: z.number().int(),
     locationMode: locationModeSchema,
     locationText: z.string(),
+    onlineText: z.string(),
     meetingUrl: z.string(),
     status: meetingStatusSchema,
   }),

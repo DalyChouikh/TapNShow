@@ -93,7 +93,8 @@
       "visibility": "Your answer is visible to {workspace} organizers.",
       "sentFrom": "Sent from {email} with {appName}.",
       "unsubscribe": "Unsubscribe from {workspace}",
-      "report": "Not my group"
+      "report": "Not my group",
+      "joinOn": "Join on {platform}"
     },
     "senderBroken": {
       "subject": "Gmail sending for {workspace} needs reconnecting",
@@ -299,7 +300,10 @@
       "title": "Meeting defaults",
       "help": "New meetings start with these. Each meeting can change them.",
       "saved": "Saved",
-      "duration": "Default duration"
+      "duration": "Default duration",
+      "onlinePlace": "Usual online place",
+      "onlinePlaceHint": "New meetings held online start with this place and link.",
+      "onlineLink": "Usual online link (optional)"
     }
   },
   "WorkspaceHome": {
@@ -616,10 +620,12 @@
       "hybrid": "Both",
       "place": "Place",
       "placePlaceholder": "Room B12",
-      "link": "Meeting link",
-      "linkPlaceholder": "https://meet.google.com/…",
+      "link": "Link (optional)",
+      "linkPlaceholder": "https://discord.gg/… or https://meet.google.com/…",
       "agenda": "Agenda (optional)",
-      "agendaHint": "Markdown: **bold**, *italic*, - lists, [links](https://…)"
+      "agendaHint": "Markdown: **bold**, *italic*, - lists, [links](https://…)",
+      "onlinePlace": "Where online?",
+      "onlinePlacePlaceholder": "Club Discord, Meetings voice channel"
     },
     "responses": {
       "mode": "How do people answer?",
@@ -643,12 +649,12 @@
       "timeRequired": "Pick a time.",
       "inPast": "Pick a time in the future.",
       "placeRequired": "Say where it happens.",
-      "linkRequired": "Add the meeting link.",
       "linkInvalid": "Use a link that starts with https://",
       "durationRange": "Between 5 minutes and 12 hours.",
       "delaysRequired": "Pick at least one delay.",
       "deadlineOrder": "The deadline must be before the meeting starts and in the future.",
-      "saveFailed": "Couldn't save. Check your connection and try again."
+      "saveFailed": "Couldn't save. Check your connection and try again.",
+      "onlineRequired": "Say where online, or add a link."
     },
     "review": {
       "details": "Details",
@@ -755,7 +761,8 @@
     },
     "invitees": "Invited people",
     "yourTime": "your time: {time}",
-    "openLink": "Open the meeting link"
+    "openLink": "Open the meeting link",
+    "joinOn": "Join on {platform}"
   },
   "TokenPages": {
     "invalidTitle": "This link isn't valid",
@@ -779,6 +786,7 @@
     "when": "When",
     "where": "Where",
     "join": "Join online",
-    "cancelled": "This meeting was cancelled."
+    "cancelled": "This meeting was cancelled.",
+    "joinOn": "Join on {platform}"
   }
 }

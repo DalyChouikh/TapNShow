@@ -36,6 +36,7 @@ function job(
       timezone: "Africa/Tunis",
       locationMode: "in_person" as const,
       locationText: "Room B12",
+      onlineText: "",
       meetingUrl: "",
       responseMode: "attendance" as const,
       responseDeadline: null,

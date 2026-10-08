@@ -65,4 +65,20 @@ describe("/w/[slug]/meetings/[id]", () => {
       ),
     );
   });
+
+  it("says where online and names the app on the Join link", async () => {
+    setup({
+      ...meetingFixture,
+      status: "scheduled",
+      startsAt: future,
+      locationMode: "hybrid",
+      onlineText: "Club Discord",
+      meetingUrl: "https://meet.google.com/abc-defg-hij",
+    });
+    expect(await screen.findByText("Club Discord")).toBeInTheDocument();
+    expect(screen.getByText("Room B12")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Join on Google Meet" }),
+    ).toHaveAttribute("href", "https://meet.google.com/abc-defg-hij");
+  });
 });

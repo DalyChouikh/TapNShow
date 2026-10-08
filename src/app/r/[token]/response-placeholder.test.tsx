@@ -41,4 +41,26 @@ describe("ResponsePlaceholder", () => {
       await screen.findByRole("heading", { name: "This link isn't valid" }),
     ).toBeInTheDocument();
   });
+
+  it("says where online and names the app on the Join link", async () => {
+    routeFetch({
+      [`GET /api/r/${TOKEN}`]: json({
+        ...tokenInfoFixture,
+        meeting: {
+          ...tokenInfoFixture.meeting,
+          locationMode: "online",
+          onlineText: "Club Discord, Meetings voice",
+          meetingUrl: "https://discord.gg/abc123",
+        },
+      }),
+    });
+    renderWithProviders(<ResponsePlaceholder />);
+    expect(
+      await screen.findByText("Club Discord, Meetings voice"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Join on Discord" }),
+    ).toHaveAttribute("href", "https://discord.gg/abc123");
+    expect(screen.queryByText("Room B12")).toBeNull();
+  });
 });

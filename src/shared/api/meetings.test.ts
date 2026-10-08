@@ -56,3 +56,29 @@ describe("meeting schemas", () => {
     ).toBe(false);
   });
 });
+
+describe("online place", () => {
+  it("trims the online place on meetings and workspace defaults; links stay http(s)", async () => {
+    const { updateMeetingDefaultsBodySchema } =
+      await import("./meeting-settings");
+    expect(
+      updateMeetingBodySchema.parse({ onlineText: " Club Discord " }),
+    ).toEqual({
+      onlineText: "Club Discord",
+    });
+    expect(
+      updateMeetingDefaultsBodySchema.parse({
+        onlineText: " Club Discord ",
+        meetingUrl: "https://discord.gg/abc123",
+      }),
+    ).toEqual({
+      onlineText: "Club Discord",
+      meetingUrl: "https://discord.gg/abc123",
+    });
+    expect(
+      updateMeetingDefaultsBodySchema.safeParse({
+        meetingUrl: "javascript:alert(1)",
+      }).success,
+    ).toBe(false);
+  });
+});

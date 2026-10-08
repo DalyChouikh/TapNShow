@@ -93,6 +93,10 @@ export function ReviewStep({
   const when = meeting.startsAt
     ? formatMeetingWhen({ ...meeting, startsAt: meeting.startsAt })
     : null;
+  const places = [
+    meeting.locationMode !== "online" ? meeting.locationText : "",
+    meeting.locationMode !== "in_person" ? meeting.onlineText : "",
+  ].filter(Boolean);
   const listNames = roster.data.lists
     .filter((l) => audience.data.listIds.includes(l.id))
     .map((l) => l.name);
@@ -124,7 +128,7 @@ export function ReviewStep({
         {when
           ? `${when.date}, ${when.start}–${when.end} (${when.zone})`
           : t("review.addDate")}
-        {meeting.locationText ? ` · ${meeting.locationText}` : ""}
+        {places.map((place) => ` · ${place}`).join("")}
       </Summary>
       <Summary
         title={

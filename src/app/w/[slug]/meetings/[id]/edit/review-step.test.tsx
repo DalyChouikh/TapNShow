@@ -59,11 +59,11 @@ const routes = (senderBody: object) => ({
   [`POST ${meetingPath}/send`]: json({ invited: 2, skippedUnsubscribed: 1 }),
 });
 
-const renderReview = (workspace = workspaceFixture) =>
+const renderReview = (workspace = workspaceFixture, meeting = meetingFixture) =>
   renderWithProviders(
     <ReviewStep
       slug={workspace.slug}
-      meeting={meetingFixture}
+      meeting={meeting}
       workspace={workspace}
       steps={WIZARD_STEPS}
       goTo={vi.fn()}
@@ -144,5 +144,16 @@ describe("ReviewStep", () => {
     expect(frame.getAttribute("sandbox")).toBe("allow-same-origin");
     expect(frame).toHaveClass("pointer-events-none");
     expect(frame.getAttribute("srcdoc")).toContain("Hi Amira");
+  });
+
+  it("names the online place in the summary", async () => {
+    fetchMock = routeFetch(routes(sender()));
+    renderReview(workspaceFixture, {
+      ...meetingFixture,
+      locationMode: "online",
+      locationText: "",
+      onlineText: "Club Discord",
+    });
+    expect(await screen.findByText(/· Club Discord/)).toBeInTheDocument();
   });
 });

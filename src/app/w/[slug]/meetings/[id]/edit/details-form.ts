@@ -15,6 +15,7 @@ export type DetailsValues = {
   durationMinutes: number;
   locationMode: LocationMode;
   locationText: string;
+  onlineText: string;
   meetingUrl: string;
   agendaMd: string;
 };
@@ -26,7 +27,7 @@ export type DetailsErrorKey =
   | "timeRequired"
   | "inPast"
   | "placeRequired"
-  | "linkRequired"
+  | "onlineRequired"
   | "linkInvalid"
   | "durationRange";
 
@@ -38,6 +39,7 @@ export type DetailsErrors = Partial<
     | "time"
     | "durationMinutes"
     | "locationText"
+    | "onlineText"
     | "meetingUrl",
     DetailsErrorKey
   >
@@ -78,8 +80,9 @@ export function validateDetails(
     errors.locationText = "placeRequired";
   }
   if (values.locationMode !== "in_person") {
-    if (!values.meetingUrl.trim()) {
-      errors.meetingUrl = "linkRequired";
+    // Where online in words (e.g. the club's Discord) and/or a link: at least one.
+    if (!values.onlineText.trim() && !values.meetingUrl.trim()) {
+      errors.onlineText = "onlineRequired";
     } else if (!meetingUrlSchema.safeParse(values.meetingUrl.trim()).success) {
       errors.meetingUrl = "linkInvalid";
     }
@@ -103,6 +106,7 @@ export function detailsPatch(values: DetailsValues): UpdateMeetingBody {
     durationMinutes: values.durationMinutes,
     locationMode: values.locationMode,
     locationText: values.locationText.trim(),
+    onlineText: values.onlineText.trim(),
     meetingUrl: values.meetingUrl.trim(),
     agendaMd: values.agendaMd,
   };

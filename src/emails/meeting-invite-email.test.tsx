@@ -17,6 +17,7 @@ const base: MeetingInviteEmailProps = {
     timezone: "Africa/Tunis",
     locationMode: "hybrid",
     locationText: "Room B12",
+    onlineText: "",
     meetingUrl: "https://meet.example.test/abc",
     responseMode: "attendance",
     responseDeadline: "2026-10-09T11:00:00.000Z",
@@ -54,6 +55,32 @@ describe("renderMeetingInviteEmail", () => {
     );
     expect(email.html).not.toContain("box-shadow");
     expect(email.html).not.toMatch(EMOJI);
+  });
+
+  it("says where online and names the app on the Join button", async () => {
+    const online = await renderMeetingInviteEmail({
+      ...base,
+      meeting: {
+        ...base.meeting,
+        locationMode: "online",
+        onlineText: "Club Discord, Meetings voice",
+        meetingUrl: "https://discord.gg/abc123",
+      },
+    });
+    expect(online.html).toContain("Club Discord, Meetings voice");
+    expect(online.html).toContain("Join on Discord");
+    expect(online.html).not.toContain("Room B12");
+    const placeOnly = await renderMeetingInviteEmail({
+      ...base,
+      meeting: {
+        ...base.meeting,
+        locationMode: "online",
+        onlineText: "Club Discord",
+        meetingUrl: "",
+      },
+    });
+    expect(placeOnly.html).toContain("Club Discord");
+    expect(placeOnly.html).not.toContain("Join ");
   });
 
   it("underlines the footer links so they read as links", async () => {

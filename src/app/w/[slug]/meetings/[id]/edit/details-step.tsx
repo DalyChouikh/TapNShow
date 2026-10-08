@@ -47,6 +47,7 @@ export function DetailsStep({ slug, meeting, goTo }: WizardStepProps) {
     durationMinutes: meeting.durationMinutes,
     locationMode: meeting.locationMode,
     locationText: meeting.locationText,
+    onlineText: meeting.onlineText,
     meetingUrl: meeting.meetingUrl,
     agendaMd: meeting.agendaMd,
   });
@@ -188,6 +189,18 @@ export function DetailsStep({ slug, meeting, goTo }: WizardStepProps) {
           value={values.locationText}
           error={error("locationText")}
           onChange={(event) => set("locationText", event.target.value)}
+          onBlur={saveQuietly}
+        />
+      ) : null}
+      {values.locationMode !== "in_person" ? (
+        <Input
+          id="meeting-online"
+          label={t("details.onlinePlace")}
+          placeholder={t("details.onlinePlacePlaceholder")}
+          maxLength={LOCATION_MAX}
+          value={values.onlineText}
+          error={error("onlineText")}
+          onChange={(event) => set("onlineText", event.target.value)}
           onBlur={saveQuietly}
         />
       ) : null}
