@@ -6,6 +6,7 @@ import type {
   DispatchStore,
   ReserveResult,
 } from "@/server/queries/dispatch";
+import * as icsModule from "@/lib/calendar/ics";
 import { runDispatch, type DispatchDeps } from "./run-dispatch";
 
 const OPTIONS = {
@@ -22,6 +23,7 @@ function job(
 ) {
   return {
     jobId: `00000000-0000-4000-8000-00000000000${n}`,
+    kind: "invite" as "invite" | "calendar_confirm",
     attempts: 1,
     inviteeId: `10000000-0000-4000-8000-00000000000${n}`,
     workspaceId: "20000000-0000-4000-8000-000000000000",
@@ -40,11 +42,19 @@ function job(
       meetingUrl: "",
       responseMode: "attendance" as const,
       responseDeadline: null,
+      icsUid: "meeting-1@tapnshow.vercel.app",
       threadId,
       rootMessageId: threadId ? "<root@tapnshow.vercel.app>" : null,
     },
   };
 }
+
+/** A calendar_confirm job for the same meeting (thread already started by the invites). */
+function calendarJob(n: number) {
+  return { ...job(n, undefined, "t-1"), kind: "calendar_confirm" as const };
+}
+
+const decoded = (raw: string) => Buffer.from(raw, "base64url").toString("utf8");
 
 function setup(options: {
   jobs: ReturnType<typeof job>[];
@@ -73,7 +83,8 @@ function setup(options: {
       return claim;
     }),
     reserve: vi.fn(
-      async (): Promise<ReserveResult> => reserves.shift() ?? { kind: "ok" },
+      async (): Promise<ReserveResult> =>
+        reserves.shift() ?? { kind: "ok", calendar: null },
     ),
     finish: vi.fn(async () => undefined),
     retry: vi.fn(async () => undefined),
@@ -238,15 +249,114 @@ describe("runDispatch", () => {
     );
   });
 
-  it("stops a sender at its quota and at the time budget, handing jobs back", async () => {
-    const quota = setup({
-      jobs: [job(1), job(2)],
-      reserve: [{ kind: "quota", retryAt: "2026-10-10T17:00:00Z" }],
+  it("on the daily cap, defers all of that sender's jobs once and does not re-claim it (#168)", async () => {
+    const quota = setup({ jobs: [job(1), job(2), job(3)] });
+    // Like the database: the sender stays claimable until its jobs are pushed back.
+    let deferred = false;
+    let claims = 0;
+    quota.store.claim.mockImplementation(async () => {
+      claims += 1;
+      quota.advance(1_000);
+      return deferred || claims > 20
+        ? null
+        : {
+            connection: {
+              id: "30000000-0000-4000-8000-000000000000",
+              userId: "40000000-0000-4000-8000-000000000000",
+              googleSub: "g-1",
+              googleEmail: "club@gmail.com",
+              refreshTokenEncrypted: "sealed",
+            },
+            jobs: [job(1), job(2), job(3)],
+          };
     });
-    await runDispatch(quota.deps, OPTIONS);
-    expect(quota.store.unclaim).toHaveBeenCalledWith([job(2).jobId]);
+    quota.store.deferSender.mockImplementation(async () => {
+      deferred = true;
+    });
+    quota.store.reserve.mockImplementation(async () => ({
+      kind: "quota",
+      retryAt: "2026-10-10T17:00:00.000Z",
+    }));
+    const summary = await runDispatch(quota.deps, OPTIONS);
+    expect(quota.store.deferSender).toHaveBeenCalledOnce();
+    expect(quota.store.deferSender).toHaveBeenCalledWith(
+      "50000000-0000-4000-8000-000000000000",
+      "30000000-0000-4000-8000-000000000000",
+      new Date("2026-10-10T17:00:00.000Z"),
+      "quota",
+    );
+    expect(quota.store.reserve).toHaveBeenCalledOnce();
+    expect(quota.deps.refresh).toHaveBeenCalledOnce();
+    expect(quota.deps.gmail).not.toHaveBeenCalled();
+    expect(summary.deferred).toBe(1);
+  });
+
+  it("stops a sender at the time budget, handing jobs back", async () => {
     const budget = setup({ jobs: [job(1), job(2), job(3)] });
     await runDispatch(budget.deps, { ...OPTIONS, budgetMs: 1_500 });
     expect(budget.store.unclaim).toHaveBeenCalledWith([job(3).jobId]);
+  });
+
+  it("sends a pre-accepted calendar invitation for a calendar job, in the meeting's thread", async () => {
+    const { deps, store } = setup({
+      jobs: [calendarJob(1)],
+      reserve: [{ kind: "ok", calendar: { action: "request", sequence: 0 } }],
+    });
+    const summary = await runDispatch(deps, OPTIONS);
+    const sent = vi.mocked(deps.gmail).mock.calls[0][0];
+    expect(sent.threadId).toBe("t-1");
+    const mime = decoded(sent.raw);
+    expect(mime).toMatch(/method=REQUEST/i);
+    // The subject is RFC 2047-encoded (it contains "·").
+    expect(mime).toMatch(
+      /Subject: =\?UTF-8\?Q\?In_your_calendar=3A_Weekly_sync/,
+    );
+    expect(store.finish).toHaveBeenCalledWith(
+      calendarJob(1).jobId,
+      "sent",
+      null,
+      expect.any(String),
+    );
+    expect(summary).toMatchObject({ sent: 1, calendar: 1 });
+  });
+
+  it("builds the event from the meeting, with the given sequence, and no personal link", async () => {
+    const spy = vi.spyOn(icsModule, "buildMeetingIcs");
+    const { deps } = setup({
+      jobs: [calendarJob(1)],
+      reserve: [{ kind: "ok", calendar: { action: "cancel", sequence: 3 } }],
+    });
+    await runDispatch(deps, OPTIONS);
+    const ics = String(spy.mock.results[0]?.value);
+    expect(ics).toContain("METHOD:CANCEL");
+    expect(ics).toContain("SEQUENCE:3");
+    expect(ics).toContain("UID:meeting-1@tapnshow.vercel.app");
+    expect(ics).not.toContain("/r/");
+    expect(ics).not.toContain(deps.tokenFor(calendarJob(1).inviteeId));
+    expect(decoded(vi.mocked(deps.gmail).mock.calls[0][0].raw)).toMatch(
+      /method=CANCEL/i,
+    );
+    spy.mockRestore();
+  });
+
+  it("sends nothing when the reservation says there is nothing to do (quick flips)", async () => {
+    const { deps } = setup({
+      jobs: [calendarJob(1)],
+      reserve: [{ kind: "done" }],
+    });
+    await runDispatch(deps, OPTIONS);
+    expect(deps.gmail).not.toHaveBeenCalled();
+  });
+
+  it("fails a calendar job that came back without a decision instead of guessing", async () => {
+    const { deps, store } = setup({ jobs: [calendarJob(1)] });
+    await runDispatch(deps, OPTIONS);
+    expect(deps.gmail).not.toHaveBeenCalled();
+    expect(store.finish).toHaveBeenCalledWith(
+      calendarJob(1).jobId,
+      "failed",
+      "no_calendar_decision",
+      null,
+    );
   });
 });
