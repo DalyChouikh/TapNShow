@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
-const { getDatabaseTime } = vi.hoisted(() => ({
+const { getDatabaseTime, logError } = vi.hoisted(() => ({
   getDatabaseTime: vi.fn(async (): Promise<string> => ""),
+  logError: vi.fn(),
+}));
+vi.mock("@/lib/logger", () => ({
+  logger: { error: logError, info: vi.fn(), warn: vi.fn() },
 }));
 vi.mock("@/server/queries/health", () => ({ getDatabaseTime }));
 vi.mock("@/server/supabase/admin-client", () => ({
@@ -29,5 +33,6 @@ describe("GET /api/health", () => {
     const response = await GET();
     expect(response.status).toBe(503);
     expect(JSON.stringify(await response.json())).not.toContain("10.0.0.1");
+    expect(logError).toHaveBeenCalledOnce();
   });
 });

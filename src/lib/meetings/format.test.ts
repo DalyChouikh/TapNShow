@@ -55,6 +55,23 @@ describe("meeting times (spec §7.10)", () => {
     );
   });
 
+  it("keeps the picked wall time when the browser's own zone skips that hour (#168)", () => {
+    const original = process.env.TZ;
+    process.env.TZ = "Europe/Paris";
+    try {
+      // 29 Mar 2026 02:30 does not exist in Paris (02:00 → 03:00) but does in Tunis (UTC+1).
+      expect(
+        zonedWallTimeToUtc({
+          date: "2026-03-29",
+          time: "02:30",
+          timezone: "Africa/Tunis",
+        }),
+      ).toBe("2026-03-29T01:30:00.000Z");
+    } finally {
+      process.env.TZ = original;
+    }
+  });
+
   it("crosses midnight cleanly", () => {
     expect(
       formatMeetingWhen({

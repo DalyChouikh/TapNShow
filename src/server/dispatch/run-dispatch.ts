@@ -178,7 +178,14 @@ async function drainSender(
     }
     if (reservation.kind === "quota") {
       summary.deferred += 1;
-      await deps.store.unclaim(queue.map((next) => next.jobId));
+      // Every due job of this sender would hit the same cap: push them all to the window's
+      // reopening in one call, so the next round claims another sender instead (#168).
+      await deps.store.deferSender(
+        run,
+        claim.connection.id,
+        new Date(reservation.retryAt),
+        "quota",
+      );
       return;
     }
     const outcome = await sendJob(deps, run, session, job, summary);
