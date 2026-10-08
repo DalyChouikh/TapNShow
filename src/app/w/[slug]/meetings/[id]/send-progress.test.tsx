@@ -1,6 +1,6 @@
 import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { progressFixture } from "@/test/fixtures/meetings";
+import { resultsFixture } from "@/test/fixtures/meetings";
 import { renderWithProviders } from "@/test/render";
 import { SendProgress } from "./send-progress";
 
@@ -8,7 +8,7 @@ const props = { slug: "club-ab12", canConnect: false };
 
 describe("SendProgress", () => {
   it("shows live sending with the done count", () => {
-    renderWithProviders(<SendProgress {...props} progress={progressFixture} />);
+    renderWithProviders(<SendProgress {...props} results={resultsFixture} />);
     expect(screen.getByText("Sending 1 of 2")).toBeInTheDocument();
     expect(screen.getByText("You can leave this page.")).toBeInTheDocument();
     expect(screen.getByRole("progressbar")).toHaveAttribute(
@@ -21,7 +21,7 @@ describe("SendProgress", () => {
     const first = renderWithProviders(
       <SendProgress
         {...props}
-        progress={{ ...progressFixture, resumesAt: "2026-10-08T13:20:00.000Z" }}
+        results={{ ...resultsFixture, resumesAt: "2026-10-08T13:20:00.000Z" }}
       />,
     );
     expect(
@@ -31,7 +31,7 @@ describe("SendProgress", () => {
     const second = renderWithProviders(
       <SendProgress
         {...props}
-        progress={{ ...progressFixture, paused: 1, senderState: "missing" }}
+        results={{ ...resultsFixture, paused: 1, senderState: "missing" }}
       />,
     );
     expect(
@@ -41,9 +41,9 @@ describe("SendProgress", () => {
     renderWithProviders(
       <SendProgress
         {...props}
-        progress={{
-          ...progressFixture,
-          counts: { ...progressFixture.counts, queued: 0, sent: 1, failed: 1 },
+        results={{
+          ...resultsFixture,
+          emails: { ...resultsFixture.emails, queued: 0, sent: 1, failed: 1 },
         }}
       />,
     );

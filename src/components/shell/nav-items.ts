@@ -19,16 +19,21 @@ export function navItemsFor(role: WorkspaceRole, slug: string): NavItem[] {
   return role === "viewer" ? items.filter((item) => item.key !== "new") : items;
 }
 
-/** Pages whose content needs more than phone width on larger screens (the roster grid). */
+/** Pages whose content needs more than phone width on larger screens (the roster grid, the answers table). */
 const WIDE_SECTIONS: readonly string[] = ["lists"];
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** "wide" lets a page use the full width from `md` up; every other page stays phone-width. */
 export function contentWidthFor(
   pathname: string,
   slug: string,
 ): "narrow" | "wide" {
-  const section = pathname.slice(`/w/${slug}/`.length).split("/")[0];
-  return pathname.startsWith(`/w/${slug}/`) && WIDE_SECTIONS.includes(section)
-    ? "wide"
-    : "narrow";
+  if (!pathname.startsWith(`/w/${slug}/`)) {
+    return "narrow";
+  }
+  const parts = pathname.slice(`/w/${slug}/`.length).split("/");
+  // The meeting page (`meetings/<id>`) shows its answers as a table from `md` up.
+  const meetingPage =
+    parts.length === 2 && parts[0] === "meetings" && UUID.test(parts[1]);
+  return WIDE_SECTIONS.includes(parts[0]) || meetingPage ? "wide" : "narrow";
 }

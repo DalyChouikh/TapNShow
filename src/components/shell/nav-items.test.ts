@@ -25,6 +25,25 @@ describe("navItemsFor", () => {
 describe("contentWidthFor", () => {
   it("gives the roster a wide page and keeps everything else phone-width", () => {
     expect(contentWidthFor("/w/club-ab12/lists", "club-ab12")).toBe("wide");
+    // The meeting page's answers table needs room; the wizard and the list stay phone-width.
+    expect(
+      contentWidthFor(
+        "/w/club-ab12/meetings/4b7f8c2e-2f3a-4c55-9a1e-0d6f6b1c2a10",
+        "club-ab12",
+      ),
+    ).toBe("wide");
+    expect(
+      contentWidthFor(
+        "/w/club-ab12/meetings/4b7f8c2e-2f3a-4c55-9a1e-0d6f6b1c2a10/edit",
+        "club-ab12",
+      ),
+    ).toBe("narrow");
+    expect(contentWidthFor("/w/club-ab12/meetings", "club-ab12")).toBe(
+      "narrow",
+    );
+    expect(contentWidthFor("/w/club-ab12/meetings/new", "club-ab12")).toBe(
+      "narrow",
+    );
     expect(contentWidthFor("/w/club-ab12", "club-ab12")).toBe("narrow");
     expect(contentWidthFor("/w/club-ab12/settings", "club-ab12")).toBe(
       "narrow",

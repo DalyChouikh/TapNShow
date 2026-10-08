@@ -1,8 +1,8 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { PROGRESS_POLL_MS } from "@/config/meetings";
 import { usePagedList } from "@/hooks/use-paged-list";
+import { meetingResultsKey } from "@/hooks/use-results";
 import { rosterQueryKey } from "@/hooks/use-roster";
 import { apiRequest } from "@/lib/api-client";
 import { okSchema } from "@/shared/api/common";
@@ -18,7 +18,6 @@ import {
   type MeetingTab,
   meetingSchema,
   previewSchema,
-  progressSchema,
   sendResultSchema,
   type UpdateMeetingBody,
 } from "@/shared/api/meetings";
@@ -32,8 +31,6 @@ export const meetingQueryKey = (slug: string, id: string) =>
   ["meeting", slug, id] as const;
 export const audienceQueryKey = (slug: string, id: string) =>
   ["meeting-audience", slug, id] as const;
-export const progressQueryKey = (slug: string, id: string) =>
-  ["meeting-progress", slug, id] as const;
 const previewQueryKey = (slug: string, id: string) =>
   ["meeting-preview", slug, id] as const;
 
@@ -228,23 +225,11 @@ export function useSendMeeting(slug: string, id: string) {
       for (const key of [
         meetingQueryKey(slug, id),
         audienceQueryKey(slug, id),
-        progressQueryKey(slug, id),
+        meetingResultsKey(slug, id),
         meetingsQueryKey(slug),
       ]) {
         void queryClient.invalidateQueries({ queryKey: key });
       }
     },
-  });
-}
-
-/** Live progress; polls every 3 s while anything is queued (spec §7.2). */
-export function useMeetingProgress(slug: string, id: string, enabled = true) {
-  return useQuery({
-    queryKey: progressQueryKey(slug, id),
-    queryFn: () =>
-      apiRequest(`${base(slug)}/${id}/progress`, { schema: progressSchema }),
-    enabled,
-    refetchInterval: (query) =>
-      (query.state.data?.counts.queued ?? 0) > 0 ? PROGRESS_POLL_MS : false,
   });
 }

@@ -9,11 +9,9 @@ import {
   audienceSchema,
   type Meeting,
   meetingSchema,
-  type MeetingProgress,
   type MeetingSummary,
   meetingStatusSchema,
   type MeetingTab,
-  progressSchema,
   sendResultSchema,
   type UpdateMeetingBody,
 } from "@/shared/api/meetings";
@@ -360,60 +358,4 @@ export async function sendMeeting(
     },
     error: null,
   };
-}
-
-const dbProgressSchema = z
-  .object({
-    counts: z.object({
-      total: z.number(),
-      queued: z.number(),
-      sent: z.number(),
-      skipped: z.number(),
-      failed: z.number(),
-      unknown: z.number(),
-    }),
-    paused: z.number(),
-    resumes_at: z.string().nullable(),
-    sender_state: z.enum(["ok", "missing", "broken"]),
-    invitees: z.array(
-      z.object({
-        id: z.uuid(),
-        contact_id: z.uuid(),
-        full_name: z.string(),
-        email: z.string(),
-        status: z.enum(["queued", "sent", "skipped", "failed", "unknown"]),
-        error: z.string().nullable(),
-        sent_at: z.string().nullable(),
-      }),
-    ),
-  })
-  .transform((db): MeetingProgress =>
-    progressSchema.parse({
-      counts: db.counts,
-      paused: db.paused,
-      resumesAt: db.resumes_at,
-      senderState: db.sender_state,
-      invitees: db.invitees.map((i) => ({
-        id: i.id,
-        contactId: i.contact_id,
-        fullName: i.full_name,
-        email: i.email,
-        status: i.status,
-        error: i.error,
-        sentAt: i.sent_at,
-      })),
-    }),
-  );
-
-/** `meeting_progress()`. */
-export async function getProgress(
-  client: Client,
-  meetingId: string,
-): Promise<Result<MeetingProgress>> {
-  const { data, error } = await client.rpc("meeting_progress", {
-    p_meeting: meetingId,
-  });
-  return error
-    ? { data: null, error }
-    : { data: dbProgressSchema.parse(data), error: null };
 }

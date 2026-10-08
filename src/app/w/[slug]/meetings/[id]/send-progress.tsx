@@ -5,20 +5,21 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { gmailConnectHref } from "@/hooks/use-sender";
-import type { MeetingProgress } from "@/shared/api/meetings";
+import type { MeetingResults } from "@/shared/api/responses";
 
 /** Live send progress (spec §7.2): a bar, one caption for the current state, the bounce note. */
 export function SendProgress({
   slug,
-  progress,
+  results,
   canConnect,
 }: {
   slug: string;
-  progress: MeetingProgress;
+  results: MeetingResults;
   canConnect: boolean;
 }) {
   const t = useTranslations("MeetingPage");
-  const { counts } = progress;
+  const progress = results;
+  const counts = results.emails;
   const done = counts.total - counts.queued;
   const paused = progress.paused > 0 || progress.senderState !== "ok";
   const caption = paused
