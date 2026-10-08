@@ -66,4 +66,33 @@ describe("newMessageId", () => {
       /^<[0-9a-f-]{36}@tapnshow\.vercel\.app>$/,
     );
   });
+
+  it("adds the calendar invitation as an alternative and an invite.ics attachment", async () => {
+    const ics = "BEGIN:VCALENDAR\r\nMETHOD:REQUEST\r\nEND:VCALENDAR\r\n";
+    const mime = decode(
+      await buildMeetingMime({
+        ...input,
+        calendar: { method: "REQUEST", ics },
+      }),
+    );
+    expect(mime).toMatch(/Content-Type: multipart\/mixed/);
+    expect(mime).toMatch(
+      /Content-Type: text\/calendar; charset=utf-8; method=REQUEST/i,
+    );
+    expect(mime).toMatch(/Content-Type: application\/ics; name=invite\.ics/i);
+    expect(mime).toContain("List-Unsubscribe:");
+  });
+
+  it("marks a removal with method=CANCEL", async () => {
+    const mime = decode(
+      await buildMeetingMime({
+        ...input,
+        calendar: {
+          method: "CANCEL",
+          ics: "BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n",
+        },
+      }),
+    );
+    expect(mime).toMatch(/method=CANCEL/i);
+  });
 });
