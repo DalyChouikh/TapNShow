@@ -1,7 +1,7 @@
 import { vi } from "vitest";
 
 /** Handler for one `"METHOD /path"` key; receives the request init (body etc.). */
-export type FetchRoute = (init?: RequestInit) => Response;
+export type FetchRoute = (init?: RequestInit) => Response | Promise<Response>;
 
 /** Stubs global `fetch` by `"METHOD /path"`; unknown calls fail loudly. */
 export function routeFetch(routes: Record<string, FetchRoute>) {

@@ -87,14 +87,12 @@ describe("after Send", () => {
         // The first load answers; the refetch after Send stays in flight.
         return gets === 1
           ? new Response(JSON.stringify(meetingFixture))
-          : (new Promise<Response>(() => undefined) as unknown as Response);
+          : new Promise<Response>(() => undefined);
       },
       [`POST ${base}/send`]: () =>
         new Response(JSON.stringify({ invited: 2, skippedUnsubscribed: 0 })),
-      [`GET ${base}/audience`]: () =>
-        new Promise<Response>(() => undefined) as unknown as Response,
-      [`GET ${base}/progress`]: () =>
-        new Promise<Response>(() => undefined) as unknown as Response,
+      [`GET ${base}/audience`]: () => new Promise<Response>(() => undefined),
+      [`GET ${base}/progress`]: () => new Promise<Response>(() => undefined),
       "GET /api/workspaces/club-ab12/meetings": () => new Response("[]"),
     });
     const { result } = renderHook(
