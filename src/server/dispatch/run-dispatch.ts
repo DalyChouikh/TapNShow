@@ -1,6 +1,12 @@
 import "server-only";
 import { REFRESH_FAILURE_DEFER_MS, THROTTLE_DEFER_MS } from "@/config/meetings";
+import { renderCalendarConfirmEmail } from "@/emails/calendar-confirm-email";
 import { renderMeetingInviteEmail } from "@/emails/meeting-invite-email";
+import {
+  buildMeetingIcs,
+  icsDescription,
+  icsLocation,
+} from "@/lib/calendar/ics";
 import { logger } from "@/lib/logger";
 import { inviteeTokenHash } from "@/server/crypto/invitee-token";
 import type { GmailSendResult } from "@/server/gmail/gmail-client";
@@ -8,6 +14,7 @@ import { buildMeetingMime, newMessageId } from "@/server/gmail/mime";
 import type { RefreshResult } from "@/server/google/gmail-oauth";
 import type {
   BrokenAlert,
+  CalendarDecision,
   Claim,
   ClaimedJob,
   DispatchStore,
@@ -47,6 +54,8 @@ export type DispatchSummary = {
   skipped: number;
   unknown: number;
   deferred: number;
+  /** Calendar emails sent (also counted in `sent`). */
+  calendar: number;
 };
 
 type Thread = { threadId: string; rootMessageId: string };
@@ -71,6 +80,7 @@ export async function runDispatch(
     skipped: 0,
     unknown: 0,
     deferred: 0,
+    calendar: 0,
   };
   const outOfTime = () => deps.now() - started >= options.budgetMs;
   try {
@@ -188,7 +198,29 @@ async function drainSender(
       );
       return;
     }
-    const outcome = await sendJob(deps, run, session, job, summary);
+    if (job.kind === "calendar_confirm" && !reservation.calendar) {
+      // The database always decides a calendar job; never guess what to send.
+      logger.error(
+        { jobId: job.jobId },
+        "calendar job reserved without a decision",
+      );
+      await deps.store.finish(
+        job.jobId,
+        "failed",
+        "no_calendar_decision",
+        null,
+      );
+      summary.failed += 1;
+      continue;
+    }
+    const outcome = await sendJob(
+      deps,
+      run,
+      session,
+      job,
+      reservation.calendar,
+      summary,
+    );
     if (outcome === "stop") {
       return;
     }
@@ -196,25 +228,66 @@ async function drainSender(
   }
 }
 
+/** The calendar invitation (`.ics`) for one calendar job; it never carries the personal link. */
+function calendarFile(
+  deps: DispatchDeps,
+  session: Session,
+  job: ClaimedJob,
+  decision: CalendarDecision,
+): { method: "REQUEST" | "CANCEL"; ics: string } {
+  const method = decision.action === "request" ? "REQUEST" : "CANCEL";
+  return {
+    method,
+    ics: buildMeetingIcs({
+      method,
+      uid: job.meeting.icsUid,
+      sequence: decision.sequence,
+      stamp: new Date(deps.now()),
+      start: new Date(job.meeting.startsAt),
+      durationMinutes: job.meeting.durationMinutes,
+      title: job.meeting.title,
+      description: icsDescription(job.meeting),
+      location: icsLocation(job.meeting),
+      url:
+        job.meeting.locationMode !== "in_person" && job.meeting.meetingUrl
+          ? job.meeting.meetingUrl
+          : null,
+      organizer: {
+        name: job.workspaceName,
+        email: session.claim.connection.googleEmail,
+      },
+      attendee: { name: job.contact.fullName, email: job.contact.email },
+    }),
+  };
+}
+
 async function sendJob(
   deps: DispatchDeps,
   run: string,
   session: Session,
   job: ClaimedJob,
+  decision: CalendarDecision | null,
   summary: DispatchSummary,
 ): Promise<JobOutcome> {
   const token = deps.tokenFor(job.inviteeId);
-  const email = await renderMeetingInviteEmail({
+  const links = {
+    respond: `${deps.appUrl}/r/${token}`,
+    unsubscribe: `${deps.appUrl}/u/${token}`,
+    report: `${deps.appUrl}/report/${token}`,
+  };
+  const common = {
     workspaceName: job.workspaceName,
     recipientName: job.contact.fullName,
     senderEmail: session.claim.connection.googleEmail,
     meeting: job.meeting,
-    links: {
-      respond: `${deps.appUrl}/r/${token}`,
-      unsubscribe: `${deps.appUrl}/u/${token}`,
-      report: `${deps.appUrl}/report/${token}`,
-    },
-  });
+    links,
+  };
+  const email = decision
+    ? await renderCalendarConfirmEmail({ ...common, action: decision.action })
+    : await renderMeetingInviteEmail(common);
+  const calendar = decision
+    ? calendarFile(deps, session, job, decision)
+    : undefined;
   const attempt = async (thread: Thread | undefined) => {
     const messageId = newMessageId(deps.appUrl);
     const raw = await buildMeetingMime({
@@ -229,6 +302,7 @@ async function sendJob(
       messageId,
       inReplyTo: thread?.rootMessageId ?? null,
       listUnsubscribeUrl: `${deps.appUrl}/api/r/${token}/unsubscribe`,
+      calendar,
     });
     return {
       messageId,
@@ -287,6 +361,9 @@ async function sendJob(
       }
       await deps.store.finish(job.jobId, "sent", null, inviteeTokenHash(token));
       summary.sent += 1;
+      if (decision) {
+        summary.calendar += 1;
+      }
       return "continue";
     case "invalid_recipient":
       await deps.store.finish(job.jobId, "failed", result.reason, null);

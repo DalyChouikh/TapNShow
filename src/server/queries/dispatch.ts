@@ -20,6 +20,7 @@ const claimSchema = z
     jobs: z.array(
       z.object({
         job_id: z.uuid(),
+        kind: z.enum(["invite", "calendar_confirm"]),
         attempts: z.number().int(),
         invitee_id: z.uuid(),
         workspace_id: z.uuid(),
@@ -39,6 +40,7 @@ const claimSchema = z
           response_mode: responseModeSchema,
           response_deadline: z.string().nullable(),
           footer_note: z.string(),
+          ics_uid: z.string(),
           thread_id: z.string().nullable(),
           root_message_id: z.string().nullable(),
         }),
@@ -55,6 +57,7 @@ const claimSchema = z
     },
     jobs: db.jobs.map((job) => ({
       jobId: job.job_id,
+      kind: job.kind,
       attempts: job.attempts,
       inviteeId: job.invitee_id,
       workspaceId: job.workspace_id,
@@ -73,6 +76,7 @@ const claimSchema = z
         meetingUrl: job.meeting.meeting_url,
         responseMode: job.meeting.response_mode,
         responseDeadline: job.meeting.response_deadline,
+        icsUid: job.meeting.ics_uid,
         threadId: job.meeting.thread_id,
         rootMessageId: job.meeting.root_message_id,
       },
@@ -84,16 +88,37 @@ export type Claim = z.output<typeof claimSchema>;
 /** One claimed invite job with everything needed to render it. */
 export type ClaimedJob = Claim["jobs"][number];
 
+/** A calendar job's decision at reserve time (spec §8 calendar_confirm). */
+export type CalendarDecision = {
+  action: "request" | "cancel";
+  sequence: number;
+};
+
 const reserveSchema = z
   .discriminatedUnion("kind", [
-    z.object({ kind: z.literal("ok") }),
+    z.object({
+      kind: z.literal("ok"),
+      calendar: z
+        .object({
+          action: z.enum(["request", "cancel"]),
+          sequence: z.number().int(),
+        })
+        .optional(),
+    }),
     z.object({ kind: z.literal("quota"), retry_at: z.string() }),
     z.object({ kind: z.literal("done") }),
     z.object({ kind: z.literal("gone") }),
   ])
-  .transform((db) =>
-    db.kind === "quota" ? { kind: db.kind, retryAt: db.retry_at } : db,
-  );
+  .transform((db) => {
+    switch (db.kind) {
+      case "quota":
+        return { kind: db.kind, retryAt: db.retry_at };
+      case "ok":
+        return { kind: db.kind, calendar: db.calendar ?? null };
+      default:
+        return db;
+    }
+  });
 
 /** What reserving quota for one job produced. */
 export type ReserveResult = z.output<typeof reserveSchema>;
