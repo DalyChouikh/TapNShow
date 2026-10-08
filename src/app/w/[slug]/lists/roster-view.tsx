@@ -2,11 +2,13 @@
 
 import { Plus, UploadSimple } from "@phosphor-icons/react";
 import dynamic from "next/dynamic";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { Input } from "@/components/ui/input";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { ROSTER_GRID_MEDIA } from "@/config/roster";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import {
@@ -18,6 +20,7 @@ import { withListCounts } from "@/lib/roster/roster-cache";
 import type { Contact, Roster } from "@/shared/api/roster";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
 import { AddContactDialog } from "./add-contact-dialog";
+import { AttendanceView } from "./attendance-view";
 import { ContactSheet } from "./contact-sheet";
 import { ListChips } from "./list-chips";
 import { ManageListsDialog } from "./manage-lists-dialog";
@@ -42,9 +45,29 @@ export function RosterView({
   roster: Roster;
 }) {
   const t = useTranslations("Lists");
+  const tAttendance = useTranslations("Attendance");
+  const router = useRouter();
+  const pathname = usePathname();
+  const search = useSearchParams();
+  const view = search.get("view") === "attendance" ? "attendance" : "people";
   const [query, setQuery] = useState("");
   const [listId, setListId] = useState<ListFilter>(null);
-  const [openContactId, setOpenContactId] = useState<string | null>(null);
+  // `?person=<id>` (a name on the meeting page) opens that person's sheet once, on arrival.
+  const [openContactId, setOpenContactId] = useState<string | null>(() =>
+    search.get("person"),
+  );
+  const replaceParams = (change: (params: URLSearchParams) => void) => {
+    const params = new URLSearchParams(search.toString());
+    change(params);
+    const next = params.toString();
+    router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+  };
+  const closeSheet = () => {
+    setOpenContactId(null);
+    if (search.has("person")) {
+      replaceParams((params) => params.delete("person"));
+    }
+  };
   const [adding, setAdding] = useState(false);
   const [managing, setManaging] = useState(false);
   const [importing, setImporting] = useState<"file" | "paste" | null>(null);
@@ -125,7 +148,30 @@ export function RosterView({
           </div>
         ) : null}
       </div>
-      {people.length === 0 && live.lists.length === 0 ? (
+      {people.length > 0 ? (
+        <SegmentedControl
+          label={tAttendance("view.label")}
+          value={view}
+          onValueChange={(next) =>
+            replaceParams((params) =>
+              next === "attendance"
+                ? params.set("view", "attendance")
+                : params.delete("view"),
+            )
+          }
+          options={[
+            { value: "people", label: tAttendance("view.people") },
+            { value: "attendance", label: tAttendance("view.attendance") },
+          ]}
+        />
+      ) : null}
+      {view === "attendance" && people.length > 0 ? (
+        <AttendanceView
+          workspace={workspace}
+          roster={live}
+          onOpenContact={openContactSheet}
+        />
+      ) : people.length === 0 && live.lists.length === 0 ? (
         <RosterEmpty
           canEdit={canEdit}
           actions={
@@ -231,7 +277,8 @@ export function RosterView({
           contact={openContact}
           roster={live}
           canEdit={canEdit}
-          onClose={() => setOpenContactId(null)}
+          timezone={workspace.timezone}
+          onClose={closeSheet}
           onDelete={(contact) => {
             setOpenContactId(null);
             scheduleDelete([contact]);

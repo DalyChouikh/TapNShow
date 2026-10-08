@@ -21,6 +21,7 @@ import {
   type Roster,
   type UpdateContactBody,
 } from "@/shared/api/roster";
+import { ContactHistory } from "./contact-history";
 import { describeEditError } from "./describe-edit-error";
 import { ListTag } from "@/components/forms/list-tag";
 
@@ -28,7 +29,7 @@ type Field = "fullName" | "email";
 type SaveState = "idle" | "saving" | "saved";
 
 /**
- * Bottom-sheet editor for one person (spec §7.14). Each field saves when it loses focus if it
+ * Bottom-sheet editor for one person (spec §7.14), with their answer history (§7.7). Each field saves when it loses focus if it
  * changed and is valid; lists save on every change. Viewers get the same sheet read-only.
  */
 export function ContactSheet({
@@ -36,6 +37,7 @@ export function ContactSheet({
   contact,
   roster,
   canEdit,
+  timezone,
   onClose,
   onDelete,
 }: {
@@ -43,6 +45,8 @@ export function ContactSheet({
   contact: Contact;
   roster: Roster;
   canEdit: boolean;
+  /** The workspace's zone (history period boundaries). */
+  timezone: string;
   onClose: () => void;
   onDelete: (contact: Contact) => void;
 }) {
@@ -149,7 +153,7 @@ export function ContactSheet({
 
   return (
     <Dialog open onOpenChange={(open) => (open ? undefined : close())}>
-      <DialogContent>
+      <DialogContent className="max-h-[85dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{canEdit ? t("editTitle") : t("viewTitle")}</DialogTitle>
           <DialogDescription className="break-all">
@@ -245,6 +249,11 @@ export function ContactSheet({
             <p className="text-sm text-muted-ink">{t("readOnly")}</p>
           </div>
         )}
+        <ContactHistory
+          slug={slug}
+          contactId={current.id}
+          timezone={timezone}
+        />
       </DialogContent>
     </Dialog>
   );

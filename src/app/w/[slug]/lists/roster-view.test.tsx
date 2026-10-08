@@ -13,6 +13,12 @@ import { okContext } from "@/test/workspace-context-mock";
 import { RosterView } from "./roster-view";
 
 // next/dynamic needs the Next compiler; React.lazy gives the same deferred loading under Vitest.
+const navigation = vi.hoisted(() => ({ search: "", replace: vi.fn() }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: navigation.replace }),
+  usePathname: () => "/w/robotics-cd34/lists",
+  useSearchParams: () => new URLSearchParams(navigation.search),
+}));
 vi.mock("next/dynamic", async () => {
   const { createElement, lazy, Suspense } = await import("react");
   return {
@@ -39,6 +45,35 @@ const owner = okContext.workspace;
 const people = () =>
   within(screen.getByRole("list", { name: "People" })).getAllByRole("listitem");
 const viewer = { ...owner, myRole: "viewer" as const };
+
+describe("RosterView navigation (M5)", () => {
+  afterEach(() => {
+    navigation.search = "";
+    navigation.replace.mockReset();
+  });
+
+  it("opens the person from ?person= (a name on the meeting page)", () => {
+    navigation.search = `person=${rosterFixture.contacts[0].id}`;
+    renderWithProviders(
+      <RosterView workspace={owner} roster={rosterFixture} />,
+    );
+    expect(screen.getByRole("dialog")).toHaveTextContent(
+      rosterFixture.contacts[0].email,
+    );
+  });
+
+  it("switches to Attendance through ?view=", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <RosterView workspace={owner} roster={rosterFixture} />,
+    );
+    await user.click(screen.getByRole("radio", { name: "Attendance" }));
+    expect(navigation.replace).toHaveBeenCalledWith(
+      "/w/robotics-cd34/lists?view=attendance",
+      { scroll: false },
+    );
+  });
+});
 
 describe("RosterView", () => {
   it("lists people as cards with their lists and a count", () => {
