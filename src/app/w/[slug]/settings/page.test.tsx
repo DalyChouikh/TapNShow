@@ -13,12 +13,12 @@ vi.mock("next/navigation", () => ({
 afterEach(() => vi.unstubAllGlobals());
 
 describe("/w/[slug]/settings", () => {
-  it("holds the Danger zone's place with a skeleton while members load", async () => {
+  it("shows every section, the Danger zone included, while members still load", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn<typeof fetch>(async (input) => {
         const url = String(input);
-        if (url.endsWith("/members")) {
+        if (url.includes("/members?")) {
           return new Promise<Response>(() => undefined);
         }
         if (url === "/api/me") {
@@ -35,8 +35,8 @@ describe("/w/[slug]/settings", () => {
             }),
           );
         }
-        if (url.endsWith("/invites")) {
-          return new Response("[]");
+        if (url.includes("/invites?")) {
+          return new Response(JSON.stringify({ items: [], nextCursor: null }));
         }
         if (url.endsWith("/sender")) {
           return new Response(
@@ -66,7 +66,7 @@ describe("/w/[slug]/settings", () => {
     );
     renderWithProviders(<SettingsPage />);
     expect(
-      await screen.findByTestId("danger-zone-skeleton"),
+      await screen.findByRole("heading", { name: "Danger zone" }),
     ).toBeInTheDocument();
     expect(
       await screen.findByRole("heading", { name: "Sending" }),

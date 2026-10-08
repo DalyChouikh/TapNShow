@@ -7,6 +7,7 @@ import { adminId, membersFixture, ownerId } from "@/test/fixtures/members";
 import { renderWithProviders } from "@/test/render";
 import { DangerZone } from "./danger-zone";
 
+const ADMINS = "GET /api/workspaces/robotics-cd34/members?role=admin&limit=100";
 const replace = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace }) }));
 afterEach(() => {
@@ -17,11 +18,7 @@ afterEach(() => {
 describe("DangerZone", () => {
   it("shows Transfer and Delete to the Owner, Leave to everyone else", () => {
     const { unmount } = renderWithProviders(
-      <DangerZone
-        workspace={workspaceFixture}
-        myId={ownerId}
-        members={membersFixture}
-      />,
+      <DangerZone workspace={workspaceFixture} myId={ownerId} />,
     );
     expect(
       screen.getByRole("button", { name: "Transfer ownership" }),
@@ -37,7 +34,6 @@ describe("DangerZone", () => {
       <DangerZone
         workspace={{ ...workspaceFixture, myRole: "admin" }}
         myId={adminId}
-        members={membersFixture}
       />,
     );
     expect(
@@ -54,11 +50,7 @@ describe("DangerZone", () => {
     });
     const user = userEvent.setup();
     renderWithProviders(
-      <DangerZone
-        workspace={workspaceFixture}
-        myId={ownerId}
-        members={membersFixture}
-      />,
+      <DangerZone workspace={workspaceFixture} myId={ownerId} />,
     );
     await user.click(screen.getByRole("button", { name: "Delete workspace" }));
     await user.type(
@@ -75,19 +67,19 @@ describe("DangerZone", () => {
   it("transfers only to an Admin and explains when there is none", async () => {
     const fetchMock = routeFetch({
       "POST /api/workspaces/robotics-cd34/transfer": json({ ok: true }),
+      [ADMINS]: json({
+        items: membersFixture.filter((member) => member.role === "admin"),
+        nextCursor: null,
+      }),
     });
     const user = userEvent.setup();
     const { unmount } = renderWithProviders(
-      <DangerZone
-        workspace={workspaceFixture}
-        myId={ownerId}
-        members={membersFixture}
-      />,
+      <DangerZone workspace={workspaceFixture} myId={ownerId} />,
     );
     await user.click(
       screen.getByRole("button", { name: "Transfer ownership" }),
     );
-    const select = screen.getByRole("combobox", { name: "New Owner" });
+    const select = await screen.findByRole("combobox", { name: "New Owner" });
     expect(select).toHaveTextContent("Choose an Admin");
     await user.click(select);
     expect(
@@ -100,24 +92,29 @@ describe("DangerZone", () => {
     );
     await user.click(screen.getByRole("button", { name: "Confirm" }));
     await waitFor(() =>
-      expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({
+      expect(
+        JSON.parse(
+          String(
+            fetchMock.mock.calls.find(
+              ([, init]) => init?.method === "POST",
+            )?.[1]?.body,
+          ),
+        ),
+      ).toEqual({
         userId: adminId,
         confirmName: "Robotics Club",
       }),
     );
     unmount();
+    routeFetch({ [ADMINS]: json({ items: [], nextCursor: null }) });
     renderWithProviders(
-      <DangerZone
-        workspace={workspaceFixture}
-        myId={ownerId}
-        members={membersFixture.filter((member) => member.role !== "admin")}
-      />,
+      <DangerZone workspace={workspaceFixture} myId={ownerId} />,
     );
     await user.click(
       screen.getByRole("button", { name: "Transfer ownership" }),
     );
     expect(
-      screen.getByText("Make someone an Admin first."),
+      await screen.findByText("Make someone an Admin first."),
     ).toBeInTheDocument();
   });
 });

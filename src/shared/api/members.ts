@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { workspaceRoleSchema } from "./me";
+import { pageSchema } from "./pagination";
 
 /** One row of `GET /api/workspaces/[slug]/members`. */
 export const memberSchema = z.object({
@@ -15,8 +16,8 @@ export const memberSchema = z.object({
 /** A workspace member as shown in Settings > People. */
 export type Member = z.infer<typeof memberSchema>;
 
-/** `GET …/members` response. */
-export const membersResponseSchema = z.array(memberSchema);
+/** `GET …/members?role=&cursor=`: one page of members. */
+export const membersPageSchema = pageSchema(memberSchema);
 
 /** `PATCH …/members/[userId]` body. The Owner role only changes through transfer. */
 export const changeRoleBodySchema = z.object({

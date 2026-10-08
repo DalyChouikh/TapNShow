@@ -26,7 +26,12 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("InvitesPanel", () => {
   it("lists open invites with status and expiry", async () => {
-    routeFetch({ [`GET ${invitesUrl}`]: json([pending, expired]) });
+    routeFetch({
+      [`GET ${invitesUrl}?limit=50`]: json({
+        items: [pending, expired],
+        nextCursor: null,
+      }),
+    });
     renderWithProviders(<InvitesPanel workspace={workspaceFixture} />);
     expect(await screen.findByText("v@example.test")).toBeInTheDocument();
     expect(screen.getByText("Pending")).toBeInTheDocument();
@@ -36,7 +41,10 @@ describe("InvitesPanel", () => {
 
   it("Copy link renews the invite and copies the new link", async () => {
     routeFetch({
-      [`GET ${invitesUrl}`]: json([pending]),
+      [`GET ${invitesUrl}?limit=50`]: json({
+        items: [pending],
+        nextCursor: null,
+      }),
       [`POST ${invitesUrl}/${pending.id}/renew`]: json(
         {
           id: pending.id,
@@ -63,7 +71,10 @@ describe("InvitesPanel", () => {
 
   it("Cancel invite sends DELETE", async () => {
     const fetchMock = routeFetch({
-      [`GET ${invitesUrl}`]: json([pending]),
+      [`GET ${invitesUrl}?limit=50`]: json({
+        items: [pending],
+        nextCursor: null,
+      }),
       [`DELETE ${invitesUrl}/${pending.id}`]: json({ ok: true }),
     });
     const user = userEvent.setup();

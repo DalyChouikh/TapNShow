@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMe } from "@/hooks/use-me";
-import { useMembers } from "@/hooks/use-members";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { DangerZone } from "./danger-zone";
 import { GeneralSection } from "./general-section";
@@ -23,7 +22,6 @@ export default function SettingsPage() {
   const { slug } = useParams<{ slug: string }>();
   const workspace = useWorkspace(slug);
   const me = useMe();
-  const members = useMembers(slug);
   if (!workspace.data || !me.data) {
     return <Skeleton className="h-64 w-full" />;
   }
@@ -43,18 +41,11 @@ export default function SettingsPage() {
       >
         <InvitesPanel workspace={workspace.data} />
       </PeopleSection>
-      {members.data ? (
-        <DangerZone
-          workspace={workspace.data}
-          defaultOpen={false}
-          myId={me.data.userId}
-          members={members.data}
-        />
-      ) : (
-        <div data-testid="danger-zone-skeleton">
-          <Skeleton className="h-40 w-full" />
-        </div>
-      )}
+      <DangerZone
+        workspace={workspace.data}
+        defaultOpen={false}
+        myId={me.data.userId}
+      />
     </div>
   );
 }

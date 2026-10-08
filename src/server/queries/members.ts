@@ -1,33 +1,75 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { z } from "zod";
 import type { Database } from "@/server/db/database.types";
+import { sqlNullable } from "@/server/db/rpc-args";
+import { encodeCursor } from "@/server/http/pagination";
+import { type WorkspaceRole, workspaceRoleSchema } from "@/shared/api/me";
 import type { Member } from "@/shared/api/members";
+import type { Page } from "@/shared/api/pagination";
+import type { DbError } from "./roster";
 
 type Client = SupabaseClient<Database>;
 
-/**
- * Members with names and emails (`list_members`, members only).
- * @throws Error with the database message (`tn:forbidden` for non-members)
- */
-export async function listMembers(
+const memberRowSchema = z.object({
+  user_id: z.uuid(),
+  role: workspaceRoleSchema,
+  can_check_in: z.boolean(),
+  display_name: z.string().nullable(),
+  avatar_url: z.string().nullable(),
+  email: z.string(),
+  joined_at: z.string(),
+  sort_name: z.string(),
+});
+
+/** Keyset of the members list: role, lower-cased name, user id. */
+export const memberCursorSchema = z.tuple([
+  workspaceRoleSchema,
+  z.string().max(320),
+  z.uuid(),
+]);
+
+/** One page of members, optionally one role (`members_page`, members only). */
+export async function listMembersPage(
   client: Client,
   workspaceId: string,
-): Promise<Member[]> {
-  const { data, error } = await client.rpc("list_members", {
+  role: WorkspaceRole | null,
+  limit: number,
+  after: [WorkspaceRole, string, string] | null,
+): Promise<{ data: Page<Member> | null; error: DbError | null }> {
+  const { data, error } = await client.rpc("members_page", {
     p_workspace: workspaceId,
+    p_role: sqlNullable(role),
+    p_after_role: sqlNullable(after?.[0] ?? null),
+    p_after_name: sqlNullable(after?.[1] ?? null),
+    p_after_id: sqlNullable(after?.[2] ?? null),
+    p_limit: limit,
   });
   if (error) {
-    throw new Error(error.message);
+    return { data: null, error };
   }
-  return data.map((row) => ({
-    userId: row.user_id,
-    role: row.role,
-    canCheckIn: row.can_check_in,
-    displayName: row.display_name,
-    avatarUrl: row.avatar_url,
-    email: row.email,
-    joinedAt: row.joined_at,
-  }));
+  const parsed = z
+    .object({ has_more: z.boolean(), items: z.array(memberRowSchema) })
+    .parse(data);
+  const last = parsed.items.at(-1);
+  return {
+    data: {
+      items: parsed.items.map((row) => ({
+        userId: row.user_id,
+        role: row.role,
+        canCheckIn: row.can_check_in,
+        displayName: row.display_name,
+        avatarUrl: row.avatar_url,
+        email: row.email,
+        joinedAt: row.joined_at,
+      })),
+      nextCursor:
+        parsed.has_more && last
+          ? encodeCursor([last.role, last.sort_name, last.user_id])
+          : null,
+    },
+    error: null,
+  };
 }
 
 /** `change_role` (Owner-only for Admin changes). */

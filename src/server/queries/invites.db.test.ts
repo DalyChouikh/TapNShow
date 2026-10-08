@@ -5,11 +5,17 @@ import {
   acceptInvite,
   createInvite,
   getInvite,
-  listOpenInvites,
+  listOpenInvitesPage,
   previewInvite,
   renewInvite,
   revokeInvite,
 } from "./invites";
+
+const listOpenInvites = async (
+  client: Parameters<typeof listOpenInvitesPage>[0],
+  workspaceId: string,
+) =>
+  (await listOpenInvitesPage(client, workspaceId, 50, null)).data?.items ?? [];
 
 const hash = (): string =>
   `${crypto.randomUUID()}${crypto.randomUUID()}`.replaceAll("-", "");

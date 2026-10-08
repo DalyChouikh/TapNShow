@@ -5,11 +5,18 @@ import {
   changeRole,
   deleteWorkspace,
   leaveWorkspace,
-  listMembers,
+  listMembersPage,
   removeMember,
   transferOwnership,
 } from "./members";
 import { updateWorkspace } from "./workspaces";
+
+const listMembers = async (
+  client: Parameters<typeof listMembersPage>[0],
+  workspaceId: string,
+) =>
+  (await listMembersPage(client, workspaceId, null, 50, null)).data?.items ??
+  [];
 
 describe("member queries", () => {
   it("lists members in camelCase and applies role changes", async () => {
