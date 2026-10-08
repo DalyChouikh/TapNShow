@@ -3,11 +3,9 @@
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef } from "react";
-import { ComingSoon } from "@/components/shell/coming-soon";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { publicEnv } from "@/config/public-env";
 import { useCreateMeeting } from "@/hooks/use-meetings";
 
 /** "+" target: creates one draft, then opens the wizard on it (spec §7.2). */
@@ -24,14 +22,11 @@ export default function NewMeetingPage() {
     });
   useEffect(() => {
     // Strict Mode runs effects twice in development; one draft per visit.
-    if (!started.current && publicEnv.NEXT_PUBLIC_MEETINGS_ENABLED) {
+    if (!started.current) {
       started.current = true;
       start();
     }
   });
-  if (!publicEnv.NEXT_PUBLIC_MEETINGS_ENABLED) {
-    return <ComingSoon area="meetings" />;
-  }
   if (create.isError) {
     return (
       <Card className="flex flex-col items-start gap-3">

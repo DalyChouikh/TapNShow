@@ -4,10 +4,8 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect } from "react";
-import { ComingSoon } from "@/components/shell/coming-soon";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { publicEnv } from "@/config/public-env";
 import { useMeeting, useMeetingProgress } from "@/hooks/use-meetings";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { InviteeList } from "./invitee-list";
@@ -31,9 +29,6 @@ export default function MeetingPage() {
       router.replace(`/w/${slug}/meetings/${id}/edit`);
     }
   }, [id, meeting.data?.status, router, slug]);
-  if (!publicEnv.NEXT_PUBLIC_MEETINGS_ENABLED) {
-    return <ComingSoon area="meetings" />;
-  }
   if (!meeting.data || !workspace.data || meeting.data.status === "draft") {
     return <Skeleton className="h-96 w-full" />;
   }

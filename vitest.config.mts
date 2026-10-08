@@ -27,7 +27,6 @@ export default defineConfig({
       SMTP_HOST: "localhost",
       SMTP_PORT: "1025",
       SMTP_FROM: "no-reply@example.test",
-      NEXT_PUBLIC_MEETINGS_ENABLED: "true",
     },
   },
 });

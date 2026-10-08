@@ -201,8 +201,7 @@
       "meetings": "Meetings",
       "new": "New meeting",
       "lists": "Lists",
-      "settings": "Settings",
-      "soon": "Coming soon"
+      "settings": "Settings"
     },
     "roles": {
       "owner": "Owner",
@@ -222,10 +221,6 @@
     "title": "Your name",
     "nameLabel": "Name",
     "saved": "Name saved."
-  },
-  "ComingSoon": {
-    "meetingsTitle": "Meetings arrive soon",
-    "meetingsBody": "Creating and sending meetings is the next big step."
   },
   "Settings": {
     "title": "Settings",

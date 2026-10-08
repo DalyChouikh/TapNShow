@@ -4,7 +4,6 @@ import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { publicEnv } from "@/config/public-env";
 import { useMe } from "@/hooks/use-me";
 import { useMembers } from "@/hooks/use-members";
 import { useWorkspace } from "@/hooks/use-workspace";
@@ -32,18 +31,11 @@ export default function SettingsPage() {
     <div className="flex flex-col gap-4">
       <h1 className="font-display text-3xl">{t("title")}</h1>
       <GeneralSection key={workspace.data.id} workspace={workspace.data} />
-      {publicEnv.NEXT_PUBLIC_MEETINGS_ENABLED ? (
-        <>
-          {/* SendingSection reads ?gmail=… through useSearchParams. */}
-          <Suspense fallback={<Skeleton className="h-40 w-full" />}>
-            <SendingSection workspace={workspace.data} defaultOpen={false} />
-          </Suspense>
-          <MeetingDefaultsSection
-            workspace={workspace.data}
-            defaultOpen={false}
-          />
-        </>
-      ) : null}
+      {/* SendingSection reads ?gmail=… through useSearchParams. */}
+      <Suspense fallback={<Skeleton className="h-40 w-full" />}>
+        <SendingSection workspace={workspace.data} defaultOpen={false} />
+      </Suspense>
+      <MeetingDefaultsSection workspace={workspace.data} defaultOpen={false} />
       <PeopleSection
         workspace={workspace.data}
         myId={me.data.userId}

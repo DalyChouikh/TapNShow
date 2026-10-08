@@ -13,7 +13,6 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Sticker } from "@/components/ui/sticker";
-import { publicEnv } from "@/config/public-env";
 import { useWorkspaceSender } from "@/hooks/use-sender";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
 
@@ -40,15 +39,12 @@ const STEPS: ReadonlyArray<{
     href: (slug) => `/w/${slug}/lists`,
     actionKey: "importMembersAction",
   },
-  // Gmail sending ships with the M4 meetings flag.
-  publicEnv.NEXT_PUBLIC_MEETINGS_ENABLED
-    ? {
-        key: "connectGmail",
-        icon: EnvelopeSimple,
-        href: (slug) => `/w/${slug}/settings#sending`,
-        actionKey: "connectGmailAction",
-      }
-    : { key: "connectGmail", icon: EnvelopeSimple },
+  {
+    key: "connectGmail",
+    icon: EnvelopeSimple,
+    href: (slug) => `/w/${slug}/settings#sending`,
+    actionKey: "connectGmailAction",
+  },
   { key: "connectSheets", icon: Table },
 ];
 
