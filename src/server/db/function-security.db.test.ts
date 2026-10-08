@@ -27,6 +27,7 @@ const PRIVATE_FUNCTIONS_FOR_AUTHENTICATED = [
   "leave_workspace",
   "list_members",
   "meeting_progress",
+  "meetings_page",
   "remove_member",
   "renew_invite",
   "revoke_invite",

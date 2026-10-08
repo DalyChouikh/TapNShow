@@ -25,8 +25,16 @@ const draft = {
   durationMinutes: 60,
   status: "draft",
   locationMode: "in_person",
-  invitedCount: 0,
-  sentCount: 0,
+  responseMode: "attendance",
+  counts: {
+    invited: 0,
+    sent: 0,
+    queued: 0,
+    attending: 0,
+    late: 0,
+    absent: 0,
+    noReply: 0,
+  },
 };
 
 function setup(
@@ -40,7 +48,10 @@ function setup(
       ownerName: "Amira Ben Ali",
       myConnections: [],
     }),
-    "GET /api/workspaces/robotics-cd34/meetings": json(meetings),
+    "GET /api/workspaces/robotics-cd34/meetings?tab=drafts&limit=1": json({
+      items: meetings,
+      nextCursor: null,
+    }),
   });
   return renderWithProviders(<NeedsAttention workspace={workspace} />);
 }

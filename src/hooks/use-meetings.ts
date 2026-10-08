@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PROGRESS_POLL_MS } from "@/config/meetings";
+import { usePagedList } from "@/hooks/use-paged-list";
 import { rosterQueryKey } from "@/hooks/use-roster";
 import { apiRequest } from "@/lib/api-client";
 import { okSchema } from "@/shared/api/common";
@@ -13,7 +14,8 @@ import {
   audienceSchema,
   createMeetingResponseSchema,
   type Meeting,
-  meetingListSchema,
+  meetingPageSchema,
+  type MeetingTab,
   meetingSchema,
   previewSchema,
   progressSchema,
@@ -35,12 +37,28 @@ export const progressQueryKey = (slug: string, id: string) =>
 const previewQueryKey = (slug: string, id: string) =>
   ["meeting-preview", slug, id] as const;
 
-/** All meetings (Meetings page). */
-export function useMeetings(slug: string) {
-  return useQuery({
-    queryKey: meetingsQueryKey(slug),
-    queryFn: () => apiRequest(base(slug), { schema: meetingListSchema }),
+/** One Meetings tab, paged (spec §10). */
+export function useMeetingsPage(slug: string, tab: MeetingTab, limit?: number) {
+  return usePagedList({
+    queryKey: [...meetingsQueryKey(slug), tab],
+    path: base(slug),
+    params: { tab },
+    schema: meetingPageSchema,
+    limit,
   });
+}
+
+/** Whether any draft exists (Home "needs attention"): one row of the Drafts tab. */
+export function useHasDrafts(slug: string, enabled: boolean) {
+  const drafts = usePagedList({
+    queryKey: [...meetingsQueryKey(slug), "drafts"],
+    path: base(slug),
+    params: { tab: "drafts" },
+    schema: meetingPageSchema,
+    limit: 1,
+    enabled,
+  });
+  return drafts.items.length > 0;
 }
 
 /** One meeting. */

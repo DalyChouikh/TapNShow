@@ -3,19 +3,20 @@
 import { CalendarDots, Plus } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sticker } from "@/components/ui/sticker";
-import { useMeetings } from "@/hooks/use-meetings";
+import { ShowMore } from "@/components/ui/show-more";
+import { useMeetingsPage } from "@/hooks/use-meetings";
 import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { formatMeetingWhen } from "@/lib/meetings/format";
-import { partitionMeetings } from "@/lib/meetings/partition";
 import type { MeetingSummary } from "@/shared/api/meetings";
 import { DraftMenu } from "./draft-menu";
+import { MeetingStatusLine } from "./meeting-status-line";
 
 type Tab = "upcoming" | "drafts" | "past";
 
@@ -23,20 +24,16 @@ type Tab = "upcoming" | "drafts" | "past";
 export function MeetingsList({ slug }: { slug: string }) {
   const t = useTranslations("Meetings");
   const workspace = useWorkspace(slug);
-  const meetings = useMeetings(slug);
   const [tab, setTab] = useState<Tab>("upcoming");
-  const groups = useMemo(
-    () => partitionMeetings(meetings.data ?? [], new Date()),
-    [meetings.data],
-  );
+  const list = useMeetingsPage(slug, tab);
   const canEdit = workspace.data && workspace.data.myRole !== "viewer";
-  if (!meetings.data || !workspace.data) {
+  if (!workspace.data) {
     return <Skeleton className="h-64 w-full" />;
   }
   const tabs: Tab[] = canEdit
     ? ["upcoming", "drafts", "past"]
     : ["upcoming", "past"];
-  const shown = groups[tab];
+  const shown = list.items;
   const hrefFor = (m: MeetingSummary) =>
     m.status === "draft"
       ? `/w/${slug}/meetings/${m.id}/edit`
@@ -65,7 +62,9 @@ export function MeetingsList({ slug }: { slug: string }) {
           label: t(`tabs.${item}`),
         }))}
       />
-      {shown.length === 0 ? (
+      {list.query.isPending ? (
+        <Skeleton className="h-64 w-full" />
+      ) : shown.length === 0 ? (
         <Card className="flex items-center gap-3">
           <Sticker tone="neutral">
             <CalendarDots weight="bold" />
@@ -100,12 +99,7 @@ export function MeetingsList({ slug }: { slug: string }) {
                         : t("noDate")}
                     </span>
                     <span className="text-sm font-bold">
-                      {meeting.status === "draft"
-                        ? t("draft")
-                        : t("sent", {
-                            sent: meeting.sentCount,
-                            total: meeting.invitedCount,
-                          })}
+                      <MeetingStatusLine meeting={meeting} />
                     </span>
                   </Card>
                 </Link>
@@ -121,6 +115,11 @@ export function MeetingsList({ slug }: { slug: string }) {
           })}
         </ul>
       )}
+      <ShowMore
+        hasMore={list.hasMore}
+        loading={list.isLoadingMore}
+        onMore={list.loadMore}
+      />
     </section>
   );
 }

@@ -8,14 +8,15 @@ import {
 
 const mocks = vi.hoisted(() => ({
   context: { value: null as object | null },
-  listMeetings: vi.fn(),
+  listMeetingsPage: vi.fn(),
   createMeeting: vi.fn(),
 }));
 vi.mock("@/server/http/workspace-context", () => ({
   loadWorkspaceContext: async () => mocks.context.value ?? okContext,
 }));
-vi.mock("@/server/queries/meetings", () => ({
-  listMeetings: mocks.listMeetings,
+vi.mock("@/server/queries/meetings", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/server/queries/meetings")>()),
+  listMeetingsPage: mocks.listMeetingsPage,
   createMeeting: mocks.createMeeting,
 }));
 
@@ -28,9 +29,21 @@ const summary = {
   durationMinutes: 60,
   status: "draft",
   locationMode: "in_person",
-  invitedCount: 0,
-  sentCount: 0,
+  responseMode: "attendance",
+  counts: {
+    invited: 0,
+    sent: 0,
+    queued: 0,
+    attending: 0,
+    late: 0,
+    absent: 0,
+    noReply: 0,
+  },
 };
+const page = (query: string) =>
+  new Request(
+    `http://localhost:3000/api/workspaces/club-ab12/meetings${query}`,
+  );
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -38,13 +51,31 @@ beforeEach(() => {
 });
 
 describe("/api/workspaces/[slug]/meetings", () => {
-  it("lists the meetings", async () => {
-    mocks.listMeetings.mockResolvedValueOnce({ data: [summary], error: null });
+  it("lists one page of a tab", async () => {
+    mocks.listMeetingsPage.mockResolvedValueOnce({
+      data: { items: [summary], nextCursor: null },
+      error: null,
+    });
     const { GET } = await import("./route");
-    expect(await (await GET(jsonRequest("GET"), ctx)).json()).toEqual([
-      summary,
-    ]);
-    expect(mocks.listMeetings).toHaveBeenCalledWith({}, "w1");
+    const response = await GET(page("?tab=drafts&limit=20"), ctx);
+    expect(await response.json()).toEqual({
+      items: [summary],
+      nextCursor: null,
+    });
+    expect(mocks.listMeetingsPage).toHaveBeenCalledWith(
+      {},
+      "w1",
+      "drafts",
+      20,
+      null,
+    );
+  });
+
+  it("refuses an unknown tab or a malformed cursor", async () => {
+    const { GET } = await import("./route");
+    expect((await GET(page("?tab=all"), ctx)).status).toBe(400);
+    expect((await GET(page("?cursor=garbage"), ctx)).status).toBe(400);
+    expect(mocks.listMeetingsPage).not.toHaveBeenCalled();
   });
 
   it("creates a draft and names the rate limit", async () => {
