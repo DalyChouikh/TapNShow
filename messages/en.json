@@ -145,7 +145,11 @@
     "meeting_in_past": "This meeting's start time has passed. Pick a new time.",
     "meeting_incomplete": "Some details are missing. Check the title, time and place.",
     "too_many_invitees": "That's more people than one meeting can invite.",
-    "nothing_to_send": "Everyone in this audience has already been invited."
+    "nothing_to_send": "Everyone in this audience has already been invited.",
+    "answers_closed": "The meeting has started, so answers are closed.",
+    "invalid_choice": "That answer isn't available for this meeting.",
+    "delay_required": "Pick how late you'll be.",
+    "reason_required": "Please add a reason."
   },
   "Auth": {
     "title": "Sign in to {appName}",
