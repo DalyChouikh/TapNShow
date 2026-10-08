@@ -419,6 +419,12 @@ isOneToOne: false
 "add_meeting_people":
 { Args: { "p_meeting": string,"p_people": Json,"p_save_to_roster": boolean }; Returns: Json
                            },
+"attendance_details":
+{ Args: { "p_after_invitee"?: string,"p_after_meeting"?: string,"p_after_name"?: string,"p_after_starts"?: string,"p_from"?: string,"p_limit"?: number,"p_to"?: string,"p_workspace": string }; Returns: Json
+                           },
+"attendance_summary":
+{ Args: { "p_from"?: string,"p_to"?: string,"p_workspace": string }; Returns: Json
+                           },
 "bulk_contacts":
 { Args: { "p_action": string,"p_contact_ids": (string)[],"p_list_id"?: string,"p_workspace": string }; Returns: number
                            },
@@ -433,6 +439,9 @@ isOneToOne: false
                            },
 "consume_invite_email":
 { Args: { "p_workspace": string }; Returns: boolean
+                           },
+"contact_history":
+{ Args: { "p_after_meeting"?: string,"p_after_starts"?: string,"p_contact": string,"p_from"?: string,"p_limit"?: number,"p_to"?: string }; Returns: Json
                            },
 "create_invite":
 { Args: { "p_email": string,"p_role": Database["public"]['Enums']["workspace_role"],"p_token_hash": string,"p_workspace": string }; Returns: string
@@ -523,7 +532,13 @@ isOneToOne: false
 "meeting_audience":
 { Args: { "p_meeting": string }; Returns: Json
                            },
+"meeting_people":
+{ Args: { "p_after_id"?: string,"p_after_name"?: string,"p_filter"?: string,"p_limit"?: number,"p_meeting": string }; Returns: Json
+                           },
 "meeting_progress":
+{ Args: { "p_meeting": string }; Returns: Json
+                           },
+"meeting_results":
 { Args: { "p_meeting": string }; Returns: Json
                            },
 "meetings_page":
