@@ -25,9 +25,12 @@ const CONFETTI_FILL = {
 export function ConfirmStamp({
   label,
   show,
+  confetti = true,
 }: {
   label: string;
   show: boolean;
+  /** Burst confetti with the stamp (Going); off for Late and Absent. */
+  confetti?: boolean;
 }) {
   const isClient = useIsClient();
   // Decided once at mount: false for SSR/hydration, true for a client-side mount.
@@ -52,7 +55,7 @@ export function ConfirmStamp({
       >
         {label}
       </motion.span>
-      {animate
+      {animate && confetti
         ? CONFETTI_PIECES.map((piece, index) => (
             <motion.span
               key={index}

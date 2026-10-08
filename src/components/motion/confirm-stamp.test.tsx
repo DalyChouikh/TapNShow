@@ -23,6 +23,14 @@ describe("ConfirmStamp", () => {
     expect(screen.queryAllByTestId("confetti-piece")).toHaveLength(0);
   });
 
+  it("skips the confetti when asked (Late and Absent answers)", () => {
+    renderWithProviders(
+      <ConfirmStamp label="Confirmed" show confetti={false} />,
+    );
+    expect(screen.getByText("Confirmed")).toBeInTheDocument();
+    expect(screen.queryAllByTestId("confetti-piece")).toHaveLength(0);
+  });
+
   it("renders nothing when hidden", () => {
     renderWithProviders(<ConfirmStamp label="Confirmed" show={false} />);
     expect(screen.queryByText("Confirmed")).not.toBeInTheDocument();
