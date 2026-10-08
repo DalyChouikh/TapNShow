@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   choiceToStatus,
+  historyPageSchema,
+  peopleFilterSchema,
+  periodQuerySchema,
   statusesFor,
   submitAnswerBodySchema,
 } from "./responses";
@@ -41,5 +44,38 @@ describe("submitAnswerBodySchema", () => {
       submitAnswerBodySchema.safeParse({ ...base, reason: "x".repeat(501) })
         .success,
     ).toBe(false);
+  });
+});
+
+describe("organizer schemas", () => {
+  it("accepts an open or bounded period, never an inverted one", () => {
+    expect(periodQuerySchema.safeParse({}).success).toBe(true);
+    expect(
+      periodQuerySchema.safeParse({ from: "2026-09-01T00:00:00.000Z" }).success,
+    ).toBe(true);
+    expect(
+      periodQuerySchema.safeParse({
+        from: "2026-10-01T00:00:00.000Z",
+        to: "2026-09-01T00:00:00.000Z",
+      }).success,
+    ).toBe(false);
+    expect(periodQuerySchema.safeParse({ from: "yesterday" }).success).toBe(
+      false,
+    );
+  });
+
+  it("knows the people filters", () => {
+    expect(peopleFilterSchema.safeParse("no_reply").success).toBe(true);
+    expect(peopleFilterSchema.safeParse("maybe").success).toBe(false);
+  });
+
+  it("parses a history page with its counts", () => {
+    expect(
+      historyPageSchema.parse({
+        counts: { attending: 1, late: 0, absent: 0, noReply: 2 },
+        items: [],
+        nextCursor: null,
+      }).counts.noReply,
+    ).toBe(2);
   });
 });

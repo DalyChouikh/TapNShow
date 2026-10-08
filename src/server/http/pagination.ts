@@ -2,6 +2,7 @@ import "server-only";
 import type { NextResponse } from "next/server";
 import type { z } from "zod";
 import { pageQuerySchema, type Page } from "@/shared/api/pagination";
+import { type PeriodRange, periodQuerySchema } from "@/shared/api/responses";
 import { apiError } from "./errors";
 
 /** Opaque cursor: base64url of the keyset values of the last row shown. */
@@ -62,4 +63,21 @@ export function toPage<T>(
     items,
     nextCursor: rows.length > limit && last ? encodeCursor(keyOf(last)) : null,
   };
+}
+
+/** Reads `?from=&to=` (ISO instants; a missing bound is open). Malformed or inverted → 400. */
+export function readPeriod(
+  request: Request,
+): { ok: true; range: PeriodRange } | { ok: false; response: NextResponse } {
+  const search = new URL(request.url).searchParams;
+  const period = periodQuerySchema.safeParse({
+    from: search.get("from") ?? undefined,
+    to: search.get("to") ?? undefined,
+  });
+  return period.success
+    ? {
+        ok: true,
+        range: { from: period.data.from ?? null, to: period.data.to ?? null },
+      }
+    : { ok: false, response: apiError("invalid_input") };
 }

@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { COMMENT_MAX, REASON_MAX } from "@/config/responses";
 import { responseModeSchema, type ResponseMode } from "./meeting-settings";
+import { inviteeStatusSchema } from "./meetings";
+import { pageSchema } from "./pagination";
 
 /** A member's answer (spec §6 `responses.status`; RSVP uses attending / not_attending). */
 export const answerStatusSchema = z.enum([
@@ -83,3 +85,138 @@ export function choiceToStatus(
 export function needsReason(status: AnswerStatus): boolean {
   return status !== "attending";
 }
+
+const count = z.number().int();
+
+/** An organizer-side answer (the reads return `updated_at`, not `responded_at`). */
+const organizerAnswerSchema = answerSchema.omit({ respondedAt: true });
+
+/** `GET …/meetings/[id]/results`: email and answer counts (spec §7.7). */
+export const meetingResultsSchema = z.object({
+  responseMode: responseModeSchema,
+  emails: z.object({
+    total: count,
+    queued: count,
+    sent: count,
+    skipped: count,
+    failed: count,
+    unknown: count,
+  }),
+  answers: z.object({
+    attending: count,
+    late: count,
+    absent: count,
+    notAttending: count,
+    noReply: count,
+    calendarRequested: count,
+  }),
+  paused: count,
+  resumesAt: z.string().nullable(),
+  senderState: z.enum(["ok", "missing", "broken"]),
+});
+/** A meeting's counts. */
+export type MeetingResults = z.infer<typeof meetingResultsSchema>;
+
+/** Filters of a meeting's people list (the tiles; "all" when none is pressed). */
+export const peopleFilterSchema = z.enum([
+  "all",
+  "attending",
+  "late",
+  "absent",
+  "not_attending",
+  "no_reply",
+  "not_delivered",
+]);
+/** A people filter. */
+export type PeopleFilter = z.infer<typeof peopleFilterSchema>;
+
+/** One invitee with their answer (meeting page). */
+export const personRowSchema = z.object({
+  inviteeId: z.uuid(),
+  contactId: z.uuid(),
+  fullName: z.string(),
+  email: z.string(),
+  isAdhoc: z.boolean(),
+  emailStatus: inviteeStatusSchema,
+  emailError: z.string().nullable(),
+  sentAt: z.string().nullable(),
+  answer: organizerAnswerSchema.nullable(),
+});
+/** A person on the meeting page. */
+export type PersonRow = z.infer<typeof personRowSchema>;
+/** `GET …/meetings/[id]/people`. */
+export const peoplePageSchema = pageSchema(personRowSchema);
+
+/** History counts for one person over a period. */
+export const historyCountsSchema = z.object({
+  attending: count,
+  late: count,
+  absent: count,
+  noReply: count,
+});
+/** One past meeting in a person's history. */
+export const historyRowSchema = z.object({
+  meetingId: z.uuid(),
+  title: z.string(),
+  startsAt: z.string(),
+  timezone: z.string(),
+  responseMode: responseModeSchema,
+  emailStatus: inviteeStatusSchema,
+  answer: organizerAnswerSchema.nullable(),
+});
+/** A history row. */
+export type HistoryRow = z.infer<typeof historyRowSchema>;
+/** `GET …/contacts/[id]/history`: one page plus the period's counts. */
+export const historyPageSchema = pageSchema(historyRowSchema).extend({
+  counts: historyCountsSchema,
+});
+/** A history page. */
+export type HistoryPage = z.infer<typeof historyPageSchema>;
+
+/** `GET …/attendance`: every roster contact's counts for a period. */
+export const attendanceSummarySchema = z.object({
+  meetings: count,
+  rows: z.array(
+    z.object({
+      contactId: z.uuid(),
+      invited: count,
+      attending: count,
+      late: count,
+      absent: count,
+      noReply: count,
+    }),
+  ),
+});
+/** The Attendance table's data. */
+export type AttendanceSummary = z.infer<typeof attendanceSummarySchema>;
+
+/** One person in one counted meeting (exports). */
+export const attendanceDetailRowSchema = z.object({
+  meetingId: z.uuid(),
+  title: z.string(),
+  startsAt: z.string(),
+  timezone: z.string(),
+  responseMode: responseModeSchema,
+  inviteeId: z.uuid(),
+  contactId: z.uuid(),
+  fullName: z.string(),
+  email: z.string(),
+  emailStatus: inviteeStatusSchema,
+  answer: organizerAnswerSchema.nullable(),
+});
+/** An export detail row. */
+export type AttendanceDetailRow = z.infer<typeof attendanceDetailRowSchema>;
+/** `GET …/attendance/details`. */
+export const attendanceDetailsPageSchema = pageSchema(
+  attendanceDetailRowSchema,
+);
+
+const instant = z.iso.datetime({ offset: true });
+
+/** `?from=&to=` (instants; a missing bound is open). */
+export const periodQuerySchema = z
+  .object({ from: instant.optional(), to: instant.optional() })
+  .refine((p) => !p.from || !p.to || new Date(p.from) < new Date(p.to));
+
+/** The instants a history period covers (null = open). */
+export type PeriodRange = { from: string | null; to: string | null };

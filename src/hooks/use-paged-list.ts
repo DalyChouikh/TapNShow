@@ -4,7 +4,6 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import type { z } from "zod";
 import { PAGE_SIZE_DEFAULT } from "@/config/pagination";
 import { apiRequest } from "@/lib/api-client";
-import type { Page } from "@/shared/api/pagination";
 
 function pathWith(path: string, params: Record<string, string>): string {
   const query = new URLSearchParams(params).toString();
@@ -12,14 +11,17 @@ function pathWith(path: string, params: Record<string, string>): string {
 }
 
 /**
- * A paged list endpoint (`{ items, nextCursor }`) as one growing list. Pages refetch together on
+ * A paged list endpoint (`{ items, nextCursor }`, plus any extra fields such as history counts)
+ * as one growing list. Pages refetch together on
  * `refetchInterval` or invalidation, so live lists stay consistent (TanStack `useInfiniteQuery`).
  */
-export function usePagedList<T>(options: {
+export function usePagedList<
+  P extends { items: readonly object[]; nextCursor: string | null },
+>(options: {
   queryKey: readonly (string | number)[];
   path: string;
   params?: Record<string, string>;
-  schema: z.ZodType<Page<T>>;
+  schema: z.ZodType<P>;
   limit?: number;
   refetchInterval?: number | false;
   enabled?: boolean;
@@ -45,7 +47,8 @@ export function usePagedList<T>(options: {
   });
   return {
     query,
-    items: query.data?.pages.flatMap((page) => page.items) ?? [],
+    items: (query.data?.pages.flatMap((page) => page.items) ??
+      []) as P["items"][number][],
     hasMore: query.hasNextPage,
     isLoadingMore: query.isFetchingNextPage,
     loadMore: () => {
