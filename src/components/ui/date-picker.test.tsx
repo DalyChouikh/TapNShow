@@ -61,3 +61,23 @@ describe("DatePicker", () => {
     expect(trigger).toHaveClass("whitespace-nowrap");
   });
 });
+
+describe("DatePicker error", () => {
+  it("describes the error and switches to dark text on the danger fill", () => {
+    renderWithProviders(
+      <DatePicker
+        id="d"
+        label="Date"
+        value={null}
+        today="2026-10-07"
+        error="Pick a date."
+        onChange={vi.fn()}
+      />,
+    );
+    const trigger = screen.getByRole("button", { name: /Pick a date/ });
+    expect(trigger).toHaveAccessibleDescription("Pick a date.");
+    expect(trigger).toHaveAttribute("data-invalid");
+    expect(trigger).not.toHaveAttribute("aria-invalid");
+    expect(trigger.className).toContain("data-invalid:text-on-fill");
+  });
+});

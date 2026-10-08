@@ -6,7 +6,7 @@ import { BottomBar } from "./bottom-bar";
 vi.mock("next/navigation", () => ({ usePathname: () => "/w/club-ab12/lists" }));
 
 describe("BottomBar", () => {
-  it("marks the current section and shows + as disabled with a reason", () => {
+  it("marks the current section and links + to a new meeting", () => {
     renderWithProviders(<BottomBar role="owner" slug="club-ab12" />);
     const nav = screen.getByRole("navigation", { name: "Workspace" });
     expect(nav).toBeInTheDocument();
@@ -17,13 +17,15 @@ describe("BottomBar", () => {
     expect(screen.getByRole("link", { name: "Home" })).not.toHaveAttribute(
       "aria-current",
     );
-    const plus = screen.getByRole("button", { name: "New meeting" });
-    expect(plus).toHaveAttribute("aria-disabled", "true");
-    expect(plus).toHaveAccessibleDescription("Coming soon");
+    expect(screen.getByRole("link", { name: "New meeting" })).toHaveAttribute(
+      "href",
+      "/w/club-ab12/meetings/new",
+    );
   });
 
   it("has no + for Viewers", () => {
     renderWithProviders(<BottomBar role="viewer" slug="club-ab12" />);
+    expect(screen.queryByRole("link", { name: "New meeting" })).toBeNull();
     expect(screen.queryByRole("button", { name: "New meeting" })).toBeNull();
   });
 });

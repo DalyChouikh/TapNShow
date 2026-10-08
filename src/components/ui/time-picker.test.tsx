@@ -29,3 +29,22 @@ describe("TimePicker", () => {
     expect(onChange).toHaveBeenCalledWith("18:20");
   });
 });
+
+describe("TimePicker error", () => {
+  it("describes the error and switches to dark text on the danger fill", () => {
+    renderWithProviders(
+      <TimePicker
+        id="t"
+        label="Time"
+        value={null}
+        error="Pick a time."
+        onChange={vi.fn()}
+      />,
+    );
+    const trigger = screen.getByRole("button", { name: /Pick a time/ });
+    expect(trigger).toHaveAccessibleDescription("Pick a time.");
+    expect(trigger).toHaveAttribute("data-invalid");
+    expect(trigger).not.toHaveAttribute("aria-invalid");
+    expect(trigger.className).toContain("data-invalid:text-on-fill");
+  });
+});
