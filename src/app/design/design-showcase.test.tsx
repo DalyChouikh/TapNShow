@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { renderWithProviders } from "@/test/render";
@@ -23,6 +23,16 @@ describe("DesignShowcase response demo", () => {
       screen.getByRole("button", { name: /I'll be there/ }),
     );
     expect(screen.getByText("CONFIRMED")).toBeInTheDocument();
+  });
+
+  it("moves focus to the result after choosing attend (WCAG 2.4.3)", async () => {
+    renderWithProviders(<DesignShowcase />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /I'll be there/ }),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("attend-result")).toHaveFocus(),
+    );
   });
 
   it("shows the styled form controls", () => {

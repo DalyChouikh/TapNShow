@@ -5,7 +5,7 @@ import { buildSentryOptions } from "@/lib/observability/sentry-options";
 Sentry.init(
   buildSentryOptions({
     dsn: publicEnv.NEXT_PUBLIC_SENTRY_DSN,
-    environment: process.env.NEXT_PUBLIC_VERCEL_ENV ?? "development",
+    environment: publicEnv.NEXT_PUBLIC_VERCEL_ENV ?? "development",
   }),
 );
 

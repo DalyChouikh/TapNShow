@@ -58,6 +58,40 @@ test.describe("/design", () => {
     await context.close();
   });
 
+  test("a stored light preference wins over a dark OS on first paint", async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({ colorScheme: "dark" });
+    await context.addInitScript(() =>
+      window.localStorage.setItem("theme", "light"),
+    );
+    const page = await context.newPage();
+    await page.goto("/design", { waitUntil: "commit" });
+    await page.waitForSelector("body");
+    const bg = await page.evaluate(
+      () => getComputedStyle(document.documentElement).backgroundColor,
+    );
+    expect(bg).toBe("rgb(243, 238, 255)");
+    await context.close();
+  });
+
+  test("a stored dark preference wins over a light OS on first paint", async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({ colorScheme: "light" });
+    await context.addInitScript(() =>
+      window.localStorage.setItem("theme", "dark"),
+    );
+    const page = await context.newPage();
+    await page.goto("/design", { waitUntil: "commit" });
+    await page.waitForSelector("body");
+    const bg = await page.evaluate(
+      () => getComputedStyle(document.documentElement).backgroundColor,
+    );
+    expect(bg).toBe("rgb(22, 19, 31)");
+    await context.close();
+  });
+
   test("theme toggle switches data-theme", async ({ page }) => {
     await page.goto("/design");
     await page.getByRole("button", { name: /color theme/i }).click();
