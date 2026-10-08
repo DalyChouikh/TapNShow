@@ -4,10 +4,16 @@ import { describe, expect, it } from "vitest";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { toggleList } from "@/lib/meetings/audience-edit";
 import { routeFetch } from "@/test/fetch";
-import { audienceFixture, MEETING_IDS } from "@/test/fixtures/meetings";
+import {
+  audienceFixture,
+  meetingFixture,
+  MEETING_IDS,
+} from "@/test/fixtures/meetings";
 import {
   useAddPeople,
+  useMeeting,
   useMeetingAudience,
+  useSendMeeting,
   useSetAudience,
 } from "./use-meetings";
 
@@ -69,5 +75,39 @@ describe("audience edits after Add people", () => {
     );
     const put = fetchMock.mock.calls.find(([, init]) => init?.method === "PUT");
     expect(JSON.parse(String(put?.[1]?.body)).include).toEqual([GUEST]);
+  });
+});
+
+describe("after Send", () => {
+  it("marks the cached meeting as sent at once, so the meeting page does not bounce back to the editor", async () => {
+    let gets = 0;
+    routeFetch({
+      [`GET ${base}`]: () => {
+        gets += 1;
+        // The first load answers; the refetch after Send stays in flight.
+        return gets === 1
+          ? new Response(JSON.stringify(meetingFixture))
+          : new Promise<Response>(() => undefined);
+      },
+      [`POST ${base}/send`]: () =>
+        new Response(JSON.stringify({ invited: 2, skippedUnsubscribed: 0 })),
+      [`GET ${base}/audience`]: () => new Promise<Response>(() => undefined),
+      [`GET ${base}/progress`]: () => new Promise<Response>(() => undefined),
+      "GET /api/workspaces/club-ab12/meetings": () => new Response("[]"),
+    });
+    const { result } = renderHook(
+      () => ({
+        meeting: useMeeting("club-ab12", MEETING_IDS.meeting),
+        send: useSendMeeting("club-ab12", MEETING_IDS.meeting),
+      }),
+      { wrapper },
+    );
+    await waitFor(() =>
+      expect(result.current.meeting.data?.status).toBe("draft"),
+    );
+    await act(() => result.current.send.mutateAsync());
+    await waitFor(() =>
+      expect(result.current.meeting.data?.status).toBe("scheduled"),
+    );
   });
 });

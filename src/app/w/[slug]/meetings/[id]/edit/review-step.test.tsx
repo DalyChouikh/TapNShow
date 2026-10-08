@@ -139,7 +139,10 @@ describe("ReviewStep", () => {
     renderReview();
     await userEvent.click(await screen.findByRole("button", { name: "Open" }));
     const frame = await screen.findByTitle("Email preview");
-    expect(frame.getAttribute("sandbox")).toBe("");
+    // No scripts ever run in the preview; same-origin only lets the app measure its height
+    // (the dialog scrolls, not the frame: nested scrolling sticks on phones).
+    expect(frame.getAttribute("sandbox")).toBe("allow-same-origin");
+    expect(frame).toHaveClass("pointer-events-none");
     expect(frame.getAttribute("srcdoc")).toContain("Hi Amira");
   });
 });
