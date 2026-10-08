@@ -1,5 +1,4 @@
-import { Button, Link, render, Section, Text } from "react-email";
-import { APP_NAME } from "@/config/app";
+import { Button, render, Section, Text } from "react-email";
 import { RESPONSE_CHOICES, type ResponseChoice } from "@/config/meetings";
 import { renderAgendaHtml } from "@/lib/markdown/agenda";
 import {
@@ -9,9 +8,14 @@ import {
 } from "@/lib/meetings/format";
 import type { LocationMode, ResponseMode } from "@/shared/api/meeting-settings";
 import { EmailLayout } from "./email-layout";
+import {
+  bodyStyle as body,
+  labelStyle as label,
+  MeetingFooter,
+  MeetingWhenWhere,
+} from "./meeting-blocks";
 import { brutalBox, emailTheme as t } from "./theme";
 import { getEmailTranslator } from "./translator";
-import { meetingPlatform } from "@/lib/meetings/platform";
 
 /** Everything one personal invite needs (spec §9 Meeting invite email). */
 export type MeetingInviteEmailProps = {
@@ -42,15 +46,6 @@ const CHOICE_FILL: Record<ResponseChoice, string> = {
   not_going: t.danger,
 };
 
-const SAFE_URL = /^https?:\/\//i;
-const label = {
-  fontSize: "13px",
-  fontWeight: 700,
-  margin: "16px 0 4px",
-  textTransform: "uppercase" as const,
-};
-const body = { fontSize: "16px", lineHeight: "24px", margin: 0 };
-
 /** One member's invite: meeting card, answer buttons by mode, and per-workspace opt-out links. */
 export function MeetingInviteEmail({
   workspaceName,
@@ -63,13 +58,6 @@ export function MeetingInviteEmail({
   const when = formatMeetingWhen(meeting);
   const agendaHtml = renderAgendaHtml(meeting.agendaMd);
   const choices = RESPONSE_CHOICES[meeting.responseMode];
-  const showPlace =
-    meeting.locationMode !== "online" && meeting.locationText !== "";
-  const showOnline =
-    meeting.locationMode !== "in_person" && meeting.onlineText !== "";
-  const showLink =
-    meeting.locationMode !== "in_person" && SAFE_URL.test(meeting.meetingUrl);
-  const platform = showLink ? meetingPlatform(meeting.meetingUrl) : null;
   return (
     <EmailLayout
       sticker={workspaceName}
@@ -80,25 +68,11 @@ export function MeetingInviteEmail({
       })}
       heading={meeting.title}
       footer={
-        <>
-          {tr("meetingInvite.sentFrom", {
-            email: senderEmail,
-            appName: APP_NAME,
-          })}{" "}
-          <Link
-            href={links.unsubscribe}
-            style={{ color: t.muted, textDecoration: "underline" }}
-          >
-            {tr("meetingInvite.unsubscribe", { workspace: workspaceName })}
-          </Link>
-          {" · "}
-          <Link
-            href={links.report}
-            style={{ color: t.muted, textDecoration: "underline" }}
-          >
-            {tr("meetingInvite.report")}
-          </Link>
-        </>
+        <MeetingFooter
+          workspaceName={workspaceName}
+          senderEmail={senderEmail}
+          links={links}
+        />
       }
     >
       <Text style={{ ...body, color: t.muted, margin: "0 0 12px" }}>
@@ -107,32 +81,7 @@ export function MeetingInviteEmail({
       <Text style={body}>
         {tr("meetingInvite.greeting", { name: recipientName })}
       </Text>
-      <Text style={label}>{tr("meetingInvite.when")}</Text>
-      <Text style={{ ...body, fontWeight: 700 }}>
-        {tr("meetingInvite.whenValue", {
-          date: when.date,
-          start: when.start,
-          end: when.end,
-          zone: when.zone,
-        })}
-      </Text>
-      {showPlace || showOnline || showLink ? (
-        <Text style={label}>{tr("meetingInvite.where")}</Text>
-      ) : null}
-      {showPlace ? <Text style={body}>{meeting.locationText}</Text> : null}
-      {showOnline ? <Text style={body}>{meeting.onlineText}</Text> : null}
-      {showLink ? (
-        <Text style={body}>
-          <Link
-            href={meeting.meetingUrl}
-            style={{ color: t.ink, fontWeight: 700 }}
-          >
-            {platform
-              ? tr("meetingInvite.joinOn", { platform })
-              : tr("meetingInvite.joinOnline")}
-          </Link>
-        </Text>
-      ) : null}
+      <MeetingWhenWhere meeting={meeting} />
       {agendaHtml ? (
         <>
           <Text style={label}>{tr("meetingInvite.agenda")}</Text>
@@ -145,7 +94,26 @@ export function MeetingInviteEmail({
       ) : null}
       <Section style={{ margin: "20px 0 8px" }}>
         {choices.length === 0 ? (
-          <Text style={body}>{tr("meetingInvite.noAnswer")}</Text>
+          <>
+            <Text style={{ ...body, margin: "0 0 12px" }}>
+              {tr("meetingInvite.noAnswer")}
+            </Text>
+            {/* Opens the page only; the member taps "Email me a calendar invite" there (scanners). */}
+            <Button
+              href={links.respond}
+              style={{
+                ...brutalBox(t.primary, t.radiusControl),
+                color: t.ink,
+                display: "inline-block",
+                fontFamily: t.fontDisplay,
+                fontSize: "15px",
+                padding: "12px 18px",
+                textDecoration: "none",
+              }}
+            >
+              {tr("meetingInvite.addToCalendar")}
+            </Button>
+          </>
         ) : (
           choices.map((choice) => (
             <Button
