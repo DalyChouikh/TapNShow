@@ -18,6 +18,17 @@ describe("parsePublicEnv", () => {
     expect(env.NEXT_PUBLIC_SENTRY_DSN).toBeUndefined();
   });
 
+  it("reads the Vercel environment name and rejects unknown ones", () => {
+    const base = { NEXT_PUBLIC_APP_URL: "http://localhost:3000" };
+    expect(
+      parsePublicEnv({ ...base, NEXT_PUBLIC_VERCEL_ENV: "preview" })
+        .NEXT_PUBLIC_VERCEL_ENV,
+    ).toBe("preview");
+    expect(() =>
+      parsePublicEnv({ ...base, NEXT_PUBLIC_VERCEL_ENV: "staging" }),
+    ).toThrow(/NEXT_PUBLIC_VERCEL_ENV/);
+  });
+
   it("names the missing variable in the error", () => {
     expect(() => parsePublicEnv({})).toThrow(/NEXT_PUBLIC_APP_URL/);
   });

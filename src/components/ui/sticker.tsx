@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 /** Sticker background tones: any pastel fill, or the plain surface. */
 const stickerVariants = cva(
-  "inline-flex shrink-0 items-center justify-center rounded-sticker border-2 border-outline text-on-fill shadow-brutal-sm [&_svg]:shrink-0",
+  "inline-flex shrink-0 items-center justify-center rounded-sticker border-[length:var(--tn-border-width)] border-outline text-on-fill shadow-brutal-sm [&_svg]:shrink-0",
   {
     variants: {
       tone: {

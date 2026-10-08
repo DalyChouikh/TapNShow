@@ -1,10 +1,19 @@
 "use client";
 
 import { motion } from "motion/react";
-import type { ReactNode } from "react";
+import { createContext, useContext, useState, type ReactNode } from "react";
 import { STAGGER_SECONDS, springs } from "@/design/motion";
+import { useIsClient } from "@/lib/use-is-client";
+import { usePrefersReducedMotion } from "./use-prefers-reduced-motion";
 
-/** Container whose `StaggerItem` children rise in one after another. */
+const AnimateEntrance = createContext(false);
+
+/**
+ * Container whose `StaggerItem` children rise in one after another. The entrance plays only when
+ * the container mounts on the client after hydration; server HTML (and the hydrating render) is
+ * the final, fully visible state, so content never sits at opacity 0 waiting for JavaScript (#51).
+ * Reduced-motion users get no entrance.
+ */
 export function Stagger({
   className,
   children,
@@ -12,17 +21,24 @@ export function Stagger({
   className?: string;
   children: ReactNode;
 }) {
+  const isClient = useIsClient();
+  // Decided once at mount: false for SSR/hydration, true for a client-side mount.
+  const [entranceAllowed] = useState(isClient);
+  const reduced = usePrefersReducedMotion();
+  const animate = entranceAllowed && !reduced;
   return (
-    <motion.div
-      className={className}
-      initial="hidden"
-      animate="visible"
-      variants={{
-        visible: { transition: { staggerChildren: STAGGER_SECONDS } },
-      }}
-    >
-      {children}
-    </motion.div>
+    <AnimateEntrance.Provider value={animate}>
+      <motion.div
+        className={className}
+        initial={animate ? "hidden" : false}
+        animate="visible"
+        variants={{
+          visible: { transition: { staggerChildren: STAGGER_SECONDS } },
+        }}
+      >
+        {children}
+      </motion.div>
+    </AnimateEntrance.Provider>
   );
 }
 
@@ -34,9 +50,11 @@ export function StaggerItem({
   className?: string;
   children: ReactNode;
 }) {
+  const animate = useContext(AnimateEntrance);
   return (
     <motion.div
       className={className}
+      initial={animate ? "hidden" : false}
       variants={{
         hidden: { opacity: 0, y: 24 },
         visible: { opacity: 1, y: 0, transition: springs.enter },
