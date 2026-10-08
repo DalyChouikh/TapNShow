@@ -11,11 +11,12 @@ function renderGrid(
   onToggle = vi.fn(),
   canEdit = true,
   onOpen = vi.fn(),
+  contacts = rosterFixture.contacts,
 ) {
   renderWithProviders(
     <RosterGrid
       slug="club-ab12"
-      contacts={rosterFixture.contacts}
+      contacts={contacts}
       roster={rosterFixture}
       canEdit={canEdit}
       selectedIds={selectedIds}
@@ -104,5 +105,17 @@ describe("RosterGrid", () => {
     expect(
       screen.getByRole("checkbox", { name: "Select everyone shown" }),
     ).toHaveAttribute("aria-checked", "mixed");
+  });
+
+  it("marks an unsubscribed person in their row", () => {
+    const [first, ...rest] = rosterFixture.contacts;
+    renderGrid(new Set(), vi.fn(), true, vi.fn(), [
+      { ...first, unsubscribed: true },
+      ...rest,
+    ]);
+    const row = screen
+      .getByRole("checkbox", { name: `Select ${first.fullName}` })
+      .closest("tr") as HTMLElement;
+    expect(within(row).getByText("Unsubscribed")).toBeInTheDocument();
   });
 });

@@ -20,6 +20,10 @@ export const contactSchema = z.object({
   email: z.string(),
   fullName: z.string(),
   listIds: z.array(z.uuid()),
+  /** Unsubscribed from this workspace's emails (only the person can undo it). */
+  unsubscribed: z.boolean().default(false),
+  /** Said "Not my group" (also unsubscribed). */
+  reported: z.boolean().default(false),
 });
 /** One person of the roster. */
 export type Contact = z.infer<typeof contactSchema>;

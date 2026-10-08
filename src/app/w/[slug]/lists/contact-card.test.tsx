@@ -30,4 +30,25 @@ describe("ContactCard", () => {
     );
     expect(screen.getByText(ines.email)).toHaveClass("text-muted-ink");
   });
+
+  it("marks people who unsubscribed or reported the group", () => {
+    const { unmount } = renderWithProviders(
+      <ContactCard
+        contact={{ ...ines, unsubscribed: true }}
+        lists={rosterFixture.lists}
+        onOpen={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Unsubscribed")).toBeInTheDocument();
+    unmount();
+    renderWithProviders(
+      <ContactCard
+        contact={{ ...ines, unsubscribed: true, reported: true }}
+        lists={rosterFixture.lists}
+        onOpen={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Reported: not my group")).toBeInTheDocument();
+    expect(screen.queryByText("Unsubscribed")).toBeNull();
+  });
 });

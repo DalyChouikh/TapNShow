@@ -468,7 +468,9 @@
     "paste": "Paste from Sheets",
     "addPersonToList": "Add {name} to a list",
     "searchListsOnly": "Search lists",
-    "noListsMatch": "No list matches."
+    "noListsMatch": "No list matches.",
+    "markUnsubscribed": "Unsubscribed",
+    "markReported": "Reported: not my group"
   },
   "ListsImport": {
     "title": "Import people",
@@ -761,5 +763,29 @@
     "invitees": "Invited people",
     "yourTime": "your time: {time}",
     "openLink": "Open the meeting link"
+  },
+  "TokenPages": {
+    "invalidTitle": "This link isn't valid",
+    "invalidBody": "It may have been mistyped or the invitation was removed.",
+    "limited": "Too many tries. Wait a few minutes and try again.",
+    "unsubscribeTitle": "Stop emails from {workspace}?",
+    "unsubscribeBody": "{email} will stop getting meeting emails from {workspace}. Other groups on TapNShow are not affected.",
+    "unsubscribe": "Unsubscribe",
+    "unsubscribedTitle": "You're unsubscribed",
+    "unsubscribedBody": "{workspace} won't email {email} again.",
+    "resubscribe": "Subscribe again",
+    "resubscribedTitle": "You're subscribed again",
+    "resubscribedBody": "You'll get {workspace}'s meeting emails again.",
+    "reportTitle": "Don't know this group?",
+    "reportBody": "If you never joined {workspace}, tell us. We'll stop its emails to {email} and our team will look at it.",
+    "report": "Report and unsubscribe",
+    "reportedTitle": "Thanks for telling us",
+    "reportedBody": "You won't hear from {workspace} again.",
+    "placeholderTitle": "Answering opens soon",
+    "placeholderBody": "You'll be able to answer this invitation here very soon. The meeting details are below.",
+    "when": "When",
+    "where": "Where",
+    "join": "Join online",
+    "cancelled": "This meeting was cancelled."
   }
 }

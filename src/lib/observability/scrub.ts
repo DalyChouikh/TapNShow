@@ -1,8 +1,10 @@
 /**
- * `/r/<token>` personal links and `/invite/<token>` invite links, including percent-encoded
+ * `/r/<token>` personal links (also inside `/api/r/<token>`), `/u/<token>`, `/report/<token>` and
+ * `/invite/<token>` links, including percent-encoded
  * slashes and any letter case. Route patterns such as `/r/[token]` are left alone.
  */
-const TOKEN_LINK = /(?:\/|%2f)(r|invite)(?:\/|%2f)(?!\[|%5b)[^/?#&\s"'\\]+/gi;
+const TOKEN_LINK =
+  /(?:\/|%2f)(r|u|report|invite)(?:\/|%2f)(?!\[|%5b)[^/?#&\s"'\\]+/gi;
 
 /** Google OAuth callback URLs (sign-in and Gmail connect) with their query string (the `code` is a one-time credential). */
 const OAUTH_CALLBACK =

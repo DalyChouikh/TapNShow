@@ -23,6 +23,8 @@ const dbRosterSchema = z
         email: z.string(),
         full_name: z.string(),
         list_ids: z.array(z.uuid()),
+        unsubscribed: z.boolean().default(false),
+        reported: z.boolean().default(false),
       }),
     ),
     lists: z.array(
@@ -44,6 +46,8 @@ const dbRosterSchema = z
       email: c.email,
       fullName: c.full_name,
       listIds: c.list_ids,
+      unsubscribed: c.unsubscribed,
+      reported: c.reported,
     })),
     lists: db.lists.map((l) => ({
       id: l.id,
