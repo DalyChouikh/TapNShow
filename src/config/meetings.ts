@@ -56,3 +56,9 @@ export const PEOPLE_PER_ADD_MAX = 50;
 
 /** Audience rows shown before "Show N more". */
 export const AUDIENCE_PAGE_SIZE = 50;
+
+/**
+ * Whether Gmail keeps a custom From display name set by the Gmail API (checked at Task 10's first
+ * real send; see the M4 ledger). When false, the Review step shows only the address.
+ */
+export const FROM_NAME_KEPT = true;
