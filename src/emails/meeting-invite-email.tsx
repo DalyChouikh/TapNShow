@@ -80,11 +80,17 @@ export function MeetingInviteEmail({
             email: senderEmail,
             appName: APP_NAME,
           })}{" "}
-          <Link href={links.unsubscribe} style={{ color: t.muted }}>
+          <Link
+            href={links.unsubscribe}
+            style={{ color: t.muted, textDecoration: "underline" }}
+          >
             {tr("meetingInvite.unsubscribe", { workspace: workspaceName })}
           </Link>
           {" · "}
-          <Link href={links.report} style={{ color: t.muted }}>
+          <Link
+            href={links.report}
+            style={{ color: t.muted, textDecoration: "underline" }}
+          >
             {tr("meetingInvite.report")}
           </Link>
         </>

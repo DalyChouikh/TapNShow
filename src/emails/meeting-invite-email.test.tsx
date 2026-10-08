@@ -56,6 +56,16 @@ describe("renderMeetingInviteEmail", () => {
     expect(email.html).not.toMatch(EMOJI);
   });
 
+  it("underlines the footer links so they read as links", async () => {
+    const email = await renderMeetingInviteEmail(base);
+    for (const href of [base.links.unsubscribe, base.links.report]) {
+      const tag = new RegExp(`<a[^>]*href="${href}"[^>]*>`).exec(
+        email.html,
+      )?.[0];
+      expect(tag).toMatch(/text-decoration:\s*underline/);
+    }
+  });
+
   it("shows two answers for RSVP and none for announcements", async () => {
     const rsvp = await renderMeetingInviteEmail({
       ...base,
