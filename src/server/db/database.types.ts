@@ -158,13 +158,13 @@ isOneToOne: false
                   ]
                 },"meeting_invitees": {
                   Row: {
-                    "contact_id": string,"email_error": string | null,"email_status": Database["public"]['Enums']["invitee_email_status"],"id": string,"invited_at": string,"meeting_id": string,"sent_at": string | null,"token_hash": string | null,"workspace_id": string
+                    "calendar_requested_at": string | null,"calendar_sequence": number,"calendar_state": Database["public"]['Enums']["calendar_state"],"contact_id": string,"email_error": string | null,"email_status": Database["public"]['Enums']["invitee_email_status"],"id": string,"invited_at": string,"meeting_id": string,"sent_at": string | null,"token_hash": string | null,"workspace_id": string
                   }
                   Insert: {
-                    "contact_id": string,"email_error"?: string | null,"email_status"?: Database["public"]['Enums']["invitee_email_status"],"id"?: string,"invited_at"?: string,"meeting_id": string,"sent_at"?: string | null,"token_hash"?: string | null,"workspace_id": string
+                    "calendar_requested_at"?: string | null,"calendar_sequence"?: number,"calendar_state"?: Database["public"]['Enums']["calendar_state"],"contact_id": string,"email_error"?: string | null,"email_status"?: Database["public"]['Enums']["invitee_email_status"],"id"?: string,"invited_at"?: string,"meeting_id": string,"sent_at"?: string | null,"token_hash"?: string | null,"workspace_id": string
                   }
                   Update: {
-                    "contact_id"?: string,"email_error"?: string | null,"email_status"?: Database["public"]['Enums']["invitee_email_status"],"id"?: string,"invited_at"?: string,"meeting_id"?: string,"sent_at"?: string | null,"token_hash"?: string | null,"workspace_id"?: string
+                    "calendar_requested_at"?: string | null,"calendar_sequence"?: number,"calendar_state"?: Database["public"]['Enums']["calendar_state"],"contact_id"?: string,"email_error"?: string | null,"email_status"?: Database["public"]['Enums']["invitee_email_status"],"id"?: string,"invited_at"?: string,"meeting_id"?: string,"sent_at"?: string | null,"token_hash"?: string | null,"workspace_id"?: string
                   }
                   Relationships: [
                     {
@@ -248,6 +248,68 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "workspaces"
       referencedColumns: ["id"]
+    }
+                  ]
+                },"response_history": {
+                  Row: {
+                    "after_deadline": boolean,"changed_at": string,"comment": string,"delay_minutes": number | null,"id": number,"invitee_id": string,"meeting_id": string,"reason": string,"response_id": string,"status": Database["public"]['Enums']["response_status"],"workspace_id": string
+                  }
+                  Insert: {
+                    "after_deadline": boolean,"changed_at"?: string,"comment"?: string,"delay_minutes"?: number | null,"id"?: never,"invitee_id": string,"meeting_id": string,"reason"?: string,"response_id": string,"status": Database["public"]['Enums']["response_status"],"workspace_id": string
+                  }
+                  Update: {
+                    "after_deadline"?: boolean,"changed_at"?: string,"comment"?: string,"delay_minutes"?: number | null,"id"?: never,"invitee_id"?: string,"meeting_id"?: string,"reason"?: string,"response_id"?: string,"status"?: Database["public"]['Enums']["response_status"],"workspace_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "response_history_invitee_id_fkey"
+      columns: ["invitee_id"]
+isOneToOne: false
+      referencedRelation: "meeting_invitees"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "response_history_meeting_id_fkey"
+      columns: ["meeting_id"]
+isOneToOne: false
+      referencedRelation: "meetings"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "response_history_response_id_fkey"
+      columns: ["response_id"]
+isOneToOne: false
+      referencedRelation: "responses"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "response_history_workspace_id_fkey"
+      columns: ["workspace_id"]
+isOneToOne: false
+      referencedRelation: "workspaces"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"responses": {
+                  Row: {
+                    "after_deadline": boolean,"comment": string,"delay_minutes": number | null,"id": string,"invitee_id": string,"meeting_id": string,"needs_reconfirmation": boolean,"reason": string,"responded_at": string,"status": Database["public"]['Enums']["response_status"],"updated_at": string,"workspace_id": string
+                  }
+                  Insert: {
+                    "after_deadline"?: boolean,"comment"?: string,"delay_minutes"?: number | null,"id"?: string,"invitee_id": string,"meeting_id": string,"needs_reconfirmation"?: boolean,"reason"?: string,"responded_at"?: string,"status": Database["public"]['Enums']["response_status"],"updated_at"?: string,"workspace_id": string
+                  }
+                  Update: {
+                    "after_deadline"?: boolean,"comment"?: string,"delay_minutes"?: number | null,"id"?: string,"invitee_id"?: string,"meeting_id"?: string,"needs_reconfirmation"?: boolean,"reason"?: string,"responded_at"?: string,"status"?: Database["public"]['Enums']["response_status"],"updated_at"?: string,"workspace_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "responses_invitee_id_fkey"
+      columns: ["invitee_id"]
+isOneToOne: true
+      referencedRelation: "meeting_invitees"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "responses_meeting_id_workspace_id_fkey"
+      columns: ["meeting_id","workspace_id"]
+isOneToOne: false
+      referencedRelation: "meetings"
+      referencedColumns: ["id","workspace_id"]
     }
                   ]
                 },"send_log": {
@@ -494,8 +556,14 @@ isOneToOne: false
 "token_invitee":
 { Args: { "p_token_hash": string }; Returns: Json
                            },
+"token_request_calendar":
+{ Args: { "p_token_hash": string }; Returns: boolean
+                           },
 "token_resubscribe":
 { Args: { "p_token_hash": string }; Returns: boolean
+                           },
+"token_submit_response":
+{ Args: { "p_comment"?: string,"p_delay_minutes"?: number,"p_reason"?: string,"p_status": Database["public"]['Enums']["response_status"],"p_token_hash": string }; Returns: Json
                            },
 "token_unsubscribe":
 { Args: { "p_token_hash": string,"p_via": Database["public"]['Enums']["unsubscribe_via"] }; Returns: boolean
@@ -511,7 +579,7 @@ isOneToOne: false
                            }
           }
           Enums: {
-            "audience_mode": "include"|"exclude","connection_status": "active"|"broken","invitee_email_status": "queued"|"sent"|"skipped"|"failed"|"unknown","job_kind": "invite"|"calendar_confirm"|"update"|"cancel"|"reminder"|"sheet_sync"|"push"|"system_email","job_status": "pending"|"processing"|"done"|"failed"|"paused","location_mode": "in_person"|"online"|"hybrid","meeting_status": "draft"|"scheduled"|"cancelled","response_mode": "announcement"|"rsvp"|"attendance","unsubscribe_via": "link"|"report","workspace_role": "owner"|"admin"|"viewer"
+            "audience_mode": "include"|"exclude","calendar_state": "none"|"added","connection_status": "active"|"broken","invitee_email_status": "queued"|"sent"|"skipped"|"failed"|"unknown","job_kind": "invite"|"calendar_confirm"|"update"|"cancel"|"reminder"|"sheet_sync"|"push"|"system_email","job_status": "pending"|"processing"|"done"|"failed"|"paused","location_mode": "in_person"|"online"|"hybrid","meeting_status": "draft"|"scheduled"|"cancelled","response_mode": "announcement"|"rsvp"|"attendance","response_status": "attending"|"late"|"absent"|"not_attending","unsubscribe_via": "link"|"report","workspace_role": "owner"|"admin"|"viewer"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -627,7 +695,7 @@ export type CompositeTypes<
 export const Constants = {
   "public": {
           Enums: {
-            "audience_mode": ["include", "exclude"],"connection_status": ["active", "broken"],"invitee_email_status": ["queued", "sent", "skipped", "failed", "unknown"],"job_kind": ["invite", "calendar_confirm", "update", "cancel", "reminder", "sheet_sync", "push", "system_email"],"job_status": ["pending", "processing", "done", "failed", "paused"],"location_mode": ["in_person", "online", "hybrid"],"meeting_status": ["draft", "scheduled", "cancelled"],"response_mode": ["announcement", "rsvp", "attendance"],"unsubscribe_via": ["link", "report"],"workspace_role": ["owner", "admin", "viewer"]
+            "audience_mode": ["include", "exclude"],"calendar_state": ["none", "added"],"connection_status": ["active", "broken"],"invitee_email_status": ["queued", "sent", "skipped", "failed", "unknown"],"job_kind": ["invite", "calendar_confirm", "update", "cancel", "reminder", "sheet_sync", "push", "system_email"],"job_status": ["pending", "processing", "done", "failed", "paused"],"location_mode": ["in_person", "online", "hybrid"],"meeting_status": ["draft", "scheduled", "cancelled"],"response_mode": ["announcement", "rsvp", "attendance"],"response_status": ["attending", "late", "absent", "not_attending"],"unsubscribe_via": ["link", "report"],"workspace_role": ["owner", "admin", "viewer"]
           }
         }
 } as const
