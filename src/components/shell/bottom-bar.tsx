@@ -12,6 +12,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Sticker } from "@/components/ui/sticker";
+import { publicEnv } from "@/config/public-env";
 import { cn } from "@/lib/utils";
 import type { WorkspaceRole } from "@/shared/api/me";
 import { navItemsFor, type NavItem } from "./nav-items";
@@ -34,7 +35,7 @@ export function BottomBar({
 }) {
   const t = useTranslations("Shell.nav");
   const pathname = usePathname();
-  const items = navItemsFor(role, slug);
+  const items = navItemsFor(role, slug, publicEnv.NEXT_PUBLIC_MEETINGS_ENABLED);
   const isActive = (item: NavItem) =>
     item.key === "home"
       ? pathname === item.href
@@ -48,6 +49,24 @@ export function BottomBar({
       <ul className="mx-auto flex max-w-md items-end justify-around px-2 pt-2 pb-2">
         {items.map((item) => {
           const Glyph = ICONS[item.key];
+          if (item.key === "new" && item.enabled) {
+            return (
+              <li key={item.key} className="-mt-6">
+                <Link
+                  href={item.href}
+                  aria-label={t("new")}
+                  className="flex flex-col items-center gap-1 rounded-full"
+                >
+                  <Sticker
+                    tone="primary"
+                    className="size-14 rounded-full [&_svg]:size-7"
+                  >
+                    <Glyph weight="bold" />
+                  </Sticker>
+                </Link>
+              </li>
+            );
+          }
           if (item.key === "new") {
             return (
               <li key={item.key} className="-mt-6">

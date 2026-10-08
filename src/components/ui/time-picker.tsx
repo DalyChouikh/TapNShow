@@ -56,15 +56,20 @@ export function TimePicker({
             id={id}
             type="button"
             aria-labelledby={`${id}-label ${id}`}
-            aria-invalid={error ? true : undefined}
+            // A button cannot be aria-invalid; the error is announced via aria-describedby.
+            data-invalid={error ? "" : undefined}
             aria-describedby={errorId}
             className={cn(
               buttonVariants({ tone: "surface" }),
-              "w-full justify-start whitespace-nowrap shadow-brutal-sm aria-invalid:bg-fill-danger",
+              "group w-full justify-start whitespace-nowrap shadow-brutal-sm data-invalid:bg-fill-danger data-invalid:text-on-fill",
             )}
           >
             <Clock weight="bold" aria-hidden />
-            {value ?? <span className="text-muted-ink">{t("pickTime")}</span>}
+            {value ?? (
+              <span className="text-muted-ink group-data-invalid:text-on-fill-muted">
+                {t("pickTime")}
+              </span>
+            )}
           </button>
         </PopoverTrigger>
         <PopoverContent className="w-56 p-1.5">

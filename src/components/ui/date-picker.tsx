@@ -45,11 +45,12 @@ export function DatePicker({
             id={id}
             type="button"
             aria-labelledby={`${id}-label ${id}`}
-            aria-invalid={error ? true : undefined}
+            // A button cannot be aria-invalid; the error is announced via aria-describedby.
+            data-invalid={error ? "" : undefined}
             aria-describedby={errorId}
             className={cn(
               buttonVariants({ tone: "surface" }),
-              "w-full justify-start whitespace-nowrap shadow-brutal-sm aria-invalid:bg-fill-danger",
+              "group w-full justify-start whitespace-nowrap shadow-brutal-sm data-invalid:bg-fill-danger data-invalid:text-on-fill",
             )}
           >
             <CalendarBlank weight="bold" aria-hidden />
@@ -61,11 +62,17 @@ export function DatePicker({
                   : "EEE d MMM yyyy",
               )
             ) : (
-              <span className="text-muted-ink">{t("pickDate")}</span>
+              <span className="text-muted-ink group-data-invalid:text-on-fill-muted">
+                {t("pickDate")}
+              </span>
             )}
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-1.5">
+        {/* Seven 44 px days need 317 px: on 320 px phones the panel runs almost edge to edge. */}
+        <PopoverContent
+          className="w-auto p-0.5 min-[360px]:p-1.5"
+          collisionPadding={1}
+        >
           <DayPicker
             mode="single"
             weekStartsOn={1}
