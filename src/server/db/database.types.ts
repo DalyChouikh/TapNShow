@@ -423,7 +423,7 @@ isOneToOne: false
 { Args: { "p_run": string }; Returns: undefined
                            },
 "dispatch_reserve":
-{ Args: { "p_job": string }; Returns: Json
+{ Args: { "p_job": string,"p_token_hash"?: string }; Returns: Json
                            },
 "dispatch_retry":
 { Args: { "p_error": string,"p_job": string }; Returns: Json

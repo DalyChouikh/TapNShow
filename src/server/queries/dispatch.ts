@@ -130,7 +130,8 @@ export type DispatchStore = {
     limit: number,
     leaseSeconds: number,
   ): Promise<Claim | null>;
-  reserve(jobId: string): Promise<ReserveResult>;
+  /** Reserves quota and marks the send started; stores the invitee's token hash in the same step. */
+  reserve(jobId: string, tokenHash: string): Promise<ReserveResult>;
   finish(
     jobId: string,
     outcome: "sent" | "skipped" | "failed" | "unknown",
@@ -179,9 +180,10 @@ export function createDispatchStore(
       check(error);
       return data ? claimSchema.parse(data) : null;
     },
-    async reserve(jobId) {
+    async reserve(jobId, tokenHash) {
       const { data, error } = await client.rpc("dispatch_reserve", {
         p_job: jobId,
+        p_token_hash: tokenHash,
       });
       check(error);
       return reserveSchema.parse(data);

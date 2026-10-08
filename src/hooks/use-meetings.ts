@@ -150,20 +150,25 @@ export function useSetAudience(slug: string, id: string) {
   });
 }
 
-/** "Add people" (several at once). */
+/** "Add people" (several at once); runs in the audience save queue. */
 export function useAddPeople(slug: string, id: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: AddPeopleBody) =>
-      apiRequest(`${base(slug)}/${id}/people`, {
+    // Same queue as useSetAudience: the next audience edit waits for these people and the fresh
+    // audience, so a quick list tap cannot replace the audience without them.
+    scope: { id: `meeting-audience-${slug}-${id}` },
+    mutationFn: async (body: AddPeopleBody) => {
+      const added = await apiRequest(`${base(slug)}/${id}/people`, {
         method: "POST",
         body,
         schema: addPeopleResponseSchema,
-      }),
-    onSettled: () => {
-      void queryClient.invalidateQueries({
+      });
+      await queryClient.refetchQueries({
         queryKey: audienceQueryKey(slug, id),
       });
+      return added;
+    },
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: rosterQueryKey(slug) });
     },
   });

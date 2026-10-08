@@ -55,4 +55,16 @@ describe("audience edits", () => {
     };
     expect(togglePerson(excluded, MEETING_IDS.amira, true).exclude).toEqual([]);
   });
+
+  it("unticking a list member who was also added individually drops the addition too", () => {
+    const both: Audience = {
+      ...audienceFixture,
+      people: audienceFixture.people.map((p) =>
+        p.id === MEETING_IDS.amira ? { ...p, added: true } : p,
+      ),
+    };
+    const body = togglePerson(both, MEETING_IDS.amira, false);
+    expect(body.exclude).toEqual([MEETING_IDS.amira]);
+    expect(body.include).toEqual([]);
+  });
 });
