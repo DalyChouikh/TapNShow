@@ -9,7 +9,7 @@ import {
   XIcon,
 } from "@phosphor-icons/react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ConfirmStamp } from "@/components/motion/confirm-stamp";
 import { Stagger, StaggerItem } from "@/components/motion/stagger";
 import { ConfirmDialog } from "@/components/forms/confirm-dialog";
@@ -42,6 +42,7 @@ export function DesignShowcase() {
   const [time, setTime] = useState<string | null>("18:00");
   const [agenda, setAgenda] = useState("- Recap\n- **Hackathon** teams");
   const [confirming, setConfirming] = useState(false);
+  const resultRef = useRef<HTMLDivElement>(null);
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-6 px-4 py-6">
@@ -89,7 +90,12 @@ export function DesignShowcase() {
             </ul>
 
             {choice === "attend" ? (
-              <div className="flex flex-col gap-3">
+              <div
+                ref={resultRef}
+                tabIndex={-1}
+                data-testid="attend-result"
+                className="flex flex-col gap-3 rounded-control focus-visible:outline-2"
+              >
                 <ConfirmStamp label={t("confirmed")} show />
                 <Button onClick={() => setChoice("none")}>{t("reset")}</Button>
               </div>
@@ -98,7 +104,11 @@ export function DesignShowcase() {
                 <Button
                   tone="success"
                   size="lg"
-                  onClick={() => setChoice("attend")}
+                  onClick={() => {
+                    setChoice("attend");
+                    // WCAG 2.4.3: focus the result once it has rendered.
+                    requestAnimationFrame(() => resultRef.current?.focus());
+                  }}
                 >
                   {t("attend")}
                   <Sticker size="sm">

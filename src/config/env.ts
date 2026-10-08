@@ -24,6 +24,7 @@ const serverEnvSchema = z
     GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
     VERCEL_URL: z.string().min(1).optional(),
     VERCEL_BRANCH_URL: z.string().min(1).optional(),
+    VERCEL_ENV: z.enum(["production", "preview", "development"]).optional(),
     GOOGLE_TOKEN_ENCRYPTION_KEY: z.string().min(1).optional(),
     INVITE_TOKEN_SECRET: z.string().min(32).optional(),
     DISPATCH_SECRET: z.string().min(32).optional(),
