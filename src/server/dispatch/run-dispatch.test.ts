@@ -238,13 +238,49 @@ describe("runDispatch", () => {
     );
   });
 
-  it("stops a sender at its quota and at the time budget, handing jobs back", async () => {
-    const quota = setup({
-      jobs: [job(1), job(2)],
-      reserve: [{ kind: "quota", retryAt: "2026-10-10T17:00:00Z" }],
+  it("on the daily cap, defers all of that sender's jobs once and does not re-claim it (#168)", async () => {
+    const quota = setup({ jobs: [job(1), job(2), job(3)] });
+    // Like the database: the sender stays claimable until its jobs are pushed back.
+    let deferred = false;
+    let claims = 0;
+    quota.store.claim.mockImplementation(async () => {
+      claims += 1;
+      quota.advance(1_000);
+      return deferred || claims > 20
+        ? null
+        : {
+            connection: {
+              id: "30000000-0000-4000-8000-000000000000",
+              userId: "40000000-0000-4000-8000-000000000000",
+              googleSub: "g-1",
+              googleEmail: "club@gmail.com",
+              refreshTokenEncrypted: "sealed",
+            },
+            jobs: [job(1), job(2), job(3)],
+          };
     });
-    await runDispatch(quota.deps, OPTIONS);
-    expect(quota.store.unclaim).toHaveBeenCalledWith([job(2).jobId]);
+    quota.store.deferSender.mockImplementation(async () => {
+      deferred = true;
+    });
+    quota.store.reserve.mockImplementation(async () => ({
+      kind: "quota",
+      retryAt: "2026-10-10T17:00:00.000Z",
+    }));
+    const summary = await runDispatch(quota.deps, OPTIONS);
+    expect(quota.store.deferSender).toHaveBeenCalledOnce();
+    expect(quota.store.deferSender).toHaveBeenCalledWith(
+      "50000000-0000-4000-8000-000000000000",
+      "30000000-0000-4000-8000-000000000000",
+      new Date("2026-10-10T17:00:00.000Z"),
+      "quota",
+    );
+    expect(quota.store.reserve).toHaveBeenCalledOnce();
+    expect(quota.deps.refresh).toHaveBeenCalledOnce();
+    expect(quota.deps.gmail).not.toHaveBeenCalled();
+    expect(summary.deferred).toBe(1);
+  });
+
+  it("stops a sender at the time budget, handing jobs back", async () => {
     const budget = setup({ jobs: [job(1), job(2), job(3)] });
     await runDispatch(budget.deps, { ...OPTIONS, budgetMs: 1_500 });
     expect(budget.store.unclaim).toHaveBeenCalledWith([job(3).jobId]);
