@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { maxDuration as dispatchRouteMax } from "@/app/api/internal/dispatch/route";
+import { maxDuration as calendarRouteMax } from "@/app/api/r/[token]/calendar/route";
+import { maxDuration as answerRouteMax } from "@/app/api/r/[token]/response/route";
 import { maxDuration as sendRouteMax } from "@/app/api/workspaces/[slug]/meetings/[id]/send/route";
 import { GMAIL_SEND_TIMEOUT_MS } from "./gmail";
 import {
@@ -22,5 +24,7 @@ describe("dispatch timing (#168)", () => {
   it("routes that run the dispatcher use the same maxDuration", () => {
     expect(dispatchRouteMax).toBe(DISPATCH_MAX_DURATION_S);
     expect(sendRouteMax).toBe(DISPATCH_MAX_DURATION_S);
+    expect(answerRouteMax).toBe(DISPATCH_MAX_DURATION_S);
+    expect(calendarRouteMax).toBe(DISPATCH_MAX_DURATION_S);
   });
 });
