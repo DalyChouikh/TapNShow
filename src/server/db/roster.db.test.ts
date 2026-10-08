@@ -222,6 +222,8 @@ describe("roster()", () => {
           email: "ines-1@example.test",
           full_name: "ines 1",
           list_ids: [dev],
+          unsubscribed: false,
+          reported: false,
         },
       ],
       lists: [
