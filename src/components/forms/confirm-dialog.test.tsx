@@ -47,3 +47,22 @@ describe("ConfirmDialog", () => {
     expect(onConfirm).not.toHaveBeenCalled();
   });
 });
+
+describe("ConfirmDialog long titles", () => {
+  it("lets a long email in the title wrap inside the dialog", () => {
+    renderWithProviders(
+      <ConfirmDialog
+        open
+        onOpenChange={vi.fn()}
+        title="Disconnect mohamedali.benabdallah@gmail.com?"
+        confirmLabel="Disconnect"
+        onConfirm={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", {
+        name: "Disconnect mohamedali.benabdallah@gmail.com?",
+      }).className,
+    ).toContain("[overflow-wrap:anywhere]");
+  });
+});

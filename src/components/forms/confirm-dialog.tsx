@@ -42,7 +42,9 @@ export function ConfirmDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle className="[overflow-wrap:anywhere]">
+            {title}
+          </DialogTitle>
           {description ? (
             <DialogDescription>{description}</DialogDescription>
           ) : null}
