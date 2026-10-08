@@ -4,25 +4,17 @@ import type { WorkspaceRole } from "@/shared/api/me";
 export type NavItem = {
   key: "home" | "meetings" | "new" | "lists" | "settings";
   href: string;
-  enabled: boolean;
 };
 
-/**
- * Bottom bar (spec §4 "Hub + center +"). "+" (new meeting) is enabled with the M4 meetings flag
- * and shown disabled without it; Viewers never see it.
- */
-export function navItemsFor(
-  role: WorkspaceRole,
-  slug: string,
-  meetingsEnabled: boolean,
-): NavItem[] {
+/** Bottom bar (spec §4 "Hub + center +"): "+" starts a new meeting; Viewers never see it. */
+export function navItemsFor(role: WorkspaceRole, slug: string): NavItem[] {
   const base = `/w/${slug}`;
   const items: NavItem[] = [
-    { key: "home", href: base, enabled: true },
-    { key: "meetings", href: `${base}/meetings`, enabled: true },
-    { key: "new", href: `${base}/meetings/new`, enabled: meetingsEnabled },
-    { key: "lists", href: `${base}/lists`, enabled: true },
-    { key: "settings", href: `${base}/settings`, enabled: true },
+    { key: "home", href: base },
+    { key: "meetings", href: `${base}/meetings` },
+    { key: "new", href: `${base}/meetings/new` },
+    { key: "lists", href: `${base}/lists` },
+    { key: "settings", href: `${base}/settings` },
   ];
   return role === "viewer" ? items.filter((item) => item.key !== "new") : items;
 }

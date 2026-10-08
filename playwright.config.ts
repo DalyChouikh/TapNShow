@@ -25,7 +25,6 @@ export default defineConfig({
     // Meetings send through the fake Gmail in e2e/helpers/fake-gmail.ts (test-only secrets).
     env: {
       ...process.env,
-      NEXT_PUBLIC_MEETINGS_ENABLED: "true",
       GMAIL_API_BASE_URL: FAKE_GMAIL_URL,
       GOOGLE_OAUTH_TOKEN_URL: `${FAKE_GMAIL_URL}/token`,
       GOOGLE_CLIENT_ID: "e2e-client",

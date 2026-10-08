@@ -1,7 +1,6 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { publicEnv } from "@/config/public-env";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { HomeChecklist } from "./home-checklist";
 import { NeedsAttention } from "./needs-attention";
@@ -15,9 +14,7 @@ export default function WorkspaceHomePage() {
   }
   return (
     <div className="flex flex-col gap-4">
-      {publicEnv.NEXT_PUBLIC_MEETINGS_ENABLED ? (
-        <NeedsAttention workspace={workspace.data} />
-      ) : null}
+      <NeedsAttention workspace={workspace.data} />
       <HomeChecklist workspace={workspace.data} />
     </div>
   );
