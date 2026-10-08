@@ -230,6 +230,11 @@ describe("runDispatch", () => {
       null,
     );
     expect(summary).toMatchObject({ sent: 0, failed: 1, unknown: 1 });
+    // The hash is stored when the send starts, so even an "unknown" email has working links.
+    expect(store.reserve).toHaveBeenCalledWith(
+      job(3).jobId,
+      expect.stringMatching(/^[0-9a-f]{64}$/),
+    );
   });
 
   it("stops a sender at its quota and at the time budget, handing jobs back", async () => {

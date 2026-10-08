@@ -40,5 +40,10 @@ export function togglePerson(
   if (person.listIds.length === 0) {
     return { ...body, include: body.include.filter((id) => id !== personId) };
   }
-  return { ...body, exclude: [...new Set([...body.exclude, personId])] };
+  // The database refuses a person in both include and exclude (someone added and also in a list).
+  return {
+    ...body,
+    include: body.include.filter((id) => id !== personId),
+    exclude: [...new Set([...body.exclude, personId])],
+  };
 }

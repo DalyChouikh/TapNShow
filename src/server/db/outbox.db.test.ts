@@ -320,6 +320,28 @@ describe("finish, retry, defer, broken", () => {
   // token_hash is unique and rows outlive test runs, so each run uses its own hash.
   const tokenHash = crypto.randomUUID().replaceAll("-", "").repeat(2);
 
+  it("stores the token hash when the send starts, so an unknown outcome keeps working links", async () => {
+    await admin.client.rpc("send_meeting", { p_meeting: meeting });
+    const [job] = (await claim())?.jobs ?? [];
+    const hash = crypto.randomUUID().replaceAll("-", "").repeat(2);
+    await serviceRpc("dispatch_reserve", {
+      p_job: job.job_id,
+      p_token_hash: hash,
+    });
+    await serviceRpc("dispatch_finish", {
+      p_job: job.job_id,
+      p_outcome: "unknown",
+      p_error: "delivery_unknown",
+      p_token_hash: null,
+    });
+    const row = await adminClient()
+      .from("meeting_invitees")
+      .select("email_status, token_hash")
+      .eq("id", job.invitee_id)
+      .single();
+    expect(row.data).toEqual({ email_status: "unknown", token_hash: hash });
+  });
+
   it("records a sent invite with its token hash and releases a failed one", async () => {
     await admin.client.rpc("send_meeting", { p_meeting: meeting });
     const [ok, bad] = (await claim())?.jobs ?? [];

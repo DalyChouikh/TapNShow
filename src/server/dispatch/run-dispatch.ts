@@ -165,7 +165,10 @@ async function drainSender(
       return;
     }
     const job = queue.shift() as ClaimedJob;
-    const reservation = await deps.store.reserve(job.jobId);
+    const reservation = await deps.store.reserve(
+      job.jobId,
+      inviteeTokenHash(deps.tokenFor(job.inviteeId)),
+    );
     if (reservation.kind === "done") {
       summary.skipped += 1;
       continue;
