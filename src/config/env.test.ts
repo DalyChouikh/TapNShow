@@ -20,6 +20,16 @@ describe("parseServerEnv", () => {
     expect(env.LOG_LEVEL).toBe("info");
   });
 
+  it("reads the Vercel environment name and rejects unknown ones", () => {
+    expect(
+      parseServerEnv({ ...supabase, ...smtp, VERCEL_ENV: "production" })
+        .VERCEL_ENV,
+    ).toBe("production");
+    expect(() =>
+      parseServerEnv({ ...supabase, ...smtp, VERCEL_ENV: "staging" }),
+    ).toThrow(/VERCEL_ENV/);
+  });
+
   it("rejects an unknown log level and names it", () => {
     expect(() =>
       parseServerEnv({ ...supabase, ...smtp, LOG_LEVEL: "loud" }),

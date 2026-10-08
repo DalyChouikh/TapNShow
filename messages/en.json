@@ -3,7 +3,8 @@
     "title": "{appName}"
   },
   "Errors": {
-    "global": "Something went wrong. Please reload the page."
+    "global": "Something went wrong. Please reload the page.",
+    "retry": "Try again"
   },
   "Theme": {
     "toggle": "Color theme: {mode}. Activate to switch.",
