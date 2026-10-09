@@ -1,12 +1,18 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isAfter, parseISO } from "date-fns";
+import { z } from "zod";
 import type { Database } from "@/server/db/database.types";
+import { sqlNullable } from "@/server/db/rpc-args";
+import { encodeCursor } from "@/server/http/pagination";
 import {
   invitePreviewSchema,
   type Invite,
   type InvitePreview,
 } from "@/shared/api/invites";
+import { workspaceRoleSchema } from "@/shared/api/me";
+import type { Page } from "@/shared/api/pagination";
+import type { DbError } from "./roster";
 
 type Client = SupabaseClient<Database>;
 const INVITE_COLUMNS = "id, email, role, expires_at, created_at";
@@ -31,27 +37,51 @@ function toInvite(
   };
 }
 
-/**
- * Open (not accepted, not revoked) invites of a workspace, newest first. Columns are listed:
- * `token_hash` is not readable by `authenticated`.
- * @throws Error on database failures
- */
-export async function listOpenInvites(
+/** Keyset of the open invites: creation time and id (newest first). */
+export const inviteCursorSchema = z.tuple([
+  z.iso.datetime({ offset: true }),
+  z.uuid(),
+]);
+
+const inviteRowSchema = z.object({
+  id: z.uuid(),
+  email: z.string(),
+  role: workspaceRoleSchema,
+  expires_at: z.string(),
+  created_at: z.string(),
+});
+
+/** One page of open invites (`invites_page`; RLS returns none to Viewers). */
+export async function listOpenInvitesPage(
   client: Client,
   workspaceId: string,
+  limit: number,
+  after: [string, string] | null,
   now: Date = new Date(),
-): Promise<Invite[]> {
-  const { data, error } = await client
-    .from("workspace_invites")
-    .select(INVITE_COLUMNS)
-    .eq("workspace_id", workspaceId)
-    .is("accepted_at", null)
-    .is("revoked_at", null)
-    .order("created_at", { ascending: false });
+): Promise<{ data: Page<Invite> | null; error: DbError | null }> {
+  const { data, error } = await client.rpc("invites_page", {
+    p_workspace: workspaceId,
+    p_after_created: sqlNullable(after?.[0] ?? null),
+    p_after_id: sqlNullable(after?.[1] ?? null),
+    p_limit: limit,
+  });
   if (error) {
-    throw new Error(error.message);
+    return { data: null, error };
   }
-  return data.map((row) => toInvite(row, now));
+  const parsed = z
+    .object({ has_more: z.boolean(), items: z.array(inviteRowSchema) })
+    .parse(data);
+  const last = parsed.items.at(-1);
+  return {
+    data: {
+      items: parsed.items.map((row) => toInvite(row, now)),
+      nextCursor:
+        parsed.has_more && last
+          ? encodeCursor([last.created_at, last.id])
+          : null,
+    },
+    error: null,
+  };
 }
 
 /** One invite visible to the caller (Owner/Admin), or null. */

@@ -14,7 +14,10 @@ const mocks = vi.hoisted(() => ({
         input: { email: string; tokenHash: string },
       ) => Promise<CreateResult>
     >(),
-  listOpenInvites: vi.fn(async () => []),
+  listOpenInvitesPage: vi.fn(async () => ({
+    data: { items: [], nextCursor: null },
+    error: null,
+  })),
   deliverInviteOutcome:
     vi.fn<
       (input: {
@@ -29,9 +32,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/server/http/workspace-context", () => ({
   loadWorkspaceContext: async () => okContext,
 }));
-vi.mock("@/server/queries/invites", () => ({
+vi.mock("@/server/queries/invites", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/server/queries/invites")>()),
   createInvite: mocks.createInvite,
-  listOpenInvites: mocks.listOpenInvites,
+  listOpenInvitesPage: mocks.listOpenInvitesPage,
 }));
 vi.mock("@/server/invites/deliver-invite", () => ({
   deliverInviteOutcome: mocks.deliverInviteOutcome,
@@ -199,6 +203,12 @@ describe("GET /api/workspaces/[slug]/invites", () => {
     expect((await GET(new NextRequest(jsonRequest("GET")), ctx)).status).toBe(
       200,
     );
-    expect(mocks.listOpenInvites).toHaveBeenCalledWith({}, "w1");
+    expect(mocks.listOpenInvitesPage).toHaveBeenCalledWith(
+      {},
+      "w1",
+      50,
+      null,
+      expect.any(Date),
+    );
   });
 });

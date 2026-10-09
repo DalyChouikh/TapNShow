@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { pageSchema } from "./pagination";
 import { INVITE_BATCH_MAX } from "@/config/invites";
 import { emailSchema } from "./common";
 import { workspaceRoleSchema } from "./me";
@@ -65,7 +66,7 @@ export const inviteSchema = z.object({
 export type Invite = z.infer<typeof inviteSchema>;
 
 /** `GET …/invites` response. */
-export const invitesResponseSchema = z.array(inviteSchema);
+export const invitesPageSchema = pageSchema(inviteSchema);
 
 /** Result of create / renew. The link (and its token) is returned only for "link" delivery. */
 export const inviteDeliveredSchema = z.discriminatedUnion("delivery", [

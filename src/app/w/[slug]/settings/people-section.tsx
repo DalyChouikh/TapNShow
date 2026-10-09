@@ -22,7 +22,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
-import { membersQueryKey, useMembers } from "@/hooks/use-members";
+import { ShowMore } from "@/components/ui/show-more";
+import { membersQueryKey, useMembersPage } from "@/hooks/use-members";
 import { ApiClientError, apiRequest } from "@/lib/api-client";
 import { memberActions, type MemberAction } from "@/lib/member-actions";
 import { okSchema } from "@/shared/api/common";
@@ -46,7 +47,7 @@ export function PeopleSection({
   const tCommon = useTranslations("Common");
   const tErrors = useTranslations("ApiErrors");
   const queryClient = useQueryClient();
-  const members = useMembers(workspace.slug);
+  const members = useMembersPage(workspace.slug);
   const [removing, setRemoving] = useState<Member | null>(null);
   const base = `/api/workspaces/${workspace.slug}/members`;
   const onError = (error: Error) =>
@@ -106,9 +107,9 @@ export function PeopleSection({
 
   return (
     <SettingsSection id="people" title={t("title")} defaultOpen={defaultOpen}>
-      {members.data ? (
+      {!members.query.isPending ? (
         <ul className="flex flex-col gap-3">
-          {members.data.map((member) => {
+          {members.items.map((member) => {
             const name =
               member.userId === myId
                 ? t("you")
@@ -154,6 +155,11 @@ export function PeopleSection({
       ) : (
         <Skeleton className="h-32 w-full" />
       )}
+      <ShowMore
+        hasMore={members.hasMore}
+        loading={members.isLoadingMore}
+        onMore={members.loadMore}
+      />
       {children}
       <Dialog
         open={removing !== null}

@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { ConfirmNameDialog } from "@/components/forms/confirm-name-dialog";
+import { ShowMore } from "@/components/ui/show-more";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PAGE_SIZE_MAX } from "@/config/pagination";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -21,11 +24,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ME_QUERY_KEY } from "@/hooks/use-me";
-import { membersQueryKey } from "@/hooks/use-members";
+import { membersQueryKey, useMembersPage } from "@/hooks/use-members";
 import { workspaceQueryKey } from "@/hooks/use-workspace";
 import { ApiClientError, apiRequest } from "@/lib/api-client";
 import { okSchema } from "@/shared/api/common";
-import type { Member } from "@/shared/api/members";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
 import { SettingsSection } from "./settings-section";
 
@@ -36,12 +38,10 @@ export function DangerZone({
   workspace,
   defaultOpen = true,
   myId,
-  members,
 }: {
   workspace: WorkspaceDetails;
   defaultOpen?: boolean;
   myId: string;
-  members: Member[];
 }) {
   const t = useTranslations("Settings.danger");
   const tCommon = useTranslations("Common");
@@ -51,7 +51,13 @@ export function DangerZone({
   const [open, setOpen] = useState<Open>(null);
   const [newOwner, setNewOwner] = useState("");
   const base = `/api/workspaces/${workspace.slug}`;
-  const admins = members.filter((member) => member.role === "admin");
+  // Admins load only when the Owner opens the transfer dialog (#174: paged, never the whole list).
+  const adminPage = useMembersPage(workspace.slug, {
+    role: "admin",
+    limit: PAGE_SIZE_MAX,
+    enabled: open === "transfer",
+  });
+  const admins = adminPage.items;
   const errorText = (error: Error | null) =>
     error
       ? tErrors(error instanceof ApiClientError ? error.code : "internal")
@@ -156,7 +162,9 @@ export function DangerZone({
         canConfirm={newOwner !== ""}
         onConfirm={(typed) => transfer.mutate(typed)}
       >
-        {admins.length === 0 ? (
+        {adminPage.query.isPending ? (
+          <Skeleton className="h-12 w-full" />
+        ) : admins.length === 0 ? (
           <p className="font-bold">{t("noAdmins")}</p>
         ) : (
           <div className="flex flex-col gap-1.5">
@@ -175,6 +183,11 @@ export function DangerZone({
                 ))}
               </SelectContent>
             </Select>
+            <ShowMore
+              hasMore={adminPage.hasMore}
+              loading={adminPage.isLoadingMore}
+              onMore={adminPage.loadMore}
+            />
           </div>
         )}
       </ConfirmNameDialog>

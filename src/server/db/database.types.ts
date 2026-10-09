@@ -509,11 +509,11 @@ isOneToOne: false
               "masked_email": string,"role": Database["public"]['Enums']["workspace_role"],"status": string,"workspace_name": string,"workspace_slug": string
             }[]
                            },
+"invites_page":
+{ Args: { "p_after_created"?: string,"p_after_id"?: string,"p_limit"?: number,"p_workspace": string }; Returns: Json
+                           },
 "leave_workspace":
 { Args: { "p_workspace": string }; Returns: undefined
-                           },
-"list_meetings":
-{ Args: { "p_workspace": string }; Returns: Json
                            },
 "list_members":
 { Args: { "p_workspace": string }; Returns: {
@@ -528,6 +528,9 @@ isOneToOne: false
                            },
 "meetings_page":
 { Args: { "p_after_id"?: string,"p_after_key"?: string,"p_limit"?: number,"p_tab": string,"p_workspace": string }; Returns: Json
+                           },
+"members_page":
+{ Args: { "p_after_id"?: string,"p_after_name"?: string,"p_after_role"?: Database["public"]['Enums']["workspace_role"],"p_limit"?: number,"p_role"?: Database["public"]['Enums']["workspace_role"],"p_workspace": string }; Returns: Json
                            },
 "remove_member":
 { Args: { "p_user": string,"p_workspace": string }; Returns: undefined

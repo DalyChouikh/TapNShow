@@ -15,7 +15,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
-import { invitesQueryKey, useInvites } from "@/hooks/use-invites";
+import { ShowMore } from "@/components/ui/show-more";
+import { invitesQueryKey, useInvitesPage } from "@/hooks/use-invites";
 import { ApiClientError, apiRequest } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { okSchema } from "@/shared/api/common";
@@ -29,7 +30,7 @@ export function InvitesPanel({ workspace }: { workspace: WorkspaceDetails }) {
   const tErrors = useTranslations("ApiErrors");
   const queryClient = useQueryClient();
   const canManage = workspace.myRole !== "viewer";
-  const invites = useInvites(workspace.slug, canManage);
+  const invites = useInvitesPage(workspace.slug, canManage);
   const [dialogOpen, setDialogOpen] = useState(false);
   const base = `/api/workspaces/${workspace.slug}/invites`;
   const refresh = () =>
@@ -89,13 +90,13 @@ export function InvitesPanel({ workspace }: { workspace: WorkspaceDetails }) {
           {t("invite")}
         </Button>
       </div>
-      {!invites.data ? (
+      {invites.query.isPending ? (
         <Skeleton className="h-16 w-full" />
-      ) : invites.data.length === 0 ? (
+      ) : invites.items.length === 0 && !invites.hasMore ? (
         <p className="text-sm text-muted-ink">{t("empty")}</p>
       ) : (
         <ul className="flex flex-col gap-3">
-          {invites.data.map((invite) => (
+          {invites.items.map((invite) => (
             <li key={invite.id} className="flex items-center gap-3">
               <div className="min-w-0 flex-1">
                 <p className="truncate font-bold">{invite.email}</p>
@@ -143,6 +144,11 @@ export function InvitesPanel({ workspace }: { workspace: WorkspaceDetails }) {
           ))}
         </ul>
       )}
+      <ShowMore
+        hasMore={invites.hasMore}
+        loading={invites.isLoadingMore}
+        onMore={invites.loadMore}
+      />
       <InviteDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}

@@ -12,7 +12,12 @@ const membersUrl = "/api/workspaces/robotics-cd34/members";
 
 describe("PeopleSection", () => {
   it("lists members and offers only the allowed actions", async () => {
-    routeFetch({ [`GET ${membersUrl}`]: json(membersFixture) });
+    routeFetch({
+      [`GET ${membersUrl}?limit=50`]: json({
+        items: membersFixture,
+        nextCursor: null,
+      }),
+    });
     const user = userEvent.setup();
     renderWithProviders(
       <PeopleSection workspace={workspaceFixture} myId={ownerId} />,
@@ -38,7 +43,10 @@ describe("PeopleSection", () => {
 
   it("promotes through the API and refreshes", async () => {
     const fetchMock = routeFetch({
-      [`GET ${membersUrl}`]: json(membersFixture),
+      [`GET ${membersUrl}?limit=50`]: json({
+        items: membersFixture,
+        nextCursor: null,
+      }),
       [`PATCH ${membersUrl}/${viewerId}`]: json({ ok: true }),
     });
     const user = userEvent.setup();
@@ -60,7 +68,9 @@ describe("PeopleSection", () => {
     });
     await waitFor(() =>
       expect(
-        fetchMock.mock.calls.filter(([url]) => url === membersUrl),
+        fetchMock.mock.calls.filter(([url]) =>
+          String(url).startsWith(`${membersUrl}?`),
+        ),
       ).toHaveLength(2),
     );
   });

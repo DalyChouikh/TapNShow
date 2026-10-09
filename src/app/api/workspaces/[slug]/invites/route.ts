@@ -2,13 +2,18 @@ import { NextResponse, type NextRequest } from "next/server";
 import { generateToken, sha256Hex } from "@/server/crypto/tokens";
 import { appOriginFor } from "@/server/http/app-origin";
 import { fromDatabaseError } from "@/server/http/errors";
+import { readPageParams } from "@/server/http/pagination";
 import { parseJsonBody, rejectCrossOrigin } from "@/server/http/request";
 import { loadWorkspaceContext } from "@/server/http/workspace-context";
 import {
   deliverInviteOutcome,
   type DeliveryOutcome,
 } from "@/server/invites/deliver-invite";
-import { createInvite, listOpenInvites } from "@/server/queries/invites";
+import {
+  createInvite,
+  inviteCursorSchema,
+  listOpenInvitesPage,
+} from "@/server/queries/invites";
 import { getDisplayName } from "@/server/queries/profile";
 import {
   createInviteBodySchema,
@@ -17,18 +22,27 @@ import {
 
 type Ctx = RouteContext<"/api/workspaces/[slug]/invites">;
 
-/** Open invites (Owner/Admin; RLS returns none to Viewers). */
+/** One page of open invites (Owner/Admin; RLS returns none to Viewers); `?cursor=&limit=`. */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   ctx: Ctx,
 ): Promise<NextResponse> {
+  const page = readPageParams(request, inviteCursorSchema);
+  if (!page.ok) {
+    return page.response;
+  }
   const context = await loadWorkspaceContext((await ctx.params).slug);
   if (!context.ok) {
     return context.response;
   }
-  return NextResponse.json(
-    await listOpenInvites(context.supabase, context.workspace.id),
+  const { data, error } = await listOpenInvitesPage(
+    context.supabase,
+    context.workspace.id,
+    page.limit,
+    page.after,
+    new Date(),
   );
+  return error ? fromDatabaseError(error) : NextResponse.json(data);
 }
 
 /** Maps one address's delivery outcome to its result row. */
