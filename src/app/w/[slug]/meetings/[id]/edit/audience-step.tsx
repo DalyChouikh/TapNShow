@@ -17,6 +17,7 @@ import { AddPeopleSheet } from "./add-people-sheet";
 import { AudiencePersonRow } from "./audience-person-row";
 import { WizardFooter } from "./wizard-footer";
 import type { WizardStepProps } from "./wizard-steps";
+import { CHIP_ROW_CLASS } from "@/components/ui/chip-row";
 
 /** Step 2 (or Invite more): lists first, then untick individuals; "Add people" for anyone else. */
 export function AudienceStep({ slug, meeting, steps, goTo }: WizardStepProps) {
@@ -54,7 +55,7 @@ export function AudienceStep({ slug, meeting, steps, goTo }: WizardStepProps) {
       <div
         role="group"
         aria-label={t("audience.lists")}
-        className="flex [scrollbar-width:none] gap-2 overflow-x-auto pt-1 pb-2 [&::-webkit-scrollbar]:hidden"
+        className={CHIP_ROW_CLASS}
       >
         {lists.map((list) => (
           <Chip
