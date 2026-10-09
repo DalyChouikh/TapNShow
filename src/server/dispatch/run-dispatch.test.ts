@@ -73,6 +73,7 @@ const moved = {
 
 function setup(options: {
   jobs: ClaimedJob[];
+  unreadable?: Claim["unreadable"];
   gmail?: GmailSendResult[];
   refresh?: RefreshResult[];
   reserve?: ReserveResult[];
@@ -86,6 +87,7 @@ function setup(options: {
       refreshTokenEncrypted: "sealed",
     },
     jobs: options.jobs,
+    unreadable: options.unreadable ?? [],
   };
   let claimed = false;
   const reserves = [...(options.reserve ?? [])];
@@ -283,6 +285,7 @@ describe("runDispatch", () => {
               refreshTokenEncrypted: "sealed",
             },
             jobs: [job(1), job(2), job(3)],
+            unreadable: [],
           };
     });
     quota.store.deferSender.mockImplementation(async () => {
@@ -508,5 +511,15 @@ describe("runDispatch", () => {
     const raw = unfold(rawOf(deps));
     expect(raw).toContain("Subject: See you at 18:00: Weekly sync");
     expect(raw).not.toContain("?choice=");
+  });
+
+  it("hands a job it can't read back to retry later and sends the rest", async () => {
+    const { deps, store } = setup({
+      jobs: [job(2)],
+      unreadable: [{ jobId: job(1).jobId, issues: ["kind"] }],
+    });
+    const summary = await runDispatch(deps, OPTIONS);
+    expect(store.retry).toHaveBeenCalledWith(job(1).jobId, "unreadable_job");
+    expect(summary).toMatchObject({ sent: 1 });
   });
 });

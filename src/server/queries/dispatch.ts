@@ -37,92 +37,127 @@ const jobPayloadSchema = z
     audience: "pending",
   });
 
-const claimSchema = z
+/** One claimed job as `dispatch_claim` returns it, read into what the dispatcher renders. */
+const jobSchema = z
   .object({
-    connection: z.object({
+    job_id: z.uuid(),
+    kind: jobKindSchema,
+    payload: jobPayloadSchema,
+    attempts: z.number().int(),
+    invitee_id: z.uuid(),
+    workspace_id: z.uuid(),
+    workspace_name: z.string(),
+    contact: z.object({ full_name: z.string(), email: z.string() }),
+    meeting: z.object({
+      id: z.uuid(),
+      title: z.string(),
+      agenda_md: z.string(),
+      starts_at: z.string(),
+      duration_minutes: z.number().int(),
+      timezone: z.string(),
+      location_mode: locationModeSchema,
+      location_text: z.string(),
+      online_text: z.string().default(""),
+      meeting_url: z.string(),
+      response_mode: responseModeSchema,
+      response_deadline: z.string().nullable(),
+      footer_note: z.string(),
+      ics_uid: z.string(),
+      thread_id: z.string().nullable(),
+      root_message_id: z.string().nullable(),
+    }),
+  })
+  .transform((job) => ({
+    jobId: job.job_id,
+    kind: job.kind,
+    payload: job.payload,
+    attempts: job.attempts,
+    inviteeId: job.invitee_id,
+    workspaceId: job.workspace_id,
+    workspaceName: job.workspace_name,
+    contact: { fullName: job.contact.full_name, email: job.contact.email },
+    meeting: {
+      id: job.meeting.id,
+      title: job.meeting.title,
+      agendaMd: job.meeting.agenda_md,
+      startsAt: job.meeting.starts_at,
+      durationMinutes: job.meeting.duration_minutes,
+      timezone: job.meeting.timezone,
+      locationMode: job.meeting.location_mode,
+      locationText: job.meeting.location_text,
+      onlineText: job.meeting.online_text,
+      meetingUrl: job.meeting.meeting_url,
+      responseMode: job.meeting.response_mode,
+      responseDeadline: job.meeting.response_deadline,
+      footerNote: job.meeting.footer_note,
+      icsUid: job.meeting.ics_uid,
+      threadId: job.meeting.thread_id,
+      rootMessageId: job.meeting.root_message_id,
+    },
+  }));
+
+/** The job's id alone, to hand back a job the dispatcher cannot read. */
+const jobIdSchema = z.object({ job_id: z.uuid() });
+
+const claimSchema = z.object({
+  connection: z
+    .object({
       id: z.uuid(),
       user_id: z.uuid(),
       google_sub: z.string(),
       google_email: z.string(),
       refresh_token_encrypted: z.string(),
-    }),
-    jobs: z.array(
-      z.object({
-        job_id: z.uuid(),
-        kind: jobKindSchema,
-        payload: jobPayloadSchema,
-        attempts: z.number().int(),
-        invitee_id: z.uuid(),
-        workspace_id: z.uuid(),
-        workspace_name: z.string(),
-        contact: z.object({ full_name: z.string(), email: z.string() }),
-        meeting: z.object({
-          id: z.uuid(),
-          title: z.string(),
-          agenda_md: z.string(),
-          starts_at: z.string(),
-          duration_minutes: z.number().int(),
-          timezone: z.string(),
-          location_mode: locationModeSchema,
-          location_text: z.string(),
-          online_text: z.string().default(""),
-          meeting_url: z.string(),
-          response_mode: responseModeSchema,
-          response_deadline: z.string().nullable(),
-          footer_note: z.string(),
-          ics_uid: z.string(),
-          thread_id: z.string().nullable(),
-          root_message_id: z.string().nullable(),
-        }),
-      }),
-    ),
-  })
-  .transform((db) => ({
-    connection: {
-      id: db.connection.id,
-      userId: db.connection.user_id,
-      googleSub: db.connection.google_sub,
-      googleEmail: db.connection.google_email,
-      refreshTokenEncrypted: db.connection.refresh_token_encrypted,
-    },
-    jobs: db.jobs.map((job) => ({
-      jobId: job.job_id,
-      kind: job.kind,
-      payload: job.payload,
-      attempts: job.attempts,
-      inviteeId: job.invitee_id,
-      workspaceId: job.workspace_id,
-      workspaceName: job.workspace_name,
-      contact: { fullName: job.contact.full_name, email: job.contact.email },
-      meeting: {
-        id: job.meeting.id,
-        title: job.meeting.title,
-        agendaMd: job.meeting.agenda_md,
-        startsAt: job.meeting.starts_at,
-        durationMinutes: job.meeting.duration_minutes,
-        timezone: job.meeting.timezone,
-        locationMode: job.meeting.location_mode,
-        locationText: job.meeting.location_text,
-        onlineText: job.meeting.online_text,
-        meetingUrl: job.meeting.meeting_url,
-        responseMode: job.meeting.response_mode,
-        responseDeadline: job.meeting.response_deadline,
-        footerNote: job.meeting.footer_note,
-        icsUid: job.meeting.ics_uid,
-        threadId: job.meeting.thread_id,
-        rootMessageId: job.meeting.root_message_id,
-      },
+    })
+    .transform((db) => ({
+      id: db.id,
+      userId: db.user_id,
+      googleSub: db.google_sub,
+      googleEmail: db.google_email,
+      refreshTokenEncrypted: db.refresh_token_encrypted,
     })),
-  }));
+  // Read one by one in parseClaim: a job this code can't read must not stop its sender's others.
+  jobs: z.array(z.json()),
+});
 
-/** One claimed sender and its jobs. */
-export type Claim = z.output<typeof claimSchema>;
 /** One claimed job with everything needed to render it. */
-export type ClaimedJob = Claim["jobs"][number];
+export type ClaimedJob = z.output<typeof jobSchema>;
 
-/** Parses `dispatch_claim`'s result (null when no sender has due jobs). */
+/** One claimed sender, its readable jobs, and the ids of jobs it could not read. */
+export type Claim = {
+  connection: z.output<typeof claimSchema>["connection"];
+  jobs: ClaimedJob[];
+  /** Claimed jobs of an unknown kind or shape; the dispatcher hands them back to retry later. */
+  unreadable: { jobId: string; issues: string[] }[];
+};
+
+/**
+ * Parses `dispatch_claim`'s result (null when no sender has due jobs). Jobs are read one by one, so
+ * one row this code doesn't understand (a kind shipped before its sender code, a bad payload) is
+ * set aside instead of failing the claim. A failed claim would be claimed again first on every
+ * run, stopping every workspace's emails.
+ */
 export function parseClaim(data: Json): Claim | null {
-  return data ? claimSchema.parse(data) : null;
+  if (!data) {
+    return null;
+  }
+  const claim = claimSchema.parse(data);
+  const jobs: ClaimedJob[] = [];
+  const unreadable: Claim["unreadable"] = [];
+  for (const raw of claim.jobs) {
+    const job = jobSchema.safeParse(raw);
+    if (job.success) {
+      jobs.push(job.data);
+      continue;
+    }
+    const id = jobIdSchema.safeParse(raw);
+    if (id.success) {
+      unreadable.push({
+        jobId: id.data.job_id,
+        issues: job.error.issues.map((issue) => issue.path.join(".")),
+      });
+    }
+  }
+  return { connection: claim.connection, jobs, unreadable };
 }
 
 /** A calendar job's decision at reserve time (spec §8 calendar_confirm). */

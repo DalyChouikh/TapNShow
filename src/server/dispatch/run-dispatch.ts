@@ -148,6 +148,14 @@ async function drainSender(
   summary: DispatchSummary,
   outOfTime: () => boolean,
 ): Promise<void> {
+  for (const job of claim.unreadable) {
+    // Back off and retry (failed after the max attempts): a later deploy may know this kind.
+    logger.error(
+      { jobId: job.jobId, issues: job.issues },
+      "claimed job could not be read",
+    );
+    await deps.store.retry(job.jobId, "unreadable_job");
+  }
   let refreshToken: string;
   try {
     refreshToken = deps.openToken(
@@ -362,6 +370,7 @@ async function sendJob(
     senderEmail: session.claim.connection.googleEmail,
     meeting: job.meeting,
     links,
+    now: new Date(deps.now()),
   };
   const email = await renderJob(job, decision, common);
   const calendar = decision

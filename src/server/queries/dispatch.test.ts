@@ -1,8 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { parseClaim } from "./dispatch";
 
+/** One job as `dispatch_claim` returns it (snake_case, M5 shape: no `payload`). */
+function dbJob(n: number, job: Record<string, string | object | null> = {}) {
+  return {
+    ...dbClaimRow({}).jobs[0],
+    job_id: `00000000-0000-4000-8000-00000000000${n}`,
+    ...job,
+  };
+}
+
 /** One claim as `dispatch_claim` returns it (snake_case, M5 shape: no `payload`). */
-function dbClaimRow(job: Record<string, string | object>) {
+function dbClaimRow(job: Record<string, string | object | null>) {
   return {
     connection: {
       id: "30000000-0000-4000-8000-000000000000",
@@ -60,11 +69,13 @@ describe("parseClaim", () => {
     const claim = parseClaim(
       dbClaimRow({
         kind: "update",
+        // dispatch_reserve merges its calendar decision in at the top level (Task 5).
         payload: {
           changes: { title: ["Sync", "Weekly sync"] },
           notify: true,
           reconfirm: false,
-          calendar: { action: "request", sequence: 1 },
+          action: "request",
+          sequence: 1,
         },
       }),
     );
@@ -72,6 +83,39 @@ describe("parseClaim", () => {
       kind: "update",
       payload: { changes: { title: ["Sync", "Weekly sync"] }, notify: true },
     });
+  });
+
+  it("reads a calendar job whose payload holds the stored decision", () => {
+    const claim = parseClaim(
+      dbClaimRow({
+        kind: "calendar_confirm",
+        payload: { action: "cancel", sequence: 2 },
+      }),
+    );
+    expect(claim?.jobs[0].kind).toBe("calendar_confirm");
+  });
+
+  it("sets aside a job it can't read and keeps the others (one bad row must not stop sending)", () => {
+    const row = dbClaimRow({});
+    const claim = parseClaim({
+      ...row,
+      jobs: [
+        dbJob(1, { kind: "system_email" }),
+        dbJob(2),
+        dbJob(3, { payload: { changes: { title: [{}, "x"] } } }),
+        { job_id: "not-a-uuid" },
+      ],
+    });
+    expect(claim?.jobs.map((job) => job.jobId)).toEqual([
+      "00000000-0000-4000-8000-000000000002",
+    ]);
+    expect(claim?.unreadable).toEqual([
+      { jobId: "00000000-0000-4000-8000-000000000001", issues: ["kind"] },
+      {
+        jobId: "00000000-0000-4000-8000-000000000003",
+        issues: ["payload.changes.title.0"],
+      },
+    ]);
   });
 
   it("returns null when there is nothing to claim", () => {
