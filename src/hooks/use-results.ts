@@ -56,6 +56,10 @@ export function useMeetingResults(slug: string, id: string, live: boolean) {
   });
 }
 
+/** Prefix of every people-list key of one meeting (all filters); invalidate it after writes. */
+export const meetingPeopleKey = (slug: string, id: string) =>
+  ["meeting-people", slug, id] as const;
+
 /** A meeting's people for one filter, paged; refreshed with the counts while `live`. */
 export function useMeetingPeople(
   slug: string,
@@ -64,7 +68,7 @@ export function useMeetingPeople(
   live: boolean,
 ) {
   return usePagedList({
-    queryKey: ["meeting-people", slug, id, filter],
+    queryKey: [...meetingPeopleKey(slug, id), filter],
     path: `${meetingBase(slug, id)}/people`,
     params: { filter },
     schema: peoplePageSchema,

@@ -188,6 +188,7 @@ export function AttendanceView({
           ) : (
             <>
               <SegmentedControl
+                compact
                 label={t("sortBy")}
                 value={sort.key}
                 onValueChange={(key) =>

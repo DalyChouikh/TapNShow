@@ -24,6 +24,24 @@ function Harness() {
 }
 
 describe("SegmentedControl", () => {
+  it("keeps labels on one line when compact", () => {
+    renderWithProviders(
+      <SegmentedControl
+        label="Sort by"
+        compact
+        value="a"
+        onValueChange={() => undefined}
+        options={[
+          { value: "a", label: "No reply" },
+          { value: "b", label: "Late" },
+        ]}
+      />,
+    );
+    expect(screen.getByRole("radio", { name: "No reply" }).className).toContain(
+      "whitespace-nowrap",
+    );
+  });
+
   it("switches between options and never ends up empty", async () => {
     const user = userEvent.setup();
     renderWithProviders(<Harness />);

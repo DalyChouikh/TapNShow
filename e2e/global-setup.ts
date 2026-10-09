@@ -44,17 +44,26 @@ function setAppLimit(name: string, value: number): void {
 export default async function globalSetup(): Promise<() => Promise<void>> {
   const original = appLimit("otp_send_per_ip_per_hour");
   const calendarDelay = appLimit("calendar_confirm_delay_seconds");
-  localSql("delete from private.rate_limit_events");
-  setAppLimit("otp_send_per_ip_per_hour", E2E_OTP_REQUESTS_PER_HOUR);
-  // The responses story waits for calendar emails: make them due after 1 s (the lowest value the
-  // limits table allows), then the story runs the dispatcher itself, as cron would. Set once for
-  // the whole run (parallel workers would race a per-file before/after).
-  setAppLimit("calendar_confirm_delay_seconds", 1);
-  // Fake Google token endpoint + Gmail API for the meetings story (no real email leaves e2e).
-  const fakeGmail = await startFakeGmail();
-  return async () => {
+  const restore = () => {
     setAppLimit("otp_send_per_ip_per_hour", original);
     setAppLimit("calendar_confirm_delay_seconds", calendarDelay);
-    await new Promise<void>((resolve) => fakeGmail.close(() => resolve()));
   };
+  try {
+    localSql("delete from private.rate_limit_events");
+    setAppLimit("otp_send_per_ip_per_hour", E2E_OTP_REQUESTS_PER_HOUR);
+    // The responses story waits for calendar emails: make them due after 1 s (the lowest value the
+    // limits table allows), then the story runs the dispatcher itself, as cron would. Set once for
+    // the whole run (parallel workers would race a per-file before/after).
+    setAppLimit("calendar_confirm_delay_seconds", 1);
+    // Fake Google token endpoint + Gmail API for the meetings story (no real email leaves e2e).
+    const fakeGmail = await startFakeGmail();
+    return async () => {
+      restore();
+      await new Promise<void>((resolve) => fakeGmail.close(() => resolve()));
+    };
+  } catch (error) {
+    // A crash here (e.g. the fake Gmail port is taken) must not leave the raised limits behind.
+    restore();
+    throw error;
+  }
 }

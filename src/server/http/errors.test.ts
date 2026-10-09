@@ -33,6 +33,17 @@ describe("fromDatabaseError", () => {
     expect(JSON.stringify(await unknown.json())).not.toContain("10.0.0.1");
   });
 
+  it("maps an untranslatable character (22P05) to invalid_input", async () => {
+    const response = fromDatabaseError({
+      code: "22P05",
+      message: "unsupported Unicode escape sequence",
+    });
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: { code: "invalid_input" },
+    });
+  });
+
   it("ignores unknown tn codes", () => {
     expect(
       fromDatabaseError({ code: "P0001", message: "tn:made_up" }).status,

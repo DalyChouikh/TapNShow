@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { describe, expect, it } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { describe, expect, it, vi } from "vitest";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { toggleList } from "@/lib/meetings/audience-edit";
 import { routeFetch } from "@/test/fetch";
@@ -109,5 +110,28 @@ describe("after Send", () => {
     await waitFor(() =>
       expect(result.current.meeting.data?.status).toBe("scheduled"),
     );
+  });
+
+  it("refreshes the meeting's people after Send", async () => {
+    const queryClient = new QueryClient();
+    const spy = vi.spyOn(queryClient, "invalidateQueries");
+    routeFetch({
+      [`POST ${base}/send`]: () =>
+        new Response(JSON.stringify({ invited: 2, skippedUnsubscribed: 0 })),
+    });
+    const { result } = renderHook(
+      () => useSendMeeting("club-ab12", MEETING_IDS.meeting),
+      {
+        wrapper: ({ children }: { children: ReactNode }) => (
+          <QueryClientProvider client={queryClient}>
+            {children}
+          </QueryClientProvider>
+        ),
+      },
+    );
+    await act(() => result.current.mutateAsync());
+    expect(spy).toHaveBeenCalledWith({
+      queryKey: ["meeting-people", "club-ab12", MEETING_IDS.meeting],
+    });
   });
 });
