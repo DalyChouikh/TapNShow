@@ -8,10 +8,12 @@ import { Button } from "@/components/ui/button";
 import { useAnswerLabels } from "@/hooks/use-answer-labels";
 import { describeAnswer } from "@/lib/responses/describe-answer";
 import type { Answer } from "@/shared/api/responses";
+import type { TokenInfo } from "@/shared/api/tokens";
+import { CalendarLinks } from "./calendar-links";
 
 /**
  * The saved answer: the CONFIRMED stamp right after a save (confetti for Going), the answer in
- * words, reason and comment as plain text, the calendar line, and Change (spec §7.3).
+ * words, reason and comment as plain text, the calendar line and links, and Change (spec §7.3).
  */
 export function AnswerSummary({
   ref,
@@ -19,6 +21,7 @@ export function AnswerSummary({
   workspaceName,
   unsubscribed,
   answer,
+  meeting,
   celebrate,
   onChange,
 }: {
@@ -27,6 +30,7 @@ export function AnswerSummary({
   workspaceName: string;
   unsubscribed: boolean;
   answer: Answer;
+  meeting: TokenInfo["meeting"];
   celebrate: boolean;
   onChange: () => void;
 }) {
@@ -71,6 +75,7 @@ export function AnswerSummary({
           <p className="text-sm font-bold">{t("calendarSent")}</p>
         )
       ) : null}
+      {inCalendar ? <CalendarLinks token={token} meeting={meeting} /> : null}
       <Button className="justify-center" onClick={onChange}>
         {t("change")}
       </Button>

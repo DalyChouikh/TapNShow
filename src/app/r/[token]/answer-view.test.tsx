@@ -255,6 +255,58 @@ describe("AnswerView", () => {
     ).toBeInTheDocument();
   });
 
+  it("offers Google Calendar and a calendar file after a Going answer, writing nothing", async () => {
+    renderWith("", {
+      answer: {
+        status: "attending",
+        delayMinutes: null,
+        reason: "",
+        comment: "",
+        afterDeadline: false,
+        respondedAt: NOW,
+        updatedAt: NOW,
+      },
+    });
+    const google = await screen.findByRole("link", {
+      name: "Add to Google Calendar",
+    });
+    expect(google.getAttribute("href")).toMatch(
+      /^https:\/\/calendar\.google\.com\/calendar\/render\?action=TEMPLATE&text=/,
+    );
+    expect(google).toHaveAttribute("target", "_blank");
+    expect(
+      screen.getByRole("link", { name: "Download calendar file" }),
+    ).toHaveAttribute("href", `/api/r/${TOKEN}/ics`);
+    expect(calls).toHaveLength(0);
+  });
+
+  it("offers no calendar links after I can't come", async () => {
+    renderWith("", {
+      answer: {
+        status: "absent",
+        delayMinutes: null,
+        reason: "Exam",
+        comment: "",
+        afterDeadline: false,
+        respondedAt: NOW,
+        updatedAt: NOW,
+      },
+    });
+    expect(
+      await screen.findByText("Your answer: Can't come"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Add to Google Calendar" }),
+    ).toBeNull();
+  });
+
+  it("offers the calendar links on an announcement", async () => {
+    renderWith("", { answers: { responseMode: "announcement" } });
+    expect(
+      await screen.findByRole("link", { name: "Download calendar file" }),
+    ).toBeInTheDocument();
+  });
+
   it("offers the calendar email on an announcement", async () => {
     renderWith("", { answers: { responseMode: "announcement" } });
     fireEvent.click(
