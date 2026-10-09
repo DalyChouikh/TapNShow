@@ -478,6 +478,9 @@ isOneToOne: false
 "bulk_contacts":
 { Args: { "p_action": string,"p_contact_ids": (string)[],"p_list_id"?: string,"p_workspace": string }; Returns: number
                            },
+"cancel_meeting":
+{ Args: { "p_meeting": string }; Returns: Json
+                           },
 "change_role":
 { Args: { "p_can_check_in": boolean,"p_role": Database["public"]['Enums']["workspace_role"],"p_user": string,"p_workspace": string }; Returns: undefined
                            },
@@ -526,6 +529,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"delete_cancelled_meeting":
+{ Args: { "p_meeting": string }; Returns: undefined
+                           },
 "delete_workspace":
 { Args: { "p_confirm_name": string,"p_workspace": string }; Returns: undefined
                            },
@@ -559,6 +565,9 @@ isOneToOne: false
 "dispatch_unclaim":
 { Args: { "p_jobs": (string)[] }; Returns: undefined
                            },
+"edit_sent_meeting":
+{ Args: { "p_dry_run"?: boolean,"p_fields": Json,"p_meeting": string,"p_notify"?: boolean }; Returns: Json
+                           },
 "healthcheck":
 { Args: Record<PropertyKey, never>; Returns: string
                            },
@@ -585,7 +594,7 @@ isOneToOne: false
 { Args: { "p_meeting": string }; Returns: Json
                            },
 "meeting_people":
-{ Args: { "p_after_id"?: string,"p_after_name"?: string,"p_filter"?: string,"p_limit"?: number,"p_meeting": string }; Returns: Json
+{ Args: { "p_after_id"?: string,"p_after_name"?: string,"p_filter"?: string,"p_limit"?: number,"p_meeting": string,"p_search"?: string }; Returns: Json
                            },
 "meeting_results":
 { Args: { "p_meeting": string }; Returns: Json
