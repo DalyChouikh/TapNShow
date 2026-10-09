@@ -1,13 +1,20 @@
 import "server-only";
 import { REFRESH_FAILURE_DEFER_MS, THROTTLE_DEFER_MS } from "@/config/meetings";
 import { renderCalendarConfirmEmail } from "@/emails/calendar-confirm-email";
-import { renderMeetingInviteEmail } from "@/emails/meeting-invite-email";
+import { renderMeetingCancelEmail } from "@/emails/meeting-cancel-email";
+import {
+  type MeetingInviteEmailProps,
+  renderMeetingInviteEmail,
+} from "@/emails/meeting-invite-email";
+import { renderMeetingReminderEmail } from "@/emails/meeting-reminder-email";
+import { renderMeetingUpdateEmail } from "@/emails/meeting-update-email";
 import {
   buildMeetingIcs,
   icsDescription,
   icsLocation,
 } from "@/lib/calendar/ics";
 import { logger } from "@/lib/logger";
+import { hasMemberChanges } from "@/lib/meetings/changes";
 import { inviteeTokenHash } from "@/server/crypto/invitee-token";
 import type { GmailSendResult } from "@/server/gmail/gmail-client";
 import { buildMeetingMime, newMessageId } from "@/server/gmail/mime";
@@ -54,9 +61,20 @@ export type DispatchSummary = {
   skipped: number;
   unknown: number;
   deferred: number;
-  /** Calendar emails sent (also counted in `sent`). */
+  /** Emails that carried a calendar invitation or removal (also counted in `sent`). */
   calendar: number;
+  /** Update emails sent (also counted in `sent`). */
+  updates: number;
+  /** Cancellation emails sent (also counted in `sent`). */
+  cancellations: number;
+  /** Reminders sent (also counted in `sent`). */
+  reminders: number;
 };
+
+/** The summary counter of each M6 kind (invites and calendar emails have their own). */
+const KIND_COUNTER: Partial<
+  Record<ClaimedJob["kind"], "updates" | "cancellations" | "reminders">
+> = { update: "updates", cancel: "cancellations", reminder: "reminders" };
 
 type Thread = { threadId: string; rootMessageId: string };
 type Session = {
@@ -81,6 +99,9 @@ export async function runDispatch(
     unknown: 0,
     deferred: 0,
     calendar: 0,
+    updates: 0,
+    cancellations: 0,
+    reminders: 0,
   };
   const outOfTime = () => deps.now() - started >= options.budgetMs;
   try {
@@ -127,6 +148,14 @@ async function drainSender(
   summary: DispatchSummary,
   outOfTime: () => boolean,
 ): Promise<void> {
+  for (const job of claim.unreadable) {
+    // Back off and retry (failed after the max attempts): a later deploy may know this kind.
+    logger.error(
+      { jobId: job.jobId, issues: job.issues },
+      "claimed job could not be read",
+    );
+    await deps.store.retry(job.jobId, "unreadable_job");
+  }
   let refreshToken: string;
   try {
     refreshToken = deps.openToken(
@@ -198,6 +227,15 @@ async function drainSender(
       );
       return;
     }
+    if (
+      job.kind === "update" &&
+      !updateHasSomethingToSay(job, reservation.calendar)
+    ) {
+      // The database skips these at reserve time; never send an email that says nothing.
+      await deps.store.finish(job.jobId, "skipped", "nothing_to_send", null);
+      summary.skipped += 1;
+      continue;
+    }
     if (job.kind === "calendar_confirm" && !reservation.calendar) {
       // The database always decides a calendar job; never guess what to send.
       logger.error(
@@ -225,6 +263,57 @@ async function drainSender(
       return;
     }
     await deps.sleep(options.paceMs);
+  }
+}
+
+/**
+ * An update says something when members see a change or are asked to confirm again, or when it
+ * moves a calendar event. Twin of the "nothing to send" rule in `dispatch_reserve` (Task 5).
+ */
+function updateHasSomethingToSay(
+  job: ClaimedJob,
+  decision: CalendarDecision | null,
+): boolean {
+  const { changes, notify, reconfirm } = job.payload;
+  return (
+    decision !== null || (notify && (reconfirm || hasMemberChanges(changes)))
+  );
+}
+
+/** Renders one job's email by kind (the `.ics`, when any, is attached separately). */
+async function renderJob(
+  job: ClaimedJob,
+  decision: CalendarDecision | null,
+  common: MeetingInviteEmailProps,
+): Promise<{ subject: string; html: string; text: string }> {
+  switch (job.kind) {
+    case "invite":
+      return renderMeetingInviteEmail(common);
+    case "calendar_confirm":
+      // drainSender never gets here without a decision for a calendar job.
+      return renderCalendarConfirmEmail({
+        ...common,
+        action: decision?.action ?? "request",
+      });
+    case "update":
+      return renderMeetingUpdateEmail({
+        ...common,
+        meeting: { ...common.meeting, footerNote: job.meeting.footerNote },
+        changes: job.payload.changes,
+        notify: job.payload.notify,
+        reconfirm: job.payload.reconfirm,
+        calendar: decision !== null,
+      });
+    case "cancel":
+      return renderMeetingCancelEmail({
+        ...common,
+        calendar: decision !== null,
+      });
+    case "reminder":
+      return renderMeetingReminderEmail({
+        ...common,
+        audience: job.payload.audience,
+      });
   }
 }
 
@@ -275,16 +364,15 @@ async function sendJob(
     unsubscribe: `${deps.appUrl}/u/${token}`,
     report: `${deps.appUrl}/report/${token}`,
   };
-  const common = {
+  const common: MeetingInviteEmailProps = {
     workspaceName: job.workspaceName,
     recipientName: job.contact.fullName,
     senderEmail: session.claim.connection.googleEmail,
     meeting: job.meeting,
     links,
+    now: new Date(deps.now()),
   };
-  const email = decision
-    ? await renderCalendarConfirmEmail({ ...common, action: decision.action })
-    : await renderMeetingInviteEmail(common);
+  const email = await renderJob(job, decision, common);
   const calendar = decision
     ? calendarFile(deps, session, job, decision)
     : undefined;
@@ -363,6 +451,10 @@ async function sendJob(
       summary.sent += 1;
       if (decision) {
         summary.calendar += 1;
+      }
+      const counter = KIND_COUNTER[job.kind];
+      if (counter) {
+        summary[counter] += 1;
       }
       return "continue";
     case "invalid_recipient":
