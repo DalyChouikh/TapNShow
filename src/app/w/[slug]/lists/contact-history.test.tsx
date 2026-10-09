@@ -73,4 +73,32 @@ describe("ContactHistory", () => {
       expect(urls.some((u) => u.endsWith("/history?limit=50"))).toBe(true),
     );
   });
+
+  it("says there are no past meetings when the period is empty", async () => {
+    routeFetch(
+      new Proxy(
+        {},
+        {
+          get: () => () =>
+            new Response(
+              JSON.stringify({
+                counts: { attending: 0, late: 0, absent: 0, noReply: 0 },
+                items: [],
+                nextCursor: null,
+              }),
+            ),
+        },
+      ),
+    );
+    renderWithProviders(
+      <ContactHistory
+        slug="club-ab12"
+        contactId={CONTACT}
+        timezone="Africa/Tunis"
+      />,
+    );
+    expect(
+      await screen.findByText("No past meetings in this period."),
+    ).toBeInTheDocument();
+  });
 });

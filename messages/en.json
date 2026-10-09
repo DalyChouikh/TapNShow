@@ -918,7 +918,7 @@
       "absent": "Absent",
       "noReply": "No reply"
     },
-    "empty": "No meetings in this period.",
+    "empty": "No past meetings in this period.",
     "noReply": "No reply",
     "notDelivered": "Email not delivered",
     "end": "That's all",
@@ -939,7 +939,7 @@
       "absent": "Absent",
       "noReply": "No reply"
     },
-    "empty": "No meetings in this period yet."
+    "empty": "No past meetings in this period."
   },
   "Export": {
     "button": "Export",

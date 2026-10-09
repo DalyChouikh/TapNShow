@@ -119,6 +119,23 @@ describe("AnswerView", () => {
     );
   });
 
+  it("moves focus to the saved answer even when the next frame runs before it renders", async () => {
+    const frame = vi
+      .spyOn(window, "requestAnimationFrame")
+      .mockImplementation((callback) => {
+        callback(0);
+        return 0;
+      });
+    renderWith("choice=attending");
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Confirm: I'm going" }),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("answer-summary")).toHaveFocus(),
+    );
+    frame.mockRestore();
+  });
+
   it("saves Going in one tap, without a reason box", async () => {
     renderWith("choice=attending");
     await screen.findByRole("radio", { name: "I'm going" });

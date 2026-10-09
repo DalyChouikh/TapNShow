@@ -2,7 +2,7 @@
 
 import { useParams, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Stagger, StaggerItem } from "@/components/motion/stagger";
 import { InvalidLink } from "@/components/public/invalid-link";
 import { MeetingCard } from "@/components/public/meeting-card";
@@ -64,7 +64,6 @@ export function AnswerView() {
   // Once a save happens here, the email's ?choice= has been answered and no longer overrides.
   const [savedHere, setSavedHere] = useState(false);
   const [closedByServer, setClosedByServer] = useState(false);
-  const summaryRef = useRef<HTMLDivElement>(null);
 
   if (info.isPending) {
     return <Skeleton className="h-96 w-full" />;
@@ -110,8 +109,6 @@ export function AnswerView() {
         setEditing(false);
         setJustSaved(true);
         setSavedHere(true);
-        // WCAG 2.4.3: move focus to the result once it has rendered.
-        requestAnimationFrame(() => summaryRef.current?.focus());
       },
       onError: (failure) => {
         if (
@@ -145,7 +142,6 @@ export function AnswerView() {
           <AnnouncementCalendar token={token} info={data} />
         ) : answer && !editing && !emailOverride ? (
           <AnswerSummary
-            ref={summaryRef}
             token={token}
             workspaceName={data.workspaceName}
             unsubscribed={data.unsubscribed}

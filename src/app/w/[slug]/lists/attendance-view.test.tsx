@@ -97,7 +97,7 @@ const detail = {
   },
 };
 
-function setup() {
+function setup(data: object = summary) {
   routeFetch(
     new Proxy(
       {},
@@ -107,7 +107,7 @@ function setup() {
             JSON.stringify(
               String(key).includes("/attendance/details")
                 ? { items: [detail], nextCursor: null }
-                : summary,
+                : data,
             ),
           ),
       },
@@ -201,5 +201,12 @@ describe("AttendanceView", () => {
       null,
       "Sent",
     ]);
+  });
+
+  it("says there are no past meetings when the period is empty", async () => {
+    setup({ meetings: 0, rows: [] });
+    expect(
+      await screen.findByText("No past meetings in this period."),
+    ).toBeInTheDocument();
   });
 });
