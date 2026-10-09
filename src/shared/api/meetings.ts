@@ -186,34 +186,6 @@ export const inviteeStatusSchema = z.enum([
   "unknown",
 ]);
 
-/** `GET …/progress` response. */
-export const progressSchema = z.object({
-  counts: z.object({
-    total: z.number().int(),
-    queued: z.number().int(),
-    sent: z.number().int(),
-    skipped: z.number().int(),
-    failed: z.number().int(),
-    unknown: z.number().int(),
-  }),
-  paused: z.number().int(),
-  resumesAt: z.string().nullable(),
-  senderState: z.enum(["ok", "missing", "broken"]),
-  invitees: z.array(
-    z.object({
-      id: z.uuid(),
-      contactId: z.uuid(),
-      fullName: z.string(),
-      email: z.string(),
-      status: inviteeStatusSchema,
-      error: z.string().nullable(),
-      sentAt: z.string().nullable(),
-    }),
-  ),
-});
-/** Live send progress of one meeting. */
-export type MeetingProgress = z.infer<typeof progressSchema>;
-
 /** `GET …/preview`: the invite as one example recipient would see it. */
 export const previewSchema = z.object({
   subject: z.string(),

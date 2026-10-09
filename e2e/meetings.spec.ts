@@ -98,9 +98,10 @@ test("an Owner sends a meeting and a member unsubscribes from the email", async 
   });
   await dialog.getByRole("button", { name: "Send 2 invites" }).click();
 
-  await expect(page.getByText("2 invites sent")).toBeVisible({
-    timeout: 30_000,
-  });
+  // Once every invite is out, the progress card gives way to the email line (M5).
+  await expect(
+    page.getByRole("button", { name: "Emails: 2 sent" }),
+  ).toBeVisible({ timeout: 30_000 });
 
   const messages = await messagesFor(stamp);
   expect(messages).toHaveLength(2);

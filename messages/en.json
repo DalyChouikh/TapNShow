@@ -342,7 +342,10 @@
     "attentionDraft": "A draft is waiting: connect Gmail to send it.",
     "attentionAskOwner": "Ask {owner} to reconnect Gmail.",
     "reconnect": "Reconnect",
-    "connect": "Connect Gmail"
+    "connect": "Connect Gmail",
+    "nextMeeting": {
+      "title": "Next meeting"
+    }
   },
   "Invites": {
     "title": "Invites",
@@ -780,7 +783,33 @@
     "invitees": "Invited people",
     "yourTime": "your time: {time}",
     "openLink": "Open the meeting link",
-    "joinOn": "Join on {platform}"
+    "joinOn": "Join on {platform}",
+    "results": {
+      "tilesLabel": "Answers",
+      "attending": "Going",
+      "late": "Late",
+      "absent": "Absent",
+      "not_attending": "Not going",
+      "no_reply": "No reply",
+      "calendarRequested": "{count, plural, =0 {Nobody asked for a calendar invite yet.} one {# person asked for a calendar invite.} other {# people asked for a calendar invite.}}",
+      "emailLine": "Emails: {sent} sent",
+      "emailLineIssues": "Emails: {sent} sent · {issues} not delivered",
+      "deliveryTitle": "Email delivery",
+      "afterDeadline": "after the deadline",
+      "answeredAt": "Answered {time}",
+      "notAnswered": "No answer yet",
+      "notDelivered": "Email not delivered",
+      "emptyFilter": "Nobody here yet.",
+      "listEnd": "That's everyone",
+      "columns": {
+        "name": "Name",
+        "answer": "Answer",
+        "reason": "Reason",
+        "comment": "Comment",
+        "answered": "Answered"
+      },
+      "peopleTitle": "People"
+    }
   },
   "TokenPages": {
     "invalidTitle": "This link isn't valid",

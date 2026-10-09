@@ -5,7 +5,8 @@ import { workspaceFixture } from "@/test/fixtures/me";
 import {
   meetingFixture,
   MEETING_IDS,
-  progressFixture,
+  peopleFixture,
+  resultsFixture,
 } from "@/test/fixtures/meetings";
 import { renderWithProviders } from "@/test/render";
 import MeetingPage from "./page";
@@ -19,15 +20,42 @@ vi.mock("next/navigation", () => ({
 const base = "/api/workspaces/robotics-cd34";
 const future = new Date(Date.now() + 2 * 24 * 3600_000).toISOString();
 
-function setup(meeting: object, workspace = workspaceFixture) {
-  routeFetch({
+const meetingBase = `${base}/meetings/${MEETING_IDS.meeting}`;
+
+function setup(
+  meeting: object,
+  workspace = workspaceFixture,
+  results: object = resultsFixture,
+) {
+  const fetchMock = routeFetch({
     [`GET ${base}`]: json(workspace),
-    [`GET ${base}/meetings/${MEETING_IDS.meeting}`]: json(meeting),
-    [`GET ${base}/meetings/${MEETING_IDS.meeting}/progress`]:
-      json(progressFixture),
+    [`GET ${meetingBase}`]: json(meeting),
+    [`GET ${meetingBase}/results`]: json(results),
+    [`GET ${meetingBase}/people?filter=all&limit=50`]: json({
+      items: peopleFixture,
+      nextCursor: null,
+    }),
+    [`GET ${meetingBase}/people?filter=late&limit=50`]: json({
+      items: [peopleFixture[0]],
+      nextCursor: null,
+    }),
   });
   renderWithProviders(<MeetingPage />);
+  return fetchMock;
 }
+
+const sentResults = {
+  ...resultsFixture,
+  emails: { total: 30, queued: 0, sent: 29, skipped: 0, failed: 1, unknown: 0 },
+  answers: {
+    attending: 17,
+    late: 4,
+    absent: 3,
+    notAttending: 0,
+    noReply: 6,
+    calendarRequested: 0,
+  },
+};
 
 beforeEach(() => vi.clearAllMocks());
 
@@ -80,5 +108,38 @@ describe("/w/[slug]/meetings/[id]", () => {
     expect(
       screen.getByRole("link", { name: "Join on Google Meet" }),
     ).toHaveAttribute("href", "https://meet.google.com/abc-defg-hij");
+  });
+
+  it("shows the email line, the tiles and the people once invites are out", async () => {
+    setup(
+      { ...meetingFixture, status: "scheduled", startsAt: future },
+      workspaceFixture,
+      sentResults,
+    );
+    const line = await screen.findByRole("button", {
+      name: "Emails: 29 sent · 1 not delivered",
+    });
+    expect(screen.getByRole("button", { name: "Late 4" })).toBeInTheDocument();
+    expect(await screen.findByText("Bus from campus")).toBeInTheDocument();
+    line.click();
+    expect(
+      await screen.findByRole("dialog", { name: "Email delivery" }),
+    ).toBeInTheDocument();
+  });
+
+  it("filters the people by the pressed tile", async () => {
+    const fetchMock = setup(
+      { ...meetingFixture, status: "scheduled", startsAt: future },
+      workspaceFixture,
+      sentResults,
+    );
+    (await screen.findByRole("button", { name: "Late 4" })).click();
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(([url]) =>
+          String(url).includes("filter=late"),
+        ),
+      ).toBe(true),
+    );
   });
 });

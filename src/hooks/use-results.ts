@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import type { z } from "zod";
+import { PROGRESS_POLL_MS } from "@/config/meetings";
 import { PAGE_SIZE_MAX } from "@/config/pagination";
 import { RESULTS_POLL_MS } from "@/config/responses";
 import { usePagedList } from "@/hooks/use-paged-list";
@@ -36,7 +37,7 @@ function periodParams(range: PeriodRange): Record<string, string> {
 export const meetingResultsKey = (slug: string, id: string) =>
   ["meeting-results", slug, id] as const;
 
-/** A meeting's counts (tiles, email line, send progress); refreshed every 10 s while `live`. */
+/** A meeting's counts (tiles, email line, send progress), refreshed while sending or `live`. */
 export function useMeetingResults(slug: string, id: string, live: boolean) {
   return useQuery({
     queryKey: meetingResultsKey(slug, id),
@@ -44,7 +45,13 @@ export function useMeetingResults(slug: string, id: string, live: boolean) {
       apiRequest(`${meetingBase(slug, id)}/results`, {
         schema: meetingResultsSchema,
       }),
-    refetchInterval: live ? RESULTS_POLL_MS : false,
+    // Every 3 s while invites are still going out, every 10 s while the meeting is live.
+    refetchInterval: (query) =>
+      (query.state.data?.emails.queued ?? 0) > 0
+        ? PROGRESS_POLL_MS
+        : live
+          ? RESULTS_POLL_MS
+          : false,
     refetchIntervalInBackground: false,
   });
 }
