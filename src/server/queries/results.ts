@@ -2,6 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { Database } from "@/server/db/database.types";
+import { SORT_NAME_MAX } from "@/config/pagination";
 import { sqlNullable } from "@/server/db/rpc-args";
 import { encodeCursor } from "@/server/http/pagination";
 import { responseModeSchema } from "@/shared/api/meeting-settings";
@@ -26,14 +27,17 @@ const count = z.number().int();
 const iso = z.iso.datetime({ offset: true });
 
 /** Keyset of a meeting's people: lower-cased name, then invitee id. */
-export const peopleCursorSchema = z.tuple([z.string().max(200), z.uuid()]);
+export const peopleCursorSchema = z.tuple([
+  z.string().max(SORT_NAME_MAX),
+  z.uuid(),
+]);
 /** Keyset of a person's history: start time, then meeting id (newest first). */
 export const historyCursorSchema = z.tuple([iso, z.uuid()]);
 /** Keyset of the export details: start, meeting, lower-cased name, invitee. */
 export const detailsCursorSchema = z.tuple([
   iso,
   z.uuid(),
-  z.string().max(200),
+  z.string().max(SORT_NAME_MAX),
   z.uuid(),
 ]);
 
