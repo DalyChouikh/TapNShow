@@ -535,9 +535,6 @@ isOneToOne: false
 "meeting_people":
 { Args: { "p_after_id"?: string,"p_after_name"?: string,"p_filter"?: string,"p_limit"?: number,"p_meeting": string }; Returns: Json
                            },
-"meeting_progress":
-{ Args: { "p_meeting": string }; Returns: Json
-                           },
 "meeting_results":
 { Args: { "p_meeting": string }; Returns: Json
                            },
