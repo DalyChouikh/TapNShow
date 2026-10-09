@@ -158,6 +158,50 @@ describe("AnswerView", () => {
     expect(screen.getByLabelText("Reason")).toHaveValue("Exam");
   });
 
+  it("pre-selects a different email choice over a saved answer, keeping its reason, until Confirm", async () => {
+    renderWith("choice=late", {
+      answer: {
+        status: "absent",
+        delayMinutes: null,
+        reason: "Exam",
+        comment: "",
+        afterDeadline: false,
+        respondedAt: NOW,
+        updatedAt: NOW,
+      },
+    });
+    expect(
+      await screen.findByRole("radio", { name: "I'll be late" }),
+    ).toBeChecked();
+    expect(screen.queryByText("Your answer: Can't come")).toBeNull();
+    expect(screen.getByLabelText("Reason")).toHaveValue("Exam");
+    expect(fetchCalls("PUT")).toHaveLength(0);
+    fireEvent.click(screen.getByRole("button", { name: "20 min" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Confirm: late by 20 min" }),
+    );
+    expect(
+      await screen.findByText("Your answer: Late by 20 min"),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the saved answer when the email choice matches it", async () => {
+    renderWith("choice=absent", {
+      answer: {
+        status: "absent",
+        delayMinutes: null,
+        reason: "Exam",
+        comment: "",
+        afterDeadline: false,
+        respondedAt: NOW,
+        updatedAt: NOW,
+      },
+    });
+    expect(
+      await screen.findByText("Your answer: Can't come"),
+    ).toBeInTheDocument();
+  });
+
   it("is read-only after the start (Review Focus 3)", async () => {
     renderWith("choice=attending", {
       meeting: { startsAt: new Date(Date.now() - 60_000).toISOString() },

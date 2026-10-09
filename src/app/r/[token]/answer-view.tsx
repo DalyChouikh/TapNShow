@@ -61,6 +61,8 @@ export function AnswerView() {
   const submit = useSubmitAnswer(token);
   const [editing, setEditing] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
+  // Once a save happens here, the email's ?choice= has been answered and no longer overrides.
+  const [savedHere, setSavedHere] = useState(false);
   const [closedByServer, setClosedByServer] = useState(false);
   const summaryRef = useRef<HTMLDivElement>(null);
 
@@ -81,6 +83,16 @@ export function AnswerView() {
   const { meeting, answers, answer } = data;
   const started = !meeting.startsAt || new Date(meeting.startsAt) <= new Date();
   const closed = closedByServer || meeting.status !== "scheduled" || started;
+  const emailChoice = choiceToStatus(
+    search.get("choice"),
+    answers.responseMode,
+  );
+  // A tapped email button that differs from the saved answer opens the cards on that choice.
+  const emailOverride =
+    answer !== null &&
+    !savedHere &&
+    emailChoice !== null &&
+    emailChoice !== answer.status;
   const deadlinePassed =
     answers.responseDeadline !== null &&
     new Date(answers.responseDeadline) < new Date();
@@ -97,6 +109,7 @@ export function AnswerView() {
       onSuccess: () => {
         setEditing(false);
         setJustSaved(true);
+        setSavedHere(true);
         // WCAG 2.4.3: move focus to the result once it has rendered.
         requestAnimationFrame(() => summaryRef.current?.focus());
       },
@@ -130,7 +143,7 @@ export function AnswerView() {
           <ClosedState info={data} />
         ) : answers.responseMode === "announcement" ? (
           <AnnouncementCalendar token={token} info={data} />
-        ) : answer && !editing ? (
+        ) : answer && !editing && !emailOverride ? (
           <AnswerSummary
             ref={summaryRef}
             token={token}
@@ -147,8 +160,7 @@ export function AnswerView() {
           <ChoiceCards
             info={data}
             initialStatus={
-              answer?.status ??
-              choiceToStatus(search.get("choice"), answers.responseMode)
+              emailOverride || !answer ? emailChoice : answer.status
             }
             initial={answer}
             deadlinePassed={deadlinePassed}
