@@ -1,5 +1,5 @@
 import { TZDate } from "@date-fns/tz";
-import { addMinutes, format, parse } from "date-fns";
+import { addMinutes, format } from "date-fns";
 
 /** A meeting's time as shown everywhere (always in the meeting's own zone, spec §7.10). */
 export type MeetingWhen = {
@@ -44,17 +44,16 @@ export function zonedWallTimeToUtc(input: {
   time: string;
   timezone: string;
 }): string {
-  const wall = parse(
-    `${input.date} ${input.time}`,
-    "yyyy-MM-dd HH:mm",
-    new Date(0),
-  );
+  // Numbers straight into TZDate: parsing first would go through the browser's own zone, which
+  // can shift a time that does not exist there (spring forward, #168).
+  const [year, month, day] = input.date.split("-").map(Number);
+  const [hours, minutes] = input.time.split(":").map(Number);
   const zoned = new TZDate(
-    wall.getFullYear(),
-    wall.getMonth(),
-    wall.getDate(),
-    wall.getHours(),
-    wall.getMinutes(),
+    year,
+    month - 1,
+    day,
+    hours,
+    minutes,
     input.timezone,
   );
   // TZDate#toISOString() keeps the zone's offset ("…+01:00"); the API stores UTC ("…Z").

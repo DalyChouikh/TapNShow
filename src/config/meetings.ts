@@ -31,8 +31,15 @@ export const RESPONSE_CHOICES: Record<ResponseMode, readonly ResponseChoice[]> =
 /** Time list step in the TimePicker (minutes). */
 export const TIME_STEP_MINUTES = 15;
 
-/** One dispatcher run sends for at most this long, leaving headroom under the 60 s route limit. */
-export const DISPATCH_BUDGET_MS = 50_000;
+/** The dispatcher routes' `maxDuration` (seconds); route files repeat it as a literal (Next needs one). */
+export const DISPATCH_MAX_DURATION_S = 60;
+/** Room for the last send's bookkeeping after Gmail answers. */
+export const DISPATCH_SAFETY_MARGIN_MS = 5_000;
+/**
+ * A run starts no new send after this long, so the slowest send (Gmail timeout) still finishes
+ * before the function is stopped (#168): 35 s + 20 s + 5 s = 60 s.
+ */
+export const DISPATCH_BUDGET_MS = 35_000;
 /** Pause between two sends from one Gmail account (≤ 60/min, spec §8). */
 export const DISPATCH_PACE_MS = 1_000;
 /** Jobs claimed per sender per round (one budget's worth at the pace above). */
