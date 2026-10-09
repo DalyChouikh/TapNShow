@@ -304,7 +304,8 @@ Labels: `area:email`, `area:calendar`. Branch `feat/<issue>-m6-emails`.
 - Produces:
   - `src/config/meeting-edit.ts`: `EDITABLE_FIELDS`, `MEMBER_VISIBLE_FIELDS`, `SCHEDULE_FIELDS`, `PLACE_FIELDS`, `CALENDAR_FIELDS` (readonly tuples of snake_case column names) and types `EditableField`, `MemberVisibleField`.
   - `src/shared/api/meeting-changes.ts`: `changeValueSchema`, `changeSetSchema` (`Record<string, [old, new]>`), type `ChangeSet`.
-  - `src/lib/meetings/changes.ts`: `type ChangeLine = { field: MemberVisibleField; kind: "diff"; from: string; to: string } | { field: MemberVisibleField; kind: "updated" }`, `type ChangeText = { label(field: MemberVisibleField): string; none: string; minutes(total: number): string; place(mode: LocationMode): string }`, `changeLines(changes: ChangeSet, timezone: string, text: ChangeText): ChangeLine[]`.
+  - `src/lib/meetings/changes.ts` (the **marked meeting card**, owner's mockup choice 2026-10-09: old values struck through, new ones highlighted, long text marked "Updated"; shared by the update email and the Review changes step): `type CardMeeting` (the meeting fields the card shows), `type SectionKey = "title" | "when" | "where" | "link" | "deadline" | "agenda" | "note"`, `type CardSection = { key: SectionKey; now: string; before: string | null; updated: boolean }`, `type CardText = { none: string; joinLink(url: string): string; duration: DurationWords }`, `meetingBefore(meeting: CardMeeting, changes: ChangeSet): CardMeeting`, `markedCard(meeting: CardMeeting, changes: ChangeSet, text: CardText): CardSection[]`, `hasMemberChanges(changes: ChangeSet): boolean`.
+  - `MarkedMeetingCard({ sections, labels })` (email component, `src/emails/marked-meeting-card.tsx`).
   - `AnswerButtons({ responseMode, respondUrl }: { responseMode: Exclude<ResponseMode, "announcement">; respondUrl: string })`.
   - `renderMeetingUpdateEmail(props: MeetingUpdateEmailProps)`, `renderMeetingCancelEmail(props: MeetingCancelEmailProps)`, `renderMeetingReminderEmail(props: MeetingReminderEmailProps)`, each `→ Promise<{ subject: string; html: string; text: string }>`; props types exported (see Step 3).
 
@@ -333,53 +334,66 @@ describe("edit field groups", () => {
 
 ```ts
 import { describe, expect, it } from "vitest";
-import { changeLines, type ChangeText } from "./changes";
+import { type CardMeeting, type CardText, markedCard, meetingBefore } from "./changes";
 
-const text: ChangeText = {
-  label: (field) => ({ starts_at: "Time", duration_minutes: "Length", location_text: "Place", agenda_md: "Agenda",
-    response_deadline: "Answer by", title: "Title", timezone: "Time zone", location_mode: "Where",
-    online_text: "Online", meeting_url: "Link", footer_note: "Note" })[field],
+const meeting: CardMeeting = {
+  title: "Weekly sync", startsAt: "2026-10-11T17:00:00.000Z", durationMinutes: 60, timezone: "Africa/Tunis",
+  locationMode: "in_person", locationText: "Hall A", onlineText: "", meetingUrl: "",
+  agendaMd: "New agenda", responseDeadline: null, footerNote: "",
+};
+const text: CardText = {
   none: "None",
-  minutes: (total) => `${total} min`,
-  place: (mode) => mode,
+  joinLink: (url) => `Link: ${url}`,
+  duration: { minutes: (n) => `${n} min`, hours: (h) => `${h} h`, hoursMinutes: (h, m) => `${h} h ${m}` },
 };
 
-describe("changeLines", () => {
-  it("shows times in the meeting's zone, in field order, and skips hidden settings", () => {
-    expect(changeLines({
-      reason_required: [true, false],
+describe("markedCard", () => {
+  it("marks the changed time and place, old struck and new highlighted", () => {
+    const changes = {
+      starts_at: ["2026-10-10T17:00:00+00:00", "2026-10-11T17:00:00+00:00"],
       location_text: ["Room B12", "Hall A"],
-      starts_at: ["2026-10-09T17:00:00+00:00", "2026-10-10T17:00:00+00:00"],
-    }, "Africa/Tunis", text)).toEqual([
-      { field: "starts_at", kind: "diff", from: "Fri 9 Oct, 18:00", to: "Sat 10 Oct, 18:00" },
-      { field: "location_text", kind: "diff", from: "Room B12", to: "Hall A" },
+      reason_required: [true, false],
+    } as const;
+    expect(markedCard(meeting, changes, text)).toEqual([
+      { key: "title", now: "Weekly sync", before: null, updated: false },
+      { key: "when", now: "Sat 11 Oct, 18:00–19:00 (Africa/Tunis)", before: "Fri 10 Oct, 18:00–19:00 (Africa/Tunis)", updated: false },
+      { key: "where", now: "Hall A", before: "Room B12", updated: false },
     ]);
   });
-  it("says 'updated' for long text and 'None' for a removed deadline", () => {
-    expect(changeLines({
-      agenda_md: ["a", "b"],
-      response_deadline: ["2026-10-09T15:00:00+00:00", null],
-      duration_minutes: [60, 90],
-    }, "Africa/Tunis", text)).toEqual([
-      { field: "duration_minutes", kind: "diff", from: "60 min", to: "90 min" },
-      { field: "agenda_md", kind: "updated" },
-      { field: "response_deadline", kind: "diff", from: "Fri 9 Oct, 16:00", to: "None" },
+  it("marks long text as updated and shows a removed deadline as None", () => {
+    expect(markedCard(meeting, {
+      agenda_md: ["Old agenda", "New agenda"],
+      response_deadline: ["2026-10-10T11:00:00+00:00", null],
+    }, text)).toEqual([
+      { key: "title", now: "Weekly sync", before: null, updated: false },
+      { key: "when", now: "Sat 11 Oct, 18:00–19:00 (Africa/Tunis)", before: null, updated: false },
+      { key: "where", now: "Hall A", before: null, updated: false },
+      { key: "deadline", now: "None", before: "Fri 10 Oct, 12:00", updated: false },
+      { key: "agenda", now: "", before: null, updated: true },
     ]);
+  });
+  it("rebuilds the meeting as it was before the changes", () => {
+    expect(meetingBefore(meeting, { duration_minutes: [90, 60], title: ["Sync", "Weekly sync"] })).toMatchObject({
+      durationMinutes: 90, title: "Sync",
+    });
   });
 });
 ```
 
-`src/emails/meeting-update-email.test.tsx` (props built like `calendar-confirm-email.test.tsx`'s `PROPS`, plus `changes`, `notify`, `reconfirm`, `calendar`, `now: new Date("2026-10-08T10:00:00Z")`):
+`src/emails/meeting-update-email.test.tsx` (props built like `calendar-confirm-email.test.tsx`'s `PROPS`, with the meeting now on Sat 11 Oct 18:00 in Hall A, plus `changes`, `notify`, `reconfirm`, `calendar`, `now: new Date("2026-10-08T10:00:00Z")`):
 
 ```tsx
-it("lists what changed and asks again after a time change", async () => {
-  const email = await renderMeetingUpdateEmail({
-    ...PROPS,
-    changes: { starts_at: ["2026-10-09T17:00:00+00:00", "2026-10-10T17:00:00+00:00"] },
-    notify: true, reconfirm: true, calendar: true,
-  });
-  expect(email.subject).toBe("Changed: Weekly sync · Fri 9 Oct, 18:00");
-  expect(email.text).toContain("Time: Fri 9 Oct, 18:00 → Sat 10 Oct, 18:00");
+const moved = {
+  starts_at: ["2026-10-10T17:00:00+00:00", "2026-10-11T17:00:00+00:00"],
+  location_text: ["Room B12", "Hall A"],
+};
+
+it("shows the marked card and asks again after a time change", async () => {
+  const email = await renderMeetingUpdateEmail({ ...PROPS, changes: moved, notify: true, reconfirm: true, calendar: true });
+  expect(email.subject).toBe("Changed: Weekly sync · Sat 11 Oct, 18:00");
+  expect(email.html).toContain("line-through");
+  expect(email.text).toContain("Before: Fri 10 Oct, 18:00–19:00 (Africa/Tunis)");
+  expect(email.text).toContain("Now: Sat 11 Oct, 18:00–19:00 (Africa/Tunis)");
   expect(email.text).toContain("Can you still come at the new time?");
   expect(email.html).toContain("https://app.test/r/TOKEN?choice=attending");
   expect(email.text).toContain("Your calendar is updated too.");
@@ -390,18 +404,19 @@ it("offers Change my answer, not the choice buttons, when the time stayed", asyn
   });
   expect(email.html).not.toContain("?choice=");
   expect(email.text).toContain("Change my answer");
+  expect(email.text).not.toContain("Your calendar is updated too.");
 });
 it("asks people to confirm when the time moved and moved back", async () => {
   const email = await renderMeetingUpdateEmail({ ...PROPS, changes: {}, notify: true, reconfirm: true, calendar: false });
-  expect(email.subject).toBe("Please confirm: Weekly sync · Fri 9 Oct, 18:00");
-  expect(email.text).not.toContain("→");
+  expect(email.subject).toBe("Please confirm: Weekly sync · Sat 11 Oct, 18:00");
+  expect(email.text).not.toContain("Before:");
 });
-it("is a short calendar note when only the calendar copy changes", async () => {
+it("is a short note when only the calendar event changes", async () => {
   const email = await renderMeetingUpdateEmail({
     ...PROPS, changes: { agenda_md: ["a", "b"] }, notify: false, reconfirm: false, calendar: true,
   });
-  expect(email.subject).toBe("Updated in your calendar: Weekly sync · Fri 9 Oct, 18:00");
-  expect(email.text).toContain("Your calendar copy of this meeting is updated.");
+  expect(email.subject).toBe("Updated in your calendar: Weekly sync · Sat 11 Oct, 18:00");
+  expect(email.text).toContain("This meeting is updated in your calendar.");
 });
 ```
 
@@ -498,66 +513,100 @@ export const changeSetSchema = z.record(z.string(), z.tuple([changeValueSchema, 
 export type ChangeSet = z.infer<typeof changeSetSchema>;
 ```
 
-`src/lib/meetings/changes.ts`:
+`src/lib/meetings/changes.ts` (the marked meeting card; the email and the Review changes step render the same sections):
 
 ```ts
-import { MEMBER_VISIBLE_FIELDS, type MemberVisibleField } from "@/config/meeting-edit";
-import { type LocationMode, locationModeSchema } from "@/shared/api/meeting-settings";
-import type { ChangeSet } from "@/shared/api/meeting-changes";
-import { formatDeadline } from "./format";
+import type { ChangeSet, ChangeValue } from "@/shared/api/meeting-changes";
+import type { LocationMode } from "@/shared/api/meeting-settings";
+import { durationText, type DurationWords, formatDeadline, formatMeetingWhen } from "./format";
 
-/** One line of a change summary: old → new, or just "updated" for long text. */
-export type ChangeLine =
-  | { field: MemberVisibleField; kind: "diff"; from: string; to: string }
-  | { field: MemberVisibleField; kind: "updated" };
-
-/** Words the summary needs (the caller translates: next-intl in the app, the email translator in emails). */
-export type ChangeText = {
-  label: (field: MemberVisibleField) => string;
-  none: string;
-  minutes: (total: number) => string;
-  place: (mode: LocationMode) => string;
+/** The meeting fields the marked card shows (a `Meeting` or the email's meeting both fit). */
+export type CardMeeting = {
+  title: string;
+  startsAt: string;
+  durationMinutes: number;
+  timezone: string;
+  locationMode: LocationMode;
+  locationText: string;
+  onlineText: string;
+  meetingUrl: string;
+  agendaMd: string;
+  responseDeadline: string | null;
+  footerNote: string;
 };
 
-const LONG_TEXT: readonly MemberVisibleField[] = ["agenda_md", "footer_note"];
-const INSTANTS: readonly MemberVisibleField[] = ["starts_at", "response_deadline"];
+/** One part of the card. `before` is set when the part changed; long text only says `updated`. */
+export type SectionKey = "title" | "when" | "where" | "link" | "deadline" | "agenda" | "note";
+/** A card part as shown: now, and what it was before when it changed. */
+export type CardSection = { key: SectionKey; now: string; before: string | null; updated: boolean };
+/** Words the card needs (the caller translates). */
+export type CardText = { none: string; joinLink: (url: string) => string; duration: DurationWords };
 
-function show(field: MemberVisibleField, value: string | number | boolean | null, timezone: string, text: ChangeText): string {
-  if (value === null || value === "") {
-    return text.none;
+/** Column → card field (only member-visible columns; DB twin: `c_visible`). */
+const FIELD_OF = {
+  title: "title", starts_at: "startsAt", duration_minutes: "durationMinutes", timezone: "timezone",
+  location_mode: "locationMode", location_text: "locationText", online_text: "onlineText",
+  meeting_url: "meetingUrl", agenda_md: "agendaMd", response_deadline: "responseDeadline", footer_note: "footerNote",
+} as const satisfies Record<MemberVisibleField, keyof CardMeeting>;
+
+/** The meeting as it was before `changes` (each changed field set back to its old value). */
+export function meetingBefore(meeting: CardMeeting, changes: ChangeSet): CardMeeting {
+  const before: Record<string, ChangeValue> = { ...meeting };
+  for (const [column, field] of Object.entries(FIELD_OF)) {
+    const change = changes[column];
+    if (change) {
+      before[field] = change[0];
+    }
   }
-  if (INSTANTS.includes(field) && typeof value === "string") {
-    return formatDeadline(value, timezone);
-  }
-  if (field === "duration_minutes" && typeof value === "number") {
-    return text.minutes(value);
-  }
-  const mode = field === "location_mode" ? locationModeSchema.safeParse(value) : null;
-  if (mode?.success) {
-    return text.place(mode.data);
-  }
-  return String(value);
+  return cardMeetingSchema.parse(before);
 }
 
-/**
- * The member-visible part of a change set, in display order (spec §7.5 update email, Review
- * changes). Times are shown in the meeting's current zone.
- */
-export function changeLines(changes: ChangeSet, timezone: string, text: ChangeText): ChangeLine[] {
-  return MEMBER_VISIBLE_FIELDS.flatMap((field): ChangeLine[] => {
-    const change = changes[field];
-    if (!change) {
-      return [];
-    }
-    if (LONG_TEXT.includes(field)) {
-      return [{ field, kind: "updated" }];
-    }
-    return [{ field, kind: "diff", from: show(field, change[0], timezone, text), to: show(field, change[1], timezone, text) }];
+/** True when anything members can see changed (else the email is only a calendar note). */
+export function hasMemberChanges(changes: ChangeSet): boolean {
+  return Object.keys(FIELD_OF).some((column) => column in changes);
+}
+
+const when = (m: CardMeeting) => {
+  const w = formatMeetingWhen(m);
+  return `${w.date}, ${w.start}–${w.end} (${w.zone})`;
+};
+const where = (m: CardMeeting) =>
+  [m.locationMode !== "online" ? m.locationText : "", m.locationMode !== "in_person" ? m.onlineText : ""]
+    .filter(Boolean)
+    .join(" · ");
+
+/** The card's parts in order: title, when, where (always), then link, deadline, agenda, note when relevant. */
+export function markedCard(meeting: CardMeeting, changes: ChangeSet, text: CardText): CardSection[] {
+  const old = meetingBefore(meeting, changes);
+  const part = (key: SectionKey, now: string, was: string): CardSection => ({
+    key, now, before: now === was ? null : was, updated: false,
   });
+  const deadline = (m: CardMeeting) => (m.responseDeadline ? formatDeadline(m.responseDeadline, m.timezone) : text.none);
+  const sections: CardSection[] = [
+    part("title", meeting.title, old.title),
+    part("when", when(meeting), when(old)),
+    part("where", where(meeting) || text.none, where(old) || text.none),
+  ];
+  if (meeting.meetingUrl !== old.meetingUrl) {
+    sections.push(part("link", meeting.meetingUrl ? text.joinLink(meeting.meetingUrl) : text.none,
+      old.meetingUrl ? text.joinLink(old.meetingUrl) : text.none));
+  }
+  if (meeting.responseDeadline || old.responseDeadline) {
+    sections.push(part("deadline", deadline(meeting), deadline(old)));
+  }
+  if (meeting.agendaMd !== old.agendaMd) {
+    sections.push({ key: "agenda", now: "", before: null, updated: true });
+  }
+  if (meeting.footerNote !== old.footerNote) {
+    sections.push({ key: "note", now: "", before: null, updated: true });
+  }
+  return sections;
 }
 ```
 
+`cardMeetingSchema` is the Zod object matching `CardMeeting` (define it next to the type; `locationMode` uses `locationModeSchema`, so a bad stored value fails loudly instead of rendering). `ChangeValue` is `z.infer<typeof changeValueSchema>` exported from `meeting-changes.ts`. `durationText` and `DurationWords` come from `src/lib/meetings/format.ts` (Step 3's last paragraph); `when()` uses `formatMeetingWhen`, which already prints "18:00–19:00", so the duration words are used only by the Review changes step's "Length" hint, if any. Import `MemberVisibleField` from `@/config/meeting-edit`.
 
+`src/emails/marked-meeting-card.tsx` renders the sections inside the email: the title as the heading (with the old title struck through under it when changed), then a label per part ("When", "Where", "Join link", "Answer by", "Agenda", "Note"). A changed part shows the old value in `<s>` (muted ink) above the new value on the warning tint; `updated` shows an "Updated" tag on the same tint. Each old/new value starts with a hidden label (`hiddenStyle` in `theme.ts`: `display:none; max-height:0; overflow:hidden; mso-hide:all`, the preheader technique react-email's `Preview` uses) reading "Before: " / "Now: ", so the plain-text part and screen readers keep the meaning the strike-through gives (the tests assert on it).
 
 `src/emails/answer-buttons.tsx` — move the `CHOICE_FILL` map and the `choices.map(...)` button row out of `meeting-invite-email.tsx` unchanged:
 
@@ -609,19 +658,20 @@ Also extract the single "primary" link button (used by the calendar email's "Cha
 
 ```tsx
 import { render, Text } from "react-email";
-import { changeLines, type ChangeText } from "@/lib/meetings/changes";
-import { durationText, formatMeetingWhen } from "@/lib/meetings/format";
+import { markedCard, type CardText, hasMemberChanges } from "@/lib/meetings/changes";
+import { formatMeetingWhen } from "@/lib/meetings/format";
 import type { ChangeSet } from "@/shared/api/meeting-changes";
 import type { MeetingInviteEmailProps } from "./meeting-invite-email";
 import { AnswerButtons, PrimaryLinkButton } from "./answer-buttons";
 import { EmailLayout } from "./email-layout";
-import { bodyStyle as body, MeetingFooter, MeetingWhenWhere } from "./meeting-blocks";
+import { MarkedMeetingCard } from "./marked-meeting-card";
+import { bodyStyle as body, MeetingFooter } from "./meeting-blocks";
 import { getEmailTranslator } from "./translator";
 
 /** One person's update after a sent meeting changed (spec §7.5). */
 export type MeetingUpdateEmailProps = Omit<MeetingInviteEmailProps, "now"> & {
   changes: ChangeSet;
-  /** false: only the calendar copy changes (a calendar-only note). */
+  /** false: only the calendar event changes (a short note). */
   notify: boolean;
   /** The time moved: ask again with the answer buttons. */
   reconfirm: boolean;
@@ -629,25 +679,22 @@ export type MeetingUpdateEmailProps = Omit<MeetingInviteEmailProps, "now"> & {
   calendar: boolean;
 };
 
-function changeText(tr: ReturnType<typeof getEmailTranslator>): ChangeText {
+function cardText(tr: ReturnType<typeof getEmailTranslator>): CardText {
   return {
-    label: (field) => tr(`changes.fields.${field}`),
     none: tr("changes.none"),
-    minutes: (total) =>
-      durationText(total, {
-        minutes: (count) => tr("changes.minutes", { count }),
-        hours: (hours) => tr("changes.hours", { hours }),
-        hoursMinutes: (hours, minutes) => tr("changes.hoursMinutes", { hours, minutes }),
-      }),
-    place: (mode) => tr(`changes.place.${mode}`),
+    joinLink: (url) => url,
+    duration: {
+      minutes: (count) => tr("changes.minutes", { count }),
+      hours: (hours) => tr("changes.hours", { hours }),
+      hoursMinutes: (hours, minutes) => tr("changes.hoursMinutes", { hours, minutes }),
+    },
   };
 }
 
-/** The update email: what changed, the meeting card, and either the answer buttons or "Change my answer". */
+/** The update email: the marked meeting card, then the answer buttons or "Change my answer". */
 export function MeetingUpdateEmail(props: MeetingUpdateEmailProps) {
-  const { workspaceName, senderEmail, meeting, links, changes, notify, reconfirm, calendar } = props;
+  const { workspaceName, recipientName, senderEmail, meeting, links, changes, notify, reconfirm, calendar } = props;
   const tr = getEmailTranslator();
-  const lines = notify ? changeLines(changes, meeting.timezone, changeText(tr)) : [];
   const answers = meeting.responseMode !== "announcement";
   return (
     <EmailLayout
@@ -657,42 +704,40 @@ export function MeetingUpdateEmail(props: MeetingUpdateEmailProps) {
       footer={<MeetingFooter workspaceName={workspaceName} senderEmail={senderEmail} links={links} />}
     >
       <Text style={body}>
-        {notify ? tr("meetingUpdate.intro", { workspace: workspaceName }) : tr("meetingUpdate.calendarOnly")}
+        {notify
+          ? tr("meetingUpdate.intro", { name: recipientName, workspace: workspaceName })
+          : tr("meetingUpdate.calendarOnly")}
       </Text>
-      {lines.map((line) => (
-        <Text key={line.field} style={{ ...body, marginTop: "8px" }}>
-          {line.kind === "diff"
-            ? tr("meetingUpdate.line", { label: tr(`changes.fields.${line.field}`), from: line.from, to: line.to })
-            : tr("meetingUpdate.updated", { label: tr(`changes.fields.${line.field}`) })}
-        </Text>
-      ))}
-      <MeetingWhenWhere meeting={meeting} />
+      <MarkedMeetingCard sections={markedCard(meeting, notify ? changes : {}, cardText(tr))} />
       {answers && notify && reconfirm ? (
         <>
-          <Text style={{ ...body, marginTop: "16px" }}>{tr("meetingUpdate.reconfirm")}</Text>
+          <Text style={{ ...body, marginTop: "16px", fontWeight: 700 }}>{tr("meetingUpdate.reconfirm")}</Text>
           <AnswerButtons responseMode={meeting.responseMode} respondUrl={links.respond} />
         </>
       ) : answers && notify ? (
         <PrimaryLinkButton href={links.respond} label={tr("meetingUpdate.change")} />
       ) : null}
-      {calendar ? <Text style={{ ...body, fontSize: "14px", marginTop: "12px" }}>{tr("meetingUpdate.calendar")}</Text> : null}
+      {calendar && notify ? (
+        <Text style={{ ...body, fontSize: "14px", marginTop: "12px" }}>{tr("meetingUpdate.calendar")}</Text>
+      ) : null}
     </EmailLayout>
   );
 }
 
-/** Subject + HTML + text. Subjects: "Changed: …", "Please confirm: …" (time moved and back), "Updated in your calendar: …". */
+/** Subject + HTML + text: "Changed: …", "Please confirm: …" (time moved and back), "Updated in your calendar: …". */
 export async function renderMeetingUpdateEmail(props: MeetingUpdateEmailProps) {
   const tr = getEmailTranslator();
   const when = formatMeetingWhen(props.meeting);
   const values = { title: props.meeting.title, date: when.date, time: when.start };
-  const visible = changeLines(props.changes, props.meeting.timezone, changeText(tr)).length > 0;
   const subject = !props.notify
     ? tr("meetingUpdate.subjectCalendar", values)
-    : visible ? tr("meetingUpdate.subject", values) : tr("meetingUpdate.subjectConfirm", values);
+    : hasMemberChanges(props.changes) ? tr("meetingUpdate.subject", values) : tr("meetingUpdate.subjectConfirm", values);
   const element = <MeetingUpdateEmail {...props} />;
   return { subject, html: await render(element), text: await render(element, { plainText: true }) };
 }
 ```
+
+`EmailLayout`'s `heading` already shows the title; `MarkedMeetingCard` shows the "title" section only when it changed (old struck under the heading), so an unchanged title is not printed twice.
 
 `meeting-cancel-email.tsx` (same imports; `MeetingCancelEmailProps = Omit<MeetingInviteEmailProps, "now"> & { calendar: boolean }`): body `tr("meetingCancel.body", { workspace, title, date: when.date, time: when.start })`, then `tr("meetingCancel.calendar")` when `calendar`; no `MeetingWhenWhere`, no buttons; subject `tr("meetingCancel.subject", values)`.
 
@@ -708,17 +753,16 @@ export async function renderMeetingUpdateEmail(props: MeetingUpdateEmailProps) {
   "minutes": "{count} min",
   "hours": "{hours} h",
   "hoursMinutes": "{hours} h {minutes}",
-  "fields": { "title": "Title", "starts_at": "Time", "duration_minutes": "Length", "timezone": "Time zone",
-    "location_mode": "Where", "location_text": "Place", "online_text": "Online", "meeting_url": "Link",
-    "agenda_md": "Agenda", "response_deadline": "Answer by", "footer_note": "Note" },
-  "place": { "in_person": "In person", "online": "Online", "hybrid": "In person and online" }
+  "before": "Before:",
+  "now": "Now:",
+  "updated": "Updated",
+  "sections": { "title": "Title", "when": "When", "where": "Where", "link": "Join link", "deadline": "Answer by",
+    "agenda": "Agenda", "note": "Note" }
 },
 "meetingUpdate": {
   "preview": "{workspace} changed this meeting.",
-  "intro": "{workspace} changed this meeting.",
-  "calendarOnly": "Your calendar copy of this meeting is updated.",
-  "line": "{label}: {from} → {to}",
-  "updated": "{label}: updated",
+  "intro": "Hi {name}, {workspace} changed this meeting.",
+  "calendarOnly": "This meeting is updated in your calendar.",
   "reconfirm": "Can you still come at the new time?",
   "change": "Change my answer",
   "calendar": "Your calendar is updated too.",
@@ -743,9 +787,9 @@ export async function renderMeetingUpdateEmail(props: MeetingUpdateEmailProps) {
 }
 ```
 
-Durations read like the wizard's chips ("45 min", "1 h", "1 h 30"): add `export function durationText(total: number, words: { minutes(count: number): string; hours(hours: number): string; hoursMinutes(hours: number, minutes: number): string }): string` to `src/lib/meetings/format.ts`, make `details-step.tsx`'s and `meeting-defaults-section.tsx`'s local `hoursLabel`/`minutes` helpers call it (DRY), and build `ChangeText.minutes` from it with the three `changes.*` keys above. Test "1 h 30" in `format.test.ts`.
+Durations read like the wizard's chips ("45 min", "1 h", "1 h 30"): add `export type DurationWords = { minutes(count: number): string; hours(hours: number): string; hoursMinutes(hours: number, minutes: number): string }` and `export function durationText(total: number, words: DurationWords): string` to `src/lib/meetings/format.ts`, and make `details-step.tsx`'s and `meeting-defaults-section.tsx`'s local `hoursLabel`/`minutes` helpers call it (DRY). Test "1 h 30" in `format.test.ts`.
 
-- [ ] **Step 4: Run; expect PASS** — the same `bunx vitest run …` command, then the chained check. Render each new email once to a file (`bun -e` script in the scratchpad that writes the HTML) and look at it in a browser at 390 px: plain words, no "→" when nothing changed, buttons tappable.
+- [ ] **Step 4: Run; expect PASS** — the same `bunx vitest run …` command, then the chained check. Render each new email once to a file (`bun -e` script in the scratchpad that writes the HTML) and look at it in a browser at 390 px: plain words, old values struck through and new ones highlighted as in the chosen mockup, nothing marked when nothing changed, buttons tappable.
 
 - [ ] **Step 5: Commit, PR, merge** — `feat: update, cancellation and reminder emails`.
 
@@ -1747,7 +1791,7 @@ Labels: `area:db`, `area:pipeline`. Branch `feat/<issue>-m6-edit-cancel-db`.
   - `public.delete_cancelled_meeting(p_meeting uuid) → void`. Errors: `not_found`, `forbidden`, `invalid_input` (not cancelled), `cancel_emails_pending`.
   - `private.update_targets(p_meeting uuid, p_rule text, p_calendar boolean) → table (invitee_id uuid, workspace_id uuid, notify boolean)`; `private.merge_update_payload(p_old jsonb, p_new jsonb) → jsonb`; `private.like_contains(p_text text) → text` (a safe `like` pattern); `private.fold(p_text text) → text` (lower case without accents, `unaccent` extension; owner decision 2026-10-09: the check-in search ignores accents like the roster search).
   - `token_submit_response`: a same-answer save while `needs_reconfirmation` clears it and writes one history row; any new answer clears it.
-  - `token_invitee`: `answer.needs_reconfirmation`.
+  - `token_invitee`: `answer.needs_reconfirmation`; `meeting.previous_starts_at` (null unless the person is still to reconfirm).
   - `meeting_results`: `answers.to_reconfirm`, `answers.remindable` (who a Nudge would email), `answers.reachable` (who a Cancel would email), `checked_in`, `nudge: {last_at, last_count, next_at}`; Going/Late/Absent/Not going exclude people still to reconfirm.
   - `meeting_people(p_meeting, p_filter, p_after_name, p_after_id, p_limit, p_search text default null)`: filter `to_reconfirm`; rows add `answer.needs_reconfirmation` and `mark: {actual, marked_at, marked_by_name} | null`.
 
@@ -1781,7 +1825,7 @@ Tests:
 
 `m6-reads.db.test.ts`:
 1. **Reconfirm through the token:** after a time change, `token_submit_response(A.hash, 'attending')` (same answer) → A's flag cleared, `updated_at` moved, one new `response_history` row; the same call again → nothing new. A different answer from B clears B's flag too.
-2. **`token_invitee`** returns `answer.needs_reconfirmation`.
+2. **`token_invitee`** returns `answer.needs_reconfirmation` and `meeting.previous_starts_at` (the old time of the latest move while the person is to reconfirm; null once they confirm).
 3. **`meeting_results`** after a time change: `answers.attending = 0`, `to_reconfirm = 2`, `remindable = 3` (A, B to reconfirm + C no answer), `reachable = 3`, `nudge.next_at` null; after `nudge_meeting`: `nudge.last_count`, `nudge.next_at` ≈ +12 h.
 4. **`meeting_people`:** filter `to_reconfirm` → A and B; filter `attending` → nobody; `p_search: "ami"` finds "Amira", `p_search: "sarra"` finds "Sârra" (accents ignored), and `p_search: "%"` matches only names containing a literal `%`; a mark inserted for C (`attendance_marks`, service role) shows as `mark.actual = 'present'` with the marker's display name.
 5. **Plans** (2,000 contacts, 1,000 invitees, half answered, `analyze`): `explainCall("public.meeting_people('<id>', 'all', null, null, 50, null)", owner.id)` uses `meeting_invitees_meeting_ws_idx` (or another index on `meeting_invitees(meeting_id, …)`); `explainCall("public.meeting_results('<id>')", owner.id)` has no `Seq Scan on responses` once analyzed; `edit_sent_meeting` with a time change on that meeting finishes in under 1 s (measure with `performance.now()` around the RPC).
@@ -2161,7 +2205,16 @@ grant execute on function public.edit_sent_meeting(uuid, jsonb, boolean, boolean
 
 and add `'needs_reconfirmation', v_new.needs_reconfirmation` to the returned object.
 
-`create or replace function public.token_invitee(…)`: the complete M5 body with `'needs_reconfirmation', r.needs_reconfirmation` added to the `answer` object.
+`create or replace function public.token_invitee(…)`: the complete M5 body with `'needs_reconfirmation', r.needs_reconfirmation` added to the `answer` object, and, in `meeting`, the time before the latest move while this person is still to reconfirm (the answer page strikes it through, owner's mockup choice 2026-10-09):
+
+```sql
+      'previous_starts_at', case when r.needs_reconfirmation then (
+        select (mc.changes -> 'starts_at' ->> 0)::timestamptz
+        from public.meeting_changes mc
+        where mc.meeting_id = m.id and mc.kind = 'edit' and mc.changes ? 'starts_at'
+        order by mc.changed_at desc
+        limit 1) end,
+```
 
 `create or replace function private.meeting_results(p_meeting uuid)`: the complete M5 body with:
 - `select m.id, m.workspace_id, m.response_mode, m.last_nudged_at, m.last_nudged_count into v_meeting …`
@@ -2737,7 +2790,7 @@ export async function editSentMeeting(client: Client, meetingId: string, body: E
 
 `cancelMeeting`, `deleteCancelledMeeting`, `nudgeMeeting`: thin `client.rpc` wrappers that parse `{ emails }`, nothing, `{ reminded, next_at }` → `{ reminded, nextAt }`.
 
-`src/server/queries/results.ts`: `dbAnswerSchema` + `needs_reconfirmation: z.boolean().default(false)` → `needsReconfirmation`; `getMeetingResults` parses and maps `to_reconfirm`, `remindable`, `reachable`, `checked_in`, `nudge { last_at, last_count, next_at }`; `dbPersonSchema` + `mark: z.object({ actual: z.enum(["present", "late", "absent"]), marked_at: z.string(), marked_by_name: z.string().nullable() }).nullable()` mapped to `markSchema`'s shape; `listMeetingPeople(client, meetingId, filter, limit, after, search)` passes `p_search: sqlNullable(search)`. `src/server/queries/tokens.ts`: map `answer.needs_reconfirmation`.
+`src/server/queries/results.ts`: `dbAnswerSchema` + `needs_reconfirmation: z.boolean().default(false)` → `needsReconfirmation`; `getMeetingResults` parses and maps `to_reconfirm`, `remindable`, `reachable`, `checked_in`, `nudge { last_at, last_count, next_at }`; `dbPersonSchema` + `mark: z.object({ actual: z.enum(["present", "late", "absent"]), marked_at: z.string(), marked_by_name: z.string().nullable() }).nullable()` mapped to `markSchema`'s shape; `listMeetingPeople(client, meetingId, filter, limit, after, search)` passes `p_search: sqlNullable(search)`. `src/server/queries/tokens.ts`: map `answer.needs_reconfirmation` and `meeting.previous_starts_at` → `meeting.previousStartsAt` (`tokenInfoSchema.meeting` + `previousStartsAt: z.string().nullable().default(null)`).
 
 - [ ] **Step 4: Routes** — each new route follows `send/route.ts` exactly (`rejectCrossOrigin` → `loadMeetingContext` → `forbidViewer` → query → `fromDatabaseError` / `NextResponse.json`); `changes` parses the body with `parseJsonBody(request, editMeetingBodySchema)`. `cancel` and `nudge` call `scheduleDispatch()` after a successful RPC and export `maxDuration = 60`. The `[id]` DELETE handler loads the meeting first (`getMeeting`) and branches on `status`. `people/route.ts` reads `search` (trim; > 120 characters → `invalid_input`; empty → null). `meeting-defaults/route.ts` maps `reminderPendingHours`/`reminderGoingHours` to `default_reminder_pending_hours`/`default_reminder_going_hours` in both GET and PATCH.
 
@@ -2835,13 +2888,13 @@ Labels: `area:frontend`. Branch `feat/<issue>-m6-edit-mode`.
 - Modify: `messages/en.json` (`Wizard.steps.changes`, `Wizard.next.responses`, `Wizard.next.changes`, `Wizard.responses.reminders*`, `Wizard.responses.locked`, `Wizard.changes.*`, `Settings.defaults.reminders*`)
 
 **Interfaces:**
-- Consumes (Task 9): `useEditPreview`, `useSaveEdit`, `EditFields`, `editFieldsSchema`, `reminderPendingSchema`, `reminderGoingSchema`; (Task 2) `changeLines`, `MEMBER_VISIBLE_FIELDS`, `SCHEDULE_FIELDS`, `PLACE_FIELDS`; (Task 4) `REMINDER_*`; (M4) `useUpdateMeeting`, `useWorkspaceSender`, `quotaLine`, `ConfirmDialog`, `SwitchRow`, `SegmentedControl` (+ Task 1's `compact`).
+- Consumes (Task 9): `useEditPreview`, `useSaveEdit`, `EditFields`, `editFieldsSchema`, `reminderPendingSchema`, `reminderGoingSchema`; (Task 2) `markedCard`, `MEMBER_VISIBLE_FIELDS`, `SCHEDULE_FIELDS`, `PLACE_FIELDS`; (Task 4) `REMINDER_*`; (M4) `useUpdateMeeting`, `useWorkspaceSender`, `quotaLine`, `ConfirmDialog`, `SwitchRow`, `SegmentedControl` (+ Task 1's `compact`).
 - Produces:
   - `type WizardMode = "draft" | "invite" | "edit"`; `stepsFor(status, mode): readonly WizardStep[]` (`edit` → `["details", "responses", "changes"]`); `WizardStep` gains `"changes"`; `stepAfter(steps, step): WizardStep | null`, `stepBefore(steps, step): WizardStep | null`.
   - `type StepSaver = { save(patch: UpdateMeetingBody, onSaved?: () => void): void; pending: boolean; failed: boolean }`; `WizardStepProps` gains `mode: WizardMode`, `saver: StepSaver`, `saved: Meeting` (the server's meeting; `meeting` is the view with unsaved edits applied) and `editDraft: EditDraft | null`.
   - `useEditDraft(meeting: Meeting): EditDraft` with `type EditDraft = { fields: EditFields | null; view: Meeting; save(patch: UpdateMeetingBody): void; clear(): void }` (`fields` is null while nothing differs from the saved meeting).
   - `editDeadlineProblem(deadline: string, startsAt: string | null, now: Date, saved: string | null): ResponseDeadlineProblem | null`.
-  - `ReminderChoice({ id, label, hint, value, choices, onChange, disabled }: { id: string; label: string; hint: string; value: number | null; choices: readonly number[]; onChange(value: number | null): void; disabled?: boolean })`.
+  - `ReminderChoice({ id, label, hint, value, choices, fallback, onChange, disabled }: { id: string; label: string; hint: string; value: number | null; choices: readonly number[]; fallback: number; onChange(value: number | null): void; disabled?: boolean })` — owner's mockup choice B (2026-10-09): a `SwitchRow` like the other switches in the Answers step; when on, a chip row of hours under it (single choice); switching on picks `fallback` (the default), switching off sends `null`.
   - Edit mode URL: `/w/<slug>/meetings/<id>/edit?mode=edit&step=details` (Task 11 links to it).
 
 - [ ] **Step 1: Failing tests**
@@ -2882,10 +2935,10 @@ describe("editDeadlineProblem", () => {
 `responses-step.test.tsx`:
 - edit mode: the answer-type radios and the delay chips are disabled, and "Fixed once sent. To change it, cancel and duplicate the meeting." is shown;
 - edit mode with a saved deadline in the past and unchanged: Next works (no "Pick a time in the future.");
-- the two reminder rows: picking "6 h" for "People who haven't answered" and "Off" for "Going and Late" puts `reminderPendingHours: 6, reminderGoingHours: null` in the saved patch; announcements hide both rows.
+- the two reminder switches: with the defaults (24 h and 2 h) both are on with their chip checked; tapping "6 h" under "Remind people who haven't answered" and switching "Remind Going and Late" off puts `reminderPendingHours: 6, reminderGoingHours: null` in the saved patch; announcements hide both.
 
 `changes-step.test.tsx` (mock `routeFetch` for `POST …/changes` returning a preview, then the save; `GET …/sender` like the review-step test):
-- lists "Time: Fri 9 Oct, 18:00 → Sat 10 Oct, 18:00", "Emails 3 people", "Everyone will be asked to confirm again.", and the quota line;
+- shows the marked card: "Fri 10 Oct, 18:00–19:00 (Africa/Tunis)" inside a `<del>` and "Sat 11 Oct, 18:00–19:00 (Africa/Tunis)" inside an `<ins>`, each with its "Before:"/"Now:" screen-reader label; then "Emails 3 people.", "Everyone will be asked to confirm again." and the quota line; no "calendar" wording when `emails > 0`;
 - Save opens "Save and email 3 people?"; confirming POSTs `dryRun: false` with the fields, clears the draft, and navigates to the meeting page with the toast "Changes saved.";
 - a text-only change shows the "Email everyone about this change" switch (off), and turning it on refetches the preview with `notify: true`;
 - a preview with `emails: 0, calendarOnly: 0` shows "Nobody is emailed." and **Save changes** saves without a dialog;
@@ -2894,7 +2947,7 @@ describe("editDeadlineProblem", () => {
 - Discard changes asks "Discard your changes?" and then clears the draft and returns to the meeting page;
 - an API error shows its plain message (`ApiErrors.meeting_started`).
 
-`reminder-choice.test.tsx`: six options for the pending row ("Off", "1 h", "2 h", "6 h", "24 h", "48 h"); the pressed one matches `value`; choosing "Off" calls `onChange(null)`.
+`reminder-choice.test.tsx`: off → only the switch, no chips; switching on calls `onChange(24)` (the fallback); with `value: 24` the five chips "1 h" … "48 h" show and "24 h" is checked (`role="radio"`, `aria-checked`); tapping "6 h" calls `onChange(6)`; switching off calls `onChange(null)`.
 
 `meeting-defaults-section.test.tsx`: changing either reminder row PATCHes `reminderPendingHours`/`reminderGoingHours`; a Viewer sees them disabled.
 
@@ -3054,18 +3107,58 @@ export function useEditDraft(meeting: Meeting): EditDraft {
 
 (`meeting[key as keyof Meeting]` reads the saved value of a key that `editFieldsSchema.parse` accepts a moment later; the cast only narrows `Object.entries`' `string` keys.)
 
-- [ ] **Step 5: `ReminderChoice`** — a `SegmentedControl` with `compact`, options "Off" plus `t("hours", { count })` per choice, value `String(value ?? "off")`, `onValueChange` → `onChange(v === "off" ? null : Number(v))`; the hint under it (`text-sm text-muted-ink`). In `ResponsesStep` (not for announcements), after the deadline rows:
+- [ ] **Step 5: `ReminderChoice`** (`src/components/forms/reminder-choice.tsx`)
+
+```tsx
+"use client";
+
+import { useTranslations } from "next-intl";
+import { SwitchRow } from "@/components/forms/switch-row";
+import { Chip } from "@/components/ui/chip";
+import { CHIP_ROW_CLASS } from "@/components/ui/chip-row";
+
+/** A reminder setting (spec §7.6): a switch, then the hours before as one-choice chips. */
+export function ReminderChoice({ id, label, hint, value, choices, fallback, onChange, disabled = false }: {
+  id: string; label: string; hint: string; value: number | null; choices: readonly number[];
+  fallback: number; onChange: (value: number | null) => void; disabled?: boolean;
+}) {
+  const t = useTranslations("Wizard.responses");
+  return (
+    <div className="flex flex-col gap-2">
+      <SwitchRow id={id} label={label} checked={value !== null} disabled={disabled}
+        onChange={(on) => onChange(on ? fallback : null)} />
+      {value !== null ? (
+        <div role="radiogroup" aria-labelledby={`${id}-label`} aria-describedby={`${id}-hint`} className="flex flex-col gap-1">
+          <div className={CHIP_ROW_CLASS}>
+            {choices.map((hours) => (
+              <Chip key={hours} role="radio" aria-checked={value === hours} pressed={value === hours}
+                disabled={disabled} onPressedChange={() => onChange(hours)}>
+                {t("hoursBefore", { count: hours })}
+              </Chip>
+            ))}
+          </div>
+          <p id={`${id}-hint`} className="text-sm text-muted-ink">{hint}</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+```
+
+Check `SwitchRow`'s and `Chip`'s props before writing (`SwitchRow` takes `id`, `label`, `checked`, `onChange` in the Responses step; add `disabled` if it lacks it, and pass `role`/`aria-checked` through `Chip` if it does not spread extra props — with a test either way). Use the label id `SwitchRow` renders for `aria-labelledby`.
+
+In `ResponsesStep` (not for announcements), after the deadline rows:
 
 ```tsx
 <ReminderChoice id="reminder-pending" label={t("responses.remindPending")} hint={t("responses.remindPendingHint")}
-  value={values.reminderPendingHours} choices={REMINDER_PENDING_CHOICES}
+  value={values.reminderPendingHours} choices={REMINDER_PENDING_CHOICES} fallback={REMINDER_PENDING_DEFAULT}
   onChange={(value) => set("reminderPendingHours", value)} />
 <ReminderChoice id="reminder-going" label={t("responses.remindGoing")} hint={t("responses.remindGoingHint")}
-  value={values.reminderGoingHours} choices={REMINDER_GOING_CHOICES}
+  value={values.reminderGoingHours} choices={REMINDER_GOING_CHOICES} fallback={REMINDER_GOING_DEFAULT}
   onChange={(value) => set("reminderGoingHours", value)} />
 ```
 
-The same two rows in `MeetingDefaultsSection`, saving each change at once (`save({ reminderPendingHours: value })`), disabled for Viewers.
+The same two rows in `MeetingDefaultsSection`, saving each change at once (`save({ reminderPendingHours: value })`), disabled for Viewers. `Wizard.responses.hoursBefore`: "{count} h".
 
 - [ ] **Step 6: `ChangesStep`** (`changes-step.tsx`) — props `WizardStepProps`; `editDraft` is always set in edit mode.
 
@@ -3092,8 +3185,8 @@ export function ChangesStep({ slug, meeting, saved, steps, goTo, editDraft }: Wi
 Render, top to bottom:
 1. `fields === null` → `t("nothing")` "Nothing changed yet." and the footer with Back only.
 2. While `preview.isPending` → `Skeleton`. On `preview.error` → its `ApiErrors` message (`role="alert"`) and Back.
-3. A `Card` "What changes" listing `changeLines(preview.data.changes, meeting.timezone, text)` (with `text` built from `tFields` like the email's `changeText`) as "Time: Fri 9 Oct, 18:00 → Sat 10 Oct, 18:00" / "Agenda: updated", followed by the organizer-only settings that changed ("Ask for a reason: On → Off", "Allow a comment: Off → On", "Reminder, not answered: 24 h → 6 h", "Reminder, Going and Late: 2 h → Off") from a small local formatter over `reason_required`, `comments_enabled`, `reminder_pending_hours`, `reminder_going_hours`.
-4. A `Card` "Who is told": `t("emails", { count: emails })` ("Emails 3 people" / "Nobody is emailed."), `t("calendarOnly", { count })` when `calendarOnly > 0` ("Updates 1 calendar copy"), `t("reconfirm")` when `reconfirm` ("Everyone will be asked to confirm again."), the quota line (`quotaLine({ toSend: emails + calendarOnly, … })`, the Review step's copy), and `t("senderWaiting")` "Emails will wait until Gmail is reconnected." when the sender is missing or broken.
+3. The **marked meeting card** (owner's mockup choice 2026-10-09): `markedCard(meeting, preview.data.changes, text)` (Task 2) rendered by `src/app/w/[slug]/meetings/[id]/edit/marked-card.tsx` — the title, then labelled parts ("When", "Where", "Join link", "Answer by", "Agenda", "Note"); a changed part shows the old value in `<del>` (muted, struck through) above the new value in `<ins>` on `bg-fill-warning/25` with `no-underline` and `text-ink`; each starts with `<span className="sr-only">Before: </span>` / `Now: `; `updated` parts show an "Updated" tag. The organizer-only settings that changed follow in a short muted list ("Ask for a reason: On → Off", "Reminder before the deadline: 24 h → 6 h") from a small local formatter over `reason_required`, `comments_enabled`, `reminder_pending_hours`, `reminder_going_hours`.
+4. A `Card` "Who is told", plain words only (owner rule: no internal wording, so no "calendar copies"): `t("emails", { count: emails })` ("Emails 30 people." / "Nobody is emailed."), `t("reconfirm")` when `reconfirm` ("Everyone will be asked to confirm again."), and only when `emails === 0 && calendarOnly > 0`: `t("calendarNote", { count: calendarOnly })` ("1 person who added it to their calendar gets a short note."); then the quota line (`quotaLine({ toSend: emails + calendarOnly, … })`) and `t("senderWaiting")` "Emails will wait until Gmail is reconnected." when the sender is missing or broken.
 5. The "Email everyone about this change" `SwitchRow`, shown only when the changes touch `MEMBER_VISIBLE_FIELDS` but none of `SCHEDULE_FIELDS`/`PLACE_FIELDS`.
 6. A text button **Discard changes** → `ConfirmDialog` "Discard your changes?" / "Nothing has been saved or sent." → `editDraft.clear()` and `router.push` to the meeting page.
 7. `WizardFooter`: Back → `goTo(stepBefore(steps, "changes"))`; Next label `emails > 0 ? t("saveAndEmail", { count: emails }) : t("save")`; Next → `emails + calendarOnly > 0 ? setConfirming(true) : commit()`.
@@ -3113,9 +3206,9 @@ const commit = () =>
 
 Save errors show under the cards like the Review step's `send.error` (`tErrors(code)`).
 
-- [ ] **Step 7: Copy** (`messages/en.json`, plain words, `humanizer` pass): `Wizard.steps.changes` "Review changes"; `Wizard.editTitle` "Edit meeting"; `Wizard.responses.locked` "Fixed once sent. To change it, cancel and duplicate the meeting."; `remindPending` "Remind people who haven't answered"; `remindPendingHint` "Before the deadline, or before the start if there is none."; `remindGoing` "Remind Going and Late"; `remindGoingHint` "Before the start."; `Wizard.changes`: `nothing`, `whatChanges`, `whoIsTold`, `emails` ("{count, plural, =0 {Nobody is emailed.} one {Emails # person} other {Emails # people}}"), `calendarOnly`, `reconfirm`, `senderWaiting`, `notify` "Email everyone about this change", `discard`, `discardTitle`, `discardBody`, `save` "Save changes", `saveAndEmail` "{count, plural, one {Save and email # person} other {Save and email # people}}", `confirmTitle`, `confirmBody`, `confirmReconfirm`, `saved` "Changes saved."; `Settings.defaults` gets the same two reminder labels and hints.
+- [ ] **Step 7: Copy** (`messages/en.json`, plain words, `humanizer` pass): `Wizard.steps.changes` "Review changes"; `Wizard.editTitle` "Edit meeting"; `Wizard.responses.locked` "Fixed once sent. To change it, cancel and duplicate the meeting."; `remindPending` "Remind people who haven't answered"; `remindPendingHint` "Before the deadline, or before the start if there is none."; `remindGoing` "Remind Going and Late"; `remindGoingHint` "Before the start."; `Wizard.changes`: `nothing`, `whoIsTold`, `emails` ("{count, plural, =0 {Nobody is emailed.} one {Emails # person.} other {Emails # people.}}"), `calendarNote` ("{count, plural, one {# person who added it to their calendar gets a short note.} other {# people who added it to their calendar get a short note.}}"), `reconfirm`, `senderWaiting`, `notify` "Email everyone about this change", `discard`, `discardTitle`, `discardBody`, `save` "Save changes", `saveAndEmail` "{count, plural, one {Save and email # person} other {Save and email # people}}", `confirmTitle`, `confirmBody`, `confirmReconfirm`, `saved` "Changes saved."; `Settings.defaults` gets the same two reminder labels and hints.
 
-- [ ] **Step 8: Verify** — the `vitest` command → PASS; the chained check. Screenshots (`.superpowers/scripts/screens/m6-t10-edit.spec.ts`, built from `m5-t5-meetings.spec.ts`: seed a sent meeting, open `?mode=edit&step=details`, change the time, Next, Next): Details (edit header), Answers with the locked controls and the two reminder rows, Review changes with the lists, the open confirm dialog, and the "Nothing changed yet." state, each at 390 light, 320 dark and 1024; and Settings > Meeting defaults with the reminder rows. Look at them: the six-option reminder control on one line at 320 px, the dialog centered at 1024.
+- [ ] **Step 8: Verify** — the `vitest` command → PASS; the chained check. Screenshots (`.superpowers/scripts/screens/m6-t10-edit.spec.ts`, built from `m5-t5-meetings.spec.ts`: seed a sent meeting, open `?mode=edit&step=details`, change the time, Next, Next): Details (edit header), Answers with the locked controls and the two reminder rows, Review changes with the lists, the open confirm dialog, and the "Nothing changed yet." state, each at 390 light, 320 dark and 1024; and Settings > Meeting defaults with the reminder rows. Look at them: the reminder chips wrap cleanly at 320 px (touch) and stay one row with a mouse (`CHIP_ROW_CLASS`), the dialog centered at 1024.
 
 - [ ] **Step 9: Commit, PR, merge** — `feat: edit a sent meeting through the wizard; reminder settings`.
 
@@ -3399,6 +3492,7 @@ it("asks to confirm the same answer after a time change", async () => {
   mockToken({ ...tokenInfoFixture, answer: { ...goingAnswer, needsReconfirmation: true } });
   renderAnswerView();
   expect(await screen.findByText("The time changed to Sat 10 Oct, 18:00.")).toBeInTheDocument();
+  expect(screen.getByText("Fri 9 Oct, 18:00–19:00", { exact: false }).closest("del")).not.toBeNull();
   expect(screen.getByText("You said: Going.")).toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: "Yes, still going" }));
   expect(lastPutBody()).toEqual({ status: "attending", delayMinutes: null, reason: "", comment: "" });
@@ -3431,7 +3525,7 @@ it("shows no banner once the meeting has started", async () => {
 
 Run: `bunx vitest run answer-view reconfirm-banner` → FAIL.
 
-- [ ] **Step 2: `ReconfirmBanner`** — a `Card` with `bg-fill-warning/25` (dark-mode tint rule): `t("reconfirmChanged", { when: \`${when.date}, ${when.start}\` })`, `t("reconfirmYouSaid", { answer: describeAnswer(labels, answer) })`, a primary **Yes, still {answer}** button (`t("reconfirmYes", { answer: lowerFirst(describeAnswer(…)) })`, `pending` disables it) and a text button **Change my answer**. `answer-view.tsx`: when `!closed && answer?.needsReconfirmation && !editing && !justSaved`, render the banner instead of the saved-answer summary; `onConfirm` calls `save({ status: answer.status, delayMinutes: answer.delayMinutes, reason: answer.reason, comment: answer.comment })` (the same body; the database clears the flag, Task 6); `onChange` calls `setEditing(true)`. The CONFIRMED stamp plays as after any save.
+- [ ] **Step 2: `ReconfirmBanner`** — the meeting card above it shows `info.meeting.previousStartsAt` struck through (`<del>` with an sr-only "Before:") next to the new time on the warning tint (`<ins>`, sr-only "Now:"), as in the owner's chosen mockup A; `MeetingCard` gets an optional `previousStartsAt` prop for it. Then a `Card` with `bg-fill-warning/25` (dark-mode tint rule): `t("reconfirmChanged", { when: \`${when.date}, ${when.start}\` })`, `t("reconfirmYouSaid", { answer: describeAnswer(labels, answer) })`, a primary **Yes, still {answer}** button (`t("reconfirmYes", { answer: lowerFirst(describeAnswer(…)) })`, `pending` disables it) and a text button **Change my answer**. `answer-view.tsx`: when `!closed && answer?.needsReconfirmation && !editing && !justSaved`, render the banner instead of the saved-answer summary; `onConfirm` calls `save({ status: answer.status, delayMinutes: answer.delayMinutes, reason: answer.reason, comment: answer.comment })` (the same body; the database clears the flag, Task 6); `onChange` calls `setEditing(true)`. The CONFIRMED stamp plays as after any save.
 
 - [ ] **Step 3: Copy** — `AnswerPage.reconfirmChanged` "The time changed to {when}.", `reconfirmYouSaid` "You said: {answer}.", `reconfirmYes` "Yes, still {answer}", `reconfirmChange` "Change my answer".
 
@@ -3702,4 +3796,4 @@ Record what each inbox did (counts and client names only; no addresses) for §14
 - **Spec coverage:** §4 Edits after sending → Tasks 6, 9, 10; Cancel and delete → Tasks 6, 9, 11; Reminders → Tasks 4, 5, 2, 3, 10, 11; Check-in → Tasks 7, 13, 14; Meeting wizard (reminders in Answers) → Task 10; §6 columns and tables → Task 4; Access pattern (M6) → Tasks 5–8; §7.3 time changed / cancelled → Task 12 (cancelled copy already exists from M5); §7.5 → Tasks 6, 9–11; §7.6 → Tasks 4, 5, 2, 3, 10, 11; §7.7 → Task 14; §7.8 → Tasks 7, 13; §7.9 → Task 8; §8 update/cancel/reminder → Tasks 5, 3; §12 M6 tests → spread through every task plus Task 15; §14 → Task 15; #213 → Task 1.
 - **Order risk found while writing:** the TypeScript dispatcher's claim schema rejects unknown job kinds, so Tasks 2 and 3 go before the migrations that create them (see Execution Order).
 - **Decided in the plan review (owner, 2026-10-09):** the Meetings cards keep counting people's last answer while they are still to reconfirm (only the meeting page splits them out); the "Mark the rest as they said" button has no count; the check-in search ignores accents (`unaccent`, Task 6); a reminder that already went out is scheduled again when the meeting moves to a time whose reminder is still ahead (Task 5 `sync_reminder_timers`, Task 6 test 1).
-- **After the plan review:** mockups and side-by-side choices for the M6 screens (owner's milestone routine) before Task 10 starts; any change they bring is written back into Tasks 10–14 first.
+- **Mockups (owner, 2026-10-09, `.superpowers/brainstorm/191469-1791577715/content/`):** lifecycle diagram confirmed; meeting page actions A ("…" menu by Export, Remind under the tiles, Task 11); Review changes as the meeting card with changes marked, long text "Updated", plain "Who is told" (Task 10); answer page A, a "Still going?" card with the old time struck through (Tasks 6, 9, 12); update email A, the same marked card (Task 2); reminder settings B, a switch then hour chips (Task 10); check-in A, Present / Late / Absent under each name (Task 13). Owner rule restated: no internal wording such as "calendar copies".
