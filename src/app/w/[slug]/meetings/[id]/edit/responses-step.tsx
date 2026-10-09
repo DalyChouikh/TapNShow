@@ -79,6 +79,9 @@ export function ResponsesStep({ slug, meeting, goTo }: WizardStepProps) {
     new Date().toISOString(),
     meeting.timezone,
   ).date;
+  const meetingDay = meeting.startsAt
+    ? utcToZonedParts(meeting.startsAt, meeting.timezone).date
+    : undefined;
   const answers = values.responseMode !== "announcement";
   return (
     <div className="flex flex-col gap-5">
@@ -164,9 +167,12 @@ export function ResponsesStep({ slug, meeting, goTo }: WizardStepProps) {
                 value={values.deadlineDate}
                 today={today}
                 min={today}
+                max={meetingDay}
                 onChange={(date) => set("deadlineDate", date)}
                 error={
-                  errors.deadline ? t(`errors.${errors.deadline}`) : undefined
+                  errors.deadlineDate
+                    ? t(`errors.${errors.deadlineDate}`)
+                    : undefined
                 }
               />
               <TimePicker
@@ -174,6 +180,11 @@ export function ResponsesStep({ slug, meeting, goTo }: WizardStepProps) {
                 label={t("responses.deadlineTime")}
                 value={values.deadlineTime}
                 onChange={(time) => set("deadlineTime", time)}
+                error={
+                  errors.deadlineTime
+                    ? t(`errors.${errors.deadlineTime}`)
+                    : undefined
+                }
               />
             </div>
           ) : null}

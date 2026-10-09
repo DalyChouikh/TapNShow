@@ -33,33 +33,57 @@ describe("validateResponses", () => {
     ).toEqual({});
   });
 
-  it("keeps the deadline before the start and in the future", () => {
-    expect(
+  describe("the deadline (meeting at 18:00 Tunis on 9 Oct)", () => {
+    const deadline = (
+      deadlineDate: string | null,
+      deadlineTime: string | null,
+      at = now,
+    ) =>
       validateResponses(
-        {
-          ...base,
-          deadlineEnabled: true,
-          deadlineDate: "2026-10-09",
-          deadlineTime: "19:00",
-        },
+        { ...base, deadlineEnabled: true, deadlineDate, deadlineTime },
         startsAt,
-        now,
-      ),
-    ).toEqual({
-      deadline: "deadlineOrder",
+        at,
+      );
+    const meetingMorning = new Date("2026-10-09T08:00:00Z");
+
+    it("accepts a time later the same day, before the start", () => {
+      expect(deadline("2026-10-09", "17:45", meetingMorning)).toEqual({});
+      expect(deadline("2026-10-09", "12:00")).toEqual({});
     });
-    expect(
-      validateResponses(
-        {
-          ...base,
-          deadlineEnabled: true,
-          deadlineDate: "2026-10-09",
-          deadlineTime: "12:00",
-        },
-        startsAt,
-        now,
-      ),
-    ).toEqual({});
+
+    it("asks for the missing date or time on its own field", () => {
+      expect(deadline(null, null)).toEqual({
+        deadlineDate: "dateRequired",
+        deadlineTime: "timeRequired",
+      });
+      expect(deadline("2026-10-09", null)).toEqual({
+        deadlineTime: "timeRequired",
+      });
+      expect(deadline(null, "12:00")).toEqual({
+        deadlineDate: "dateRequired",
+      });
+    });
+
+    it("blames the time when it has passed today", () => {
+      expect(deadline("2026-10-09", "08:00", meetingMorning)).toEqual({
+        deadlineTime: "inPast",
+      });
+    });
+
+    it("blames the time at or after the start on the meeting day", () => {
+      expect(deadline("2026-10-09", "18:00")).toEqual({
+        deadlineTime: "deadlineAfterStart",
+      });
+      expect(deadline("2026-10-09", "19:00")).toEqual({
+        deadlineTime: "deadlineAfterStart",
+      });
+    });
+
+    it("blames the date when it is after the meeting day", () => {
+      expect(deadline("2026-10-10", "09:00")).toEqual({
+        deadlineDate: "deadlineAfterStart",
+      });
+    });
   });
 });
 

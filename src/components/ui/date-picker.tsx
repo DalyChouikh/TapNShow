@@ -20,6 +20,7 @@ export function DatePicker({
   onChange,
   today,
   min,
+  max,
   error,
 }: {
   id: string;
@@ -28,6 +29,8 @@ export function DatePicker({
   onChange: (date: string) => void;
   today: string;
   min?: string;
+  /** The last day offered (inclusive). */
+  max?: string;
   error?: string;
 }) {
   const t = useTranslations("Pickers");
@@ -79,7 +82,10 @@ export function DatePicker({
             selected={selected}
             defaultMonth={selected ?? toDate(today)}
             today={toDate(today)}
-            disabled={min ? { before: toDate(min) } : undefined}
+            disabled={[
+              ...(min ? [{ before: toDate(min) }] : []),
+              ...(max ? [{ after: toDate(max) }] : []),
+            ]}
             onSelect={(day) => {
               if (day) {
                 onChange(format(day, WALL));

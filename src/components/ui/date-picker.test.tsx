@@ -45,6 +45,30 @@ describe("DatePicker", () => {
     ).toBeDisabled();
   });
 
+  it("disables days after the maximum", async () => {
+    renderWithProviders(
+      <DatePicker
+        id="d"
+        label="Date"
+        value={null}
+        today="2026-10-07"
+        min="2026-10-07"
+        max="2026-10-09"
+        onChange={vi.fn()}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Pick a date/ }));
+    expect(
+      screen.getByRole("button", { name: /October 6th, 2026/ }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /October 9th, 2026/ }),
+    ).toBeEnabled();
+    expect(
+      screen.getByRole("button", { name: /October 10th, 2026/ }),
+    ).toBeDisabled();
+  });
+
   it("names the year only when it is not this year, on one line", () => {
     renderWithProviders(
       <DatePicker
