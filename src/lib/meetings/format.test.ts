@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  durationText,
   formatDeadline,
   formatMeetingWhen,
   meetingSubject,
@@ -85,5 +86,19 @@ describe("meeting times (spec §7.10)", () => {
       end: "00:30",
       zone: "Africa/Tunis",
     });
+  });
+});
+
+describe("durationText", () => {
+  const words = {
+    minutes: (count: number) => `${count} min`,
+    hours: (hours: number) => `${hours} h`,
+    hoursMinutes: (hours: number, minutes: number) => `${hours} h ${minutes}`,
+  };
+  it("reads like the wizard's chips", () => {
+    expect(durationText(45, words)).toBe("45 min");
+    expect(durationText(60, words)).toBe("1 h");
+    expect(durationText(90, words)).toBe("1 h 30");
+    expect(durationText(120, words)).toBe("2 h");
   });
 });

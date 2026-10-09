@@ -41,3 +41,15 @@ export function brutalBox(
     borderRadius: radius,
   };
 }
+
+/**
+ * Hidden in the HTML view but kept in the plain-text part and read by screen readers (the
+ * preheader technique react-email's `Preview` uses). Labels "Before:" / "Now:" next to a
+ * strike-through so the meaning survives without styles.
+ */
+export const hiddenStyle = {
+  display: "none",
+  maxHeight: 0,
+  overflow: "hidden",
+  msoHide: "all",
+} as const;

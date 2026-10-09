@@ -21,7 +21,7 @@ import {
   TITLE_MAX,
 } from "@/config/meetings";
 import { useUpdateMeeting } from "@/hooks/use-meetings";
-import { utcToZonedParts } from "@/lib/meetings/format";
+import { durationText, utcToZonedParts } from "@/lib/meetings/format";
 import { locationModeSchema } from "@/shared/api/meeting-settings";
 import {
   detailsPatch,
@@ -73,14 +73,12 @@ export function DetailsStep({ slug, meeting, goTo }: WizardStepProps) {
   const error = (key: keyof DetailsErrors) =>
     errors[key] ? t(`errors.${errors[key]}`) : undefined;
   const hoursLabel = (minutes: number) =>
-    minutes < 60
-      ? t("details.minutes", { count: minutes })
-      : minutes % 60 === 0
-        ? t("details.hours", { hours: minutes / 60 })
-        : t("details.hoursMinutes", {
-            hours: Math.floor(minutes / 60),
-            minutes: minutes % 60,
-          });
+    durationText(minutes, {
+      minutes: (count) => t("details.minutes", { count }),
+      hours: (hours) => t("details.hours", { hours }),
+      hoursMinutes: (hours, rest) =>
+        t("details.hoursMinutes", { hours, minutes: rest }),
+    });
   return (
     <div className="flex flex-col gap-5">
       <Input

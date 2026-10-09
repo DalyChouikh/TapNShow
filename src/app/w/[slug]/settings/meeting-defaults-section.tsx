@@ -20,6 +20,7 @@ import {
   useMeetingDefaults,
   useUpdateMeetingDefaults,
 } from "@/hooks/use-meeting-defaults";
+import { durationText } from "@/lib/meetings/format";
 import {
   type MeetingDefaults,
   responseModeSchema,
@@ -53,15 +54,13 @@ export function MeetingDefaultsSection({
   const readOnly = workspace.myRole === "viewer";
   const save = (patch: UpdateMeetingDefaultsBody) =>
     update.mutate(patch, { onError: () => toast.error(tErrors("internal")) });
-  const minutes = (count: number) =>
-    count < 60
-      ? tw("details.minutes", { count })
-      : count % 60 === 0
-        ? tw("details.hours", { hours: count / 60 })
-        : tw("details.hoursMinutes", {
-            hours: Math.floor(count / 60),
-            minutes: count % 60,
-          });
+  const minutes = (total: number) =>
+    durationText(total, {
+      minutes: (count) => tw("details.minutes", { count }),
+      hours: (hours) => tw("details.hours", { hours }),
+      hoursMinutes: (hours, rest) =>
+        tw("details.hoursMinutes", { hours, minutes: rest }),
+    });
   const toggleDelay = (delay: number) => {
     const next = value.delayOptions.includes(delay)
       ? value.delayOptions.filter((d) => d !== delay)
