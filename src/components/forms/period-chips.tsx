@@ -5,6 +5,7 @@ import { Chip } from "@/components/ui/chip";
 import { DatePicker } from "@/components/ui/date-picker";
 import { HISTORY_PERIODS } from "@/config/responses";
 import type { HistoryPeriod } from "@/lib/responses/periods";
+import { CHIP_ROW_CLASS } from "@/components/ui/chip-row";
 
 /**
  * History period chips (spec §7.7): last 30 days, last 3 months, this year, all time, and
@@ -26,11 +27,7 @@ export function PeriodChips({
   const t = useTranslations("History");
   return (
     <div className="flex flex-col gap-2">
-      <div
-        role="group"
-        aria-label={t("period")}
-        className="flex [scrollbar-width:none] gap-2 overflow-x-auto pt-1 pb-2 [&::-webkit-scrollbar]:hidden"
-      >
+      <div role="group" aria-label={t("period")} className={CHIP_ROW_CLASS}>
         {HISTORY_PERIODS.map((period) => (
           <Chip
             key={period}
