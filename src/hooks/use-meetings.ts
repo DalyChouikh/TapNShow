@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePagedList } from "@/hooks/use-paged-list";
-import { meetingResultsKey } from "@/hooks/use-results";
+import { meetingPeopleKey, meetingResultsKey } from "@/hooks/use-results";
 import { rosterQueryKey } from "@/hooks/use-roster";
 import { apiRequest } from "@/lib/api-client";
 import { okSchema } from "@/shared/api/common";
@@ -226,6 +226,7 @@ export function useSendMeeting(slug: string, id: string) {
         meetingQueryKey(slug, id),
         audienceQueryKey(slug, id),
         meetingResultsKey(slug, id),
+        meetingPeopleKey(slug, id),
         meetingsQueryKey(slug),
       ]) {
         void queryClient.invalidateQueries({ queryKey: key });

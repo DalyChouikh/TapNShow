@@ -13,12 +13,15 @@ export function SegmentedControl({
   onValueChange,
   options,
   className,
+  compact = false,
 }: {
   label: string;
   value: string;
   onValueChange: (value: string) => void;
   options: ReadonlyArray<{ value: string; label: string }>;
   className?: string;
+  /** Smaller one-line labels for four options on 320 px phones. */
+  compact?: boolean;
 }) {
   return (
     <ToggleGroup.Root
@@ -39,7 +42,12 @@ export function SegmentedControl({
         <ToggleGroup.Item
           key={option.value}
           value={option.value}
-          className="min-h-11 px-3 text-sm font-bold text-ink transition-colors not-last:border-r-[length:var(--tn-border-width)] not-last:border-outline data-[state=on]:bg-ink data-[state=on]:text-surface motion-reduce:transition-none"
+          className={cn(
+            "min-h-11 font-bold text-ink transition-colors not-last:border-r-[length:var(--tn-border-width)] not-last:border-outline data-[state=on]:bg-ink data-[state=on]:text-surface motion-reduce:transition-none",
+            compact
+              ? "px-2 text-xs whitespace-nowrap min-[360px]:text-sm"
+              : "px-3 text-sm",
+          )}
         >
           {option.label}
         </ToggleGroup.Item>

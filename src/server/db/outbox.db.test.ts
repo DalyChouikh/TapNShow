@@ -524,18 +524,24 @@ describe("meeting_results (send progress)", () => {
 
 describe("cron kick and security", () => {
   it("calls the dispatcher only when jobs are due and Vault is configured", async () => {
-    // pg_net moves requests from its queue to its response table in the background, so count both
-    // and poll briefly instead of asserting on one table at one instant.
+    // pg_net moves requests from its queue to its response table in the background, so look at
+    // both and poll briefly. Compare ids, not counts: on its first wakeup pg_net also deletes
+    // responses older than its TTL (6 h), which would cancel out a new request in a total.
     const requests = () =>
       queryLocalSql(
-        "select ((select count(*) from net.http_request_queue) + (select count(*) from net._http_response))::int as n",
+        "select greatest((select max(id) from net.http_request_queue), (select max(id) from net._http_response), 0)::int as n",
         z.array(z.object({ n: z.number() })),
       )[0].n;
-    const eventually = async (check: () => boolean) => {
-      for (let i = 0; i < 25 && !check(); i += 1) {
-        await new Promise((resolve) => setTimeout(resolve, 200));
+    // Each `requests()` spawns the Supabase CLI (~0.8 s), so bound the wait by time, not by count.
+    const eventually = async (check: () => boolean, withinMs = 10_000) => {
+      const until = Date.now() + withinMs;
+      while (!check()) {
+        if (Date.now() > until) {
+          return false;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 500));
       }
-      return check();
+      return true;
     };
     await admin.client.rpc("send_meeting", { p_meeting: meeting });
     const before = requests();
@@ -552,7 +558,7 @@ describe("cron kick and security", () => {
         "delete from vault.secrets where name in ('tn_dispatch_url', 'tn_dispatch_secret')",
       );
     }
-  });
+  }, 40_000);
 
   it("cleans up empty drafts after a day and keeps everything else", async () => {
     const empty = await seedMeeting(workspace.id, {
