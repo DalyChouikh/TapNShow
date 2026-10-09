@@ -1,6 +1,11 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  queryOptions,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api-client";
 import { addList, patchContact } from "@/lib/roster/roster-cache";
 import { okSchema } from "@/shared/api/common";
@@ -22,13 +27,17 @@ export const rosterQueryKey = (slug: string) => ["roster", slug] as const;
 export const rosterPath = (slug: string): string =>
   `/api/workspaces/${encodeURIComponent(slug)}`;
 
-/** The whole roster (`GET …/contacts`). */
-export function useRoster(slug: string) {
-  return useQuery({
+/** Query options of the whole roster, for `useQuery` and one-off reads (exports). */
+export const rosterQueryOptions = (slug: string) =>
+  queryOptions({
     queryKey: rosterQueryKey(slug),
     queryFn: () =>
       apiRequest(`${rosterPath(slug)}/contacts`, { schema: rosterSchema }),
   });
+
+/** The whole roster (`GET …/contacts`). */
+export function useRoster(slug: string) {
+  return useQuery(rosterQueryOptions(slug));
 }
 
 /**
