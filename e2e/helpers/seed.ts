@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 
 function admin() {
@@ -100,4 +101,87 @@ export async function seedRoster(
       throw linked.error;
     }
   }
+}
+
+/**
+ * One contact invited to a meeting of the workspace at `slug`, answered through the real answer
+ * function while the meeting was upcoming, then moved two days into the past (service role; test
+ * setup only). Returns the contact's name.
+ */
+export async function seedPastMeetingWithAnswer(
+  slug: string,
+  stamp: string,
+  answer: { status: "late"; delayMinutes: number; reason: string },
+): Promise<string> {
+  const client = admin();
+  const workspace = await client
+    .from("workspaces")
+    .select("id")
+    .eq("slug", slug)
+    .single();
+  if (workspace.error) {
+    throw workspace.error;
+  }
+  const workspaceId = workspace.data.id;
+  const fullName = `Lina ${stamp}`;
+  const contact = await client
+    .from("contacts")
+    .insert({
+      workspace_id: workspaceId,
+      email: `lina-${stamp}@example.test`,
+      full_name: fullName,
+    })
+    .select("id")
+    .single();
+  const meeting = await client
+    .from("meetings")
+    .insert({
+      workspace_id: workspaceId,
+      title: `Past sync ${stamp}`,
+      starts_at: new Date(Date.now() + 86_400_000).toISOString(),
+      duration_minutes: 60,
+      timezone: "Africa/Tunis",
+      location_mode: "in_person",
+      location_text: "Room 1",
+      response_mode: "attendance",
+      delay_options: [5, 10, 15],
+      reason_required: true,
+      comments_enabled: false,
+      status: "scheduled",
+    })
+    .select("id")
+    .single();
+  if (contact.error || meeting.error) {
+    throw contact.error ?? meeting.error;
+  }
+  const tokenHash = createHash("sha256")
+    .update(crypto.randomUUID())
+    .digest("hex");
+  const invitee = await client.from("meeting_invitees").insert({
+    workspace_id: workspaceId,
+    meeting_id: meeting.data.id,
+    contact_id: contact.data.id,
+    token_hash: tokenHash,
+    email_status: "sent",
+  });
+  if (invitee.error) {
+    throw invitee.error;
+  }
+  const answered = await client.rpc("token_submit_response", {
+    p_token_hash: tokenHash,
+    p_status: answer.status,
+    p_delay_minutes: answer.delayMinutes,
+    p_reason: answer.reason,
+    p_comment: null,
+  });
+  const moved = await client
+    .from("meetings")
+    .update({
+      starts_at: new Date(Date.now() - 2 * 86_400_000).toISOString(),
+    })
+    .eq("id", meeting.data.id);
+  if (answered.error || moved.error) {
+    throw answered.error ?? moved.error;
+  }
+  return fullName;
 }

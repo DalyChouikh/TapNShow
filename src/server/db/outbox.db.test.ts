@@ -489,38 +489,34 @@ describe("finish, retry, defer, broken", () => {
   });
 });
 
-describe("meeting_progress", () => {
+describe("meeting_results (send progress)", () => {
   it("shows counts, deferral time and sender state to members only", async () => {
     await admin.client.rpc("send_meeting", { p_meeting: meeting });
     const until = new Date(Date.now() + 3600_000).toISOString();
     runLocalSql(
       `update public.outbox_jobs set run_after = '${until}' where invitee_id in (select id from public.meeting_invitees where meeting_id = '${meeting}')`,
     );
-    const { data } = await viewer.client.rpc("meeting_progress", {
+    const { data } = await viewer.client.rpc("meeting_results", {
       p_meeting: meeting,
     });
     const progress = z
       .object({
-        counts: z
+        emails: z
           .object({ total: z.number(), queued: z.number(), sent: z.number() })
           .loose(),
         paused: z.number(),
         resumes_at: z.string().nullable(),
         sender_state: z.string(),
-        invitees: z.array(
-          z.object({ full_name: z.string(), status: z.string() }).loose(),
-        ),
       })
       .parse(data);
-    expect(progress.counts).toMatchObject({ total: 3, queued: 3, sent: 0 });
+    expect(progress.emails).toMatchObject({ total: 3, queued: 3, sent: 0 });
     expect(new Date(progress.resumes_at ?? 0).toISOString()).toBe(
       new Date(until).toISOString(),
     );
     expect(progress.sender_state).toBe("ok");
-    expect(progress.invitees).toHaveLength(3);
     const outsider = await createTestUser();
     await expectAppError(
-      outsider.client.rpc("meeting_progress", { p_meeting: meeting }),
+      outsider.client.rpc("meeting_results", { p_meeting: meeting }),
       "not_found",
     );
   });
