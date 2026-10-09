@@ -45,6 +45,17 @@ describe("submitAnswerBodySchema", () => {
         .success,
     ).toBe(false);
   });
+
+  it("strips NUL characters from the reason and the comment", () => {
+    const body = submitAnswerBodySchema.parse({
+      status: "absent",
+      delayMinutes: null,
+      reason: "Sick\u0000 today",
+      comment: "\u0000",
+    });
+    expect(body.reason).toBe("Sick today");
+    expect(body.comment).toBe("");
+  });
 });
 
 describe("organizer schemas", () => {

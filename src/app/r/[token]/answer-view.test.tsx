@@ -231,6 +231,20 @@ describe("AnswerView", () => {
     expect(screen.queryByRole("radio")).toBeNull();
   });
 
+  it("leaves out the answer line on a started announcement", async () => {
+    renderWith("", {
+      meeting: { startsAt: new Date(Date.now() - 60_000).toISOString() },
+      answers: { responseMode: "announcement" },
+      answer: null,
+    });
+    expect(
+      await screen.findByText(
+        "The meeting has started, so answers are closed.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("You didn't answer.")).toBeNull();
+  });
+
   it("keeps answering open after the deadline and says so", async () => {
     renderWith("", {
       answers: {

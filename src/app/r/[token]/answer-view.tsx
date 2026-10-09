@@ -39,11 +39,13 @@ function ClosedState({ info }: { info: TokenInfo }) {
           ? t("closedCancelled")
           : t("closed")}
       </p>
-      <p>
-        {info.answer
-          ? t("yourAnswer", { answer: describeAnswer(labels, info.answer) })
-          : t("noAnswerYet")}
-      </p>
+      {info.answers.responseMode === "announcement" ? null : (
+        <p>
+          {info.answer
+            ? t("yourAnswer", { answer: describeAnswer(labels, info.answer) })
+            : t("noAnswerYet")}
+        </p>
+      )}
     </section>
   );
 }

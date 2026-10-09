@@ -39,12 +39,19 @@ export const answerSettingsSchema = z.object({
 /** Answer settings of one meeting. */
 export type AnswerSettings = z.infer<typeof answerSettingsSchema>;
 
+/** Postgres text cannot hold NUL (22P05); a pasted one is dropped rather than failing the save. */
+const answerText = (max: number) =>
+  z
+    .string()
+    .max(max)
+    .transform((value) => value.replaceAll("\u0000", ""));
+
 /** `PUT /api/r/[token]/response`. The database applies the meeting's rules (spec §7.3). */
 export const submitAnswerBodySchema = z.object({
   status: answerStatusSchema,
   delayMinutes: z.number().int().min(1).max(240).nullable(),
-  reason: z.string().max(REASON_MAX),
-  comment: z.string().max(COMMENT_MAX),
+  reason: answerText(REASON_MAX),
+  comment: answerText(COMMENT_MAX),
 });
 /** An answer save. */
 export type SubmitAnswerBody = z.infer<typeof submitAnswerBodySchema>;
