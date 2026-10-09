@@ -8,6 +8,9 @@ import ListsPage from "./page";
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({ slug: "robotics-cd34" }),
+  useRouter: () => ({ replace: vi.fn() }),
+  usePathname: () => "/w/robotics-cd34/lists",
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 beforeEach(() => {

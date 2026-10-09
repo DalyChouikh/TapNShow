@@ -2,6 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useRoster } from "@/hooks/use-roster";
@@ -28,5 +29,10 @@ export default function ListsPage() {
   if (!workspace.data || !roster.data) {
     return <RosterSkeleton />;
   }
-  return <RosterView workspace={workspace.data} roster={roster.data} />;
+  return (
+    // RosterView reads ?view= and ?person= through useSearchParams.
+    <Suspense fallback={<RosterSkeleton />}>
+      <RosterView workspace={workspace.data} roster={roster.data} />
+    </Suspense>
+  );
 }

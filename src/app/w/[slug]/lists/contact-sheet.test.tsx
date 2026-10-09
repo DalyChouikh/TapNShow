@@ -17,6 +17,7 @@ function renderSheet(canEdit = true) {
       contact={youssef}
       roster={rosterFixture}
       canEdit={canEdit}
+      timezone="Africa/Tunis"
       onClose={vi.fn()}
       onDelete={onDelete}
     />,
@@ -59,6 +60,7 @@ describe("ContactSheet", () => {
         contact={youssef}
         roster={rosterFixture}
         canEdit
+        timezone="Africa/Tunis"
         onClose={onClose}
         onDelete={vi.fn()}
       />,
@@ -106,7 +108,10 @@ describe("ContactSheet", () => {
     expect(
       screen.getByText("Enter a valid email address."),
     ).toBeInTheDocument();
-    expect(fetchMock).not.toHaveBeenCalled();
+    // The History part reads; no write may have been sent.
+    expect(
+      fetchMock.mock.calls.filter(([, init]) => init?.method === "PATCH"),
+    ).toHaveLength(0);
   });
 
   it("adds and removes lists, and deletes through the parent", async () => {
