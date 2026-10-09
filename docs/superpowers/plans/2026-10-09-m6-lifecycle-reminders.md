@@ -26,7 +26,7 @@
   - **Wizard steps** save through one `saveStep` prop (Task 10), so the draft wizard (PATCH) and the edit mode (session draft) share every step component.
 - **Answers are kept after a time change**: `responses.needs_reconfirmation = true`; tiles show **To reconfirm** and leave those people out of Going/Late/Absent; History keeps the latest answer; a same-answer save from `/r/[token]` clears the flag and writes one history row.
 - **Recipients of an update** (one SQL function, `private.update_targets`): invite `sent`/`unknown` and not unsubscribed; date/time/duration change → everyone; place change → everyone except `absent`/`not_attending`; member-visible text only → everyone when "Email everyone about this change" is on, else nobody; calendar holders (`calendar_state = 'added'`) whose event content changed get a calendar-only update even when nobody else is emailed.
-- **Function security (spec §11):** new organizer writes (`edit_sent_meeting`, `cancel_meeting`, `delete_cancelled_meeting`, `nudge_meeting`, `mark_attendance`, `mark_rest_as_declared`, `duplicate_meeting`) are `private` definer bodies granted to `authenticated` behind `public` invoker wrappers; each is added to `PRIVATE_FUNCTIONS_FOR_AUTHENTICATED` (sorted) in `src/server/db/function-security.db.test.ts` in the same PR. Internal helpers (`response_deadline_problem`, `meeting_incomplete`, `require_active_sender`, `sync_reminder_timers`, `reminder_eligible`, `enqueue_reminders`, `fan_out_reminders`, `update_targets`, `merge_update_payload`, `effective_status`, `can_check_in`) are `revoke execute … from public, anon, authenticated`; the ones the invoker dispatcher calls are `grant execute … to service_role`. Run `supabase db advisors --local </dev/null` after every migration; expected: no WARN or ERROR.
+- **Function security (spec §11):** new organizer writes (`edit_sent_meeting`, `cancel_meeting`, `delete_cancelled_meeting`, `nudge_meeting`, `mark_attendance`, `mark_rest_as_declared`, `duplicate_meeting`) are `private` definer bodies granted to `authenticated` behind `public` invoker wrappers; each is added to `PRIVATE_FUNCTIONS_FOR_AUTHENTICATED` (sorted) in `src/server/db/function-security.db.test.ts` in the same PR. Internal helpers (`fold`, `like_contains`, `response_deadline_problem`, `meeting_incomplete`, `require_active_sender`, `sync_reminder_timers`, `reminder_eligible`, `enqueue_reminders`, `fan_out_reminders`, `update_targets`, `merge_update_payload`, `effective_status`, `can_check_in`) are `revoke execute … from public, anon, authenticated`; the ones the invoker dispatcher calls are `grant execute … to service_role`. Run `supabase db advisors --local </dev/null` after every migration; expected: no WARN or ERROR.
 - **Changing an existing function:** copy the latest body from **the newest migration that defines it** and change only what the task says: `send_meeting` and `create_meeting` → `20261008152332_m4_online_place.sql`; `dispatch_claim`, `dispatch_reserve`, `dispatch_finish`, `dispatch_retry` → `20261008182630_m5_calendar_dispatch.sql`; `token_submit_response`, `token_invitee` → `20261008181825_m5_responses.sql`; `meeting_results`, `meeting_people`, `contact_history`, `attendance_summary`, `attendance_details` → `20261008215854_m5_results_reads.sql`. A signature change is `drop function … (old args)` + `create function` + re-grant (grants are per signature). After each M6 migration merges, the next task copies from **that** migration.
 - **PostgREST resolves functions by argument names:** pass SQL null with `sqlNullable()` (`src/server/db/rpc-args.ts`); a new optional argument needs `default null` in SQL.
 - **New error codes** (Task 4 adds the first two, Task 9 the rest; each goes in `API_ERROR_CODES`, `API_ERROR_STATUS` and `messages/en.json` `ApiErrors`, plain words): `deadline_in_past` (400) "Pick a deadline in the future.", `deadline_after_start` (400) "The answer deadline must be before the meeting starts.", `meeting_started` (409) "The meeting has started, so it can't be changed.", `meeting_cancelled` (409) "This meeting was cancelled.", `nudge_too_soon` (409) "You can remind people again later.", `cancel_emails_pending` (409) "The cancellation emails are still going out. Try again in a few minutes.", `check_in_closed` (409) "Check-in opens when the meeting starts."
@@ -82,7 +82,7 @@ gh api -X POST repos/DalyChouikh/TapNShow/issues/8/sub_issues -F sub_issue_id="$
 - [ ] Tick "Plan written for M6" in epic #8's body.
 - [ ] #213 → Task 1: comment with the task issue number; close #213 when Task 1 merges.
 - [ ] Ledger: create `.superpowers/sdd/2026-10-09-m6-lifecycle-reminders/progress.md` with `bash ~/.claude/plugins/cache/claude-plugins-official/superpowers/6.4.1/skills/subagent-driven-development/scripts/sdd-workspace docs/superpowers/plans/2026-10-09-m6-lifecycle-reminders.md`; one line per task and every `Ruling:`. Per task: `task-start` / `task-done` (`…/executing-plans/scripts/`), `task-done` only on an up-to-date `main` after verifying the merge.
-- [ ] **Design rulings (2026-10-09)**, copied into the ledger: answers kept + "to reconfirm" after a time change; update email to everyone for date/time/duration, everyone but "can't come" for place, nobody for text unless switched on; one combined email for calendar holders; wizard edit mode + Review changes; answer type and delays fixed once sent; cancel keeps the meeting (not counted), delete for cancelled; reminders 24 h (not answered) and 2 h (Going/Late), per-meeting timers; nudge every 12 h; check-in by tap, "Mark the rest as they said", check-in wins in counts; no check-in for announcements; invite more allowed after the deadline; `attendance_marks` keyed by invitee.
+- [ ] **Design rulings (2026-10-09)**, copied into the ledger: answers kept + "to reconfirm" after a time change; update email to everyone for date/time/duration, everyone but "can't come" for place, nobody for text unless switched on; one combined email for calendar holders; wizard edit mode + Review changes; answer type and delays fixed once sent; cancel keeps the meeting (not counted), delete for cancelled; reminders 24 h (not answered) and 2 h (Going/Late), per-meeting timers; nudge every 12 h; check-in by tap, "Mark the rest as they said", check-in wins in counts; no check-in for announcements; invite more allowed after the deadline; `attendance_marks` keyed by invitee; plan review: cards count the last answer, no count on "Mark the rest", accent-insensitive check-in search, reminders scheduled again after a move.
 
 ## File Structure
 
@@ -1745,7 +1745,7 @@ Labels: `area:db`, `area:pipeline`. Branch `feat/<issue>-m6-edit-cancel-db`.
   - `public.edit_sent_meeting(p_meeting uuid, p_fields jsonb, p_notify boolean default false, p_dry_run boolean default false) → jsonb {changed: boolean, changes: {col: [old, new]}, emails: int, calendar_only: int, reconfirm: boolean}`. `p_fields` keys are snake_case columns from `EDITABLE_FIELDS`; anything else → `invalid_input`. Errors: `not_found`, `forbidden`, `meeting_cancelled`, `invalid_input`, `meeting_started`, `meeting_incomplete`, `meeting_in_past`, `deadline_in_past`, `deadline_after_start`.
   - `public.cancel_meeting(p_meeting uuid) → jsonb {emails: int}`. Errors: `not_found`, `forbidden`, `meeting_cancelled`, `invalid_input` (a draft), `meeting_started`.
   - `public.delete_cancelled_meeting(p_meeting uuid) → void`. Errors: `not_found`, `forbidden`, `invalid_input` (not cancelled), `cancel_emails_pending`.
-  - `private.update_targets(p_meeting uuid, p_rule text, p_calendar boolean) → table (invitee_id uuid, workspace_id uuid, notify boolean)`; `private.merge_update_payload(p_old jsonb, p_new jsonb) → jsonb`; `private.like_contains(p_text text) → text` (a safe `ilike` pattern).
+  - `private.update_targets(p_meeting uuid, p_rule text, p_calendar boolean) → table (invitee_id uuid, workspace_id uuid, notify boolean)`; `private.merge_update_payload(p_old jsonb, p_new jsonb) → jsonb`; `private.like_contains(p_text text) → text` (a safe `like` pattern); `private.fold(p_text text) → text` (lower case without accents, `unaccent` extension; owner decision 2026-10-09: the check-in search ignores accents like the roster search).
   - `token_submit_response`: a same-answer save while `needs_reconfirmation` clears it and writes one history row; any new answer clears it.
   - `token_invitee`: `answer.needs_reconfirmation`.
   - `meeting_results`: `answers.to_reconfirm`, `answers.remindable` (who a Nudge would email), `answers.reachable` (who a Cancel would email), `checked_in`, `nudge: {last_at, last_count, next_at}`; Going/Late/Absent/Not going exclude people still to reconfirm.
@@ -1776,13 +1776,14 @@ Tests:
 10. **Cancel:** `cancel_meeting` → `{emails: 3}`; meeting `cancelled` with `cancelled_at`; D's invite job `done` with `meeting_cancelled` and D `email_status = 'skipped'`; the timer and any pending `update`/`reminder`/`calendar_confirm` jobs done; three `cancel` jobs (A, B, C); a `meeting_changes` row `kind = 'cancel'`. A second cancel → `meeting_cancelled`; a draft → `invalid_input`; started → `meeting_started`.
 11. **Cancel without a sender (Review Focus 4):** `setSender(workspace.id, null)` then cancel → works; `dispatch_claim` moves the `cancel` jobs to `paused`; `setSender` back → `pending` again.
 12. **Delete:** right after cancel → `cancel_emails_pending`; mark the `cancel` jobs `done`, delete → the meeting, invitees, responses, history, marks and changes are gone (`select count(*)` on each by `meeting_id` = 0); deleting a scheduled meeting → `invalid_input`.
+14. **Reminded again after a move (owner decision):** mark the meeting's `pending` timer `done` (as if it fired), then `edit({ starts_at: plus7days })` → a new `pending` timer exists at the new due time.
 13. **Twin lists:** read `c_editable`, `c_visible`, `c_place`, `c_calendar` from the function source (`select pg_get_functiondef('private.edit_sent_meeting(uuid, jsonb, boolean, boolean)'::regprocedure)`) and compare each with the TS constants in `src/config/meeting-edit.ts` (sorted).
 
 `m6-reads.db.test.ts`:
 1. **Reconfirm through the token:** after a time change, `token_submit_response(A.hash, 'attending')` (same answer) → A's flag cleared, `updated_at` moved, one new `response_history` row; the same call again → nothing new. A different answer from B clears B's flag too.
 2. **`token_invitee`** returns `answer.needs_reconfirmation`.
 3. **`meeting_results`** after a time change: `answers.attending = 0`, `to_reconfirm = 2`, `remindable = 3` (A, B to reconfirm + C no answer), `reachable = 3`, `nudge.next_at` null; after `nudge_meeting`: `nudge.last_count`, `nudge.next_at` ≈ +12 h.
-4. **`meeting_people`:** filter `to_reconfirm` → A and B; filter `attending` → nobody; `p_search: "ami"` finds "Amira" case-insensitively and `p_search: "%"` matches only names containing a literal `%`; a mark inserted for C (`attendance_marks`, service role) shows as `mark.actual = 'present'` with the marker's display name.
+4. **`meeting_people`:** filter `to_reconfirm` → A and B; filter `attending` → nobody; `p_search: "ami"` finds "Amira", `p_search: "sarra"` finds "Sârra" (accents ignored), and `p_search: "%"` matches only names containing a literal `%`; a mark inserted for C (`attendance_marks`, service role) shows as `mark.actual = 'present'` with the marker's display name.
 5. **Plans** (2,000 contacts, 1,000 invitees, half answered, `analyze`): `explainCall("public.meeting_people('<id>', 'all', null, null, 50, null)", owner.id)` uses `meeting_invitees_meeting_ws_idx` (or another index on `meeting_invitees(meeting_id, …)`); `explainCall("public.meeting_results('<id>')", owner.id)` has no `Seq Scan on responses` once analyzed; `edit_sent_meeting` with a time change on that meeting finishes in under 1 s (measure with `performance.now()` around the RPC).
 
 Run: `bun run test:db -- m6-edit-cancel m6-reads` → FAIL.
@@ -1792,6 +1793,20 @@ Run: `bun run test:db -- m6-edit-cancel m6-reads` → FAIL.
 ```sql
 -- M6 edits, cancel and delete of a sent meeting (spec §7.5); reconfirmation (spec §7.3); the
 -- results reads learn "to reconfirm", the Nudge count and check-in marks.
+
+create extension if not exists unaccent with schema extensions;
+
+-- Lower case without accents, so "sarra" finds "Sârra" (the roster search does the same on the
+-- device). unaccent() is only STABLE; naming the dictionary makes this wrapper safe as IMMUTABLE.
+create function private.fold(p_text text)
+returns text
+language sql
+immutable
+parallel safe
+set search_path = ''
+as $$
+  select pg_catalog.lower(extensions.unaccent('extensions.unaccent'::regdictionary, p_text))
+$$;
 
 create function private.like_contains(p_text text)
 returns text
@@ -1850,7 +1865,7 @@ as $$
   )
 $$;
 
-revoke execute on function private.like_contains(text), private.update_targets(uuid, text, boolean),
+revoke execute on function private.fold(text), private.like_contains(text), private.update_targets(uuid, text, boolean),
   private.merge_update_payload(jsonb, jsonb)
   from public, anon, authenticated;
 
@@ -2197,8 +2212,9 @@ and add `'needs_reconfirmation', v_new.needs_reconfirmation` to the returned obj
         when 'to_reconfirm' then coalesce(r.needs_reconfirmation, false)
         else r.status::text = p_filter and not r.needs_reconfirmation
       end
-      and (p_search is null or c.full_name ilike private.like_contains(p_search)
-           or c.email ilike private.like_contains(p_search))
+      and (p_search is null
+           or private.fold(c.full_name) like private.like_contains(private.fold(p_search))
+           or c.email like private.like_contains(pg_catalog.lower(p_search)))
 ```
 - `left join public.attendance_marks am on am.invitee_id = i.id left join public.profiles mp on mp.user_id = am.marked_by` and in the row: `'needs_reconfirmation', r.needs_reconfirmation` inside `answer`, plus
 
@@ -3578,7 +3594,7 @@ export function useMarkRest(slug: string, id: string) {
 - `check-in-list.tsx`: a `Card` with the count line `t("count", { done: results.checkedIn, total: results.emails.total })`, the search `Input` (label "Search people", debounced 250 ms, `search` passed to `useMeetingPeople(slug, id, "all", true, search || null)`), the rows (`content-visibility:auto` with `contain-intrinsic-size`, like the people list), `ShowMore`, and **Mark the rest as they said** (`ConfirmDialog` per Step 1's copy; then `toast.success(t("restDone", { count: marked }))`).
 - `page.tsx`: when `meeting.status === "scheduled" && started && meeting.responseMode !== "announcement" && canCheckIn(workspace)`, a `SegmentedControl` **Results / Check-in** above the tiles; Check-in shows `CheckInList` instead of the tiles and the people list. Remember the choice in `sessionStorage` per meeting (try/catch) so a reload stays on Check-in at the door.
 
-The design said the button would read "Mark the rest as they said (12)". The number is left out because the client cannot know how many unmarked people had their invite delivered without another count; the dialog says what happens instead. Record this as a `Ruling:` (cost: one less hint on the button).
+The button has no count (owner decision 2026-10-09): the dialog explains what happens, the toast says how many were marked, and the count line above already reads "18 of 30 checked in".
 
 - [ ] **Step 5: Copy** — `MeetingPage.checkIn`: `switchResults` "Results", `switchCheckIn` "Check-in", `count` "{done} of {total} checked in", `present` "Present", `late` "Late", `absent` "Absent", `group` "Check-in for {name}", `said` "Said {answer}", `noReply` "No reply", `search` "Search people", `rest` "Mark the rest as they said", `restTitle` "Mark everyone not checked in yet?", `restBody` "People are marked from their answer. People who didn't answer are marked Absent.", `restConfirm` "Mark the rest", `restDone` "{count, plural, one {Marked # person.} other {Marked # people.}}", `saveFailed` "Couldn't save. Try again."
 
@@ -3685,4 +3701,5 @@ Record what each inbox did (counts and client names only; no addresses) for §14
 
 - **Spec coverage:** §4 Edits after sending → Tasks 6, 9, 10; Cancel and delete → Tasks 6, 9, 11; Reminders → Tasks 4, 5, 2, 3, 10, 11; Check-in → Tasks 7, 13, 14; Meeting wizard (reminders in Answers) → Task 10; §6 columns and tables → Task 4; Access pattern (M6) → Tasks 5–8; §7.3 time changed / cancelled → Task 12 (cancelled copy already exists from M5); §7.5 → Tasks 6, 9–11; §7.6 → Tasks 4, 5, 2, 3, 10, 11; §7.7 → Task 14; §7.8 → Tasks 7, 13; §7.9 → Task 8; §8 update/cancel/reminder → Tasks 5, 3; §12 M6 tests → spread through every task plus Task 15; §14 → Task 15; #213 → Task 1.
 - **Order risk found while writing:** the TypeScript dispatcher's claim schema rejects unknown job kinds, so Tasks 2 and 3 go before the migrations that create them (see Execution Order).
-- **Deviations from the approved design, to confirm in the plan review:** the "Mark the rest" button has no count (Task 13); the Meetings cards keep counting the latest answer for people still to reconfirm (only the meeting page tiles separate them, Task 6 `meeting_results`); search on the check-in list is case-insensitive but not accent-insensitive (`ilike`, no `unaccent`); a reminder timer that already fired is created again when a later edit moves its due time into the future (people may get a second reminder after the meeting moves).
+- **Decided in the plan review (owner, 2026-10-09):** the Meetings cards keep counting people's last answer while they are still to reconfirm (only the meeting page splits them out); the "Mark the rest as they said" button has no count; the check-in search ignores accents (`unaccent`, Task 6); a reminder that already went out is scheduled again when the meeting moves to a time whose reminder is still ahead (Task 5 `sync_reminder_timers`, Task 6 test 1).
+- **After the plan review:** mockups and side-by-side choices for the M6 screens (owner's milestone routine) before Task 10 starts; any change they bring is written back into Tasks 10–14 first.
