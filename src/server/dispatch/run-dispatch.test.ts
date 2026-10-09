@@ -3,6 +3,7 @@ import type { GmailSendResult } from "@/server/gmail/gmail-client";
 import type { RefreshResult } from "@/server/google/gmail-oauth";
 import type {
   Claim,
+  ClaimedJob,
   DispatchStore,
   ReserveResult,
 } from "@/server/queries/dispatch";
@@ -20,10 +21,16 @@ function job(
   n: number,
   meetingId = "11111111-1111-4111-8111-111111111111",
   threadId: string | null = null,
-) {
+): ClaimedJob {
   return {
     jobId: `00000000-0000-4000-8000-00000000000${n}`,
-    kind: "invite" as "invite" | "calendar_confirm",
+    kind: "invite",
+    payload: {
+      changes: {},
+      notify: false,
+      reconfirm: false,
+      audience: "pending",
+    },
     attempts: 1,
     inviteeId: `10000000-0000-4000-8000-00000000000${n}`,
     workspaceId: "20000000-0000-4000-8000-000000000000",
@@ -42,6 +49,7 @@ function job(
       meetingUrl: "",
       responseMode: "attendance" as const,
       responseDeadline: null,
+      footerNote: "",
       icsUid: "meeting-1@tapnshow.vercel.app",
       threadId,
       rootMessageId: threadId ? "<root@tapnshow.vercel.app>" : null,
@@ -55,9 +63,16 @@ function calendarJob(n: number) {
 }
 
 const decoded = (raw: string) => Buffer.from(raw, "base64url").toString("utf8");
+/** Unfolds MIME header and `.ics` continuation lines before asserting on them. */
+const unfold = (mime: string) => mime.replace(/\r\n[ \t]/g, "");
+const rawOf = (deps: DispatchDeps, call = 0) =>
+  decoded(vi.mocked(deps.gmail).mock.calls[call][0].raw);
+const moved = {
+  starts_at: ["2026-10-09T17:00:00+00:00", "2026-10-10T17:00:00+00:00"],
+} satisfies ClaimedJob["payload"]["changes"];
 
 function setup(options: {
-  jobs: ReturnType<typeof job>[];
+  jobs: ClaimedJob[];
   gmail?: GmailSendResult[];
   refresh?: RefreshResult[];
   reserve?: ReserveResult[];
@@ -358,5 +373,140 @@ describe("runDispatch", () => {
       "no_calendar_decision",
       null,
     );
+  });
+
+  it("sends an update with the calendar request inside for a calendar holder", async () => {
+    const { deps } = setup({
+      jobs: [
+        {
+          ...job(1, undefined, "t-1"),
+          kind: "update",
+          payload: {
+            changes: moved,
+            notify: true,
+            reconfirm: true,
+            audience: "pending",
+          },
+        },
+      ],
+      reserve: [{ kind: "ok", calendar: { action: "request", sequence: 1 } }],
+    });
+    const summary = await runDispatch(deps, OPTIONS);
+    expect(summary).toMatchObject({ sent: 1, updates: 1, calendar: 1 });
+    const raw = unfold(rawOf(deps));
+    expect(raw).toMatch(/Subject: =\?UTF-8\?Q\?Changed=3A_Weekly_sync/);
+    expect(raw).toContain("METHOD:REQUEST");
+    expect(raw).toContain("SEQUENCE:1");
+    expect(raw).toContain("?choice=3Dattending");
+  });
+
+  it("asks people to confirm when the time moved and moved back (Review Focus 1)", async () => {
+    const { deps } = setup({
+      jobs: [
+        {
+          ...job(1, undefined, "t-1"),
+          kind: "update",
+          payload: {
+            changes: {},
+            notify: true,
+            reconfirm: true,
+            audience: "pending",
+          },
+        },
+      ],
+    });
+    await runDispatch(deps, OPTIONS);
+    const raw = unfold(rawOf(deps));
+    expect(raw).toMatch(/Subject: =\?UTF-8\?Q\?Please_confirm=3A_Weekly_sync/);
+    expect(raw).not.toContain("text/calendar");
+  });
+
+  it("skips an update that has nothing to say instead of sending an empty email", async () => {
+    const { deps, store } = setup({
+      jobs: [
+        {
+          ...job(1, undefined, "t-1"),
+          kind: "update",
+          payload: {
+            changes: {},
+            notify: true,
+            reconfirm: false,
+            audience: "pending",
+          },
+        },
+        {
+          ...job(2, undefined, "t-1"),
+          kind: "update",
+          payload: {
+            changes: { title: ["a", "b"] },
+            notify: false,
+            reconfirm: false,
+            audience: "pending",
+          },
+        },
+      ],
+    });
+    const summary = await runDispatch(deps, OPTIONS);
+    expect(deps.gmail).not.toHaveBeenCalled();
+    expect(store.finish).toHaveBeenCalledWith(
+      job(1).jobId,
+      "skipped",
+      "nothing_to_send",
+      null,
+    );
+    expect(store.finish).toHaveBeenCalledWith(
+      job(2).jobId,
+      "skipped",
+      "nothing_to_send",
+      null,
+    );
+    expect(summary).toMatchObject({ sent: 0, skipped: 2 });
+  });
+
+  it("sends a cancellation with METHOD:CANCEL only for a calendar holder", async () => {
+    const holder = setup({
+      jobs: [{ ...job(1, undefined, "t-1"), kind: "cancel" }],
+      reserve: [{ kind: "ok", calendar: { action: "cancel", sequence: 2 } }],
+    });
+    const summary = await runDispatch(holder.deps, OPTIONS);
+    expect(summary).toMatchObject({ sent: 1, cancellations: 1, calendar: 1 });
+    expect(unfold(rawOf(holder.deps))).toContain("METHOD:CANCEL");
+    const other = setup({
+      jobs: [{ ...job(2, undefined, "t-1"), kind: "cancel" }],
+    });
+    await runDispatch(other.deps, OPTIONS);
+    const raw = unfold(rawOf(other.deps));
+    expect(raw).not.toContain("text/calendar");
+    expect(raw).toMatch(/Subject: =\?UTF-8\?Q\?Cancelled=3A_Weekly_sync/);
+  });
+
+  it("sends a reminder with the answer buttons to someone who hasn't answered", async () => {
+    const { deps } = setup({
+      jobs: [{ ...job(1, undefined, "t-1"), kind: "reminder" }],
+    });
+    const summary = await runDispatch(deps, OPTIONS);
+    expect(summary).toMatchObject({ sent: 1, reminders: 1 });
+    expect(unfold(rawOf(deps))).toContain("?choice=3Dattending");
+  });
+
+  it("tells Going people when and where, without answer buttons", async () => {
+    const { deps } = setup({
+      jobs: [
+        {
+          ...job(1, undefined, "t-1"),
+          kind: "reminder",
+          payload: {
+            changes: {},
+            notify: false,
+            reconfirm: false,
+            audience: "going",
+          },
+        },
+      ],
+    });
+    await runDispatch(deps, OPTIONS);
+    const raw = unfold(rawOf(deps));
+    expect(raw).toContain("Subject: See you at 18:00: Weekly sync");
+    expect(raw).not.toContain("?choice=");
   });
 });

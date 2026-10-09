@@ -1,12 +1,41 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import type { Database } from "@/server/db/database.types";
+import type { Database, Json } from "@/server/db/database.types";
 import { sqlNullable } from "@/server/db/rpc-args";
+import { changeSetSchema } from "@/shared/api/meeting-changes";
 import {
   locationModeSchema,
   responseModeSchema,
 } from "@/shared/api/meeting-settings";
+
+/** Every kind the dispatcher sends; one it doesn't know would fail the whole claim. */
+const jobKindSchema = z.enum([
+  "invite",
+  "calendar_confirm",
+  "update",
+  "cancel",
+  "reminder",
+]);
+
+/**
+ * What a job carries besides the invitee (spec §8; the M6 migration writes it). The defaults keep
+ * rows without a payload parsing (invites, and every row claimed before M6). Unknown keys (the
+ * stored calendar decision) are dropped: the reservation returns the decision.
+ */
+const jobPayloadSchema = z
+  .object({
+    changes: changeSetSchema.default({}),
+    notify: z.boolean().default(false),
+    reconfirm: z.boolean().default(false),
+    audience: z.enum(["pending", "going"]).default("pending"),
+  })
+  .default({
+    changes: {},
+    notify: false,
+    reconfirm: false,
+    audience: "pending",
+  });
 
 const claimSchema = z
   .object({
@@ -20,7 +49,8 @@ const claimSchema = z
     jobs: z.array(
       z.object({
         job_id: z.uuid(),
-        kind: z.enum(["invite", "calendar_confirm"]),
+        kind: jobKindSchema,
+        payload: jobPayloadSchema,
         attempts: z.number().int(),
         invitee_id: z.uuid(),
         workspace_id: z.uuid(),
@@ -58,6 +88,7 @@ const claimSchema = z
     jobs: db.jobs.map((job) => ({
       jobId: job.job_id,
       kind: job.kind,
+      payload: job.payload,
       attempts: job.attempts,
       inviteeId: job.invitee_id,
       workspaceId: job.workspace_id,
@@ -76,6 +107,7 @@ const claimSchema = z
         meetingUrl: job.meeting.meeting_url,
         responseMode: job.meeting.response_mode,
         responseDeadline: job.meeting.response_deadline,
+        footerNote: job.meeting.footer_note,
         icsUid: job.meeting.ics_uid,
         threadId: job.meeting.thread_id,
         rootMessageId: job.meeting.root_message_id,
@@ -85,8 +117,13 @@ const claimSchema = z
 
 /** One claimed sender and its jobs. */
 export type Claim = z.output<typeof claimSchema>;
-/** One claimed invite job with everything needed to render it. */
+/** One claimed job with everything needed to render it. */
 export type ClaimedJob = Claim["jobs"][number];
+
+/** Parses `dispatch_claim`'s result (null when no sender has due jobs). */
+export function parseClaim(data: Json): Claim | null {
+  return data ? claimSchema.parse(data) : null;
+}
 
 /** A calendar job's decision at reserve time (spec §8 calendar_confirm). */
 export type CalendarDecision = {
@@ -205,7 +242,7 @@ export function createDispatchStore(
         p_lease_seconds: leaseSeconds,
       });
       check(error);
-      return data ? claimSchema.parse(data) : null;
+      return parseClaim(data);
     },
     async reserve(jobId, tokenHash) {
       const { data, error } = await client.rpc("dispatch_reserve", {
