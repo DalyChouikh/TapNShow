@@ -4,12 +4,14 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
+import { ExportMenu } from "@/components/forms/export-menu";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMeeting } from "@/hooks/use-meetings";
 import { useMeetingResults } from "@/hooks/use-results";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { isLive } from "@/lib/responses/live-window";
+import type { Meeting } from "@/shared/api/meetings";
 import type { PeopleFilter } from "@/shared/api/responses";
 import { DeliverySheet } from "./delivery-sheet";
 import { EmailLine } from "./email-line";
@@ -17,6 +19,13 @@ import { MeetingHeader } from "./meeting-header";
 import { PeopleList } from "./people-list";
 import { ResultTiles } from "./result-tiles";
 import { SendProgress } from "./send-progress";
+import { useExportAnswers } from "./use-export-answers";
+
+/** Export of every answer (the hook needs the loaded meeting). */
+function MeetingExport({ slug, meeting }: { slug: string; meeting: Meeting }) {
+  const exportAnswers = useExportAnswers(slug, meeting);
+  return <ExportMenu onExport={exportAnswers} />;
+}
 
 /**
  * `/w/[slug]/meetings/[id]` (spec §7.2, §7.7): details, send progress or the email line, answer
@@ -50,7 +59,14 @@ export default function MeetingPage() {
     : false;
   return (
     <div className="flex flex-col gap-4">
-      <MeetingHeader meeting={meeting.data} />
+      <MeetingHeader
+        meeting={meeting.data}
+        actions={
+          meeting.data.responseMode !== "announcement" ? (
+            <MeetingExport slug={slug} meeting={meeting.data} />
+          ) : null
+        }
+      />
       {!results.data ? (
         <Skeleton className="h-32 w-full" />
       ) : sending ? (

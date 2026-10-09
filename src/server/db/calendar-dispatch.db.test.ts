@@ -274,7 +274,7 @@ describe("calendar_confirm jobs", () => {
       .update({ status: "paused" })
       .eq("invitee_id", invitee)
       .eq("kind", "calendar_confirm");
-    const { data } = await owner.client.rpc("meeting_progress", {
+    const { data } = await owner.client.rpc("meeting_results", {
       p_meeting: meeting,
     });
     expect(data).toMatchObject({ paused: 0 });

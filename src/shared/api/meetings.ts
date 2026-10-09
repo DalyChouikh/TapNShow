@@ -185,6 +185,8 @@ export const inviteeStatusSchema = z.enum([
   "failed",
   "unknown",
 ]);
+/** Delivery state of one invitee. */
+export type InviteeStatus = z.infer<typeof inviteeStatusSchema>;
 
 /** `GET …/preview`: the invite as one example recipient would see it. */
 export const previewSchema = z.object({

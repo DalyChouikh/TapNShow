@@ -1,6 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
 import { FAKE_GMAIL_URL } from "./e2e/helpers/fake-gmail";
-import { E2E_INVITE_SECRET, E2E_TOKEN_KEY } from "./e2e/helpers/seed-sender";
+import {
+  E2E_DISPATCH_SECRET,
+  E2E_INVITE_SECRET,
+  E2E_TOKEN_KEY,
+} from "./e2e/helpers/seed-sender";
 
 const PORT = 3000;
 
@@ -31,6 +35,7 @@ export default defineConfig({
       GOOGLE_CLIENT_SECRET: "e2e-secret",
       GOOGLE_TOKEN_ENCRYPTION_KEY: E2E_TOKEN_KEY,
       INVITE_TOKEN_SECRET: E2E_INVITE_SECRET,
+      DISPATCH_SECRET: E2E_DISPATCH_SECRET,
     },
   },
 });

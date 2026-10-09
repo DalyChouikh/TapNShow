@@ -2,13 +2,23 @@
 
 import { ArrowSquareOut, Globe, MapPin } from "@phosphor-icons/react";
 import { useTranslations } from "next-intl";
+import type { ReactNode } from "react";
 import { formatMeetingWhen } from "@/lib/meetings/format";
 import { browserTimezone } from "@/lib/timezones";
 import type { Meeting } from "@/shared/api/meetings";
 import { meetingPlatform } from "@/lib/meetings/platform";
 
-/** Title, when (with the viewer's own time if their zone differs) and where (spec §7.10). */
-export function MeetingHeader({ meeting }: { meeting: Meeting }) {
+/**
+ * Title, when (with the viewer's own time if their zone differs) and where (spec §7.10);
+ * `actions` sit next to the title (Export).
+ */
+export function MeetingHeader({
+  meeting,
+  actions,
+}: {
+  meeting: Meeting;
+  actions?: ReactNode;
+}) {
   const t = useTranslations("MeetingPage");
   const platform = meetingPlatform(meeting.meetingUrl);
   const when = meeting.startsAt
@@ -25,7 +35,12 @@ export function MeetingHeader({ meeting }: { meeting: Meeting }) {
       : null;
   return (
     <header className="flex flex-col gap-1">
-      <h1 className="font-display text-3xl break-words">{meeting.title}</h1>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <h1 className="min-w-0 font-display text-3xl break-words">
+          {meeting.title}
+        </h1>
+        {actions}
+      </div>
       {when ? (
         <p className="font-bold">
           {when.date}, {when.start}–{when.end} ({when.zone})
