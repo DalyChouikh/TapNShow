@@ -177,4 +177,71 @@ describe("dispatcher against the database", () => {
       new Date(pending.data?.[0].run_after ?? 0).getTime(),
     ).toBeGreaterThan(Date.now() + 23 * 3600_000);
   });
+
+  it("sends calendar emails after answers, in the meeting's thread, and nothing for quick flips (Review Focus 2)", async () => {
+    await owner.client.rpc("send_meeting", { p_meeting: meeting });
+    let n = 0;
+    const d = deps((threadId) => ({
+      kind: "sent",
+      id: `m${(n += 1)}`,
+      threadId: threadId ?? "t-1",
+    }));
+    await runDispatch(d, OPTIONS);
+    const sent = vi.mocked(d.gmail).mock.calls;
+    const { data: invitee } = await adminClient()
+      .from("meeting_invitees")
+      .select("id")
+      .eq("meeting_id", meeting)
+      .limit(1)
+      .single();
+    const hash = inviteeTokenHash(
+      deriveInviteeToken(invitee?.id ?? "", SECRET),
+    );
+    const answer = async (status: "attending" | "absent") => {
+      const { error } = await adminClient().rpc("token_submit_response", {
+        p_token_hash: hash,
+        p_status: status,
+        p_delay_minutes: null,
+        p_reason: status === "absent" ? "Sick" : null,
+        p_comment: null,
+      } as never);
+      expect(error).toBeNull();
+    };
+    const makeDue = () =>
+      adminClient()
+        .from("outbox_jobs")
+        .update({ run_after: new Date(Date.now() - 1000).toISOString() })
+        .eq("invitee_id", invitee?.id ?? "")
+        .eq("kind", "calendar_confirm")
+        .eq("status", "pending");
+    const lastMime = () =>
+      Buffer.from(sent[sent.length - 1][0].raw, "base64url").toString("utf8");
+
+    await answer("attending");
+    await makeDue();
+    expect((await runDispatch(d, OPTIONS)).calendar).toBe(1);
+    expect(sent[sent.length - 1][0].threadId).toBe("t-1");
+    expect(lastMime()).toMatch(/method=REQUEST/i);
+    const state = await adminClient()
+      .from("meeting_invitees")
+      .select("calendar_state, email_status")
+      .eq("id", invitee?.id ?? "")
+      .single();
+    expect(state.data).toEqual({
+      calendar_state: "added",
+      email_status: "sent",
+    });
+
+    await answer("absent");
+    await makeDue();
+    expect((await runDispatch(d, OPTIONS)).calendar).toBe(1);
+    expect(lastMime()).toMatch(/method=CANCEL/i);
+
+    await answer("attending");
+    await answer("absent");
+    await makeDue();
+    const before = sent.length;
+    expect((await runDispatch(d, OPTIONS)).calendar).toBe(0);
+    expect(sent.length).toBe(before);
+  });
 });
