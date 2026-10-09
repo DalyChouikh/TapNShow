@@ -7,7 +7,12 @@ import {
   type TestUser,
 } from "@/test/db/clients";
 import { addToList, seedMeeting } from "@/test/db/meetings";
-import { jobsOf, overrideLimit, serviceRpc } from "@/test/db/outbox";
+import {
+  jobsOf,
+  overrideLimit,
+  parkAllJobs,
+  serviceRpc,
+} from "@/test/db/outbox";
 import { seedContacts, seedList } from "@/test/db/roster";
 import { seedConnection, setSender } from "@/test/db/sender";
 import { queryLocalSql, runLocalSql } from "@/test/db/sql";
@@ -82,10 +87,7 @@ beforeEach(async () => {
     p_exclude: [],
   });
   // Earlier tests may leave due jobs from other workspaces; park them so claims only see ours.
-  runLocalSql(
-    "update public.outbox_jobs set status = 'done' where status in ('pending', 'processing')",
-  );
-  runLocalSql("delete from public.sender_leases");
+  parkAllJobs();
 });
 
 afterEach(() => {

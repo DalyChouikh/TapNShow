@@ -3,7 +3,7 @@ import { z } from "zod";
 import { adminClient, createTestUser, type TestUser } from "@/test/db/clients";
 import { seedInvitee } from "@/test/db/invitees";
 import { seedMeeting } from "@/test/db/meetings";
-import { serviceRpc } from "@/test/db/outbox";
+import { parkAllJobs, serviceRpc } from "@/test/db/outbox";
 import { seedContacts } from "@/test/db/roster";
 import { seedConnection, setSender } from "@/test/db/sender";
 import { createWorkspaceAs, type TestWorkspace } from "@/test/db/workspaces";
@@ -103,6 +103,8 @@ async function inviteeRow() {
 }
 
 beforeEach(async () => {
+  // Claims are global: park what other files left so the claim below sees only this test's jobs.
+  parkAllJobs();
   owner = await createTestUser({ fullName: "Owner" });
   workspace = await createWorkspaceAs(owner, "Calendar Club");
   await setSender(workspace.id, await seedConnection(owner.id));

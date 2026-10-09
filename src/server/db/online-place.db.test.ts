@@ -7,10 +7,9 @@ import {
   type TestUser,
 } from "@/test/db/clients";
 import { addToList, seedMeeting } from "@/test/db/meetings";
-import { serviceRpc } from "@/test/db/outbox";
+import { parkAllJobs, serviceRpc } from "@/test/db/outbox";
 import { seedContacts, seedList } from "@/test/db/roster";
 import { seedConnection, setSender } from "@/test/db/sender";
-import { runLocalSql } from "@/test/db/sql";
 import { createWorkspaceAs, type TestWorkspace } from "@/test/db/workspaces";
 
 let owner: TestUser;
@@ -18,10 +17,7 @@ let workspace: TestWorkspace;
 let list: string;
 
 beforeEach(async () => {
-  runLocalSql(
-    "update public.outbox_jobs set status = 'done' where status in ('pending', 'processing', 'paused')",
-  );
-  runLocalSql("delete from public.sender_leases");
+  parkAllJobs();
   owner = await createTestUser({ fullName: "Owner" });
   workspace = await createWorkspaceAs(owner, "Online Club");
   await setSender(workspace.id, await seedConnection(owner.id));
