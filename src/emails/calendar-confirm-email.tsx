@@ -1,6 +1,7 @@
-import { Button, render, Section, Text } from "react-email";
+import { render, Text } from "react-email";
 import { formatMeetingWhen } from "@/lib/meetings/format";
 import type { ResponseMode } from "@/shared/api/meeting-settings";
+import { PrimaryLinkButton } from "./answer-buttons";
 import { EmailLayout } from "./email-layout";
 import {
   bodyStyle as body,
@@ -8,7 +9,6 @@ import {
   MeetingWhenWhere,
   type MeetingEmailMeeting,
 } from "./meeting-blocks";
-import { brutalBox, emailTheme as t } from "./theme";
 import { getEmailTranslator } from "./translator";
 
 /** One calendar confirmation (spec §9): the add after Going/Late, or the removal after Absent. */
@@ -65,22 +65,10 @@ export function CalendarConfirmEmail({
         </Text>
       ) : null}
       {meeting.responseMode !== "announcement" ? (
-        <Section style={{ margin: "20px 0 8px" }}>
-          <Button
-            href={links.respond}
-            style={{
-              ...brutalBox(t.primary, t.radiusControl),
-              color: t.ink,
-              display: "inline-block",
-              fontFamily: t.fontDisplay,
-              fontSize: "15px",
-              padding: "12px 18px",
-              textDecoration: "none",
-            }}
-          >
-            {tr("calendarConfirm.change")}
-          </Button>
-        </Section>
+        <PrimaryLinkButton
+          href={links.respond}
+          label={tr("calendarConfirm.change")}
+        />
       ) : null}
     </EmailLayout>
   );
