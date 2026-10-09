@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import type { Ref } from "react";
+import { useEffect, useRef } from "react";
 import { ConfirmStamp } from "@/components/motion/confirm-stamp";
 import { Button } from "@/components/ui/button";
 import { useAnswerLabels } from "@/hooks/use-answer-labels";
@@ -12,11 +12,10 @@ import type { TokenInfo } from "@/shared/api/tokens";
 import { CalendarLinks } from "./calendar-links";
 
 /**
- * The saved answer: the CONFIRMED stamp right after a save (confetti for Going), the answer in
+ * The saved answer: the CONFIRMED stamp right after a save (confetti for Going; focus moves here), the answer in
  * words, reason and comment as plain text, the calendar line and links, and Change (spec §7.3).
  */
 export function AnswerSummary({
-  ref,
   token,
   workspaceName,
   unsubscribed,
@@ -25,7 +24,6 @@ export function AnswerSummary({
   celebrate,
   onChange,
 }: {
-  ref?: Ref<HTMLDivElement>;
   token: string;
   workspaceName: string;
   unsubscribed: boolean;
@@ -37,6 +35,13 @@ export function AnswerSummary({
   const t = useTranslations("AnswerPage");
   const labels = useAnswerLabels();
   const inCalendar = answer.status === "attending" || answer.status === "late";
+  const ref = useRef<HTMLDivElement>(null);
+  // WCAG 2.4.3: right after a save, focus moves to the result once it is on screen.
+  useEffect(() => {
+    if (celebrate) {
+      ref.current?.focus();
+    }
+  }, [celebrate]);
   return (
     <div
       ref={ref}
