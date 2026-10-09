@@ -11,6 +11,10 @@ export async function seedMeeting(
     location_text: string;
     meeting_url: string;
     created_by: string;
+    response_mode: "announcement" | "rsvp" | "attendance";
+    response_deadline: string | null;
+    reminder_pending_hours: number | null;
+    reminder_going_hours: number | null;
   }> = {},
 ): Promise<string> {
   const tomorrow = new Date(Date.now() + 24 * 3600_000);

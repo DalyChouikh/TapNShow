@@ -14,6 +14,17 @@ export async function serviceRpc(
   return data as object | null;
 }
 
+/**
+ * Parks every due or running job and frees every sender lease. `dispatch_claim` is global (oldest
+ * due sender first), so a test that claims must not see jobs other test files left behind.
+ */
+export function parkAllJobs(): void {
+  runLocalSql(
+    "update public.outbox_jobs set status = 'done' where status in ('pending', 'processing', 'paused')",
+  );
+  runLocalSql("delete from public.sender_leases");
+}
+
 /** Sets a numeric limit for one test and returns a function restoring the original value. */
 export function overrideLimit(name: string, value: number): () => void {
   const [row] = queryLocalSql(

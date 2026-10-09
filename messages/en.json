@@ -195,6 +195,8 @@
     "sender_not_connected": "Connect a Gmail account to send this meeting.",
     "sender_broken": "Gmail needs reconnecting before this meeting can be sent.",
     "meeting_not_draft": "This meeting has already been sent or cancelled.",
+    "deadline_in_past": "Pick a deadline in the future.",
+    "deadline_after_start": "The answer deadline must be before the meeting starts.",
     "meeting_in_past": "This meeting's start time has passed. Pick a new time.",
     "meeting_incomplete": "Some details are missing. Check the title, time and place.",
     "too_many_invitees": "That's more people than one meeting can invite.",

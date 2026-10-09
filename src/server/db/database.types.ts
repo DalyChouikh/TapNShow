@@ -30,6 +30,31 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"attendance_marks": {
+                  Row: {
+                    "actual": Database["public"]['Enums']["attendance_actual"],"invitee_id": string,"marked_at": string,"marked_by": string | null,"meeting_id": string,"workspace_id": string
+                  }
+                  Insert: {
+                    "actual": Database["public"]['Enums']["attendance_actual"],"invitee_id": string,"marked_at"?: string,"marked_by"?: string | null,"meeting_id": string,"workspace_id": string
+                  }
+                  Update: {
+                    "actual"?: Database["public"]['Enums']["attendance_actual"],"invitee_id"?: string,"marked_at"?: string,"marked_by"?: string | null,"meeting_id"?: string,"workspace_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "attendance_marks_invitee_id_fkey"
+      columns: ["invitee_id"]
+isOneToOne: true
+      referencedRelation: "meeting_invitees"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "attendance_marks_meeting_id_workspace_id_fkey"
+      columns: ["meeting_id","workspace_id"]
+isOneToOne: false
+      referencedRelation: "meetings"
+      referencedColumns: ["id","workspace_id"]
+    }
+                  ]
                 },"contacts": {
                   Row: {
                     "created_at": string,"email": string,"full_name": string,"id": string,"is_adhoc": boolean,"unsubscribed_at": string | null,"unsubscribed_via": Database["public"]['Enums']["unsubscribe_via"] | null,"updated_at": string,"user_id": string | null,"workspace_id": string
@@ -156,6 +181,25 @@ isOneToOne: false
       referencedColumns: ["id","workspace_id"]
     }
                   ]
+                },"meeting_changes": {
+                  Row: {
+                    "changed_at": string,"changed_by": string | null,"changes": NonNullable<Json>,"id": string,"kind": Database["public"]['Enums']["meeting_change_kind"],"meeting_id": string,"notified": boolean,"workspace_id": string
+                  }
+                  Insert: {
+                    "changed_at"?: string,"changed_by"?: string | null,"changes"?: NonNullable<Json>,"id"?: string,"kind": Database["public"]['Enums']["meeting_change_kind"],"meeting_id": string,"notified": boolean,"workspace_id": string
+                  }
+                  Update: {
+                    "changed_at"?: string,"changed_by"?: string | null,"changes"?: NonNullable<Json>,"id"?: string,"kind"?: Database["public"]['Enums']["meeting_change_kind"],"meeting_id"?: string,"notified"?: boolean,"workspace_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "meeting_changes_meeting_id_workspace_id_fkey"
+      columns: ["meeting_id","workspace_id"]
+isOneToOne: false
+      referencedRelation: "meetings"
+      referencedColumns: ["id","workspace_id"]
+    }
+                  ]
                 },"meeting_invitees": {
                   Row: {
                     "calendar_requested_at": string | null,"calendar_sequence": number,"calendar_state": Database["public"]['Enums']["calendar_state"],"contact_id": string,"email_error": string | null,"email_status": Database["public"]['Enums']["invitee_email_status"],"id": string,"invited_at": string,"meeting_id": string,"sent_at": string | null,"token_hash": string | null,"workspace_id": string
@@ -183,13 +227,13 @@ isOneToOne: false
                   ]
                 },"meetings": {
                   Row: {
-                    "agenda_md": string,"comments_enabled": boolean,"created_at": string,"created_by": string | null,"delay_options": (number)[],"duration_minutes": number,"footer_note": string,"gmail_root_message_id": string | null,"gmail_thread_id": string | null,"ics_sequence": number,"ics_uid": string,"id": string,"location_mode": Database["public"]['Enums']["location_mode"],"location_text": string,"meeting_url": string,"online_text": string,"reason_required": boolean,"response_deadline": string | null,"response_mode": Database["public"]['Enums']["response_mode"],"sent_at": string | null,"starts_at": string | null,"status": Database["public"]['Enums']["meeting_status"],"thread_connection_id": string | null,"timezone": string,"title": string,"updated_at": string,"workspace_id": string
+                    "agenda_md": string,"cancelled_at": string | null,"comments_enabled": boolean,"created_at": string,"created_by": string | null,"delay_options": (number)[],"duration_minutes": number,"footer_note": string,"gmail_root_message_id": string | null,"gmail_thread_id": string | null,"ics_sequence": number,"ics_uid": string,"id": string,"last_nudged_at": string | null,"last_nudged_count": number | null,"location_mode": Database["public"]['Enums']["location_mode"],"location_text": string,"meeting_url": string,"online_text": string,"reason_required": boolean,"reminder_going_hours": number | null,"reminder_pending_hours": number | null,"response_deadline": string | null,"response_mode": Database["public"]['Enums']["response_mode"],"sent_at": string | null,"starts_at": string | null,"status": Database["public"]['Enums']["meeting_status"],"thread_connection_id": string | null,"timezone": string,"title": string,"updated_at": string,"workspace_id": string
                   }
                   Insert: {
-                    "agenda_md"?: string,"comments_enabled": boolean,"created_at"?: string,"created_by"?: string | null,"delay_options"?: (number)[],"duration_minutes": number,"footer_note"?: string,"gmail_root_message_id"?: string | null,"gmail_thread_id"?: string | null,"ics_sequence"?: number,"ics_uid"?: string,"id"?: string,"location_mode"?: Database["public"]['Enums']["location_mode"],"location_text"?: string,"meeting_url"?: string,"online_text"?: string,"reason_required": boolean,"response_deadline"?: string | null,"response_mode": Database["public"]['Enums']["response_mode"],"sent_at"?: string | null,"starts_at"?: string | null,"status"?: Database["public"]['Enums']["meeting_status"],"thread_connection_id"?: string | null,"timezone": string,"title"?: string,"updated_at"?: string,"workspace_id": string
+                    "agenda_md"?: string,"cancelled_at"?: string | null,"comments_enabled": boolean,"created_at"?: string,"created_by"?: string | null,"delay_options"?: (number)[],"duration_minutes": number,"footer_note"?: string,"gmail_root_message_id"?: string | null,"gmail_thread_id"?: string | null,"ics_sequence"?: number,"ics_uid"?: string,"id"?: string,"last_nudged_at"?: string | null,"last_nudged_count"?: number | null,"location_mode"?: Database["public"]['Enums']["location_mode"],"location_text"?: string,"meeting_url"?: string,"online_text"?: string,"reason_required": boolean,"reminder_going_hours"?: number | null,"reminder_pending_hours"?: number | null,"response_deadline"?: string | null,"response_mode": Database["public"]['Enums']["response_mode"],"sent_at"?: string | null,"starts_at"?: string | null,"status"?: Database["public"]['Enums']["meeting_status"],"thread_connection_id"?: string | null,"timezone": string,"title"?: string,"updated_at"?: string,"workspace_id": string
                   }
                   Update: {
-                    "agenda_md"?: string,"comments_enabled"?: boolean,"created_at"?: string,"created_by"?: string | null,"delay_options"?: (number)[],"duration_minutes"?: number,"footer_note"?: string,"gmail_root_message_id"?: string | null,"gmail_thread_id"?: string | null,"ics_sequence"?: number,"ics_uid"?: string,"id"?: string,"location_mode"?: Database["public"]['Enums']["location_mode"],"location_text"?: string,"meeting_url"?: string,"online_text"?: string,"reason_required"?: boolean,"response_deadline"?: string | null,"response_mode"?: Database["public"]['Enums']["response_mode"],"sent_at"?: string | null,"starts_at"?: string | null,"status"?: Database["public"]['Enums']["meeting_status"],"thread_connection_id"?: string | null,"timezone"?: string,"title"?: string,"updated_at"?: string,"workspace_id"?: string
+                    "agenda_md"?: string,"cancelled_at"?: string | null,"comments_enabled"?: boolean,"created_at"?: string,"created_by"?: string | null,"delay_options"?: (number)[],"duration_minutes"?: number,"footer_note"?: string,"gmail_root_message_id"?: string | null,"gmail_thread_id"?: string | null,"ics_sequence"?: number,"ics_uid"?: string,"id"?: string,"last_nudged_at"?: string | null,"last_nudged_count"?: number | null,"location_mode"?: Database["public"]['Enums']["location_mode"],"location_text"?: string,"meeting_url"?: string,"online_text"?: string,"reason_required"?: boolean,"reminder_going_hours"?: number | null,"reminder_pending_hours"?: number | null,"response_deadline"?: string | null,"response_mode"?: Database["public"]['Enums']["response_mode"],"sent_at"?: string | null,"starts_at"?: string | null,"status"?: Database["public"]['Enums']["meeting_status"],"thread_connection_id"?: string | null,"timezone"?: string,"title"?: string,"updated_at"?: string,"workspace_id"?: string
                   }
                   Relationships: [
                     {
@@ -208,13 +252,13 @@ isOneToOne: false
                   ]
                 },"outbox_jobs": {
                   Row: {
-                    "attempts": number,"created_at": string,"id": string,"idempotency_key": string,"invitee_id": string | null,"kind": Database["public"]['Enums']["job_kind"],"last_error": string | null,"locked_until": string | null,"payload": NonNullable<Json>,"run_after": string,"run_id": string | null,"send_started_at": string | null,"status": Database["public"]['Enums']["job_status"],"updated_at": string,"workspace_id": string
+                    "attempts": number,"created_at": string,"id": string,"idempotency_key": string,"invitee_id": string | null,"kind": Database["public"]['Enums']["job_kind"],"last_error": string | null,"locked_until": string | null,"meeting_id": string | null,"payload": NonNullable<Json>,"run_after": string,"run_id": string | null,"send_started_at": string | null,"status": Database["public"]['Enums']["job_status"],"updated_at": string,"workspace_id": string
                   }
                   Insert: {
-                    "attempts"?: number,"created_at"?: string,"id"?: string,"idempotency_key": string,"invitee_id"?: string | null,"kind": Database["public"]['Enums']["job_kind"],"last_error"?: string | null,"locked_until"?: string | null,"payload"?: NonNullable<Json>,"run_after"?: string,"run_id"?: string | null,"send_started_at"?: string | null,"status"?: Database["public"]['Enums']["job_status"],"updated_at"?: string,"workspace_id": string
+                    "attempts"?: number,"created_at"?: string,"id"?: string,"idempotency_key": string,"invitee_id"?: string | null,"kind": Database["public"]['Enums']["job_kind"],"last_error"?: string | null,"locked_until"?: string | null,"meeting_id"?: string | null,"payload"?: NonNullable<Json>,"run_after"?: string,"run_id"?: string | null,"send_started_at"?: string | null,"status"?: Database["public"]['Enums']["job_status"],"updated_at"?: string,"workspace_id": string
                   }
                   Update: {
-                    "attempts"?: number,"created_at"?: string,"id"?: string,"idempotency_key"?: string,"invitee_id"?: string | null,"kind"?: Database["public"]['Enums']["job_kind"],"last_error"?: string | null,"locked_until"?: string | null,"payload"?: NonNullable<Json>,"run_after"?: string,"run_id"?: string | null,"send_started_at"?: string | null,"status"?: Database["public"]['Enums']["job_status"],"updated_at"?: string,"workspace_id"?: string
+                    "attempts"?: number,"created_at"?: string,"id"?: string,"idempotency_key"?: string,"invitee_id"?: string | null,"kind"?: Database["public"]['Enums']["job_kind"],"last_error"?: string | null,"locked_until"?: string | null,"meeting_id"?: string | null,"payload"?: NonNullable<Json>,"run_after"?: string,"run_id"?: string | null,"send_started_at"?: string | null,"status"?: Database["public"]['Enums']["job_status"],"updated_at"?: string,"workspace_id"?: string
                   }
                   Relationships: [
                     {
@@ -222,6 +266,12 @@ isOneToOne: false
       columns: ["invitee_id"]
 isOneToOne: false
       referencedRelation: "meeting_invitees"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "outbox_jobs_meeting_id_fkey"
+      columns: ["meeting_id"]
+isOneToOne: false
+      referencedRelation: "meetings"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "outbox_jobs_workspace_id_fkey"
@@ -390,13 +440,13 @@ isOneToOne: false
                   ]
                 },"workspaces": {
                   Row: {
-                    "created_at": string,"default_comments_enabled": boolean,"default_delay_options": (number)[],"default_duration_minutes": number,"default_footer_note": string,"default_meeting_url": string,"default_online_text": string,"default_reason_required": boolean,"default_response_mode": Database["public"]['Enums']["response_mode"],"id": string,"locale": string,"name": string,"sender_connection_id": string | null,"slug": string,"timezone": string,"updated_at": string
+                    "created_at": string,"default_comments_enabled": boolean,"default_delay_options": (number)[],"default_duration_minutes": number,"default_footer_note": string,"default_meeting_url": string,"default_online_text": string,"default_reason_required": boolean,"default_reminder_going_hours": number | null,"default_reminder_pending_hours": number | null,"default_response_mode": Database["public"]['Enums']["response_mode"],"id": string,"locale": string,"name": string,"sender_connection_id": string | null,"slug": string,"timezone": string,"updated_at": string
                   }
                   Insert: {
-                    "created_at"?: string,"default_comments_enabled"?: boolean,"default_delay_options"?: (number)[],"default_duration_minutes"?: number,"default_footer_note"?: string,"default_meeting_url"?: string,"default_online_text"?: string,"default_reason_required"?: boolean,"default_response_mode"?: Database["public"]['Enums']["response_mode"],"id"?: string,"locale"?: string,"name": string,"sender_connection_id"?: string | null,"slug": string,"timezone": string,"updated_at"?: string
+                    "created_at"?: string,"default_comments_enabled"?: boolean,"default_delay_options"?: (number)[],"default_duration_minutes"?: number,"default_footer_note"?: string,"default_meeting_url"?: string,"default_online_text"?: string,"default_reason_required"?: boolean,"default_reminder_going_hours"?: number | null,"default_reminder_pending_hours"?: number | null,"default_response_mode"?: Database["public"]['Enums']["response_mode"],"id"?: string,"locale"?: string,"name": string,"sender_connection_id"?: string | null,"slug": string,"timezone": string,"updated_at"?: string
                   }
                   Update: {
-                    "created_at"?: string,"default_comments_enabled"?: boolean,"default_delay_options"?: (number)[],"default_duration_minutes"?: number,"default_footer_note"?: string,"default_meeting_url"?: string,"default_online_text"?: string,"default_reason_required"?: boolean,"default_response_mode"?: Database["public"]['Enums']["response_mode"],"id"?: string,"locale"?: string,"name"?: string,"sender_connection_id"?: string | null,"slug"?: string,"timezone"?: string,"updated_at"?: string
+                    "created_at"?: string,"default_comments_enabled"?: boolean,"default_delay_options"?: (number)[],"default_duration_minutes"?: number,"default_footer_note"?: string,"default_meeting_url"?: string,"default_online_text"?: string,"default_reason_required"?: boolean,"default_reminder_going_hours"?: number | null,"default_reminder_pending_hours"?: number | null,"default_response_mode"?: Database["public"]['Enums']["response_mode"],"id"?: string,"locale"?: string,"name"?: string,"sender_connection_id"?: string | null,"slug"?: string,"timezone"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -459,6 +509,8 @@ isOneToOne: false
 "default_meeting_url": string,
 "default_online_text": string,
 "default_reason_required": boolean,
+"default_reminder_going_hours": number | null,
+"default_reminder_pending_hours": number | null,
 "default_response_mode": Database["public"]['Enums']["response_mode"],
 "id": string,
 "locale": string,
@@ -597,7 +649,7 @@ isOneToOne: false
                            }
           }
           Enums: {
-            "audience_mode": "include"|"exclude","calendar_state": "none"|"added","connection_status": "active"|"broken","invitee_email_status": "queued"|"sent"|"skipped"|"failed"|"unknown","job_kind": "invite"|"calendar_confirm"|"update"|"cancel"|"reminder"|"sheet_sync"|"push"|"system_email","job_status": "pending"|"processing"|"done"|"failed"|"paused","location_mode": "in_person"|"online"|"hybrid","meeting_status": "draft"|"scheduled"|"cancelled","response_mode": "announcement"|"rsvp"|"attendance","response_status": "attending"|"late"|"absent"|"not_attending","unsubscribe_via": "link"|"report","workspace_role": "owner"|"admin"|"viewer"
+            "attendance_actual": "present"|"late"|"absent","audience_mode": "include"|"exclude","calendar_state": "none"|"added","connection_status": "active"|"broken","invitee_email_status": "queued"|"sent"|"skipped"|"failed"|"unknown","job_kind": "invite"|"calendar_confirm"|"update"|"cancel"|"reminder"|"sheet_sync"|"push"|"system_email","job_status": "pending"|"processing"|"done"|"failed"|"paused","location_mode": "in_person"|"online"|"hybrid","meeting_change_kind": "edit"|"cancel","meeting_status": "draft"|"scheduled"|"cancelled","response_mode": "announcement"|"rsvp"|"attendance","response_status": "attending"|"late"|"absent"|"not_attending","unsubscribe_via": "link"|"report","workspace_role": "owner"|"admin"|"viewer"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -713,7 +765,7 @@ export type CompositeTypes<
 export const Constants = {
   "public": {
           Enums: {
-            "audience_mode": ["include", "exclude"],"calendar_state": ["none", "added"],"connection_status": ["active", "broken"],"invitee_email_status": ["queued", "sent", "skipped", "failed", "unknown"],"job_kind": ["invite", "calendar_confirm", "update", "cancel", "reminder", "sheet_sync", "push", "system_email"],"job_status": ["pending", "processing", "done", "failed", "paused"],"location_mode": ["in_person", "online", "hybrid"],"meeting_status": ["draft", "scheduled", "cancelled"],"response_mode": ["announcement", "rsvp", "attendance"],"response_status": ["attending", "late", "absent", "not_attending"],"unsubscribe_via": ["link", "report"],"workspace_role": ["owner", "admin", "viewer"]
+            "attendance_actual": ["present", "late", "absent"],"audience_mode": ["include", "exclude"],"calendar_state": ["none", "added"],"connection_status": ["active", "broken"],"invitee_email_status": ["queued", "sent", "skipped", "failed", "unknown"],"job_kind": ["invite", "calendar_confirm", "update", "cancel", "reminder", "sheet_sync", "push", "system_email"],"job_status": ["pending", "processing", "done", "failed", "paused"],"location_mode": ["in_person", "online", "hybrid"],"meeting_change_kind": ["edit", "cancel"],"meeting_status": ["draft", "scheduled", "cancelled"],"response_mode": ["announcement", "rsvp", "attendance"],"response_status": ["attending", "late", "absent", "not_attending"],"unsubscribe_via": ["link", "report"],"workspace_role": ["owner", "admin", "viewer"]
           }
         }
 } as const
