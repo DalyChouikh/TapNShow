@@ -897,5 +897,75 @@
     "more": "Show more",
     "loading": "Loading…",
     "end": "That's all"
+  },
+  "History": {
+    "title": "History",
+    "periods": {
+      "30d": "Last 30 days",
+      "3m": "Last 3 months",
+      "year": "This year",
+      "all": "All time",
+      "custom": "From…"
+    },
+    "from": "From",
+    "to": "To",
+    "counts": {
+      "attending": "Going",
+      "late": "Late",
+      "absent": "Absent",
+      "noReply": "No reply"
+    },
+    "empty": "No meetings in this period.",
+    "noReply": "No reply",
+    "notDelivered": "Email not delivered",
+    "end": "That's all",
+    "period": "Period"
+  },
+  "Attendance": {
+    "view": {
+      "label": "View",
+      "people": "People",
+      "attendance": "Attendance"
+    },
+    "meetings": "{count, plural, one {# meeting} other {# meetings}} in this period",
+    "sortBy": "Sort by",
+    "columns": {
+      "name": "Name",
+      "attending": "Going",
+      "late": "Late",
+      "absent": "Absent",
+      "noReply": "No reply"
+    },
+    "empty": "No meetings in this period yet."
+  },
+  "Export": {
+    "button": "Export",
+    "csv": "CSV",
+    "xlsx": "Excel (.xlsx)",
+    "preparing": "Preparing…",
+    "failed": "Couldn't export. Try again.",
+    "sheetSummary": "Summary",
+    "sheetDetails": "Details",
+    "sheetAnswers": "Answers",
+    "yes": "Yes",
+    "columns": {
+      "name": "Name",
+      "email": "Email",
+      "lists": "Lists",
+      "answer": "Answer",
+      "lateBy": "Late by (min)",
+      "reason": "Reason",
+      "comment": "Comment",
+      "answeredAt": "Answered at",
+      "afterDeadline": "After the deadline",
+      "emailStatus": "Email",
+      "meeting": "Meeting",
+      "date": "Date",
+      "invited": "Invited",
+      "attending": "Going",
+      "late": "Late",
+      "absent": "Absent",
+      "noReply": "No reply"
+    }
   }
 }

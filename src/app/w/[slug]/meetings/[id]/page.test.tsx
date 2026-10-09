@@ -1,4 +1,5 @@
 import { screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { json, routeFetch } from "@/test/fetch";
 import { workspaceFixture } from "@/test/fixtures/me";
@@ -9,7 +10,11 @@ import {
   resultsFixture,
 } from "@/test/fixtures/meetings";
 import { renderWithProviders } from "@/test/render";
+import { downloadBlob } from "@/lib/export/download";
+import type { Roster } from "@/shared/api/roster";
 import MeetingPage from "./page";
+
+vi.mock("@/lib/export/download", () => ({ downloadBlob: vi.fn() }));
 
 const replace = vi.fn();
 vi.mock("next/navigation", () => ({
@@ -39,10 +44,31 @@ function setup(
       items: [peopleFixture[0]],
       nextCursor: null,
     }),
+    [`GET ${meetingBase}/people?filter=all&limit=100`]: json({
+      items: peopleFixture,
+      nextCursor: null,
+    }),
+    [`GET ${base}/contacts`]: json(exportRoster),
   });
   renderWithProviders(<MeetingPage />);
   return fetchMock;
 }
+
+const DESIGN = "7a1f2b3c-4d5e-4f60-8a71-b2c3d4e5f6a1";
+const exportRoster = {
+  contacts: [
+    {
+      id: MEETING_IDS.amira,
+      fullName: "Amira B.",
+      email: "amira@uni.tn",
+      listIds: [DESIGN],
+      unsubscribed: false,
+      reported: false,
+    },
+  ],
+  lists: [{ id: DESIGN, name: "Design", contactCount: 1 }],
+  limits: { contactsMax: 2000, listsMax: 50, importRowsMax: 2000 },
+} satisfies Roster;
 
 const sentResults = {
   ...resultsFixture,
@@ -141,5 +167,46 @@ describe("/w/[slug]/meetings/[id]", () => {
         ),
       ).toBe(true),
     );
+  });
+
+  it("exports every answer as CSV for a meeting that asks for answers", async () => {
+    const user = userEvent.setup();
+    setup(
+      { ...meetingFixture, status: "scheduled", startsAt: future },
+      workspaceFixture,
+      sentResults,
+    );
+    await user.click(await screen.findByRole("button", { name: "Export" }));
+    await user.click(screen.getByRole("menuitem", { name: "CSV" }));
+    await waitFor(() => expect(downloadBlob).toHaveBeenCalled());
+    const [blob, name] = vi.mocked(downloadBlob).mock.calls[0];
+    expect(name).toMatch(
+      /^robotics-cd34-weekly-sync-answers-\d{4}-\d{2}-\d{2}\.csv$/,
+    );
+    const lines = (await blob.text()).split("\r\n");
+    expect(lines[0]).toContain(
+      "Name,Email,Lists,Answer,Late by (min),Reason,Comment,Answered at,After the deadline,Email",
+    );
+    expect(lines[1]).toMatch(
+      /^Amira B\.,amira@uni\.tn,Design,[^,]+,20,Bus from campus,,[^,]+,Yes,Sent$/,
+    );
+    expect(lines[2]).toMatch(/^Youssef K\.,youssef@uni\.tn,,,,,,,,Failed$/);
+  });
+
+  it("offers no Export for an announcement", async () => {
+    setup(
+      {
+        ...meetingFixture,
+        status: "scheduled",
+        startsAt: future,
+        responseMode: "announcement",
+      },
+      workspaceFixture,
+      { ...sentResults, responseMode: "announcement" },
+    );
+    expect(
+      await screen.findByRole("button", { name: /^Emails:/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Export" })).toBeNull();
   });
 });

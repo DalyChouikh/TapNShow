@@ -7,6 +7,8 @@ import { createClient } from "@supabase/supabase-js";
  */
 export const E2E_TOKEN_KEY = "bEgAHTsHr/P8FFWGnUzEAcdwaRuecbF18St703MbQFA=";
 export const E2E_INVITE_SECRET = "a7gLyNrhsy-jtLpjF4-4ODIA7qip_EP4vXv7ptHDfU4";
+export const E2E_DISPATCH_SECRET =
+  "e2e-dispatch-secret-not-used-anywhere-real-0001";
 
 function admin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

@@ -31,7 +31,6 @@ const PRIVATE_FUNCTIONS_FOR_AUTHENTICATED = [
   "list_members",
   "meeting_audience",
   "meeting_people",
-  "meeting_progress",
   "meeting_results",
   "meetings_page",
   "members_page",
