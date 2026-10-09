@@ -596,6 +596,9 @@ isOneToOne: false
 "members_page":
 { Args: { "p_after_id"?: string,"p_after_name"?: string,"p_after_role"?: Database["public"]['Enums']["workspace_role"],"p_limit"?: number,"p_role"?: Database["public"]['Enums']["workspace_role"],"p_workspace": string }; Returns: Json
                            },
+"nudge_meeting":
+{ Args: { "p_meeting": string }; Returns: Json
+                           },
 "remove_member":
 { Args: { "p_user": string,"p_workspace": string }; Returns: undefined
                            },
