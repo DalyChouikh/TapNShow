@@ -14,8 +14,13 @@ export async function toXlsxBlob(sheets: XlsxSheet[]): Promise<Blob> {
       sheet: sheet.name,
       columns: sheet.columns.map((column) => ({ width: column.width })),
       data: [
-        sheet.columns.map((column) => ({ value: column.header, fontWeight: "bold" as const })),
-        ...sheet.rows.map((row) => row.map((value) => (value === null ? null : { value }))),
+        sheet.columns.map((column) => ({
+          value: column.header,
+          fontWeight: "bold" as const,
+        })),
+        ...sheet.rows.map((row) =>
+          row.map((value) => (value === null ? null : { value })),
+        ),
       ],
     })),
   ).toBlob();

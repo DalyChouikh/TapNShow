@@ -5,10 +5,7 @@ import {
   describeAnswer,
 } from "@/lib/responses/describe-answer";
 import type { InviteeStatus } from "@/shared/api/meetings";
-import type {
-  AttendanceDetailRow,
-  PersonRow,
-} from "@/shared/api/responses";
+import type { AttendanceDetailRow, PersonRow } from "@/shared/api/responses";
 
 /** Words the rows need (translated by the caller). */
 export type ExportText = {
@@ -19,6 +16,21 @@ export type ExportText = {
 
 /** One export cell. CSV escaping happens later (`toCsv`); rows keep the text as typed. */
 export type ExportCell = string | number | null;
+
+/** Each person's list names, in the roster's list order (the "Lists" column). */
+export function listNamesByContact(roster: {
+  contacts: { id: string; listIds: string[] }[];
+  lists: { id: string; name: string }[];
+}): Map<string, string[]> {
+  return new Map(
+    roster.contacts.map((contact) => [
+      contact.id,
+      roster.lists
+        .filter((list) => contact.listIds.includes(list.id))
+        .map((list) => list.name),
+    ]),
+  );
+}
 
 const at = (iso: string, timezone: string) =>
   format(new TZDate(iso, timezone), "yyyy-MM-dd HH:mm");

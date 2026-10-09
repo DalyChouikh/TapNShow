@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { ExportMenu } from "@/components/forms/export-menu";
 import { PeriodChips } from "@/components/forms/period-chips";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,10 +15,12 @@ import { cn } from "@/lib/utils";
 import type { Contact, Roster } from "@/shared/api/roster";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
 import { ListChips } from "./list-chips";
+import { useExportAttendance } from "./use-export-attendance";
 
 type SortKey = "name" | "attending" | "late" | "absent" | "noReply";
 type Sort = { key: SortKey; dir: "asc" | "desc" };
-type Row = Contact & Record<Exclude<SortKey, "name">, number>;
+type Row = Contact &
+  Record<Exclude<SortKey, "name">, number> & { invited: number };
 
 const COUNTS = ["attending", "late", "absent", "noReply"] as const;
 const PILL = {
@@ -54,6 +57,11 @@ export function AttendanceView({
   const wide = useMediaQuery(ROSTER_GRID_MEDIA);
   const period = usePeriod(workspace.timezone);
   const summary = useAttendance(workspace.slug, period.range);
+  const exportAttendance = useExportAttendance(
+    workspace.slug,
+    roster,
+    period.range,
+  );
   const [listId, setListId] = useState<ListFilter>(null);
   const [sort, setSort] = useState<Sort>({ key: "noReply", dir: "desc" });
   const counts = new Map(summary.data?.rows.map((row) => [row.contactId, row]));
@@ -62,6 +70,7 @@ export function AttendanceView({
       const row = counts.get(contact.id);
       return {
         ...contact,
+        invited: row?.invited ?? 0,
         attending: row?.attending ?? 0,
         late: row?.late ?? 0,
         absent: row?.absent ?? 0,
@@ -105,9 +114,19 @@ export function AttendanceView({
         <p className="py-6 text-center text-muted-ink">{t("empty")}</p>
       ) : (
         <>
-          <p className="text-sm text-muted-ink">
-            {t("meetings", { count: summary.data.meetings })}
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-muted-ink">
+              {t("meetings", { count: summary.data.meetings })}
+            </p>
+            <ExportMenu
+              onExport={(format) =>
+                exportAttendance(
+                  format,
+                  rows.map((row) => ({ ...row, contactId: row.id })),
+                )
+              }
+            />
+          </div>
           {wide ? (
             <table className="w-full border-collapse text-left text-sm">
               <thead>

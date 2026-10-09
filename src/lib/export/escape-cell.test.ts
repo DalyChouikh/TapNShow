@@ -14,7 +14,9 @@ describe("escapeCell (Review Focus 4)", () => {
   });
 
   it("leaves ordinary text alone", () => {
-    expect(escapeCell("Bus from campus, 20 min")).toBe("Bus from campus, 20 min");
+    expect(escapeCell("Bus from campus, 20 min")).toBe(
+      "Bus from campus, 20 min",
+    );
     expect(escapeCell("Amira Ben Salah")).toBe("Amira Ben Salah");
   });
 });

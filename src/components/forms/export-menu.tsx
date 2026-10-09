@@ -42,8 +42,12 @@ export function ExportMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onSelect={() => run("csv")}>{t("csv")}</DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => run("xlsx")}>{t("xlsx")}</DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => run("csv")}>
+          {t("csv")}
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => run("xlsx")}>
+          {t("xlsx")}
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
