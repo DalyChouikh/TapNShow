@@ -12,6 +12,25 @@ export type MeetingWhen = {
 const DATE_FORMAT = "EEE d MMM";
 const TIME_FORMAT = "HH:mm";
 
+/** The translated words a duration is built from. */
+export type DurationWords = {
+  minutes: (count: number) => string;
+  hours: (hours: number) => string;
+  hoursMinutes: (hours: number, minutes: number) => string;
+};
+
+/** "45 min", "1 h", "1 h 30": how the wizard, Meeting defaults and the emails say a length. */
+export function durationText(total: number, words: DurationWords): string {
+  if (total < 60) {
+    return words.minutes(total);
+  }
+  const hours = Math.floor(total / 60);
+  const minutes = total % 60;
+  return minutes === 0
+    ? words.hours(hours)
+    : words.hoursMinutes(hours, minutes);
+}
+
 /** Date, start, end and zone of a meeting in its own time zone. */
 export function formatMeetingWhen(input: {
   startsAt: string;

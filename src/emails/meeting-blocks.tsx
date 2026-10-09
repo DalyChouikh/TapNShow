@@ -1,6 +1,6 @@
 import { Link, Text } from "react-email";
 import { APP_NAME } from "@/config/app";
-import { formatMeetingWhen } from "@/lib/meetings/format";
+import { formatDeadline, formatMeetingWhen } from "@/lib/meetings/format";
 import { meetingPlatform } from "@/lib/meetings/platform";
 import type { LocationMode } from "@/shared/api/meeting-settings";
 import { emailTheme as t } from "./theme";
@@ -29,6 +29,19 @@ export type MeetingEmailMeeting = {
   onlineText: string;
   meetingUrl: string;
 };
+
+/**
+ * The answer deadline in words while it is still ahead of `now`, else null: an invite sent after
+ * the deadline (Invite more, #220) or a late reminder doesn't ask for a past date.
+ */
+export function upcomingDeadline(
+  meeting: { responseDeadline: string | null; timezone: string },
+  now: Date = new Date(),
+): string | null {
+  return meeting.responseDeadline && new Date(meeting.responseDeadline) > now
+    ? formatDeadline(meeting.responseDeadline, meeting.timezone)
+    : null;
+}
 
 /** When (in the meeting's zone, zone named) and Where (place, online words, platform-named Join). */
 export function MeetingWhenWhere({

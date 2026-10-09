@@ -108,6 +108,47 @@
       "notYet": "Not in your calendar yet? Open the invitation in this email and add it.",
       "change": "Change your answer"
     },
+    "changes": {
+      "none": "None",
+      "before": "Before:",
+      "now": "Now:",
+      "updated": "Updated",
+      "sections": {
+        "title": "Title",
+        "when": "When",
+        "where": "Where",
+        "link": "Join link",
+        "deadline": "Answer by",
+        "agenda": "Agenda",
+        "note": "Note"
+      }
+    },
+    "meetingUpdate": {
+      "preview": "{workspace} changed this meeting.",
+      "intro": "Hi {name}, {workspace} changed this meeting.",
+      "calendarOnly": "This meeting is updated in your calendar.",
+      "reconfirm": "Can you still come at the new time?",
+      "change": "Change my answer",
+      "calendar": "Your calendar is updated too.",
+      "subject": "Changed: {title} · {date}, {time}",
+      "subjectConfirm": "Please confirm: {title} · {date}, {time}",
+      "subjectCalendar": "Updated in your calendar: {title} · {date}, {time}"
+    },
+    "meetingCancel": {
+      "preview": "{workspace} cancelled this meeting.",
+      "body": "{workspace} cancelled {title} on {date} at {time}.",
+      "calendar": "It's removed from your calendar.",
+      "subject": "Cancelled: {title} · {date}, {time}"
+    },
+    "meetingReminder": {
+      "preview": "A reminder from {workspace}.",
+      "answerBy": "Please answer by {deadline}.",
+      "answer": "Please let {workspace} know if you're coming.",
+      "seeYou": "See you on {date} at {time}.",
+      "change": "Change my answer",
+      "subjectPending": "Reminder: {title} · {date}, {time}",
+      "subjectGoing": "See you at {time}: {title}"
+    },
     "senderBroken": {
       "subject": "Gmail sending for {workspace} needs reconnecting",
       "preview": "Meeting emails for {workspace} are paused until Gmail is reconnected.",

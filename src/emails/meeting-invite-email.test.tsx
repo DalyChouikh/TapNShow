@@ -27,6 +27,7 @@ const base: MeetingInviteEmailProps = {
     unsubscribe: "https://tapnshow.vercel.app/u/TOKEN",
     report: "https://tapnshow.vercel.app/report/TOKEN",
   },
+  now: new Date("2026-10-08T10:00:00.000Z"),
 };
 
 describe("renderMeetingInviteEmail", () => {
@@ -114,6 +115,19 @@ describe("renderMeetingInviteEmail", () => {
     expect(announcement.html).toContain(
       'href="https://tapnshow.vercel.app/r/TOKEN"',
     );
+  });
+
+  it("leaves out the deadline once it has passed (Invite more after the deadline)", async () => {
+    const before = await renderMeetingInviteEmail({
+      ...base,
+      now: new Date("2026-10-09T10:00:00.000Z"),
+    });
+    expect(before.text).toContain("Please answer by");
+    const after = await renderMeetingInviteEmail({
+      ...base,
+      now: new Date("2026-10-09T12:00:00.000Z"),
+    });
+    expect(after.text).not.toContain("Please answer by");
   });
 
   it("escapes user text and refuses an unsafe meeting link", async () => {
