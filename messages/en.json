@@ -673,7 +673,7 @@
       "linkInvalid": "Use a link that starts with https://",
       "durationRange": "Between 5 minutes and 12 hours.",
       "delaysRequired": "Pick at least one delay.",
-      "deadlineOrder": "The deadline must be before the meeting starts and in the future.",
+      "deadlineAfterStart": "Must be before the meeting starts.",
       "saveFailed": "Couldn't save. Check your connection and try again.",
       "onlineRequired": "Say where online, or add a link."
     },
@@ -692,6 +692,10 @@
       },
       "reasonRequired": "Reason required",
       "deadline": "Answer by {deadline}",
+      "deadlineProblem": {
+        "inPast": "The answer deadline has passed.",
+        "afterStart": "The answer deadline must be before the meeting starts."
+      },
       "preview": "Email preview",
       "open": "Open",
       "previewTitle": "Email preview",

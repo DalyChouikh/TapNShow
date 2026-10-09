@@ -1,6 +1,6 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { json, routeFetch } from "@/test/fetch";
 import {
   audienceFixture,
@@ -155,5 +155,31 @@ describe("ReviewStep", () => {
       onlineText: "Club Discord",
     });
     expect(await screen.findByText(/· Club Discord/)).toBeInTheDocument();
+  });
+
+  describe("a deadline that no longer fits (meeting at 18:00 Tunis on 9 Oct)", () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date("2026-10-09T08:00:00Z"));
+    });
+    afterEach(() => vi.useRealTimers());
+
+    it.each([
+      [
+        "2026-10-09T17:30:00.000Z",
+        "The answer deadline must be before the meeting starts.",
+      ],
+      ["2026-10-09T07:00:00.000Z", "The answer deadline has passed."],
+    ])("says why and holds Send (deadline %s)", async (deadline, message) => {
+      fetchMock = routeFetch(routes(sender()));
+      renderReview(workspaceFixture, {
+        ...meetingFixture,
+        responseDeadline: deadline,
+      });
+      expect(await screen.findByText(message)).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Send 2 invites" }),
+      ).toBeDisabled();
+    });
   });
 });

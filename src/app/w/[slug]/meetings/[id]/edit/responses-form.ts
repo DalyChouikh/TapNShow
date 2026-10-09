@@ -1,4 +1,5 @@
-import { zonedWallTimeToUtc } from "@/lib/meetings/format";
+import { responseDeadlineProblem } from "@/lib/meetings/deadline";
+import { utcToZonedParts, zonedWallTimeToUtc } from "@/lib/meetings/format";
 import type { ResponseMode } from "@/shared/api/meeting-settings";
 import type { UpdateMeetingBody } from "@/shared/api/meetings";
 
@@ -15,10 +16,11 @@ export type ResponsesValues = {
   timezone: string;
 };
 
-/** Error keys under `Wizard.errors`. */
+/** Error keys under `Wizard.errors`, each shown on the field that is wrong. */
 export type ResponsesErrors = {
   delayOptions?: "delaysRequired";
-  deadline?: "deadlineOrder";
+  deadlineDate?: "dateRequired" | "deadlineAfterStart";
+  deadlineTime?: "timeRequired" | "inPast" | "deadlineAfterStart";
 };
 
 const deadlineOf = (values: ResponsesValues) =>
@@ -29,6 +31,42 @@ const deadlineOf = (values: ResponsesValues) =>
         timezone: values.timezone,
       })
     : null;
+
+/**
+ * Deadline errors on the field to change: a day after the meeting day is the date's fault; on the
+ * meeting day (or earlier) a refused deadline is the time's.
+ */
+function deadlineErrors(
+  values: ResponsesValues,
+  startsAt: string | null,
+  now: Date,
+): ResponsesErrors {
+  const { deadlineDate, deadlineTime, timezone } = values;
+  if (!deadlineDate || !deadlineTime) {
+    return {
+      ...(deadlineDate ? {} : { deadlineDate: "dateRequired" }),
+      ...(deadlineTime ? {} : { deadlineTime: "timeRequired" }),
+    };
+  }
+  const deadline = zonedWallTimeToUtc({
+    date: deadlineDate,
+    time: deadlineTime,
+    timezone,
+  });
+  const problem = responseDeadlineProblem(deadline, startsAt, now);
+  if (problem === "inPast") {
+    return { deadlineTime: "inPast" };
+  }
+  if (problem === "afterStart") {
+    const afterMeetingDay =
+      startsAt !== null &&
+      deadlineDate > utcToZonedParts(startsAt, timezone).date;
+    return afterMeetingDay
+      ? { deadlineDate: "deadlineAfterStart" }
+      : { deadlineTime: "deadlineAfterStart" };
+  }
+  return {};
+}
 
 /** What blocks "Next" on the Responses step. */
 export function validateResponses(
@@ -44,14 +82,7 @@ export function validateResponses(
     errors.delayOptions = "delaysRequired";
   }
   if (values.deadlineEnabled && values.responseMode !== "announcement") {
-    const deadline = deadlineOf(values);
-    if (
-      !deadline ||
-      new Date(deadline) <= now ||
-      (startsAt !== null && new Date(deadline) >= new Date(startsAt))
-    ) {
-      errors.deadline = "deadlineOrder";
-    }
+    Object.assign(errors, deadlineErrors(values, startsAt, now));
   }
   return errors;
 }

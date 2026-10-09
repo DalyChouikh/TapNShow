@@ -74,7 +74,7 @@ describe("ResponsesStep", () => {
     expect(screen.getByText("Pick at least one delay.")).toBeInTheDocument();
   });
 
-  it("keeps the deadline before the start", async () => {
+  it("keeps the deadline before the start, on the time field", async () => {
     const { patches } = setup();
     await userEvent.click(
       screen.getByRole("switch", { name: "Answer deadline" }),
@@ -87,11 +87,64 @@ describe("ResponsesStep", () => {
     await userEvent.click(screen.getByRole("option", { name: "19:00" }));
     await next();
     expect(
-      screen.getByText(
-        "The deadline must be before the meeting starts and in the future.",
-      ),
-    ).toBeInTheDocument();
+      screen.getByRole("button", { name: /^Deadline time/ }),
+    ).toHaveAccessibleDescription("Must be before the meeting starts.");
+    expect(
+      screen.getByRole("button", { name: /^Deadline date/ }),
+    ).not.toHaveAttribute("data-invalid");
     expect(patches()).toEqual([]);
+  });
+
+  it("asks for the time, not a new date, when only the date is picked", async () => {
+    const { patches } = setup();
+    await userEvent.click(
+      screen.getByRole("switch", { name: "Answer deadline" }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Pick a date/ }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /October 9th, 2026/ }),
+    );
+    await next();
+    expect(
+      screen.getByRole("button", { name: /^Deadline time/ }),
+    ).toHaveAccessibleDescription("Pick a time.");
+    expect(
+      screen.getByRole("button", { name: /^Deadline date/ }),
+    ).not.toHaveAttribute("data-invalid");
+    expect(patches()).toEqual([]);
+  });
+
+  it("offers no deadline day after the meeting day", async () => {
+    setup();
+    await userEvent.click(
+      screen.getByRole("switch", { name: "Answer deadline" }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Pick a date/ }));
+    expect(
+      screen.getByRole("button", { name: /October 9th, 2026/ }),
+    ).toBeEnabled();
+    expect(
+      screen.getByRole("button", { name: /October 10th, 2026/ }),
+    ).toBeDisabled();
+  });
+
+  it("accepts a deadline later the same day as the meeting", async () => {
+    vi.setSystemTime(new Date("2026-10-09T08:00:00Z"));
+    const { goTo, patches } = setup();
+    await userEvent.click(
+      screen.getByRole("switch", { name: "Answer deadline" }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Pick a date/ }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /October 9th, 2026/ }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Pick a time/ }));
+    await userEvent.click(screen.getByRole("option", { name: "17:45" }));
+    await next();
+    await vi.waitFor(() => expect(goTo).toHaveBeenCalledWith("review"));
+    expect(patches()[0]).toMatchObject({
+      responseDeadline: "2026-10-09T16:45:00.000Z",
+    });
   });
 
   it("saves the answers and moves to the review", async () => {

@@ -19,6 +19,7 @@ import {
 import { useRoster } from "@/hooks/use-roster";
 import { gmailConnectHref, useWorkspaceSender } from "@/hooks/use-sender";
 import { ApiClientError } from "@/lib/api-client";
+import { responseDeadlineProblem } from "@/lib/meetings/deadline";
 import { formatDeadline, formatMeetingWhen } from "@/lib/meetings/format";
 import { quotaLine } from "@/lib/meetings/quota-line";
 import { GmailConnectResult } from "@/app/w/[slug]/settings/gmail-connect-result";
@@ -107,6 +108,17 @@ export function ReviewStep({
         dailyLimit: connection.dailyLimit,
       })
     : null;
+  // A later Details edit (or the clock) can break a deadline the Responses step accepted.
+  const deadlineProblem =
+    !inviteMore &&
+    meeting.responseMode !== "announcement" &&
+    meeting.responseDeadline
+      ? responseDeadlineProblem(
+          meeting.responseDeadline,
+          meeting.startsAt,
+          new Date(),
+        )
+      : null;
   const editUrl = `/w/${slug}/meetings/${meeting.id}/edit?step=review`;
   const confirmSend = () =>
     send.mutate(undefined, {
@@ -160,6 +172,11 @@ export function ReviewStep({
           {meeting.responseDeadline
             ? ` · ${t("review.deadline", { deadline: formatDeadline(meeting.responseDeadline, meeting.timezone) })}`
             : null}
+          {deadlineProblem ? (
+            <strong className="block text-ink">
+              {t(`review.deadlineProblem.${deadlineProblem}`)}
+            </strong>
+          ) : null}
         </Summary>
       ) : null}
       <Card className="flex items-center justify-between gap-2">
@@ -270,7 +287,9 @@ export function ReviewStep({
               ? t("review.sendMore", { count })
               : t("review.send", { count })
           }
-          nextDisabled={count === 0 || meeting.startsAt === null}
+          nextDisabled={
+            count === 0 || meeting.startsAt === null || deadlineProblem !== null
+          }
           onNext={() => setConfirming(true)}
         />
       ) : (
