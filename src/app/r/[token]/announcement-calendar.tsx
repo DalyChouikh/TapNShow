@@ -5,8 +5,9 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { useRequestCalendar } from "@/hooks/use-token-page";
 import type { TokenInfo } from "@/shared/api/tokens";
+import { CalendarLinks } from "./calendar-links";
 
-/** Announcements: no answer, only "Email me a calendar invite" (spec §7.3). */
+/** Announcements: no answer, only "Email me a calendar invite" and the calendar links (spec §7.3). */
 export function AnnouncementCalendar({
   token,
   info,
@@ -47,6 +48,7 @@ export function AnnouncementCalendar({
           {t("saveFailed")}
         </p>
       ) : null}
+      <CalendarLinks token={token} meeting={info.meeting} />
     </section>
   );
 }

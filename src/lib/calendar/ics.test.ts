@@ -86,6 +86,28 @@ describe("buildMeetingIcs", () => {
     expect(unfolded).toContain(`DESCRIPTION:${"é".repeat(120)}`);
   });
 
+  it("publishes a plain event for a calendar file: no organizer, no attendee", () => {
+    const ics = lines(
+      buildMeetingIcs({
+        method: "PUBLISH",
+        uid: "file-1@tapnshow",
+        sequence: 0,
+        stamp: BASE.stamp,
+        start: BASE.start,
+        durationMinutes: 90,
+        title: "Weekly sync",
+        description: "Agenda",
+        location: "Room B12",
+        url: null,
+      }),
+    );
+    expect(ics).toContain("METHOD:PUBLISH");
+    expect(ics).toContain("UID:file-1@tapnshow");
+    expect(ics).toContain("DTSTART:20261009T170000Z");
+    expect(ics).toContain("STATUS:CONFIRMED");
+    expect(ics.some((line) => /^(ORGANIZER|ATTENDEE)/.test(line))).toBe(false);
+  });
+
   it("omits URL when there is no link", () => {
     expect(buildMeetingIcs({ ...BASE, url: null })).not.toContain("URL:");
   });

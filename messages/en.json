@@ -891,7 +891,10 @@
     "saveFailed": "Couldn't save your answer. Check your connection and try again.",
     "afterDeadline": "Saved after the deadline.",
     "invitedBy": "{workspace} invites you",
-    "pickAnswer": "Pick an answer above"
+    "pickAnswer": "Pick an answer above",
+    "calendarLinksIntro": "Not in your calendar? Add it yourself:",
+    "addToGoogle": "Add to Google Calendar",
+    "downloadIcs": "Download calendar file"
   },
   "Pagination": {
     "more": "Show more",

@@ -150,6 +150,7 @@ export function AnswerView() {
             workspaceName={data.workspaceName}
             unsubscribed={data.unsubscribed}
             answer={answer}
+            meeting={meeting}
             celebrate={justSaved}
             onChange={() => {
               setEditing(true);
