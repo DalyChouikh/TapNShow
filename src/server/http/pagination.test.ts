@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { encodeCursor, readPageParams, toPage } from "./pagination";
+import { encodeCursor, readPageParams, readPeriod, toPage } from "./pagination";
 
 const key = z.tuple([z.iso.datetime({ offset: true }), z.uuid()]);
 const ID = "4b7f8c2e-2f3a-4c55-9a1e-0d6f6b1c2a10";
@@ -53,5 +53,33 @@ describe("cursor helpers", () => {
     expect(
       toPage(rows.slice(0, 2), 2, (r) => [r.n, r.id]).nextCursor,
     ).toBeNull();
+  });
+});
+
+describe("readPeriod", () => {
+  it("reads an open or bounded period", () => {
+    expect(readPeriod(new Request("https://x.test/a"))).toEqual({
+      ok: true,
+      range: { from: null, to: null },
+    });
+    expect(
+      readPeriod(new Request("https://x.test/a?from=2026-09-01T00:00:00.000Z")),
+    ).toEqual({
+      ok: true,
+      range: { from: "2026-09-01T00:00:00.000Z", to: null },
+    });
+  });
+
+  it("refuses an inverted or malformed period with 400", () => {
+    for (const query of [
+      "from=2026-10-01T00:00:00.000Z&to=2026-09-01T00:00:00.000Z",
+      "from=soon",
+    ]) {
+      const read = readPeriod(new Request(`https://x.test/a?${query}`));
+      expect(read.ok).toBe(false);
+      if (!read.ok) {
+        expect(read.response.status).toBe(400);
+      }
+    }
   });
 });
