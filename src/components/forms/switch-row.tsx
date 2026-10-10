@@ -2,7 +2,10 @@
 
 import { Switch } from "@/components/ui/switch";
 
-/** A labelled switch row (label on the left, 44 px switch on the right). */
+/**
+ * A labelled switch row (label on the left, 44 px switch on the right). The label's id is
+ * `${id}-label`, so related controls can be labelled by it.
+ */
 export function SwitchRow({
   id,
   label,
@@ -18,7 +21,7 @@ export function SwitchRow({
 }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <label htmlFor={id} className="font-bold">
+      <label id={`${id}-label`} htmlFor={id} className="font-bold">
         {label}
       </label>
       <Switch

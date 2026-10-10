@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 
 /**
  * Sticky step footer above the bottom bar: Back + Next of one fixed height with single-line labels
- * on every step (M3 smoke-test rule).
+ * on every step (M3 smoke-test rule). Without `nextLabel` only Back shows (nothing to go on to).
  */
 export function WizardFooter({
   backLabel,
@@ -17,8 +17,8 @@ export function WizardFooter({
 }: {
   backLabel: string;
   onBack: () => void;
-  nextLabel: string;
-  onNext: () => void;
+  nextLabel?: string;
+  onNext?: () => void;
   nextDisabled?: boolean;
   pending?: boolean;
   nextTone?: "primary" | "success";
@@ -33,16 +33,18 @@ export function WizardFooter({
         >
           {backLabel}
         </Button>
-        <Button
-          size="lg"
-          tone={nextTone}
-          className="justify-center truncate whitespace-nowrap"
-          disabled={nextDisabled || pending}
-          aria-busy={pending || undefined}
-          onClick={onNext}
-        >
-          {nextLabel}
-        </Button>
+        {nextLabel && onNext ? (
+          <Button
+            size="lg"
+            tone={nextTone}
+            className="justify-center truncate whitespace-nowrap"
+            disabled={nextDisabled || pending}
+            aria-busy={pending || undefined}
+            onClick={onNext}
+          >
+            {nextLabel}
+          </Button>
+        ) : null}
       </div>
     </div>
   );

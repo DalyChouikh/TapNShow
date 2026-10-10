@@ -18,6 +18,7 @@ describe("WizardShell", () => {
         meeting={meetingFixture}
         workspace={workspaceFixture}
         stepParam="responses"
+        modeParam={null}
       />,
     );
     expect(
@@ -33,6 +34,7 @@ describe("WizardShell", () => {
         meeting={{ ...meetingFixture, status: "scheduled" }}
         workspace={workspaceFixture}
         stepParam="details"
+        modeParam={null}
       />,
     );
     expect(
@@ -48,6 +50,44 @@ describe("WizardShell", () => {
         meeting={meetingFixture}
         workspace={{ ...workspaceFixture, myRole: "viewer" }}
         stepParam={null}
+        modeParam={null}
+      />,
+    );
+    expect(replace).toHaveBeenCalledWith(
+      `/w/robotics-cd34/meetings/${meetingFixture.id}`,
+    );
+  });
+
+  it("edits a sent meeting in three steps with ?mode=edit (M6)", () => {
+    renderWithProviders(
+      <WizardShell
+        slug="robotics-cd34"
+        meeting={{
+          ...meetingFixture,
+          status: "scheduled",
+          startsAt: new Date(Date.now() + 86_400_000).toISOString(),
+        }}
+        workspace={workspaceFixture}
+        stepParam="responses"
+        modeParam="edit"
+      />,
+    );
+    expect(screen.getByText("Edit meeting · Step 2 of 3")).toBeInTheDocument();
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it("sends an edit of a meeting that already started back to its page", () => {
+    renderWithProviders(
+      <WizardShell
+        slug="robotics-cd34"
+        meeting={{
+          ...meetingFixture,
+          status: "scheduled",
+          startsAt: new Date(Date.now() - 60_000).toISOString(),
+        }}
+        workspace={workspaceFixture}
+        stepParam="details"
+        modeParam="edit"
       />,
     );
     expect(replace).toHaveBeenCalledWith(

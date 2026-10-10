@@ -9,6 +9,7 @@ import {
 } from "@/test/fixtures/meetings";
 import { workspaceFixture } from "@/test/fixtures/me";
 import { renderWithProviders } from "@/test/render";
+import { StepHarness } from "@/test/wizard";
 import { ReviewStep } from "./review-step";
 import { WIZARD_STEPS } from "./wizard-steps";
 
@@ -61,7 +62,8 @@ const routes = (senderBody: object) => ({
 
 const renderReview = (workspace = workspaceFixture, meeting = meetingFixture) =>
   renderWithProviders(
-    <ReviewStep
+    <StepHarness
+      Step={ReviewStep}
       slug={workspace.slug}
       meeting={meeting}
       workspace={workspace}

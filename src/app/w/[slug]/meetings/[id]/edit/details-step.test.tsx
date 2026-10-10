@@ -5,15 +5,17 @@ import { routeFetch } from "@/test/fetch";
 import { workspaceFixture } from "@/test/fixtures/me";
 import { meetingFixture } from "@/test/fixtures/meetings";
 import { renderWithProviders } from "@/test/render";
+import { StepHarness } from "@/test/wizard";
 import { DetailsStep } from "./details-step";
-import { WIZARD_STEPS } from "./wizard-steps";
+import { EDIT_STEPS, WIZARD_STEPS } from "./wizard-steps";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 const path = `/api/workspaces/robotics-cd34/meetings/${meetingFixture.id}`;
 const blank = { ...meetingFixture, title: "", startsAt: null };
+const sent = { ...meetingFixture, status: "scheduled" as const };
 
-function setup() {
+function setup(mode: "draft" | "edit" = "draft") {
   const fetchMock = routeFetch({
     [`PATCH ${path}`]: (init) =>
       new Response(
@@ -23,11 +25,13 @@ function setup() {
   });
   const goTo = vi.fn();
   renderWithProviders(
-    <DetailsStep
+    <StepHarness
+      Step={DetailsStep}
       slug="robotics-cd34"
-      meeting={blank}
+      meeting={mode === "edit" ? sent : blank}
+      mode={mode}
       workspace={workspaceFixture}
-      steps={WIZARD_STEPS}
+      steps={mode === "edit" ? EDIT_STEPS : WIZARD_STEPS}
       goTo={goTo}
     />,
   );
@@ -82,5 +86,21 @@ describe("DetailsStep", () => {
     expect(screen.getByLabelText("Where online?")).toBeInTheDocument();
     expect(screen.getByLabelText("Link (optional)")).toBeInTheDocument();
     expect(screen.queryByLabelText("Place")).toBeNull();
+  });
+
+  it("keeps edits of a sent meeting in the draft, then goes to Answers (M6)", async () => {
+    const { goTo, patches } = setup("edit");
+    const title = screen.getByLabelText("Title");
+    await userEvent.clear(title);
+    await userEvent.type(title, "Weekly sync, room change");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Next: Answers" }),
+    );
+    expect(goTo).toHaveBeenCalledWith("responses");
+    expect(patches()).toEqual([]);
+    expect(
+      JSON.parse(sessionStorage.getItem(`tn:edit:${sent.id}`) ?? "null"),
+    ).toEqual({ title: "Weekly sync, room change" });
+    sessionStorage.clear();
   });
 });

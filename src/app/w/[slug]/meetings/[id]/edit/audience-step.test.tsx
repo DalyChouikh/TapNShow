@@ -9,6 +9,7 @@ import {
 } from "@/test/fixtures/meetings";
 import { workspaceFixture } from "@/test/fixtures/me";
 import { renderWithProviders } from "@/test/render";
+import { StepHarness } from "@/test/wizard";
 import { AudienceStep } from "./audience-step";
 import { WIZARD_STEPS } from "./wizard-steps";
 
@@ -45,7 +46,8 @@ beforeEach(() => {
 
 const renderStep = () =>
   renderWithProviders(
-    <AudienceStep
+    <StepHarness
+      Step={AudienceStep}
       slug={workspaceFixture.slug}
       meeting={meetingFixture}
       workspace={workspaceFixture}
