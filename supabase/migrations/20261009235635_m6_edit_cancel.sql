@@ -21,7 +21,10 @@ language sql
 immutable
 set search_path = ''
 as $$
-  select '%' || pg_catalog.replace(pg_catalog.replace(pg_catalog.replace(p_text, '\', '\\'), '%', '\%'), '_', '\_') || '%'
+  -- chr(92) is the backslash (like's default escape), spelled so no string-literal setting changes it.
+  select '%' || pg_catalog.replace(pg_catalog.replace(pg_catalog.replace(p_text,
+    pg_catalog.chr(92), pg_catalog.chr(92) || pg_catalog.chr(92)),
+    '%', pg_catalog.chr(92) || '%'), '_', pg_catalog.chr(92) || '_') || '%'
 $$;
 
 -- Who gets an update (spec §7.5 Recipients): rule 'all', 'not_declined' or 'none'; calendar
@@ -34,7 +37,11 @@ set search_path = ''
 as $$
   select x.invitee_id, x.workspace_id, x.notify
   from (
-    select i.id as invitee_id, i.workspace_id, i.calendar_state,
+    select i.id as invitee_id, i.workspace_id,
+      i.calendar_state = 'added' or exists (
+        select 1 from public.outbox_jobs j
+        where j.invitee_id = i.id and j.kind = 'calendar_confirm' and j.status = 'processing'
+      ) as calendar,
       case p_rule
         when 'all' then true
         when 'not_declined' then r.status is null or r.status not in ('absent', 'not_attending')
@@ -43,9 +50,15 @@ as $$
     from public.meeting_invitees i
     join public.contacts c on c.id = i.contact_id
     left join public.responses r on r.invitee_id = i.id
-    where i.meeting_id = p_meeting and i.email_status in ('sent', 'unknown') and c.unsubscribed_at is null
+    where i.meeting_id = p_meeting and c.unsubscribed_at is null
+      -- Invited, or being invited right now: the dispatcher renders a claimed invite from the
+      -- details it read at claim time, so those people need the update too (review of Task 6).
+      and (i.email_status in ('sent', 'unknown')
+        or (i.email_status = 'queued' and exists (
+          select 1 from public.outbox_jobs j
+          where j.invitee_id = i.id and j.kind = 'invite' and j.status = 'processing')))
   ) x
-  where x.notify or (p_calendar and x.calendar_state = 'added')
+  where x.notify or (p_calendar and x.calendar)
 $$;
 
 -- One pending update per person (spec §8): a later edit keeps the oldest "old" and the newest
@@ -137,7 +150,7 @@ declare
   v_emails integer;
   v_calendar_only integer;
 begin
-  if p_fields is null or pg_catalog.jsonb_typeof(p_fields) <> 'object'
+  if p_fields is null or p_dry_run is null or pg_catalog.jsonb_typeof(p_fields) <> 'object'
     or exists (select 1 from pg_catalog.jsonb_object_keys(p_fields) k where k <> all (c_editable)) then
     raise exception 'tn:invalid_input' using errcode = 'P0001';
   end if;
@@ -159,6 +172,10 @@ begin
   end if;
 
   v_new := pg_catalog.jsonb_populate_record(v_old, p_fields);
+  if not pg_catalog.isfinite(v_new.starts_at)
+    or (v_new.response_deadline is not null and not pg_catalog.isfinite(v_new.response_deadline)) then
+    raise exception 'tn:invalid_input' using errcode = 'P0001';
+  end if;
   if private.meeting_incomplete(v_new) then
     raise exception 'tn:meeting_incomplete' using errcode = 'P0001';
   end if;
@@ -225,8 +242,12 @@ begin
     update public.responses set needs_reconfirmation = true
     where meeting_id = p_meeting and workspace_id = v_old.workspace_id;
   end if;
-  if v_keys && array['starts_at', 'response_deadline', 'reminder_pending_hours', 'reminder_going_hours'] then
-    perform private.sync_reminder_timers(p_meeting);
+  -- A move reschedules both reminders, even one that already went out (owner decision); a change of
+  -- reminder settings alone never sends a reminder that already went out again.
+  if v_keys && array['starts_at', 'response_deadline'] then
+    perform private.sync_reminder_timers(p_meeting, false);
+  elsif v_keys && array['reminder_pending_hours', 'reminder_going_hours'] then
+    perform private.sync_reminder_timers(p_meeting, true);
   end if;
   insert into public.meeting_changes (workspace_id, meeting_id, kind, changes, notified, changed_by)
   values (v_old.workspace_id, p_meeting, 'edit', v_changes, v_rule <> 'none', auth.uid());
@@ -292,16 +313,25 @@ begin
     and j.kind in ('invite', 'update', 'reminder', 'calendar_confirm')
     and (j.meeting_id = p_meeting
          or j.invitee_id in (select i.id from public.meeting_invitees i where i.meeting_id = p_meeting));
-  update public.meeting_invitees
+  -- An invite already handed to Gmail still goes out: that person gets the cancellation too.
+  update public.meeting_invitees i
   set email_status = 'skipped', email_error = 'meeting_cancelled'
-  where meeting_id = p_meeting and email_status = 'queued';
+  where i.meeting_id = p_meeting and i.email_status = 'queued'
+    and not exists (
+      select 1 from public.outbox_jobs j
+      where j.invitee_id = i.id and j.kind = 'invite' and j.status = 'processing' and j.send_started_at is not null);
 
   with inserted as (
     insert into public.outbox_jobs (kind, workspace_id, invitee_id, meeting_id, idempotency_key)
     select 'cancel', i.workspace_id, i.id, p_meeting, 'cancel:' || i.id::text
     from public.meeting_invitees i
     join public.contacts c on c.id = i.contact_id
-    where i.meeting_id = p_meeting and i.email_status in ('sent', 'unknown') and c.unsubscribed_at is null
+    where i.meeting_id = p_meeting and c.unsubscribed_at is null
+      and (i.email_status in ('sent', 'unknown')
+        or (i.email_status = 'queued' and exists (
+          select 1 from public.outbox_jobs j
+          where j.invitee_id = i.id and j.kind = 'invite' and j.status = 'processing'
+            and j.send_started_at is not null)))
     on conflict (idempotency_key) do nothing
     returning 1
   )
@@ -335,7 +365,9 @@ begin
   end if;
   if exists (
     select 1 from public.outbox_jobs j
-    where j.meeting_id = p_meeting and j.kind = 'cancel' and j.status in ('pending', 'processing', 'paused')
+    where j.meeting_id = p_meeting and j.kind = 'cancel'
+      -- Waiting for Gmail after the start: those would be dropped anyway (too late to tell anyone).
+      and (j.status in ('pending', 'processing') or (j.status = 'paused' and v_meeting.starts_at > pg_catalog.now()))
   ) then
     raise exception 'tn:cancel_emails_pending' using errcode = 'P0001';
   end if;
@@ -482,13 +514,14 @@ as $$
       'location_mode', m.location_mode, 'location_text', m.location_text, 'online_text', m.online_text,
       'meeting_url', m.meeting_url, 'agenda_md', m.agenda_md,
       'status', m.status,
-      -- The time before the latest move while this person is still to reconfirm (the answer page
-      -- strikes it through).
+      -- While this person is still to reconfirm: the time they answered for, i.e. before the first
+      -- move after their answer (the answer page strikes it through).
       'previous_starts_at', case when r.needs_reconfirmation then (
         select (mc.changes -> 'starts_at' ->> 0)::timestamptz
         from public.meeting_changes mc
         where mc.meeting_id = m.id and mc.kind = 'edit' and mc.changes ? 'starts_at'
-        order by mc.changed_at desc
+          and mc.changed_at > r.updated_at
+        order by mc.changed_at
         limit 1) end
     ),
     'answers', pg_catalog.jsonb_build_object(
@@ -530,7 +563,11 @@ begin
       select i.id, i.email_status, i.calendar_requested_at, r.status as answer,
         coalesce(r.needs_reconfirmation, false) as reconfirm,
         c.unsubscribed_at is null as reachable_contact,
-        am.invitee_id is not null as marked
+        am.invitee_id is not null as marked,
+        exists (
+          select 1 from public.outbox_jobs o
+          where o.invitee_id = i.id and o.kind = 'reminder' and o.status in ('pending', 'paused', 'processing')
+        ) as reminder_waiting
       from public.meeting_invitees i
       join public.contacts c on c.id = i.contact_id
       left join public.responses r on r.invitee_id = i.id
@@ -561,7 +598,8 @@ begin
         'no_reply', count(*) filter (where inv.answer is null and inv.email_status in ('sent', 'unknown')),
         'calendar_requested', count(*) filter (where inv.calendar_requested_at is not null),
         -- Who a Nudge would email (same rule as the reminders) and who a Cancel would email.
-        'remindable', count(*) filter (where inv.email_status in ('sent', 'unknown') and inv.reachable_contact
+        'remindable', count(*) filter (where v_meeting.response_mode <> 'announcement'
+          and inv.email_status in ('sent', 'unknown') and inv.reachable_contact and not inv.reminder_waiting
           and private.reminder_eligible('pending', inv.answer, inv.reconfirm)),
         'reachable', count(*) filter (where inv.email_status in ('sent', 'unknown') and inv.reachable_contact)) from inv),
       'checked_in', (select count(*) from inv where inv.marked),
@@ -658,3 +696,357 @@ revoke execute on function private.meeting_people(uuid, text, text, uuid, intege
   public.meeting_people(uuid, text, text, uuid, integer, text) from public, anon;
 grant execute on function private.meeting_people(uuid, text, text, uuid, integer, text),
   public.meeting_people(uuid, text, text, uuid, integer, text) to authenticated;
+
+-- Review of Task 6 ----------------------------------------------------------------------------
+
+-- Reminder timers after an edit: a move reschedules them; a change of reminder settings alone keeps
+-- a reminder that already went out (new signature; send_meeting's one-argument call still resolves).
+drop function private.sync_reminder_timers(uuid);
+create function private.sync_reminder_timers(p_meeting uuid, p_keep_fired boolean default false)
+returns void
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  v public.meetings;
+  v_audience text;
+  v_due timestamptz;
+begin
+  select * into v from public.meetings m where m.id = p_meeting;
+  foreach v_audience in array array['pending', 'going'] loop
+    -- After a change of reminder settings alone, a reminder that already went out stays sent.
+    continue when p_keep_fired and exists (
+      select 1 from public.outbox_jobs j
+      where j.meeting_id = p_meeting and j.kind = 'reminder' and j.invitee_id is null
+        and j.status = 'done' and j.payload ->> 'audience' = v_audience);
+    v_due := case
+      when v.status <> 'scheduled' or v.response_mode = 'announcement' or v.starts_at is null then null
+      when v_audience = 'pending' then
+        coalesce(v.response_deadline, v.starts_at) - pg_catalog.make_interval(hours => v.reminder_pending_hours)
+      else v.starts_at - pg_catalog.make_interval(hours => v.reminder_going_hours)
+    end;
+    if v_due is null or v_due <= pg_catalog.now() then
+      delete from public.outbox_jobs j
+      where j.meeting_id = p_meeting and j.kind = 'reminder' and j.invitee_id is null
+        and j.status in ('pending', 'paused') and j.payload ->> 'audience' = v_audience;
+    else
+      update public.outbox_jobs j set run_after = v_due, status = 'pending', last_error = null
+      where j.meeting_id = p_meeting and j.kind = 'reminder' and j.invitee_id is null
+        and j.status in ('pending', 'paused') and j.payload ->> 'audience' = v_audience;
+      if not found then
+        insert into public.outbox_jobs (kind, workspace_id, meeting_id, payload, idempotency_key, run_after)
+        values ('reminder', v.workspace_id, p_meeting, pg_catalog.jsonb_build_object('audience', v_audience),
+          'reminder:' || p_meeting::text || ':' || v_audience || ':' || gen_random_uuid()::text, v_due);
+      end if;
+    end if;
+  end loop;
+end;
+$$;
+revoke execute on function private.sync_reminder_timers(uuid, boolean) from public, anon, authenticated;
+
+-- dispatch_claim: latest body from 20261009234223_m6_dispatch_kinds.sql; an update or cancellation
+-- waits while the person's invite is still being sent (it was rendered with the old details).
+create or replace function public.dispatch_claim(p_run uuid, p_limit integer, p_lease_seconds integer)
+returns jsonb
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  v_connection public.google_connections;
+  v_lease interval := pg_catalog.make_interval(secs => p_lease_seconds);
+  v_rows integer;
+  v_lost record;
+begin
+  -- Due reminder timers become per-person jobs before anything is claimed (spec §7.6).
+  perform private.fan_out_reminders();
+
+  -- A lease expired after the email may have reached Gmail: never resend (at most once). An invite
+  -- becomes "Delivery unknown"; any email carrying a calendar decision (in payload) is recorded as
+  -- sent.
+  for v_lost in
+    update public.outbox_jobs j
+    set status = 'failed', last_error = 'delivery_unknown', locked_until = null
+    where j.status = 'processing' and j.locked_until < pg_catalog.now() and j.send_started_at is not null
+    returning j.invitee_id, j.kind, j.payload
+  loop
+    if v_lost.kind = 'invite' then
+      update public.meeting_invitees i set email_status = 'unknown', email_error = 'delivery_unknown'
+      where i.id = v_lost.invitee_id;
+    elsif v_lost.kind <> 'invite' and v_lost.payload ? 'action' then
+      update public.meeting_invitees i
+      set calendar_state = case when v_lost.payload ->> 'action' = 'request'
+                                then 'added'::public.calendar_state else 'none'::public.calendar_state end,
+        calendar_sequence = (v_lost.payload ->> 'sequence')::integer + 1
+      where i.id = v_lost.invitee_id;
+    end if;
+  end loop;
+
+  update public.outbox_jobs j
+  set status = 'pending', locked_until = null, run_id = null
+  where j.status = 'processing' and j.locked_until < pg_catalog.now() and j.send_started_at is null;
+
+  update public.outbox_jobs j
+  set status = 'paused', last_error = 'no_sender'
+  from public.workspaces w
+  left join public.google_connections c on c.id = w.sender_connection_id
+  where j.workspace_id = w.id and j.status = 'pending' and j.run_after <= pg_catalog.now()
+    and j.invitee_id is not null and (c.id is null or c.status <> 'active');
+
+  select c.* into v_connection
+  from public.outbox_jobs j
+  join public.workspaces w on w.id = j.workspace_id
+  join public.google_connections c on c.id = w.sender_connection_id and c.status = 'active'
+  left join public.sender_leases l on l.google_sub = c.google_sub
+  where j.status = 'pending' and j.run_after <= pg_catalog.now() and j.invitee_id is not null
+    -- An update or a cancellation waits for that person's invite, still being sent.
+      and not (j.kind in ('update', 'cancel') and exists (
+        select 1 from public.meeting_invitees qi where qi.id = j.invitee_id and qi.email_status = 'queued'))
+    and (l.google_sub is null or l.locked_until < pg_catalog.now() or l.run_id = p_run)
+  order by j.run_after, j.created_at
+  limit 1;
+  if v_connection.id is null then
+    return null;
+  end if;
+
+  insert into public.sender_leases (google_sub, run_id, locked_until)
+  values (v_connection.google_sub, p_run, pg_catalog.now() + v_lease)
+  on conflict (google_sub) do update
+    set run_id = excluded.run_id, locked_until = excluded.locked_until
+    where public.sender_leases.locked_until < pg_catalog.now() or public.sender_leases.run_id = excluded.run_id;
+  get diagnostics v_rows = row_count;
+  if v_rows = 0 then
+    return null;
+  end if;
+
+  with picked as (
+    select j.id
+    from public.outbox_jobs j
+    join public.workspaces w on w.id = j.workspace_id
+    where w.sender_connection_id = v_connection.id and j.status = 'pending' and j.run_after <= pg_catalog.now()
+      and j.invitee_id is not null
+      -- An update or a cancellation waits for that person's invite, still being sent.
+      and not (j.kind in ('update', 'cancel') and exists (
+        select 1 from public.meeting_invitees qi where qi.id = j.invitee_id and qi.email_status = 'queued'))
+    order by j.run_after, j.created_at
+    limit p_limit
+    for update of j skip locked
+  )
+  update public.outbox_jobs j
+  set status = 'processing', attempts = j.attempts + 1, run_id = p_run, locked_until = pg_catalog.now() + v_lease
+  from picked where j.id = picked.id;
+
+  return pg_catalog.jsonb_build_object(
+    'connection', pg_catalog.jsonb_build_object(
+      'id', v_connection.id,
+      'user_id', v_connection.user_id,
+      'google_sub', v_connection.google_sub,
+      'google_email', v_connection.google_email,
+      'refresh_token_encrypted', v_connection.refresh_token_encrypted
+    ),
+    'jobs', coalesce((
+      select pg_catalog.jsonb_agg(
+        pg_catalog.jsonb_build_object(
+          'job_id', j.id,
+          'kind', j.kind,
+          'attempts', j.attempts,
+          'payload', j.payload,
+          'invitee_id', i.id,
+          'workspace_id', w.id,
+          'workspace_name', w.name,
+          'contact', pg_catalog.jsonb_build_object('full_name', c.full_name, 'email', c.email),
+          'meeting', pg_catalog.jsonb_build_object(
+            'id', m.id, 'title', m.title, 'agenda_md', m.agenda_md, 'starts_at', m.starts_at,
+            'duration_minutes', m.duration_minutes, 'timezone', m.timezone, 'location_mode', m.location_mode,
+            'location_text', m.location_text, 'online_text', m.online_text, 'meeting_url', m.meeting_url,
+            'response_mode', m.response_mode, 'response_deadline', m.response_deadline, 'footer_note', m.footer_note,
+            'ics_uid', m.ics_uid,
+            'thread_id', case when m.thread_connection_id = v_connection.id then m.gmail_thread_id end,
+            'root_message_id', case when m.thread_connection_id = v_connection.id then m.gmail_root_message_id end
+          )
+        )
+        order by m.id, j.created_at
+      )
+      from public.outbox_jobs j
+      join public.meeting_invitees i on i.id = j.invitee_id
+      join public.meetings m on m.id = i.meeting_id
+      join public.contacts c on c.id = i.contact_id
+      join public.workspaces w on w.id = j.workspace_id
+      where j.run_id = p_run and j.status = 'processing' and w.sender_connection_id = v_connection.id
+    ), '[]'::jsonb)
+  );
+end;
+$$;
+
+-- dispatch_reserve: latest body from 20261009234223_m6_dispatch_kinds.sql, plus "not invited".
+create or replace function public.dispatch_reserve(p_job uuid, p_token_hash text default null)
+returns jsonb
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  v_job record;
+  v_wanted boolean;
+  v_action text;
+  v_skip text;
+  v_count integer;
+  v_oldest timestamptz;
+  v_retry timestamptz;
+begin
+  select j.id, j.kind, j.status, j.workspace_id, j.invitee_id, j.payload, c.google_sub, m.status as meeting_status,
+    m.starts_at, m.response_mode, ct.unsubscribed_at, i.calendar_state, i.calendar_sequence,
+    i.calendar_requested_at, i.email_status, r.status as answer, r.needs_reconfirmation
+  into v_job
+  from public.outbox_jobs j
+  join public.workspaces w on w.id = j.workspace_id
+  join public.google_connections c on c.id = w.sender_connection_id
+  join public.meeting_invitees i on i.id = j.invitee_id
+  join public.meetings m on m.id = i.meeting_id
+  join public.contacts ct on ct.id = i.contact_id
+  left join public.responses r on r.invitee_id = i.id
+  where j.id = p_job
+  for update of j, i;
+  if v_job.id is null or v_job.status <> 'processing' then
+    return pg_catalog.jsonb_build_object('kind', 'gone');
+  end if;
+
+  if v_job.kind = 'invite' then
+    if v_job.unsubscribed_at is not null or v_job.meeting_status <> 'scheduled' or v_job.starts_at <= pg_catalog.now() then
+      update public.outbox_jobs set status = case when v_job.starts_at <= pg_catalog.now() then 'failed'::public.job_status else 'done'::public.job_status end,
+        locked_until = null,
+        last_error = case
+          when v_job.unsubscribed_at is not null then 'unsubscribed'
+          when v_job.meeting_status <> 'scheduled' then 'meeting_cancelled'
+          else 'meeting_started' end
+      where id = p_job;
+      update public.meeting_invitees set
+        email_status = case when v_job.unsubscribed_at is null and v_job.meeting_status = 'scheduled' then 'failed'::public.invitee_email_status else 'skipped'::public.invitee_email_status end,
+        email_error = case
+          when v_job.unsubscribed_at is not null then 'unsubscribed'
+          when v_job.meeting_status <> 'scheduled' then 'meeting_cancelled'
+          else 'meeting_started' end
+      where id = v_job.invitee_id;
+      return pg_catalog.jsonb_build_object('kind', 'done');
+    end if;
+  else
+    -- Should this person have the event in their calendar right now? (spec §8 calendar_confirm)
+    v_wanted := v_job.meeting_status = 'scheduled'
+      and (v_job.answer in ('attending', 'late')
+           or (v_job.response_mode = 'announcement' and v_job.calendar_requested_at is not null));
+    v_action := case v_job.kind
+      when 'calendar_confirm' then case
+        when v_wanted and v_job.calendar_state = 'none' then 'request'
+        when not v_wanted and v_job.calendar_state = 'added' then 'cancel' end
+      when 'update' then case when v_wanted and v_job.calendar_state = 'added' then 'request' end
+      when 'cancel' then case when v_job.calendar_state = 'added' then 'cancel' end
+    end;
+    v_skip := case
+      when v_job.unsubscribed_at is not null then 'unsubscribed'
+      when v_job.starts_at <= pg_catalog.now() then 'meeting_started'
+      -- An update or cancellation for someone whose invite never went out (it failed, was skipped).
+      when v_job.kind in ('update', 'cancel') and v_job.email_status not in ('sent', 'unknown') then 'not_invited'
+      when v_job.kind = 'cancel' and v_job.meeting_status <> 'cancelled' then 'not_cancelled'
+      when v_job.kind in ('update', 'reminder') and v_job.meeting_status <> 'scheduled' then 'meeting_cancelled'
+      when v_job.kind = 'reminder'
+        and not private.reminder_eligible(v_job.payload ->> 'audience', v_job.answer, v_job.needs_reconfirmation)
+        then 'not_eligible'
+      when v_job.kind = 'calendar_confirm' and v_action is null then 'nothing_to_send'
+      -- Twin of updateHasSomethingToSay (src/server/dispatch/run-dispatch.ts): changes that cancelled
+      -- out say nothing, even to a calendar holder; without a calendar part, only a notified person
+      -- gets an email.
+      when v_job.kind = 'update'
+        and coalesce(v_job.payload -> 'changes', '{}'::jsonb) = '{}'::jsonb
+        and not coalesce((v_job.payload ->> 'reconfirm')::boolean, false)
+        then 'nothing_to_send'
+      when v_job.kind = 'update' and v_action is null
+        and not coalesce((v_job.payload ->> 'notify')::boolean, false)
+        then 'nothing_to_send'
+    end;
+    if v_skip is not null then
+      update public.outbox_jobs set status = 'done', locked_until = null, last_error = v_skip where id = p_job;
+      return pg_catalog.jsonb_build_object('kind', 'done');
+    end if;
+  end if;
+
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext('send:' || v_job.google_sub));
+  select count(*), min(s.sent_at) into v_count, v_oldest
+  from public.send_log s where s.google_sub = v_job.google_sub and s.sent_at > pg_catalog.now() - interval '24 hours';
+  if v_count >= private.app_limit('gmail_sends_per_day') then
+    v_retry := v_oldest + interval '24 hours';
+  else
+    select count(*), min(s.sent_at) into v_count, v_oldest
+    from public.send_log s where s.google_sub = v_job.google_sub and s.sent_at > pg_catalog.now() - interval '1 minute';
+    if v_count >= private.app_limit('gmail_sends_per_minute') then
+      v_retry := v_oldest + interval '1 minute';
+    end if;
+  end if;
+  if v_retry is not null then
+    update public.outbox_jobs
+    set status = 'pending', attempts = greatest(attempts - 1, 0), run_after = v_retry, locked_until = null,
+      run_id = null, last_error = 'quota'
+    where id = p_job;
+    return pg_catalog.jsonb_build_object('kind', 'quota', 'retry_at', v_retry);
+  end if;
+
+  insert into public.send_log (google_sub, workspace_id, job_id) values (v_job.google_sub, v_job.workspace_id, p_job)
+  on conflict (job_id) where job_id is not null do nothing;
+  update public.outbox_jobs
+  set send_started_at = pg_catalog.now(),
+    -- Drop a decision left by an earlier attempt, or dispatch_finish would record it (Task 3 review).
+    payload = case when v_action is not null
+      then payload || pg_catalog.jsonb_build_object('action', v_action, 'sequence', v_job.calendar_sequence)
+      else payload - 'action' - 'sequence' end
+  where id = p_job;
+  -- The personal links must work in any email that may have gone out, including one whose outcome
+  -- ends up "unknown" (the token is derived from the invitee id, so storing it early is safe).
+  if p_token_hash is not null then
+    update public.meeting_invitees set token_hash = coalesce(token_hash, p_token_hash) where id = v_job.invitee_id;
+  end if;
+  if v_action is not null then
+    return pg_catalog.jsonb_build_object('kind', 'ok', 'calendar',
+      pg_catalog.jsonb_build_object('action', v_action, 'sequence', v_job.calendar_sequence));
+  end if;
+  return pg_catalog.jsonb_build_object('kind', 'ok');
+end;
+$$;
+
+-- "Not my group" reports outlive a deleted meeting (spec §6: platform admins review them in M9).
+alter table public.abuse_reports add column contact_id uuid references public.contacts (id) on delete set null;
+create index abuse_reports_contact_idx on public.abuse_reports (contact_id);
+update public.abuse_reports a set contact_id = i.contact_id from public.meeting_invitees i where i.id = a.invitee_id;
+alter table public.abuse_reports alter column invitee_id drop not null;
+alter table public.abuse_reports drop constraint abuse_reports_invitee_id_fkey;
+alter table public.abuse_reports add constraint abuse_reports_invitee_id_fkey
+  foreign key (invitee_id) references public.meeting_invitees (id) on delete set null;
+
+-- token_unsubscribe: latest body from 20261008071625_m4_tokens.sql; a report keeps the contact.
+create or replace function public.token_unsubscribe(p_token_hash text, p_via public.unsubscribe_via)
+returns boolean
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  v_invitee uuid;
+  v_workspace uuid;
+  v_contact uuid;
+begin
+  update public.contacts c
+  set unsubscribed_at = coalesce(c.unsubscribed_at, pg_catalog.now()),
+    unsubscribed_via = case when p_via = 'report' then 'report'::public.unsubscribe_via
+                            else coalesce(c.unsubscribed_via, 'link'::public.unsubscribe_via) end
+  from public.meeting_invitees i
+  where i.token_hash = p_token_hash and c.id = i.contact_id
+  returning i.id, i.workspace_id, i.contact_id into v_invitee, v_workspace, v_contact;
+  if v_invitee is null then
+    return false;
+  end if;
+  if p_via = 'report' then
+    insert into public.abuse_reports (workspace_id, invitee_id, contact_id) values (v_workspace, v_invitee, v_contact)
+    on conflict (invitee_id) do nothing;
+  end if;
+  return true;
+end;
+$$;

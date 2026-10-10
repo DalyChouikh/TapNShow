@@ -7,16 +7,22 @@ export type Database = {
           Tables: {
             "abuse_reports": {
                   Row: {
-                    "id": string,"invitee_id": string,"reported_at": string,"workspace_id": string
+                    "contact_id": string | null,"id": string,"invitee_id": string | null,"reported_at": string,"workspace_id": string
                   }
                   Insert: {
-                    "id"?: string,"invitee_id": string,"reported_at"?: string,"workspace_id": string
+                    "contact_id"?: string | null,"id"?: string,"invitee_id"?: string | null,"reported_at"?: string,"workspace_id": string
                   }
                   Update: {
-                    "id"?: string,"invitee_id"?: string,"reported_at"?: string,"workspace_id"?: string
+                    "contact_id"?: string | null,"id"?: string,"invitee_id"?: string | null,"reported_at"?: string,"workspace_id"?: string
                   }
                   Relationships: [
                     {
+      foreignKeyName: "abuse_reports_contact_id_fkey"
+      columns: ["contact_id"]
+isOneToOne: false
+      referencedRelation: "contacts"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "abuse_reports_invitee_id_fkey"
       columns: ["invitee_id"]
 isOneToOne: true

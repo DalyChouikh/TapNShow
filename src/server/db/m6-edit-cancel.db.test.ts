@@ -148,6 +148,37 @@ async function reconfirmFlags() {
   );
 }
 
+/** D's invite as the dispatcher holds it: claimed, and (optionally) already handed to Gmail. */
+async function inviteInFlight(sendStarted: boolean) {
+  const { error } = await adminClient()
+    .from("outbox_jobs")
+    .update({
+      status: "processing",
+      locked_until: new Date(Date.now() + 60_000).toISOString(),
+      send_started_at: sendStarted ? new Date().toISOString() : null,
+    })
+    .eq("invitee_id", d.inviteeId)
+    .eq("kind", "invite");
+  if (error) {
+    throw error;
+  }
+}
+
+async function finishInvite(outcome: "sent" | "failed") {
+  const { data } = await adminClient()
+    .from("outbox_jobs")
+    .select("id")
+    .eq("invitee_id", d.inviteeId)
+    .eq("kind", "invite")
+    .single();
+  await serviceRpc("dispatch_finish", {
+    p_job: data?.id ?? "",
+    p_outcome: outcome,
+    p_error: null,
+    p_token_hash: null,
+  });
+}
+
 const count = (table: string) =>
   queryLocalSql(
     `select count(*)::int as n from public.${table} where meeting_id = '${meeting}'`,
@@ -247,6 +278,91 @@ describe("edit_sent_meeting", () => {
     expect(await jobsOfKind("update")).toEqual([]);
     expect(await changeRows()).toEqual([]);
     expect(sameInstant((await meetingRow())?.starts_at, startsAt)).toBe(true);
+    expect(Object.values(await reconfirmFlags())).toEqual([false, false]);
+  });
+
+  it("refuses a missing dry-run flag instead of saving by surprise (review)", async () => {
+    const { error } = await owner.client.rpc("edit_sent_meeting", {
+      p_meeting: meeting,
+      p_fields: { location_text: "Hall A" },
+      p_notify: false,
+      p_dry_run: null,
+    } as never);
+    expect(error?.message).toBe("tn:invalid_input");
+    expect(await changeRows()).toEqual([]);
+  });
+
+  it("refuses a time that never comes (review)", async () => {
+    await expectAppError(edit({ starts_at: "infinity" }), "invalid_input");
+  });
+
+  it("tells people whose invite is being sent right now about the change (review)", async () => {
+    await inviteInFlight(false);
+    const result = await editOk({ starts_at: daysAhead(4) });
+    expect(result.emails).toBe(4);
+    expect(byInvitee(await jobsOfKind("update"), d)).toHaveLength(1);
+    // The update waits for the invite: no claim picks it while D is still queued.
+    await adminClient()
+      .from("outbox_jobs")
+      .update({ run_after: new Date(Date.now() - 1000).toISOString() })
+      .eq("meeting_id", meeting)
+      .eq("kind", "update");
+    const run = crypto.randomUUID();
+    const claimed = z
+      .object({ jobs: z.array(z.object({ invitee_id: z.uuid() }).loose()) })
+      .nullable()
+      .parse(
+        await serviceRpc("dispatch_claim", {
+          p_run: run,
+          p_limit: 50,
+          p_lease_seconds: 70,
+        }),
+      );
+    expect(claimed?.jobs.map((job) => job.invitee_id)).not.toContain(
+      d.inviteeId,
+    );
+    await serviceRpc("dispatch_release", { p_run: run });
+  });
+
+  it("drops the update of someone whose invite then failed (review)", async () => {
+    await inviteInFlight(false);
+    await editOk({ starts_at: daysAhead(4) });
+    await finishInvite("failed");
+    const { data: row } = await adminClient()
+      .from("outbox_jobs")
+      .select("id")
+      .eq("invitee_id", d.inviteeId)
+      .eq("kind", "update")
+      .single();
+    await adminClient()
+      .from("outbox_jobs")
+      .update({
+        status: "processing",
+        locked_until: new Date(Date.now() + 60_000).toISOString(),
+      })
+      .eq("id", row?.id ?? "");
+    expect(
+      await serviceRpc("dispatch_reserve", {
+        p_job: row?.id ?? "",
+        p_token_hash: null,
+      }),
+    ).toEqual({ kind: "done" });
+    const { data: after } = await adminClient()
+      .from("outbox_jobs")
+      .select("last_error")
+      .eq("id", row?.id ?? "")
+      .single();
+    expect(after?.last_error).toBe("not_invited");
+  });
+
+  it("keeps a reminder that already went out when only its setting changes (review)", async () => {
+    const [timer] = await timersOf(meeting);
+    await adminClient()
+      .from("outbox_jobs")
+      .update({ status: "done" })
+      .eq("id", timer.id);
+    await editOk({ reminder_pending_hours: 2 });
+    expect(await timersOf(meeting)).toEqual([]);
   });
 
   it("emails everyone but people who can't come about a new place", async () => {
@@ -467,6 +583,25 @@ describe("cancel_meeting", () => {
     await expectAppError(cancel(), "meeting_cancelled");
   });
 
+  it("tells the person whose invite was already handed to Gmail (review)", async () => {
+    await inviteInFlight(true);
+    const { data } = await cancel();
+    expect(data).toEqual({ emails: 4 });
+    expect(byInvitee(await jobsOfKind("cancel"), d)).toHaveLength(1);
+    const { data: row } = await adminClient()
+      .from("meeting_invitees")
+      .select("email_status")
+      .eq("id", d.inviteeId)
+      .single();
+    expect(row?.email_status).toBe("queued");
+  });
+
+  it("refuses Viewers", async () => {
+    const viewer = await createTestUser();
+    await addMember(workspace.id, viewer.id, "viewer");
+    await expectAppError(cancel(viewer.client), "forbidden");
+  });
+
   it("refuses drafts and started meetings", async () => {
     const draft = await seedMeeting(workspace.id, { status: "draft" });
     await expectAppError(cancel(owner.client, draft), "invalid_input");
@@ -496,8 +631,53 @@ describe("cancel_meeting", () => {
 });
 
 describe("delete_cancelled_meeting", () => {
-  const remove = (id = meeting) =>
-    owner.client.rpc("delete_cancelled_meeting", { p_meeting: id });
+  const remove = (id = meeting, client = owner.client) =>
+    client.rpc("delete_cancelled_meeting", { p_meeting: id });
+
+  it("refuses Viewers", async () => {
+    const viewer = await createTestUser();
+    await addMember(workspace.id, viewer.id, "viewer");
+    await owner.client.rpc("cancel_meeting", { p_meeting: meeting });
+    await expectAppError(remove(meeting, viewer.client), "forbidden");
+  });
+
+  it("keeps abuse reports, without the person's invite (review)", async () => {
+    // "Not my group" from B's email, the way members report.
+    await adminClient().rpc("token_unsubscribe", {
+      p_token_hash: b.hash,
+      p_via: "report",
+    });
+    await owner.client.rpc("cancel_meeting", { p_meeting: meeting });
+    await adminClient()
+      .from("outbox_jobs")
+      .update({ status: "done" })
+      .eq("meeting_id", meeting)
+      .eq("kind", "cancel");
+    expect((await remove()).error).toBeNull();
+    const { data } = await adminClient()
+      .from("abuse_reports")
+      .select("invitee_id, contact_id")
+      .eq("workspace_id", workspace.id);
+    expect(data).toHaveLength(1);
+    expect(data?.[0].invitee_id).toBeNull();
+    expect(data?.[0].contact_id).not.toBeNull();
+  });
+
+  it("lets a started meeting go even while its cancellation emails wait for Gmail (review)", async () => {
+    await setSender(workspace.id, null);
+    await owner.client.rpc("cancel_meeting", { p_meeting: meeting });
+    await adminClient()
+      .from("outbox_jobs")
+      .update({ status: "paused" })
+      .eq("meeting_id", meeting)
+      .eq("kind", "cancel");
+    await expectAppError(remove(), "cancel_emails_pending");
+    await adminClient()
+      .from("meetings")
+      .update({ starts_at: new Date(Date.now() - 60_000).toISOString() })
+      .eq("id", meeting);
+    expect((await remove()).error).toBeNull();
+  });
 
   it("waits for the cancellation emails, then deletes everything of the meeting", async () => {
     await expectAppError(remove(), "invalid_input");
@@ -521,6 +701,7 @@ describe("delete_cancelled_meeting", () => {
       "response_history",
       "attendance_marks",
       "meeting_changes",
+      "outbox_jobs",
     ]) {
       expect(count(table)).toBe(0);
     }
