@@ -57,10 +57,15 @@ export function AttendanceView({
   const wide = useMediaQuery(ROSTER_GRID_MEDIA);
   const period = usePeriod(workspace.timezone);
   const summary = useAttendance(workspace.slug, period.range);
+  const tHistory = useTranslations("History");
+  const tExport = useTranslations("Export");
   const exportAttendance = useExportAttendance(
-    workspace.slug,
+    workspace,
     roster,
     period.range,
+    period.period === "custom"
+      ? tExport("customPeriod", period.custom)
+      : tHistory(`periods.${period.period}`),
   );
   const [listId, setListId] = useState<ListFilter>(null);
   const [sort, setSort] = useState<Sort>({ key: "noReply", dir: "desc" });

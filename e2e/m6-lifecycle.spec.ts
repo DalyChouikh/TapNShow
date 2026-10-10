@@ -34,6 +34,8 @@ test("an organizer changes, reminds, cancels and deletes a sent meeting", async 
   const meetingPath = await sendMeetingThroughUi(page, slug, {
     stamp,
     title: "Lifecycle sync",
+    // Two days ahead, so the 24 h "not answered" reminder is still ahead at any time of day.
+    daysAhead: 2,
     people: [
       { fullName: "Amira Ben Ali", email: amira },
       { fullName: "Bilel Trabelsi", email: bilel },
@@ -213,12 +215,12 @@ test("the committee checks people in; History and exports show what happened", a
   await door.getByRole("menuitem", { name: "CSV" }).click();
   const csv = readFileSync((await (await download).path()) ?? "", "utf8");
   const lines = csv.split("\r\n");
-  expect(lines[0]).toContain("Checked in,Checked in by");
+  expect(lines[0]).toContain("Checked in,Checked in by,Was late by (min)");
   expect(lines.find((line) => line.startsWith(going))).toMatch(
-    /,Absent,Door Viewer$/,
+    /,Absent,Door Viewer,$/,
   );
   expect(lines.find((line) => line.startsWith(silent))).toMatch(
-    /,Absent,Door Viewer$/,
+    /,Absent,Door Viewer,$/,
   );
 
   await door.goto(`/w/${slug}/lists?view=attendance`);

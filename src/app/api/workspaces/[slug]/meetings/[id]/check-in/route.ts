@@ -35,6 +35,7 @@ export async function PUT(
     id,
     body.data.inviteeId,
     body.data.actual,
+    body.data.lateMinutes,
   );
   return error ? fromDatabaseError(error) : NextResponse.json({ mark: data });
 }

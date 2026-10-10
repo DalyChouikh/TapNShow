@@ -1,9 +1,11 @@
 import { TZDate } from "@date-fns/tz";
 import { format } from "date-fns";
+import type { FillTone } from "@/design/tokens";
 import {
   type AnswerLabels,
   describeAnswer,
 } from "@/lib/responses/describe-answer";
+import { ACTUAL_TONE, ANSWER_TONE } from "@/lib/responses/tones";
 import type { InviteeStatus } from "@/shared/api/meetings";
 import type {
   AttendanceDetailRow,
@@ -20,13 +22,25 @@ export type ExportText = {
   actual: (value: Mark["actual"]) => string;
 };
 
-/** The two check-in cells: what happened and who marked it (empty without a check-in). */
+/**
+ * The check-in cells: what happened, who marked it and, for Late, how late (#257); empty without
+ * a check-in.
+ */
 function checkInCells(text: ExportText, mark: Mark | null): ExportCell[] {
-  return mark ? [text.actual(mark.actual), mark.markedByName ?? ""] : ["", ""];
+  return mark
+    ? [
+        { text: text.actual(mark.actual), tone: ACTUAL_TONE[mark.actual] },
+        mark.markedByName ?? "",
+        mark.lateMinutes,
+      ]
+    : ["", "", null];
 }
 
+/** Text that Excel tints like the app's tiles (CSV writes just the text). */
+export type TintedCell = { text: string; tone: FillTone };
+
 /** One export cell. CSV escaping happens later (`toCsv`); rows keep the text as typed. */
-export type ExportCell = string | number | null;
+export type ExportCell = string | number | null | TintedCell;
 
 /** Each person's list names, in the roster's list order (the "Lists" column). */
 export function listNamesByContact(roster: {
@@ -51,18 +65,22 @@ function answerText(
   text: ExportText,
   answer: PersonRow["answer"],
   emailStatus: InviteeStatus,
-): string {
+): TintedCell | "" {
   if (answer) {
-    return describeAnswer(labels, answer);
+    return {
+      text: describeAnswer(labels, answer),
+      tone: ANSWER_TONE[answer.status],
+    };
   }
   return emailStatus === "sent" || emailStatus === "unknown"
-    ? text.noReply
+    ? { text: text.noReply, tone: ANSWER_TONE.no_reply }
     : "";
 }
 
 /**
  * Meeting answers: Name, Email, Lists, Answer, Late by (min), Reason, Comment, Answered at
- * (meeting zone), After the deadline, Email — one row per invitee.
+ * (meeting zone), After the deadline, Email, Checked in, Checked in by, Was late by (min) — one row
+ * per invitee.
  */
 export function meetingAnswerRows(
   people: PersonRow[],
@@ -114,7 +132,8 @@ export function attendanceSummaryRows(
 
 /**
  * Attendance details: Meeting, Date (meeting zone), Name, Email, Lists, Answer, Late by (min),
- * Reason, Comment, After the deadline, Email — one row per person per counted meeting.
+ * Reason, Comment, After the deadline, Email, Checked in, Checked in by, Was late by (min) — one
+ * row per person per counted meeting.
  */
 export function attendanceDetailRows(
   details: AttendanceDetailRow[],

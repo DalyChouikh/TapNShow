@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { COMMENT_MAX, REASON_MAX } from "@/config/responses";
-import { responseModeSchema, type ResponseMode } from "./meeting-settings";
+import {
+  lateMinutesSchema,
+  responseModeSchema,
+  type ResponseMode,
+} from "./meeting-settings";
 import { inviteeStatusSchema } from "./meetings";
 import { pageSchema } from "./pagination";
 
@@ -51,7 +55,7 @@ const answerText = (max: number) =>
 /** `PUT /api/r/[token]/response`. The database applies the meeting's rules (spec §7.3). */
 export const submitAnswerBodySchema = z.object({
   status: answerStatusSchema,
-  delayMinutes: z.number().int().min(1).max(240).nullable(),
+  delayMinutes: lateMinutesSchema.nullable(),
   reason: answerText(REASON_MAX),
   comment: answerText(COMMENT_MAX),
 });
@@ -157,15 +161,22 @@ export const markSchema = z.object({
   actual: z.enum(["present", "late", "absent"]),
   markedAt: z.string(),
   markedByName: z.string().nullable(),
+  /** How late, when marked Late with minutes (#257). */
+  lateMinutes: z.number().int().nullable(),
 });
 /** A check-in mark. */
 export type Mark = z.infer<typeof markSchema>;
 
-/** `PUT …/check-in`: one person's check-in, or null to clear it. */
-export const markBodySchema = z.object({
-  inviteeId: z.uuid(),
-  actual: markSchema.shape.actual.nullable(),
-});
+/** `PUT …/check-in`: one person's check-in, or null to clear it; minutes only with Late. */
+export const markBodySchema = z
+  .object({
+    inviteeId: z.uuid(),
+    actual: markSchema.shape.actual.nullable(),
+    lateMinutes: lateMinutesSchema.nullable().default(null),
+  })
+  .refine((body) => body.lateMinutes === null || body.actual === "late", {
+    path: ["lateMinutes"],
+  });
 /** A check-in change. */
 export type MarkBody = z.infer<typeof markBodySchema>;
 /** `PUT …/check-in` response: the mark as saved (null when cleared). */

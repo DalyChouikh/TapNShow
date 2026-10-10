@@ -16,7 +16,12 @@ import {
   type PersonRow,
 } from "@/shared/api/responses";
 
-type MarkInput = { inviteeId: string; actual: Mark["actual"] | null };
+type MarkInput = {
+  inviteeId: string;
+  actual: Mark["actual"] | null;
+  /** How late, with Late only (#257). */
+  lateMinutes?: number | null;
+};
 type PeoplePages = InfiniteData<Page<PersonRow>>;
 
 /**
@@ -83,6 +88,7 @@ export function useMarkAttendance(
               actual: input.actual,
               markedAt: new Date().toISOString(),
               markedByName: null,
+              lateMinutes: input.lateMinutes ?? null,
             }
           : null,
       );

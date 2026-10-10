@@ -16,3 +16,11 @@ describe("toCsv", () => {
     );
   });
 });
+
+describe("toCsv with tinted cells", () => {
+  it("writes only their text, still formula-safe", () => {
+    expect(toCsv(["Answer"], [[{ text: "=Going", tone: "success" }]])).toBe(
+      "﻿Answer\r\n'=Going\r\n",
+    );
+  });
+});

@@ -5,6 +5,7 @@ const mark = (actual: "present" | "late" | "absent") => ({
   actual,
   markedAt: "2026-10-09T17:05:00.000Z",
   markedByName: "Daly",
+  lateMinutes: null,
 });
 
 describe("effectiveStatus", () => {

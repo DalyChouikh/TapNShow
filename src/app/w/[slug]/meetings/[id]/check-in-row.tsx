@@ -5,35 +5,34 @@ import { Chip } from "@/components/ui/chip";
 import { useAnswerLabels } from "@/hooks/use-answer-labels";
 import { declaredActual } from "@/lib/responses/check-in";
 import { describeAnswer, lowerFirst } from "@/lib/responses/describe-answer";
+import { ACTUAL_TONE } from "@/lib/responses/tones";
 import { cn } from "@/lib/utils";
 import type { Mark, PersonRow } from "@/shared/api/responses";
+import { LateMinutes } from "./late-minutes";
 import { PersonName } from "./person-row";
 
-const ACTUALS: {
-  value: Mark["actual"];
-  tone: "success" | "warning" | "danger";
-}[] = [
-  { value: "present", tone: "success" },
-  { value: "late", tone: "warning" },
-  { value: "absent", tone: "danger" },
-];
+const ACTUALS: Mark["actual"][] = ["present", "late", "absent"];
 
 /**
  * One person at the door (owner's mockup A): name, what they said, then Present / Late / Absent.
  * Before a mark, the chip their answer suggests has a dashed outline; tapping the pressed chip
  * clears the mark. The three choices sit in a fixed grid: at 320 px they fit side by side, and a
- * sideways-swiping row could hide Absent at the door.
+ * sideways-swiping row could hide Absent at the door. Late asks how late (#257), starting from the
+ * minutes the person said.
  */
 export function CheckInRow({
   slug,
   person,
+  delayOptions,
   failed,
   onMark,
 }: {
   slug: string;
   person: PersonRow;
+  /** The meeting's delay choices, offered when marked Late. */
+  delayOptions: number[];
   failed: boolean;
-  onMark: (actual: Mark["actual"] | null) => void;
+  onMark: (actual: Mark["actual"] | null, lateMinutes: number | null) => void;
 }) {
   const t = useTranslations("MeetingPage.checkIn");
   const labels = useAnswerLabels();
@@ -60,24 +59,40 @@ export function CheckInRow({
         aria-label={t("group", { name: person.fullName })}
         className="grid grid-cols-3 gap-2"
       >
-        {ACTUALS.map(({ value, tone }) => {
+        {ACTUALS.map((value) => {
           const pressed = person.mark?.actual === value;
           return (
             <Chip
               key={value}
-              tone={tone}
+              tone={ACTUAL_TONE[value]}
               pressed={pressed}
               className={cn(
                 "w-full justify-center px-2",
                 hint === value && "border-dashed",
               )}
-              onPressedChange={() => onMark(pressed ? null : value)}
+              onPressedChange={() =>
+                onMark(
+                  pressed ? null : value,
+                  !pressed && value === "late"
+                    ? (person.answer?.delayMinutes ?? null)
+                    : null,
+                )
+              }
             >
               {t(value)}
             </Chip>
           );
         })}
       </div>
+      {person.mark?.actual === "late" ? (
+        <LateMinutes
+          inviteeId={person.inviteeId}
+          name={person.fullName}
+          options={delayOptions}
+          value={person.mark.lateMinutes}
+          onChange={(minutes) => onMark("late", minutes)}
+        />
+      ) : null}
       {failed ? (
         <p role="alert" className="text-sm font-bold">
           {t("saveFailed")}

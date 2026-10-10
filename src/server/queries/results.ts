@@ -66,12 +66,13 @@ const dbAnswerSchema = z
       : null,
   );
 
-/** A check-in mark as the database writes it (spec §7.8). */
-const dbMarkSchema = z
+/** A check-in mark as the database writes it (spec §7.8). Twin: `private.mark_json`. */
+export const dbMarkSchema = z
   .object({
     actual: z.enum(["present", "late", "absent"]),
     marked_at: z.string(),
     marked_by_name: z.string().nullable(),
+    late_minutes: z.number().int().nullable(),
   })
   .nullable()
   .transform((db) =>
@@ -80,6 +81,7 @@ const dbMarkSchema = z
           actual: db.actual,
           markedAt: db.marked_at,
           markedByName: db.marked_by_name,
+          lateMinutes: db.late_minutes,
         }
       : null,
   );

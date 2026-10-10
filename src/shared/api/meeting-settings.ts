@@ -8,6 +8,7 @@ import {
   DURATION_MAX,
   DURATION_MIN,
   FOOTER_NOTE_MAX,
+  LATE_MINUTES_MAX,
   LOCATION_MAX,
   MEETING_URL_MAX,
 } from "@/config/meetings";
@@ -26,9 +27,12 @@ export const locationModeSchema = z.enum(["in_person", "online", "hybrid"]);
 /** A location mode. */
 export type LocationMode = z.infer<typeof locationModeSchema>;
 
+/** How late someone is, in minutes: a delay option, an answer's delay or a Late check-in. */
+export const lateMinutesSchema = z.number().int().min(1).max(LATE_MINUTES_MAX);
+
 /** Delay options in minutes: distinct, 1–240, at most six, sorted ascending. */
 export const delayOptionsSchema = z
-  .array(z.number().int().min(1).max(240))
+  .array(lateMinutesSchema)
   .max(DELAY_OPTIONS_MAX)
   .refine((values) => new Set(values).size === values.length)
   .transform((values) => [...values].sort((a, b) => a - b));
