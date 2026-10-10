@@ -379,6 +379,49 @@ describe("dispatch_reserve for M6 kinds", () => {
     expect(row.last_error).toBe("meeting_started");
   });
 
+  it("moves the event of someone who unsubscribed, and sends them nothing else (owner decision)", async () => {
+    await answer(a, "attending");
+    await answer(b, "attending");
+    await setInvitee(a.inviteeId, {
+      calendar_state: "added",
+      calendar_sequence: 1,
+    });
+    const { error } = await adminClient()
+      .from("contacts")
+      .update({
+        unsubscribed_at: new Date().toISOString(),
+        unsubscribed_via: "link",
+      })
+      .in("id", [contacts[0], contacts[1]]);
+    expect(error).toBeNull();
+    // Even when they were asked to confirm before unsubscribing, only the event moves.
+    const holder = await insertJob("update", a.inviteeId, {
+      changes: {},
+      notify: true,
+      reconfirm: true,
+    });
+    let result = await reserveOne(holder);
+    expect(result.reserved).toEqual({ kind: "done" });
+    expect(result.job.last_error).toBe("nothing_to_send");
+    const moved = await insertJob("update", a.inviteeId, {
+      changes: { title: ["Old", "New"] },
+      notify: true,
+      reconfirm: true,
+    });
+    expect((await reserveOne(moved)).reserved).toEqual({
+      kind: "ok",
+      calendar: { action: "request", sequence: 1 },
+      unsubscribed: true,
+    });
+    const other = await insertJob("update", b.inviteeId, {
+      changes: { title: ["Old", "New"] },
+      notify: true,
+      reconfirm: false,
+    });
+    result = await reserveOne(other);
+    expect(result.job.last_error).toBe("unsubscribed");
+  });
+
   it("puts the calendar request inside an update for a calendar holder", async () => {
     await answer(a, "attending");
     await setInvitee(a.inviteeId, {

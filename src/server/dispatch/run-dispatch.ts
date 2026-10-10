@@ -204,10 +204,10 @@ async function drainSender(
       await deps.store.unclaim(queue.map((job) => job.jobId));
       return;
     }
-    const job = queue.shift() as ClaimedJob;
+    const claimed = queue.shift() as ClaimedJob;
     const reservation = await deps.store.reserve(
-      job.jobId,
-      inviteeTokenHash(deps.tokenFor(job.inviteeId)),
+      claimed.jobId,
+      inviteeTokenHash(deps.tokenFor(claimed.inviteeId)),
     );
     if (reservation.kind === "done") {
       summary.skipped += 1;
@@ -228,6 +228,7 @@ async function drainSender(
       );
       return;
     }
+    const job = reservation.unsubscribed ? calendarOnly(claimed) : claimed;
     if (
       job.kind === "update" &&
       !updateHasSomethingToSay(job, reservation.calendar)
@@ -282,10 +283,22 @@ function updateHasSomethingToSay(
   );
 }
 
+/**
+ * Someone who unsubscribed after adding the meeting to their calendar gets only the event moved or
+ * removed (owner decision 2026-10-10): never notified or asked to confirm. Twin of the
+ * "unsubscribed" rules in `dispatch_reserve`.
+ */
+function calendarOnly(job: ClaimedJob): ClaimedJob {
+  return {
+    ...job,
+    payload: { ...job.payload, notify: false, reconfirm: false },
+  };
+}
+
 /** Renders one job's email by kind (the `.ics`, when any, is attached separately). */
 async function renderJob(
   job: ClaimedJob,
-  { calendar: decision, unsubscribed }: Reservation,
+  { calendar: decision }: Reservation,
   common: MeetingInviteEmailProps,
 ): Promise<{ subject: string; html: string; text: string }> {
   switch (job.kind) {
@@ -310,7 +323,6 @@ async function renderJob(
       return renderMeetingCancelEmail({
         ...common,
         calendar: decision !== null,
-        unsubscribed,
       });
     case "reminder":
       return renderMeetingReminderEmail({
@@ -375,6 +387,7 @@ async function sendJob(
     meeting: job.meeting,
     links,
     now: new Date(deps.now()),
+    unsubscribed: reservation.unsubscribed,
   };
   const email = await renderJob(job, reservation, common);
   const calendar = decision

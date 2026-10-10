@@ -79,6 +79,17 @@ describe("meeting update email", () => {
     expect(email.html).not.toContain("?choice=");
   });
 
+  it("leaves out the unsubscribe link for someone who already unsubscribed", async () => {
+    const email = await renderMeetingUpdateEmail({
+      ...PROPS,
+      notify: false,
+      calendar: true,
+      unsubscribed: true,
+    });
+    expect(email.text).not.toContain("Unsubscribe");
+    expect(email.html).not.toContain(PROPS.links.unsubscribe);
+  });
+
   it("uses no emojis and escapes user text", async () => {
     const email = await renderMeetingUpdateEmail({
       ...PROPS,

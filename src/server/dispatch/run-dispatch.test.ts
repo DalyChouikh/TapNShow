@@ -466,6 +466,37 @@ describe("runDispatch", () => {
     expect(summary).toMatchObject({ sent: 0, skipped: 2 });
   });
 
+  it("only moves the event of someone who unsubscribed, whatever they were told before (owner decision)", async () => {
+    const { deps } = setup({
+      jobs: [
+        {
+          ...job(1, undefined, "t-1"),
+          kind: "update",
+          payload: {
+            changes: moved,
+            notify: true,
+            reconfirm: true,
+            audience: "pending",
+          },
+        },
+      ],
+      reserve: [
+        {
+          kind: "ok",
+          calendar: { action: "request", sequence: 1 },
+          unsubscribed: true,
+        },
+      ],
+    });
+    const summary = await runDispatch(deps, OPTIONS);
+    expect(summary).toMatchObject({ sent: 1, updates: 1, calendar: 1 });
+    const raw = unfold(rawOf(deps)).replace(/=\r\n/g, "");
+    expect(raw).toContain("METHOD:REQUEST");
+    expect(raw).toMatch(/Subject: =\?UTF-8\?Q\?Updated_in_your_calendar/);
+    expect(raw).not.toContain("?choice=");
+    expect(raw).not.toContain(`/u/${deps.tokenFor(job(1).inviteeId)}`);
+  });
+
   it("skips a calendar holder's update whose changes cancelled out", async () => {
     const { deps, store } = setup({
       jobs: [

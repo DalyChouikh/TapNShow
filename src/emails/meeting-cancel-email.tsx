@@ -9,8 +9,6 @@ import { getEmailTranslator } from "./translator";
 export type MeetingCancelEmailProps = MeetingInviteEmailProps & {
   /** The person had the event in their calendar: a `METHOD:CANCEL` part removes it. */
   calendar: boolean;
-  /** They unsubscribed after adding it: the email only removes it, so no unsubscribe link. */
-  unsubscribed?: boolean;
 };
 
 /** "<Workspace> cancelled <title> on <date> at <time>." — no answer buttons. */

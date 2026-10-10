@@ -44,6 +44,7 @@ export function MeetingUpdateEmail({
   notify,
   reconfirm,
   calendar,
+  unsubscribed = false,
 }: MeetingUpdateEmailProps) {
   const tr = getEmailTranslator();
   const responseMode = meeting.responseMode;
@@ -57,6 +58,7 @@ export function MeetingUpdateEmail({
           workspaceName={workspaceName}
           senderEmail={senderEmail}
           links={links}
+          unsubscribed={unsubscribed}
         />
       }
     >
