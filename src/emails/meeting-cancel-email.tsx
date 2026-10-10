@@ -9,6 +9,8 @@ import { getEmailTranslator } from "./translator";
 export type MeetingCancelEmailProps = MeetingInviteEmailProps & {
   /** The person had the event in their calendar: a `METHOD:CANCEL` part removes it. */
   calendar: boolean;
+  /** They unsubscribed after adding it: the email only removes it, so no unsubscribe link. */
+  unsubscribed?: boolean;
 };
 
 /** "<Workspace> cancelled <title> on <date> at <time>." — no answer buttons. */
@@ -18,6 +20,7 @@ export function MeetingCancelEmail({
   meeting,
   links,
   calendar,
+  unsubscribed = false,
 }: MeetingCancelEmailProps) {
   const tr = getEmailTranslator();
   const when = formatMeetingWhen(meeting);
@@ -31,6 +34,7 @@ export function MeetingCancelEmail({
           workspaceName={workspaceName}
           senderEmail={senderEmail}
           links={links}
+          unsubscribed={unsubscribed}
         />
       }
     >

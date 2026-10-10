@@ -53,6 +53,7 @@ const reserveSchema = z.union([
       action: z.enum(["request", "cancel"]),
       sequence: z.number().int(),
     }),
+    unsubscribed: z.literal(true).optional(),
   }),
   z.object({ kind: z.literal("ok") }),
   z.object({ kind: z.literal("done") }),
@@ -510,6 +511,41 @@ describe("dispatch_reserve for M6 kinds", () => {
     expect((await invitee(a.inviteeId))?.calendar_state).toBe("none");
     const other = await insertJob("cancel", b.inviteeId, {});
     expect((await reserveOne(other)).reserved).toEqual({ kind: "ok" });
+  });
+
+  it("removes the event of someone who unsubscribed, and sends them nothing else (owner decision)", async () => {
+    await adminClient()
+      .from("meetings")
+      .update({ status: "cancelled" })
+      .eq("id", meeting);
+    await setInvitee(a.inviteeId, {
+      calendar_state: "added",
+      calendar_sequence: 2,
+    });
+    const { error } = await adminClient()
+      .from("contacts")
+      .update({
+        unsubscribed_at: new Date().toISOString(),
+        unsubscribed_via: "link",
+      })
+      .in("id", [contacts[0], contacts[1]]);
+    expect(error).toBeNull();
+    const holder = await insertJob("cancel", a.inviteeId, {});
+    expect((await reserveOne(holder)).reserved).toEqual({
+      kind: "ok",
+      calendar: { action: "cancel", sequence: 2 },
+      unsubscribed: true,
+    });
+    const other = await insertJob("cancel", b.inviteeId, {});
+    const result = await reserveOne(other);
+    expect(result.reserved).toEqual({ kind: "done" });
+    expect(result.job.last_error).toBe("unsubscribed");
+    const update = await insertJob("update", a.inviteeId, {
+      changes: { title: ["Old", "New"] },
+      notify: true,
+      reconfirm: false,
+    });
+    expect((await reserveOne(update)).job.last_error).toBe("unsubscribed");
   });
 
   it("records the calendar decision of an update whose lease expired after the send started", async () => {

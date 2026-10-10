@@ -176,6 +176,8 @@ const reserveSchema = z
           sequence: z.number().int(),
         })
         .optional(),
+      /** The person unsubscribed: only the removal of a cancelled meeting from their calendar. */
+      unsubscribed: z.literal(true).optional(),
     }),
     z.object({ kind: z.literal("quota"), retry_at: z.string() }),
     z.object({ kind: z.literal("done") }),
@@ -186,7 +188,11 @@ const reserveSchema = z
       case "quota":
         return { kind: db.kind, retryAt: db.retry_at };
       case "ok":
-        return { kind: db.kind, calendar: db.calendar ?? null };
+        return {
+          kind: db.kind,
+          calendar: db.calendar ?? null,
+          ...(db.unsubscribed && { unsubscribed: db.unsubscribed }),
+        };
       default:
         return db;
     }
@@ -194,6 +200,14 @@ const reserveSchema = z
 
 /** What reserving quota for one job produced. */
 export type ReserveResult = z.output<typeof reserveSchema>;
+
+/** A job cleared to send, with its calendar decision. */
+export type Reservation = Extract<ReserveResult, { kind: "ok" }>;
+
+/** Reads what `dispatch_reserve` returned; throws on a shape this code doesn't know. */
+export function parseReserve(data: Json): ReserveResult {
+  return reserveSchema.parse(data);
+}
 
 /** One Owner to tell that their workspace's Gmail needs reconnecting. */
 export type BrokenAlert = {
@@ -285,7 +299,7 @@ export function createDispatchStore(
         p_token_hash: tokenHash,
       });
       check(error);
-      return reserveSchema.parse(data);
+      return parseReserve(data);
     },
     async finish(jobId, outcome, failure, tokenHash) {
       const { error } = await client.rpc("dispatch_finish", {

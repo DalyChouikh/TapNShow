@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseClaim } from "./dispatch";
+import { parseClaim, parseReserve } from "./dispatch";
 
 /** One job as `dispatch_claim` returns it (snake_case, M5 shape: no `payload`). */
 function dbJob(n: number, job: Record<string, string | object | null> = {}) {
@@ -120,5 +120,24 @@ describe("parseClaim", () => {
 
   it("returns null when there is nothing to claim", () => {
     expect(parseClaim(null)).toBeNull();
+  });
+});
+
+describe("parseReserve", () => {
+  it("keeps the calendar decision, and says when the person unsubscribed (calendar removal only)", () => {
+    const calendar = { action: "cancel", sequence: 2 };
+    expect(parseReserve({ kind: "ok", calendar })).toEqual({
+      kind: "ok",
+      calendar,
+    });
+    expect(parseReserve({ kind: "ok", calendar, unsubscribed: true })).toEqual({
+      kind: "ok",
+      calendar,
+      unsubscribed: true,
+    });
+    expect(parseReserve({ kind: "ok" })).toEqual({
+      kind: "ok",
+      calendar: null,
+    });
   });
 });

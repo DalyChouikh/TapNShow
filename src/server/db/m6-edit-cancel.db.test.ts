@@ -40,6 +40,7 @@ let a: Person;
 let b: Person;
 let c: Person;
 let d: Person;
+let contactIds: string[];
 
 const DAY = 86_400_000;
 /** A whole-minute UTC instant `days` ahead at 17:00 (Postgres echoes it back the same way). */
@@ -195,6 +196,7 @@ beforeEach(async () => {
     4,
     `m6e-${crypto.randomUUID().slice(0, 6)}`,
   );
+  contactIds = contacts;
   startsAt = daysAhead(3);
   meeting = await seedMeeting(workspace.id, {
     status: "scheduled",
@@ -594,6 +596,24 @@ describe("cancel_meeting", () => {
       .eq("id", d.inviteeId)
       .single();
     expect(row?.email_status).toBe("queued");
+  });
+
+  it("removes the event from the calendar of someone who unsubscribed after adding it (owner decision)", async () => {
+    const { error } = await adminClient()
+      .from("contacts")
+      .update({
+        unsubscribed_at: new Date().toISOString(),
+        unsubscribed_via: "link",
+      })
+      .in("id", [contactIds[0], contactIds[2]]);
+    expect(error).toBeNull();
+    const { data } = await cancel();
+    // a (unsubscribed, event in their calendar) gets only the removal, not counted as an email;
+    // c (unsubscribed, no event) gets nothing.
+    expect(data).toEqual({ emails: 1 });
+    expect(
+      (await jobsOfKind("cancel")).map((job) => job.invitee_id).sort(),
+    ).toEqual([a.inviteeId, b.inviteeId].sort());
   });
 
   it("refuses Viewers", async () => {

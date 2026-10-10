@@ -509,6 +509,24 @@ describe("runDispatch", () => {
     expect(raw).toMatch(/Subject: =\?UTF-8\?Q\?Cancelled=3A_Weekly_sync/);
   });
 
+  it("removes the event of someone who unsubscribed, without an unsubscribe link (owner decision)", async () => {
+    const { deps } = setup({
+      jobs: [{ ...job(1, undefined, "t-1"), kind: "cancel" }],
+      reserve: [
+        {
+          kind: "ok",
+          calendar: { action: "cancel", sequence: 2 },
+          unsubscribed: true,
+        },
+      ],
+    });
+    const summary = await runDispatch(deps, OPTIONS);
+    expect(summary).toMatchObject({ sent: 1, cancellations: 1, calendar: 1 });
+    const raw = unfold(rawOf(deps)).replace(/=\r\n/g, "");
+    expect(raw).toContain("METHOD:CANCEL");
+    expect(raw).not.toContain(`/u/${deps.tokenFor(job(1).inviteeId)}`);
+  });
+
   it("sends a reminder with the answer buttons to someone who hasn't answered", async () => {
     const { deps } = setup({
       jobs: [{ ...job(1, undefined, "t-1"), kind: "reminder" }],

@@ -90,27 +90,36 @@ export function MeetingWhenWhere({
   );
 }
 
-/** "Sent from … with TapNShow", "Unsubscribe from <Workspace>", "Not my group" (spec §7.16). */
+/**
+ * "Sent from … with TapNShow", "Unsubscribe from <Workspace>", "Not my group" (spec §7.16). Someone
+ * who already unsubscribed gets no unsubscribe link.
+ */
 export function MeetingFooter({
   workspaceName,
   senderEmail,
   links,
+  unsubscribed = false,
 }: {
   workspaceName: string;
   senderEmail: string;
   links: { unsubscribe: string; report: string };
+  unsubscribed?: boolean;
 }) {
   const tr = getEmailTranslator();
   return (
     <>
       {tr("meetingInvite.sentFrom", { email: senderEmail, appName: APP_NAME })}{" "}
-      <Link
-        href={links.unsubscribe}
-        style={{ color: t.muted, textDecoration: "underline" }}
-      >
-        {tr("meetingInvite.unsubscribe", { workspace: workspaceName })}
-      </Link>
-      {" · "}
+      {unsubscribed ? null : (
+        <>
+          <Link
+            href={links.unsubscribe}
+            style={{ color: t.muted, textDecoration: "underline" }}
+          >
+            {tr("meetingInvite.unsubscribe", { workspace: workspaceName })}
+          </Link>
+          {" · "}
+        </>
+      )}
       <Link
         href={links.report}
         style={{ color: t.muted, textDecoration: "underline" }}

@@ -25,6 +25,7 @@ import type {
   Claim,
   ClaimedJob,
   DispatchStore,
+  Reservation,
 } from "@/server/queries/dispatch";
 
 /** Everything the dispatcher touches, injected so tests run without Google or a database. */
@@ -256,7 +257,7 @@ async function drainSender(
       run,
       session,
       job,
-      reservation.calendar,
+      reservation,
       summary,
     );
     if (outcome === "stop") {
@@ -284,7 +285,7 @@ function updateHasSomethingToSay(
 /** Renders one job's email by kind (the `.ics`, when any, is attached separately). */
 async function renderJob(
   job: ClaimedJob,
-  decision: CalendarDecision | null,
+  { calendar: decision, unsubscribed }: Reservation,
   common: MeetingInviteEmailProps,
 ): Promise<{ subject: string; html: string; text: string }> {
   switch (job.kind) {
@@ -309,6 +310,7 @@ async function renderJob(
       return renderMeetingCancelEmail({
         ...common,
         calendar: decision !== null,
+        unsubscribed,
       });
     case "reminder":
       return renderMeetingReminderEmail({
@@ -356,9 +358,10 @@ async function sendJob(
   run: string,
   session: Session,
   job: ClaimedJob,
-  decision: CalendarDecision | null,
+  reservation: Reservation,
   summary: DispatchSummary,
 ): Promise<JobOutcome> {
+  const decision = reservation.calendar;
   const token = deps.tokenFor(job.inviteeId);
   const links = {
     respond: `${deps.appUrl}/r/${token}`,
@@ -373,7 +376,7 @@ async function sendJob(
     links,
     now: new Date(deps.now()),
   };
-  const email = await renderJob(job, decision, common);
+  const email = await renderJob(job, reservation, common);
   const calendar = decision
     ? calendarFile(deps, session, job, decision)
     : undefined;
