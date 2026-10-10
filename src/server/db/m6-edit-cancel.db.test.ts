@@ -390,6 +390,27 @@ describe("edit_sent_meeting", () => {
     expect(await editOk({ title: "Newer" }, true)).toMatchObject({ emails: 3 });
   });
 
+  it("moves the event of someone who unsubscribed after adding it, emailing them nothing else (owner decision)", async () => {
+    // a holds the event; c has none. Both unsubscribe, then the time moves.
+    const { error } = await adminClient()
+      .from("contacts")
+      .update({
+        unsubscribed_at: new Date().toISOString(),
+        unsubscribed_via: "link",
+      })
+      .in("id", [contactIds[0], contactIds[2]]);
+    expect(error).toBeNull();
+    expect(await editOk({ starts_at: daysAhead(4) })).toMatchObject({
+      emails: 1,
+      calendar_only: 1,
+    });
+    const jobs = await jobsOfKind("update");
+    expect(jobs.map((job) => job.invitee_id).sort()).toEqual(
+      [a.inviteeId, b.inviteeId].sort(),
+    );
+    expect(byInvitee(jobs, a)[0].payload.notify).toBe(false);
+  });
+
   it("emails nobody about a hidden setting, but logs it", async () => {
     expect(await editOk({ reason_required: false })).toMatchObject({
       emails: 0,

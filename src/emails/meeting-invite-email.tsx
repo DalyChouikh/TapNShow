@@ -35,6 +35,11 @@ export type MeetingInviteEmailProps = {
   links: { respond: string; unsubscribe: string; report: string };
   /** The send time (tests); the deadline line shows only while the deadline is ahead of it. */
   now?: Date;
+  /**
+   * They unsubscribed after adding the meeting to their calendar: the email only moves or removes
+   * the event, so its footer has no unsubscribe link.
+   */
+  unsubscribed?: boolean;
 };
 
 /** One member's invite: meeting card, answer buttons by mode, and per-workspace opt-out links. */
