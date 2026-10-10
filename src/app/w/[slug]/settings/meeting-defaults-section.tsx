@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
+import { ReminderChoice } from "@/components/forms/reminder-choice";
 import { SwitchRow } from "@/components/forms/switch-row";
 import { Chip } from "@/components/ui/chip";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,12 @@ import {
   LOCATION_MAX,
   MEETING_URL_MAX,
 } from "@/config/meetings";
+import {
+  REMINDER_GOING_CHOICES,
+  REMINDER_GOING_DEFAULT,
+  REMINDER_PENDING_CHOICES,
+  REMINDER_PENDING_DEFAULT,
+} from "@/config/reminders";
 import {
   useMeetingDefaults,
   useUpdateMeetingDefaults,
@@ -84,6 +91,17 @@ export function MeetingDefaultsSection({
           <dd>{tw(`review.mode.${value.responseMode}`)}</dd>
           <dt className="font-bold">{t("duration")}</dt>
           <dd>{minutes(value.durationMinutes)}</dd>
+          <dt className="font-bold">{t("reminders")}</dt>
+          <dd>
+            {t("remindersValue", {
+              pending: t("remindPendingValue", {
+                hours: String(value.reminderPendingHours ?? "off"),
+              }),
+              going: t("remindGoingValue", {
+                hours: String(value.reminderGoingHours ?? "off"),
+              }),
+            })}
+          </dd>
         </dl>
       </SettingsSection>
     );
@@ -151,6 +169,24 @@ export function MeetingDefaultsSection({
               }
               setFooter(null);
             }}
+          />
+          <ReminderChoice
+            id="default-reminder-pending"
+            label={tw("responses.remindPending")}
+            hint={tw("responses.remindPendingHint")}
+            value={value.reminderPendingHours}
+            choices={REMINDER_PENDING_CHOICES}
+            fallback={REMINDER_PENDING_DEFAULT}
+            onChange={(hours) => save({ reminderPendingHours: hours })}
+          />
+          <ReminderChoice
+            id="default-reminder-going"
+            label={tw("responses.remindGoing")}
+            hint={tw("responses.remindGoingHint")}
+            value={value.reminderGoingHours}
+            choices={REMINDER_GOING_CHOICES}
+            fallback={REMINDER_GOING_DEFAULT}
+            onChange={(hours) => save({ reminderGoingHours: hours })}
           />
         </>
       ) : null}

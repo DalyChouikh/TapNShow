@@ -20,7 +20,6 @@ import {
   LOCATION_MAX,
   TITLE_MAX,
 } from "@/config/meetings";
-import { useUpdateMeeting } from "@/hooks/use-meetings";
 import { durationText, utcToZonedParts } from "@/lib/meetings/format";
 import { locationModeSchema } from "@/shared/api/meeting-settings";
 import {
@@ -30,12 +29,12 @@ import {
   type DetailsValues,
 } from "./details-form";
 import { WizardFooter } from "./wizard-footer";
-import type { WizardStepProps } from "./wizard-steps";
+import { stepAfter, type WizardStepProps } from "./wizard-steps";
 
 /** Step 1: title, when, duration, where, agenda (spec §7.2). */
-export function DetailsStep({ slug, meeting, goTo }: WizardStepProps) {
+export function DetailsStep({ meeting, steps, goTo, saver }: WizardStepProps) {
   const t = useTranslations("Wizard");
-  const update = useUpdateMeeting(slug, meeting.id);
+  const after = stepAfter(steps, "details");
   const parts = meeting.startsAt
     ? utcToZonedParts(meeting.startsAt, meeting.timezone)
     : null;
@@ -59,14 +58,12 @@ export function DetailsStep({ slug, meeting, goTo }: WizardStepProps) {
     key: K,
     value: DetailsValues[K],
   ) => setValues((current) => ({ ...current, [key]: value }));
-  const saveQuietly = () => update.mutate(detailsPatch(values));
+  const saveQuietly = () => saver.save(detailsPatch(values));
   const next = () => {
     const found = validateDetails(values, new Date());
     setErrors(found);
-    if (Object.keys(found).length === 0) {
-      update.mutate(detailsPatch(values), {
-        onSuccess: () => goTo("audience"),
-      });
+    if (Object.keys(found).length === 0 && after) {
+      saver.save(detailsPatch(values), () => goTo(after));
     }
   };
   const today = utcToZonedParts(new Date().toISOString(), values.timezone).date;
@@ -224,7 +221,7 @@ export function DetailsStep({ slug, meeting, goTo }: WizardStepProps) {
         onChange={(agenda) => set("agendaMd", agenda)}
         onBlur={saveQuietly}
       />
-      {update.isError ? (
+      {saver.failed ? (
         <p role="alert" className="font-bold">
           {t("errors.saveFailed")}
         </p>
@@ -235,9 +232,9 @@ export function DetailsStep({ slug, meeting, goTo }: WizardStepProps) {
           saveQuietly();
           history.back();
         }}
-        nextLabel={t("next.audience")}
+        nextLabel={after ? t(`next.${after}`) : ""}
         onNext={next}
-        pending={update.isPending}
+        pending={saver.pending}
       />
     </div>
   );

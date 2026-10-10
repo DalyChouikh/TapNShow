@@ -17,6 +17,8 @@ const base: ResponsesValues = {
   deadlineDate: null,
   deadlineTime: null,
   timezone: "Africa/Tunis",
+  reminderPendingHours: 24,
+  reminderGoingHours: 2,
 };
 
 describe("validateResponses", () => {

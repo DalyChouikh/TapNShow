@@ -1,16 +1,21 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { routeFetch } from "@/test/fetch";
 import { workspaceFixture } from "@/test/fixtures/me";
 import { meetingFixture } from "@/test/fixtures/meetings";
 import { renderWithProviders } from "@/test/render";
+import { StepHarness } from "@/test/wizard";
 import { ResponsesStep } from "./responses-step";
-import { WIZARD_STEPS } from "./wizard-steps";
+import type { Meeting } from "@/shared/api/meetings";
+import { EDIT_STEPS, WIZARD_STEPS } from "./wizard-steps";
 
 const path = `/api/workspaces/robotics-cd34/meetings/${meetingFixture.id}`;
 
-function setup() {
+function setup(
+  mode: "draft" | "edit" = "draft",
+  meeting: Meeting = meetingFixture,
+) {
   const fetchMock = routeFetch({
     [`PATCH ${path}`]: (init) =>
       new Response(
@@ -23,11 +28,13 @@ function setup() {
   });
   const goTo = vi.fn();
   renderWithProviders(
-    <ResponsesStep
+    <StepHarness
+      Step={ResponsesStep}
       slug="robotics-cd34"
-      meeting={meetingFixture}
+      meeting={meeting}
+      mode={mode}
       workspace={workspaceFixture}
-      steps={WIZARD_STEPS}
+      steps={mode === "edit" ? EDIT_STEPS : WIZARD_STEPS}
       goTo={goTo}
     />,
   );
@@ -161,6 +168,61 @@ describe("ResponsesStep", () => {
       commentsEnabled: true,
       footerNote: "",
       responseDeadline: null,
+      reminderPendingHours: 24,
+      reminderGoingHours: 2,
     });
+  });
+
+  it("sets the two reminders: switch, then hours (M6)", async () => {
+    const { goTo, patches } = setup();
+    const pending = screen.getByRole("radiogroup", {
+      name: "Remind people who haven't answered",
+    });
+    expect(
+      within(pending).getByRole("radio", { name: "24 h" }),
+    ).toHaveAttribute("aria-checked", "true");
+    await userEvent.click(within(pending).getByRole("radio", { name: "6 h" }));
+    await userEvent.click(
+      screen.getByRole("switch", { name: "Remind Going and Late" }),
+    );
+    await next();
+    await vi.waitFor(() => expect(goTo).toHaveBeenCalledWith("review"));
+    expect(patches()[0]).toMatchObject({
+      reminderPendingHours: 6,
+      reminderGoingHours: null,
+    });
+  });
+
+  it("hides the reminders for an announcement", async () => {
+    setup();
+    await userEvent.click(screen.getByRole("radio", { name: "No answers" }));
+    expect(
+      screen.queryByRole("switch", { name: "Remind Going and Late" }),
+    ).toBeNull();
+  });
+
+  it("locks the answer type and the delays of a sent meeting (M6)", () => {
+    setup("edit", { ...meetingFixture, status: "scheduled" });
+    expect(screen.getByRole("radio", { name: "No answers" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "10 min" })).toBeDisabled();
+    expect(
+      screen.getByText(
+        "Fixed once sent. To change it, cancel and duplicate the meeting.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps a deadline that already passed when editing something else (Review Focus 3)", async () => {
+    const { goTo } = setup("edit", {
+      ...meetingFixture,
+      status: "scheduled",
+      responseDeadline: "2026-10-07T08:00:00.000Z",
+    });
+    await userEvent.click(
+      screen.getByRole("button", { name: "Next: Review changes" }),
+    );
+    expect(goTo).toHaveBeenCalledWith("changes");
+    expect(screen.queryByText("Pick a time in the future.")).toBeNull();
+    sessionStorage.clear();
   });
 });
