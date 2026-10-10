@@ -109,6 +109,8 @@ export function ChangesStep({
     !touches(changes, PLACE_FIELDS);
   const connection = sender.data?.sender ?? null;
   const toSend = emails + calendarOnly;
+  // Nobody is emailed about it, but calendar holders get a short note that moves their event.
+  const calendarOnlyNote = emails === 0 && calendarOnly > 0;
   const quota =
     connection && toSend > 0
       ? quotaLine({
@@ -162,7 +164,7 @@ export function ChangesStep({
         <h2 className="font-display text-lg">{tc("whoIsTold")}</h2>
         <p className="font-bold">{tc("emails", { count: emails })}</p>
         {reconfirm ? <p>{tc("reconfirm")}</p> : null}
-        {emails === 0 && calendarOnly > 0 ? (
+        {calendarOnlyNote ? (
           <p>{tc("calendarNote", { count: calendarOnly })}</p>
         ) : null}
         {quota ? (
@@ -211,8 +213,18 @@ export function ChangesStep({
       <ConfirmDialog
         open={confirming}
         onOpenChange={setConfirming}
-        title={tc("confirmTitle", { count: emails })}
-        description={reconfirm ? tc("confirmReconfirm") : tc("confirmBody")}
+        title={
+          calendarOnlyNote
+            ? tc("confirmCalendarTitle", { count: calendarOnly })
+            : tc("confirmTitle", { count: emails })
+        }
+        description={
+          calendarOnlyNote
+            ? tc("confirmCalendarBody")
+            : reconfirm
+              ? tc("confirmReconfirm")
+              : tc("confirmBody")
+        }
         confirmLabel={saveLabel}
         pending={save.isPending}
         onConfirm={commit}

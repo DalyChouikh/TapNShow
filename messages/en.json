@@ -839,6 +839,8 @@
       "confirmTitle": "{count, plural, one {Save and email # person?} other {Save and email # people?}}",
       "confirmBody": "They get one email with the changes.",
       "confirmReconfirm": "They get one email with the changes and are asked to confirm again.",
+      "confirmCalendarTitle": "{count, plural, one {Save and update # person's calendar?} other {Save and update # people's calendars?}}",
+      "confirmCalendarBody": "They get a short note, and the event in their calendar changes too.",
       "saved": "Changes saved.",
       "keep": "Keep editing",
       "on": "On",
