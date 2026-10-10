@@ -60,17 +60,18 @@ export function useMeetingResults(slug: string, id: string, live: boolean) {
 export const meetingPeopleKey = (slug: string, id: string) =>
   ["meeting-people", slug, id] as const;
 
-/** A meeting's people for one filter, paged; refreshed with the counts while `live`. */
+/** A meeting's people for one filter (and search), paged; refreshed with the counts while `live`. */
 export function useMeetingPeople(
   slug: string,
   id: string,
   filter: PeopleFilter,
   live: boolean,
+  search: string | null = null,
 ) {
   return usePagedList({
-    queryKey: [...meetingPeopleKey(slug, id), filter],
+    queryKey: [...meetingPeopleKey(slug, id), filter, search ?? ""],
     path: `${meetingBase(slug, id)}/people`,
-    params: { filter },
+    params: search ? { filter, search } : { filter },
     schema: peoplePageSchema,
     refetchInterval: live ? RESULTS_POLL_MS : false,
   });

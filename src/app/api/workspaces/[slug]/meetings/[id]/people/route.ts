@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { PEOPLE_SEARCH_MAX } from "@/config/meetings";
 import { apiError, fromDatabaseError } from "@/server/http/errors";
 import { forbidViewer } from "@/server/http/forbid-viewer";
 import { loadMeetingContext } from "@/server/http/meeting-context";
@@ -12,7 +13,7 @@ import {
 import { addPeopleBodySchema } from "@/shared/api/meetings";
 import { peopleFilterSchema } from "@/shared/api/responses";
 
-/** One page of a meeting's invitees with their answers (any member); `?filter=&cursor=&limit=`. */
+/** One page of a meeting's invitees with their answers (any member); `?filter=&search=&cursor=&limit=`. */
 export async function GET(
   request: NextRequest | Request,
   ctx: RouteContext<"/api/workspaces/[slug]/meetings/[id]/people">,
@@ -22,6 +23,10 @@ export async function GET(
     new URL(request.url).searchParams.get("filter") ?? "all",
   );
   if (!filter.success) {
+    return apiError("invalid_input");
+  }
+  const search = new URL(request.url).searchParams.get("search")?.trim() ?? "";
+  if (search.length > PEOPLE_SEARCH_MAX) {
     return apiError("invalid_input");
   }
   const page = readPageParams(request, peopleCursorSchema);
@@ -38,6 +43,7 @@ export async function GET(
     filter.data,
     page.limit,
     page.after,
+    search || null,
   );
   return error ? fromDatabaseError(error) : NextResponse.json(data);
 }

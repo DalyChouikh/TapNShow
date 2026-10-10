@@ -19,6 +19,7 @@ export const tokenInfoFixture: TokenInfo = {
     meetingUrl: "",
     agendaMd: "",
     status: "scheduled",
+    previousStartsAt: null,
   },
   answers: {
     responseMode: "attendance",

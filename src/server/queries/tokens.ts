@@ -22,6 +22,7 @@ const dbAnswerSchema = z
     after_deadline: z.boolean(),
     responded_at: z.string(),
     updated_at: z.string(),
+    needs_reconfirmation: z.boolean().default(false),
   })
   .transform((db): Answer => ({
     status: db.status,
@@ -31,6 +32,7 @@ const dbAnswerSchema = z
     afterDeadline: db.after_deadline,
     respondedAt: db.responded_at,
     updatedAt: db.updated_at,
+    needsReconfirmation: db.needs_reconfirmation,
   }));
 
 const dbInfoSchema = z
@@ -52,6 +54,7 @@ const dbInfoSchema = z
       meeting_url: z.string(),
       agenda_md: z.string(),
       status: z.string(),
+      previous_starts_at: z.string().nullable().default(null),
     }),
     answers: z.object({
       response_mode: z.string(),
@@ -82,6 +85,7 @@ const dbInfoSchema = z
         meetingUrl: db.meeting.meeting_url,
         agendaMd: db.meeting.agenda_md,
         status: db.meeting.status,
+        previousStartsAt: db.meeting.previous_starts_at,
       },
       answers: {
         responseMode: db.answers.response_mode,

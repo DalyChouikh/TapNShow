@@ -30,6 +30,7 @@ const person = (over: Partial<PersonRow>): PersonRow => ({
   emailError: null,
   sentAt: null,
   answer: null,
+  mark: null,
   ...over,
 });
 
@@ -45,6 +46,7 @@ describe("export rows", () => {
             reason: long,
             comment: "",
             afterDeadline: true,
+            needsReconfirmation: false,
             updatedAt: "2026-10-09T10:05:00+00:00",
           },
         }),

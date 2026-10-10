@@ -7,6 +7,7 @@ import { ResultTiles } from "./result-tiles";
 const results = {
   ...resultsFixture,
   answers: {
+    ...resultsFixture.answers,
     attending: 17,
     late: 4,
     absent: 3,

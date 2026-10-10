@@ -23,6 +23,8 @@ export const answerSchema = z.object({
   afterDeadline: z.boolean(),
   respondedAt: z.string(),
   updatedAt: z.string(),
+  /** The time changed after this answer: asked to confirm again (spec §7.3). */
+  needsReconfirmation: z.boolean().default(false),
 });
 /** A saved answer. */
 export type Answer = z.infer<typeof answerSchema>;
@@ -116,10 +118,22 @@ export const meetingResultsSchema = z.object({
     notAttending: count,
     noReply: count,
     calendarRequested: count,
+    /** Asked to confirm again after a time change (not in Going/Late/Absent meanwhile). */
+    toReconfirm: count,
+    /** Who a Nudge would email now. */
+    remindable: count,
+    /** Who a Cancel would email. */
+    reachable: count,
   }),
   paused: count,
   resumesAt: z.string().nullable(),
   senderState: z.enum(["ok", "missing", "broken"]),
+  checkedIn: count,
+  nudge: z.object({
+    lastAt: z.string().nullable(),
+    lastCount: z.number().int().nullable(),
+    nextAt: z.string().nullable(),
+  }),
 });
 /** A meeting's counts. */
 export type MeetingResults = z.infer<typeof meetingResultsSchema>;
@@ -133,9 +147,19 @@ export const peopleFilterSchema = z.enum([
   "not_attending",
   "no_reply",
   "not_delivered",
+  "to_reconfirm",
 ]);
 /** A people filter. */
 export type PeopleFilter = z.infer<typeof peopleFilterSchema>;
+
+/** A check-in mark (spec §7.8). */
+export const markSchema = z.object({
+  actual: z.enum(["present", "late", "absent"]),
+  markedAt: z.string(),
+  markedByName: z.string().nullable(),
+});
+/** A check-in mark. */
+export type Mark = z.infer<typeof markSchema>;
 
 /** One invitee with their answer (meeting page). */
 export const personRowSchema = z.object({
@@ -148,6 +172,7 @@ export const personRowSchema = z.object({
   emailError: z.string().nullable(),
   sentAt: z.string().nullable(),
   answer: organizerAnswerSchema.nullable(),
+  mark: markSchema.nullable(),
 });
 /** A person on the meeting page. */
 export type PersonRow = z.infer<typeof personRowSchema>;

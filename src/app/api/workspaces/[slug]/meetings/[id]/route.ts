@@ -3,7 +3,11 @@ import { apiError, fromDatabaseError, ok } from "@/server/http/errors";
 import { forbidViewer } from "@/server/http/forbid-viewer";
 import { loadMeetingContext } from "@/server/http/meeting-context";
 import { parseJsonBody, rejectCrossOrigin } from "@/server/http/request";
-import { deleteMeeting, updateMeeting } from "@/server/queries/meetings";
+import {
+  deleteCancelledMeeting,
+  deleteMeeting,
+  updateMeeting,
+} from "@/server/queries/meetings";
 import { updateMeetingBodySchema } from "@/shared/api/meetings";
 
 type Ctx = RouteContext<"/api/workspaces/[slug]/meetings/[id]">;
@@ -72,6 +76,11 @@ export async function DELETE(
   const denied = forbidViewer(context.workspace);
   if (denied) {
     return denied;
+  }
+  if (context.meeting.status === "cancelled") {
+    // A cancelled meeting goes once its cancellation emails are out (spec §4 Cancel and delete).
+    const removed = await deleteCancelledMeeting(context.supabase, id);
+    return removed.error ? fromDatabaseError(removed.error) : ok();
   }
   if (context.meeting.status !== "draft") {
     return apiError("meeting_not_draft");

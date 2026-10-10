@@ -74,6 +74,7 @@ const sentResults = {
   ...resultsFixture,
   emails: { total: 30, queued: 0, sent: 29, skipped: 0, failed: 1, unknown: 0 },
   answers: {
+    ...resultsFixture.answers,
     attending: 17,
     late: 4,
     absent: 3,

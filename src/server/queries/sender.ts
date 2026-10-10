@@ -136,7 +136,7 @@ export async function disconnectGoogleConnection(
 }
 
 const DEFAULT_COLUMNS =
-  "default_response_mode, default_delay_options, default_reason_required, default_comments_enabled, default_footer_note, default_duration_minutes, default_online_text, default_meeting_url";
+  "default_response_mode, default_delay_options, default_reason_required, default_comments_enabled, default_footer_note, default_duration_minutes, default_online_text, default_meeting_url, default_reminder_pending_hours, default_reminder_going_hours";
 
 /** The workspace's meeting defaults (any member). */
 export async function getMeetingDefaults(
@@ -161,6 +161,8 @@ export async function getMeetingDefaults(
       durationMinutes: data.default_duration_minutes,
       onlineText: data.default_online_text,
       meetingUrl: data.default_meeting_url,
+      reminderPendingHours: data.default_reminder_pending_hours,
+      reminderGoingHours: data.default_reminder_going_hours,
     }),
     error: null,
   };
@@ -183,6 +185,8 @@ export async function updateMeetingDefaults(
       default_duration_minutes: patch.durationMinutes,
       default_online_text: patch.onlineText,
       default_meeting_url: patch.meetingUrl,
+      default_reminder_pending_hours: patch.reminderPendingHours,
+      default_reminder_going_hours: patch.reminderGoingHours,
     })
     .eq("id", workspaceId);
   return { error };

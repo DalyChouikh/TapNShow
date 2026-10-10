@@ -16,6 +16,8 @@ const defaults = {
   durationMinutes: 60,
   onlineText: "",
   meetingUrl: "",
+  reminderPendingHours: 24,
+  reminderGoingHours: 2,
 };
 
 function setup(workspace = workspaceFixture) {
