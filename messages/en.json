@@ -654,7 +654,8 @@
     "duplicate": "Duplicate",
     "duplicated": "Copy created. Pick a date.",
     "answers": "{attending} going · {late} late · {noReply} no reply",
-    "answersRsvp": "{attending} going · {absent} not going · {noReply} no reply"
+    "answersRsvp": "{attending} going · {absent} not going · {noReply} no reply",
+    "cancelled": "Cancelled"
   },
   "Wizard": {
     "stepOf": "Step {current} of {total}",
@@ -862,8 +863,41 @@
         "comment": "Comment",
         "answered": "Answered"
       },
-      "peopleTitle": "People"
-    }
+      "peopleTitle": "People",
+      "to_reconfirm": "To reconfirm",
+      "toReconfirmPill": "To reconfirm"
+    },
+    "menu": {
+      "label": "Meeting actions",
+      "edit": "Edit",
+      "duplicate": "Duplicate",
+      "cancel": "Cancel meeting",
+      "delete": "Delete"
+    },
+    "cancel": {
+      "keep": "Keep meeting",
+      "title": "{count, plural, one {Cancel this meeting and email # person?} other {Cancel this meeting and email # people?}}",
+      "titleNobody": "Cancel this meeting?",
+      "body": "Everyone invited gets a cancellation email, and it is removed from calendars. This can't be undone.",
+      "confirm": "Cancel meeting",
+      "done": "{count, plural, one {Meeting cancelled. # cancellation email is going out.} other {Meeting cancelled. # cancellation emails are going out.}}",
+      "doneNobody": "Meeting cancelled."
+    },
+    "delete": {
+      "title": "Delete this meeting for good?",
+      "body": "Its answers will be gone. This can't be undone.",
+      "confirm": "Delete"
+    },
+    "nudge": {
+      "action": "{count, plural, one {Remind # who hasn't answered} other {Remind # who haven't answered}}",
+      "confirmTitle": "{count, plural, one {Email # person who hasn't answered from {email}?} other {Email # people who haven't answered from {email}?}}",
+      "confirmBody": "They get a reminder with the answer buttons.",
+      "confirm": "Send reminders",
+      "sent": "{count, plural, one {Reminded # person.} other {Reminded # people.}}",
+      "done": "Reminded {count} at {at} · available again at {next}",
+      "askOwner": "Ask {owner} to connect Gmail to send reminders."
+    },
+    "cancelledOn": "Cancelled on {date}"
   },
   "TokenPages": {
     "invalidTitle": "This link isn't valid",

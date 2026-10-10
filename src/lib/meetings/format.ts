@@ -51,10 +51,19 @@ export function meetingSubject(title: string, when: MeetingWhen): string {
   return `${title} · ${when.date}, ${when.start}`;
 }
 
+/** "14:20" in the meeting's zone. */
+export function formatTime(iso: string, timezone: string): string {
+  return format(new TZDate(iso, timezone), TIME_FORMAT);
+}
+
+/** "Fri 9 Oct" in the meeting's zone. */
+export function formatDate(iso: string, timezone: string): string {
+  return format(new TZDate(iso, timezone), DATE_FORMAT);
+}
+
 /** "Fri 9 Oct, 12:00" in the meeting's zone. */
 export function formatDeadline(iso: string, timezone: string): string {
-  const deadline = new TZDate(iso, timezone);
-  return `${format(deadline, DATE_FORMAT)}, ${format(deadline, TIME_FORMAT)}`;
+  return `${formatDate(iso, timezone)}, ${formatTime(iso, timezone)}`;
 }
 
 /** The UTC instant of a wall-clock date + time in `timezone` (what the pickers store). */

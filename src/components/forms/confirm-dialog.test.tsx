@@ -65,4 +65,21 @@ describe("ConfirmDialog long titles", () => {
       }).className,
     ).toContain("[overflow-wrap:anywhere]");
   });
+
+  it('can name the dismiss button when "Cancel" would be ambiguous', () => {
+    renderWithProviders(
+      <ConfirmDialog
+        open
+        onOpenChange={vi.fn()}
+        title="Cancel this meeting?"
+        confirmLabel="Cancel meeting"
+        cancelLabel="Keep meeting"
+        onConfirm={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Keep meeting" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull();
+  });
 });

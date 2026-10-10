@@ -3,7 +3,7 @@
 import { ArrowSquareOut, Globe, MapPin } from "@phosphor-icons/react";
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
-import { formatMeetingWhen } from "@/lib/meetings/format";
+import { formatDate, formatMeetingWhen } from "@/lib/meetings/format";
 import { browserTimezone } from "@/lib/timezones";
 import type { Meeting } from "@/shared/api/meetings";
 import { meetingPlatform } from "@/lib/meetings/platform";
@@ -41,6 +41,13 @@ export function MeetingHeader({
         </h1>
         {actions}
       </div>
+      {meeting.status === "cancelled" && meeting.cancelledAt ? (
+        <p className="self-start rounded-full border-2 border-outline bg-fill-danger/25 px-3 py-0.5 text-sm font-bold text-ink">
+          {t("cancelledOn", {
+            date: formatDate(meeting.cancelledAt, meeting.timezone),
+          })}
+        </p>
+      ) : null}
       {when ? (
         <p className="font-bold">
           {when.date}, {when.start}–{when.end} ({when.zone})

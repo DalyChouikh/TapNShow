@@ -16,10 +16,14 @@ export function DropdownMenuTrigger(
   return <MenuPrimitive.Trigger data-slot="dropdown-menu-trigger" {...props} />;
 }
 
-/** Outlined menu panel with the hard shadow; pops in unless reduced motion. */
+/**
+ * Outlined menu panel with the hard shadow; pops in unless reduced motion. Like the Popover, it keeps
+ * 16 px from the screen edges on phones (owner's polish rule).
+ */
 export function DropdownMenuContent({
   className,
   sideOffset = 6,
+  collisionPadding = 16,
   ...props
 }: ComponentProps<typeof MenuPrimitive.Content>) {
   return (
@@ -27,6 +31,7 @@ export function DropdownMenuContent({
       <MenuPrimitive.Content
         data-slot="dropdown-menu-content"
         sideOffset={sideOffset}
+        collisionPadding={collisionPadding}
         className={cn(
           "z-50 min-w-56 origin-(--radix-dropdown-menu-content-transform-origin) rounded-card border-[length:var(--tn-border-width)] border-outline bg-surface p-1.5 text-ink shadow-brutal data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 motion-reduce:animate-none",
           className,

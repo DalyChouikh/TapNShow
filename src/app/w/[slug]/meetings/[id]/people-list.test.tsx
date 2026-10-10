@@ -83,4 +83,31 @@ describe("PeopleList", () => {
       expect(screen.getByRole("columnheader", { name })).toBeInTheDocument();
     }
   });
+
+  it("marks an answer that is to be confirmed again (M6)", async () => {
+    const [amira] = peopleFixture;
+    routeFetch({
+      [`GET ${base}?filter=all&limit=50`]: json({
+        items: [
+          {
+            ...amira,
+            answer: amira.answer
+              ? { ...amira.answer, needsReconfirmation: true }
+              : null,
+          },
+        ],
+        nextCursor: null,
+      }),
+    });
+    renderWithProviders(
+      <PeopleList
+        slug="club-ab12"
+        meetingId={MEETING_IDS.meeting}
+        filter="all"
+        live={false}
+        timezone="Africa/Tunis"
+      />,
+    );
+    expect(await screen.findByText("To reconfirm")).toBeInTheDocument();
+  });
 });

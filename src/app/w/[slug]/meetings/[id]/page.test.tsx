@@ -10,6 +10,7 @@ import {
   resultsFixture,
 } from "@/test/fixtures/meetings";
 import { renderWithProviders } from "@/test/render";
+import { senderFixture } from "@/test/fixtures/sender";
 import { downloadBlob } from "@/lib/export/download";
 import type { Roster } from "@/shared/api/roster";
 import MeetingPage from "./page";
@@ -49,6 +50,7 @@ function setup(
       nextCursor: null,
     }),
     [`GET ${base}/contacts`]: json(exportRoster),
+    [`GET ${base}/sender`]: json(senderFixture()),
   });
   renderWithProviders(<MeetingPage />);
   return fetchMock;
@@ -209,5 +211,24 @@ describe("/w/[slug]/meetings/[id]", () => {
       await screen.findByRole("button", { name: /^Emails:/ }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Export" })).toBeNull();
+  });
+
+  it("says when a meeting was cancelled, with no Invite more or Nudge (M6)", async () => {
+    setup({
+      ...meetingFixture,
+      status: "cancelled",
+      startsAt: future,
+      cancelledAt: "2026-10-09T08:00:00.000Z",
+    });
+    expect(
+      await screen.findByText("Cancelled on Fri 9 Oct"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Meeting actions" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Invite more people" }),
+    ).toBeNull();
+    expect(screen.queryByRole("button", { name: /Remind/ })).toBeNull();
   });
 });
