@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useDuplicateMeeting } from "@/hooks/use-meetings";
-import { ApiClientError } from "@/lib/api-client";
+import { errorCodeOf } from "@/lib/api-client";
 
 /**
  * Duplicate (spec §7.9) from a card or the meeting page: copy, say so, and open the copy's Details
@@ -21,10 +21,7 @@ export function useDuplicateAndOpen(slug: string) {
         toast.success(t("duplicated"));
         router.push(`/w/${slug}/meetings/${id}/edit?step=details`);
       },
-      onError: (error) =>
-        toast.error(
-          tErrors(error instanceof ApiClientError ? error.code : "internal"),
-        ),
+      onError: (error) => toast.error(tErrors(errorCodeOf(error))),
     });
   return { open, pending: duplicate.isPending };
 }

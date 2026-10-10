@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ME_QUERY_KEY } from "@/hooks/use-me";
 import { workspaceQueryKey } from "@/hooks/use-workspace";
-import { ApiClientError, apiRequest } from "@/lib/api-client";
+import { apiRequest, errorCodeOf } from "@/lib/api-client";
 import { okSchema } from "@/shared/api/common";
 import {
   timezoneSchema,
@@ -58,10 +58,7 @@ export function GeneralSection({
       ]);
       toast(t("saved"));
     },
-    onError: (error) =>
-      toast.error(
-        tErrors(error instanceof ApiClientError ? error.code : "internal"),
-      ),
+    onError: (error) => toast.error(tErrors(errorCodeOf(error))),
   });
 
   return (

@@ -17,12 +17,15 @@ export function ReconfirmBanner({
   meeting,
   answer,
   pending,
+  errorText,
   onConfirm,
   onChange,
 }: {
   meeting: TokenInfo["meeting"] & { startsAt: string };
   answer: Answer;
   pending: boolean;
+  /** Why the last confirm failed, in plain words. */
+  errorText: string | null;
   onConfirm: () => void;
   onChange: () => void;
 }) {
@@ -45,6 +48,11 @@ export function ReconfirmBanner({
       >
         {t("reconfirmYes", { answer: lowerFirst(said) })}
       </Button>
+      {errorText ? (
+        <p role="alert" className="font-bold">
+          {errorText}
+        </p>
+      ) : null}
       <button
         type="button"
         onClick={onChange}

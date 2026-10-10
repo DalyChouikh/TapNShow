@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useCreateList, useImportContacts } from "@/hooks/use-roster";
-import { ApiClientError } from "@/lib/api-client";
+import { errorCodeOf } from "@/lib/api-client";
 import { buildImportRows } from "@/lib/import/build-import-rows";
 import { guessColumns, mappingProblem } from "@/lib/import/guess-columns";
 import { parsePaste } from "@/lib/import/parse-delimited";
@@ -61,10 +61,7 @@ export function ImportDialog({
       : (sheets[sheetIndex]?.grid ?? []);
   const hasContent = grid.some((row) => row.some((cell) => cell !== ""));
   const rows = step >= 2 ? buildImportRows(grid, mapping) : [];
-  const onError = (error: Error) =>
-    toast.error(
-      tErrors(error instanceof ApiClientError ? error.code : "internal"),
-    );
+  const onError = (error: Error) => toast.error(tErrors(errorCodeOf(error)));
   const body = (dryRun: boolean) => ({
     rows,
     dryRun,

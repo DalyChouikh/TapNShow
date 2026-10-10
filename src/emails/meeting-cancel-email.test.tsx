@@ -15,6 +15,18 @@ describe("meeting cancellation email", () => {
     expect(email.html).not.toContain("?choice=");
   });
 
+  it("leaves out the unsubscribe link for someone who already unsubscribed", async () => {
+    const email = await renderMeetingCancelEmail({
+      ...PROPS,
+      calendar: true,
+      unsubscribed: true,
+    });
+    expect(email.text).toContain("It's removed from your calendar.");
+    expect(email.text).not.toContain("Unsubscribe");
+    expect(email.html).not.toContain(PROPS.links.unsubscribe);
+    expect(email.text).toContain("Not my group");
+  });
+
   it("says nothing about a calendar the person doesn't have", async () => {
     const email = await renderMeetingCancelEmail(PROPS);
     expect(email.text).not.toContain("calendar");

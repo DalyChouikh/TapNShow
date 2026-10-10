@@ -15,7 +15,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { ApiClientError } from "@/lib/api-client";
+import { errorCodeOf } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { listNameSchema, type ListSummary } from "@/shared/api/roster";
 
@@ -80,9 +80,7 @@ export function ListPicker({
       setSearch("");
       choose(created.id);
     } catch (error) {
-      setCreateError(
-        tErrors(error instanceof ApiClientError ? error.code : "internal"),
-      );
+      setCreateError(tErrors(errorCodeOf(error)));
     }
   };
 

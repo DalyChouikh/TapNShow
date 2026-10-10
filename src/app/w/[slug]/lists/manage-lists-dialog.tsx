@@ -17,7 +17,7 @@ import {
   useDeleteList,
   useRenameList,
 } from "@/hooks/use-roster";
-import { ApiClientError } from "@/lib/api-client";
+import { errorCodeOf } from "@/lib/api-client";
 import { listNameSchema, type ListSummary } from "@/shared/api/roster";
 
 /** Create, rename (on blur) and delete lists. Deleting a list never deletes its people. */
@@ -40,10 +40,7 @@ export function ManageListsDialog({
   const [newName, setNewName] = useState("");
   const [confirming, setConfirming] = useState<ListSummary | null>(null);
   const nameInputs = useRef(new Map<string, HTMLInputElement>());
-  const showError = (error: Error) =>
-    toast.error(
-      tErrors(error instanceof ApiClientError ? error.code : "internal"),
-    );
+  const showError = (error: Error) => toast.error(tErrors(errorCodeOf(error)));
 
   // Last name sent per list, so a blur followed by closing does not rename twice.
   const sentNames = useRef(new Map<string, string>());

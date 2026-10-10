@@ -165,6 +165,29 @@ describe("ChangesStep", () => {
     expect(bodies.at(-1)).toMatchObject({ dryRun: true, notify: true });
   });
 
+  it("names the calendar note in the confirm when only calendars change (review)", async () => {
+    const titled = {
+      changed: true,
+      changes: { title: ["Weekly sync", "Weekly sync (room)"] },
+      emails: 0,
+      calendarOnly: 1,
+      reconfirm: false,
+    };
+    setup({ draft: { title: "Weekly sync (room)" }, previews: [titled] });
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Save changes" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByText("Save and update 1 person's calendar?"),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        "They get a short note, and the event in their calendar changes too.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("saves at once when nobody is emailed", async () => {
     const quiet = {
       changed: true,

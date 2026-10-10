@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useCreateList, useImportContacts } from "@/hooks/use-roster";
-import { ApiClientError } from "@/lib/api-client";
+import { errorCodeOf } from "@/lib/api-client";
 import { emailSchema } from "@/shared/api/common";
 import { contactNameSchema, type Roster } from "@/shared/api/roster";
 import { ListTag } from "@/components/forms/list-tag";
@@ -86,10 +86,7 @@ export function AddContactDialog({
           setListIds([]);
           onOpenChange(false);
         },
-        onError: (error) =>
-          toast.error(
-            tErrors(error instanceof ApiClientError ? error.code : "internal"),
-          ),
+        onError: (error) => toast.error(tErrors(errorCodeOf(error))),
       },
     );
   });

@@ -7,6 +7,7 @@ import { ConfirmDialog } from "@/components/forms/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { useNudgeMeeting } from "@/hooks/use-meeting-lifecycle";
 import { useWorkspaceSender } from "@/hooks/use-sender";
+import { errorCodeOf } from "@/lib/api-client";
 import { formatTime } from "@/lib/meetings/format";
 import type { Meeting } from "@/shared/api/meetings";
 import type { MeetingResults } from "@/shared/api/responses";
@@ -22,6 +23,7 @@ export function NudgeButton({
   results: MeetingResults;
 }) {
   const t = useTranslations("MeetingPage.nudge");
+  const tErrors = useTranslations("ApiErrors");
   const sender = useWorkspaceSender(slug);
   const nudge = useNudgeMeeting(slug, meeting.id);
   const [confirming, setConfirming] = useState(false);
@@ -52,12 +54,22 @@ export function NudgeButton({
   }
   const connection = sender.data?.sender ?? null;
   const usable = connection?.status === "active";
+  const refusal = (error: Error) => {
+    const code = errorCodeOf(error);
+    if (code === "sender_not_connected" || code === "sender_broken") {
+      return t("askOwner", { owner: sender.data?.ownerName ?? "" });
+    }
+    return code === "nothing_to_send" ? t("nothingToSend") : tErrors(code);
+  };
   return (
     <div className="flex flex-col gap-1">
       <Button
         className="justify-center"
         disabled={!usable}
-        onClick={() => setConfirming(true)}
+        onClick={() => {
+          nudge.reset();
+          setConfirming(true);
+        }}
       >
         {t("action", { count })}
       </Button>
@@ -80,10 +92,15 @@ export function NudgeButton({
                 setConfirming(false);
                 toast.success(t("sent", { count: reminded }));
               },
-              onError: () => setConfirming(false),
             })
           }
-        />
+        >
+          {nudge.error ? (
+            <p role="alert" className="font-bold">
+              {refusal(nudge.error)}
+            </p>
+          ) : null}
+        </ConfirmDialog>
       ) : null}
     </div>
   );

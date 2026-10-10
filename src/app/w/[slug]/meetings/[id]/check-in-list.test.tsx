@@ -1,6 +1,7 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { RESULTS_POLL_MS } from "@/config/responses";
 import { json, routeFetch } from "@/test/fetch";
 import {
   meetingFixture,
@@ -56,7 +57,7 @@ const results = {
   checkedIn: 1,
 };
 
-function setup(putStatus = 200) {
+function setup(putStatus = 200, live = true) {
   const bodies: { method: string; body: string }[] = [];
   const fetchMock = routeFetch({
     [`GET ${base}/people?filter=all&limit=50`]: json({
@@ -91,7 +92,12 @@ function setup(putStatus = 200) {
     [`GET ${base}/results`]: json(results),
   });
   renderWithProviders(
-    <CheckInList slug="club-ab12" meeting={started} results={results} />,
+    <CheckInList
+      slug="club-ab12"
+      meeting={started}
+      results={results}
+      live={live}
+    />,
     { toaster: true },
   );
   return { bodies, fetchMock };
@@ -101,6 +107,22 @@ const row = (name: string) =>
   screen.getByRole("group", { name: `Check-in for ${name}` });
 
 describe("CheckInList", () => {
+  it("refreshes the list only while the meeting is near (review)", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const listCalls = (fetchMock: ReturnType<typeof setup>["fetchMock"]) =>
+        fetchMock.mock.calls.filter(([url]) =>
+          String(url).endsWith("/people?filter=all&limit=50"),
+        ).length;
+      const { fetchMock } = setup(200, false);
+      await screen.findByText("Amira");
+      await vi.advanceTimersByTimeAsync(RESULTS_POLL_MS * 2);
+      expect(listCalls(fetchMock)).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("offers Present / Late / Absent per person, hinting what they said", async () => {
     setup();
     await screen.findByText("Amira");

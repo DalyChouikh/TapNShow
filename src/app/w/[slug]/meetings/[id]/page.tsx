@@ -144,6 +144,7 @@ export default function MeetingPage() {
           slug={slug}
           meeting={meeting.data}
           results={results.data}
+          live={live}
         />
       ) : null}
       {results.data && !checkingIn ? (

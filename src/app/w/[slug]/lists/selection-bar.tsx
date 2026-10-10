@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useBulkContacts, useCreateList } from "@/hooks/use-roster";
-import { ApiClientError } from "@/lib/api-client";
+import { errorCodeOf } from "@/lib/api-client";
 import type { Roster } from "@/shared/api/roster";
 
 /**
@@ -58,10 +58,7 @@ export function SelectionBar({
     createdNames.current.set(created.id, created.name);
     return created;
   };
-  const onError = (error: Error) =>
-    toast.error(
-      tErrors(error instanceof ApiClientError ? error.code : "internal"),
-    );
+  const onError = (error: Error) => toast.error(tErrors(errorCodeOf(error)));
 
   const toList = (action: "addToList" | "removeFromList", listId: string) =>
     bulk.mutate(

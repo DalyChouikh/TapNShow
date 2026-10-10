@@ -15,6 +15,14 @@ export class ApiClientError extends Error {
 }
 
 /**
+ * The `ApiErrors` code to show for a failed request: `internal` for anything but an API error.
+ * Takes any thrown value (a `catch` binding too).
+ */
+export function errorCodeOf<Thrown>(error: Thrown): ApiErrorCode {
+  return error instanceof ApiClientError ? error.code : "internal";
+}
+
+/**
  * Calls one of our API routes and validates the JSON response with `schema`.
  * A 401 triggers `onUnauthenticated` (default: go to sign-in with `next`).
  * @throws ApiClientError for every non-2xx response

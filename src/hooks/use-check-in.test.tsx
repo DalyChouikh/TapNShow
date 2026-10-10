@@ -18,33 +18,40 @@ function setup(
     inviteeId: string;
     actual: string | null;
   }) => Promise<Response> | Response,
+  get: () => Promise<Response> | Response = json({
+    items: peopleFixture,
+    nextCursor: null,
+  }),
 ) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   const spy = vi.spyOn(queryClient, "invalidateQueries");
   routeFetch({
-    [`GET ${base}/people?filter=all&limit=50`]: json({
-      items: peopleFixture,
-      nextCursor: null,
-    }),
+    [`GET ${base}/people?filter=all&limit=50`]: get,
     [`PUT ${base}/check-in`]: (init) => put(JSON.parse(String(init?.body))),
   });
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
+  const onFailure = vi.fn();
   const { result } = renderHook(
     () => ({
       people: useMeetingPeople("club-ab12", MEETING_IDS.meeting, "all", false),
-      mark: useMarkAttendance("club-ab12", MEETING_IDS.meeting),
+      mark: useMarkAttendance("club-ab12", MEETING_IDS.meeting, onFailure),
     }),
     { wrapper },
   );
   const markOfRow = (inviteeId: string) =>
     result.current.people.items.find((p) => p.inviteeId === inviteeId)?.mark
       ?.actual ?? null;
-  return { result, spy, markOfRow };
+  return { result, spy, markOfRow, onFailure };
 }
+
+const refused = () =>
+  new Response(JSON.stringify({ error: { code: "check_in_closed" } }), {
+    status: 409,
+  });
 
 describe("useMarkAttendance", () => {
   it("shows the mark at once, keeps the server's answer, and refreshes the counts", async () => {
@@ -129,5 +136,65 @@ describe("useMarkAttendance", () => {
       }
     });
     await waitFor(() => expect(markOfRow(amira.inviteeId)).toBe("late"));
+  });
+
+  it("reports a failed save and puts back only that person, even after other taps (review)", async () => {
+    let failAmira: () => void = () => undefined;
+    const { result, markOfRow, onFailure } = setup((body) =>
+      body.inviteeId === amira.inviteeId
+        ? new Promise((resolve) => {
+            failAmira = () => resolve(refused());
+          })
+        : json(markOf(body.actual ?? ""))(),
+    );
+    await waitFor(() => expect(result.current.people.items).toHaveLength(2));
+    act(() => {
+      result.current.mark.mutate({
+        inviteeId: amira.inviteeId,
+        actual: "present",
+      });
+      result.current.mark.mutate({
+        inviteeId: youssef.inviteeId,
+        actual: "absent",
+      });
+    });
+    await waitFor(() => expect(result.current.mark.isPending).toBe(false));
+    await act(async () => failAmira());
+    await waitFor(() =>
+      expect(onFailure).toHaveBeenCalledWith(amira.inviteeId),
+    );
+    expect(markOfRow(amira.inviteeId)).toBeNull();
+    expect(markOfRow(youssef.inviteeId)).toBe("absent");
+  });
+
+  it("is not undone by a refresh that was already on its way (review)", async () => {
+    let calls = 0;
+    let releaseRefetch: () => void = () => undefined;
+    const page = json({ items: peopleFixture, nextCursor: null });
+    const { result, markOfRow } = setup(
+      (body) => json(markOf(body.actual ?? ""))(),
+      () => {
+        calls += 1;
+        return calls === 1
+          ? page()
+          : new Promise((resolve) => {
+              releaseRefetch = () => resolve(page());
+            });
+      },
+    );
+    await waitFor(() => expect(result.current.people.items).toHaveLength(2));
+    act(() => void result.current.people.query.refetch());
+    await waitFor(() => expect(calls).toBe(2));
+    let saved: ReturnType<typeof result.current.mark.mutateAsync> | undefined;
+    act(() => {
+      saved = result.current.mark.mutateAsync({
+        inviteeId: amira.inviteeId,
+        actual: "late",
+      });
+    });
+    await act(async () => saved);
+    // The refresh left before the tap: its (older) answer must not replace the saved mark.
+    await act(async () => releaseRefetch());
+    expect(markOfRow(amira.inviteeId)).toBe("late");
   });
 });

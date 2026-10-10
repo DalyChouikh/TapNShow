@@ -15,7 +15,7 @@ import {
 import { useCancelMeeting } from "@/hooks/use-meeting-lifecycle";
 import { useDeleteMeeting } from "@/hooks/use-meetings";
 import { useWorkspace } from "@/hooks/use-workspace";
-import { ApiClientError } from "@/lib/api-client";
+import { errorCodeOf } from "@/lib/api-client";
 import type { Meeting } from "@/shared/api/meetings";
 import type { MeetingResults } from "@/shared/api/responses";
 import { useDuplicateAndOpen } from "../use-duplicate-and-open";
@@ -46,11 +46,7 @@ export function MeetingMenu({
   const open = meeting.status === "scheduled" && !started;
   const reachable = results?.answers.reachable ?? 0;
   const errorOf = (error: Error | null) =>
-    error instanceof ApiClientError
-      ? tErrors(error.code)
-      : error
-        ? tErrors("internal")
-        : null;
+    error ? tErrors(errorCodeOf(error)) : null;
   return (
     <>
       <DropdownMenu>

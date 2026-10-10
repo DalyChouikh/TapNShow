@@ -40,6 +40,7 @@ let a: Person;
 let b: Person;
 let c: Person;
 let d: Person;
+let contactIds: string[];
 
 const DAY = 86_400_000;
 /** A whole-minute UTC instant `days` ahead at 17:00 (Postgres echoes it back the same way). */
@@ -195,6 +196,7 @@ beforeEach(async () => {
     4,
     `m6e-${crypto.randomUUID().slice(0, 6)}`,
   );
+  contactIds = contacts;
   startsAt = daysAhead(3);
   meeting = await seedMeeting(workspace.id, {
     status: "scheduled",
@@ -594,6 +596,51 @@ describe("cancel_meeting", () => {
       .eq("id", d.inviteeId)
       .single();
     expect(row?.email_status).toBe("queued");
+  });
+
+  it("tells the person whose invite was claimed but not yet sent, whichever happens first (review)", async () => {
+    // A cancel racing the invite's reserve must never leave someone invited and not told.
+    await inviteInFlight(false);
+    const { data } = await cancel();
+    expect(data).toEqual({ emails: 4 });
+    expect(byInvitee(await jobsOfKind("cancel"), d)).toHaveLength(1);
+    const { data: invite } = await adminClient()
+      .from("outbox_jobs")
+      .select("id")
+      .eq("invitee_id", d.inviteeId)
+      .eq("kind", "invite")
+      .single();
+    // Reserved after the cancel: the invite is dropped, so the cancellation will be too.
+    expect(
+      await serviceRpc("dispatch_reserve", {
+        p_job: invite?.id ?? "",
+        p_token_hash: null,
+      }),
+    ).toEqual({ kind: "done" });
+    const { data: row } = await adminClient()
+      .from("meeting_invitees")
+      .select("email_status")
+      .eq("id", d.inviteeId)
+      .single();
+    expect(row?.email_status).toBe("skipped");
+  });
+
+  it("removes the event from the calendar of someone who unsubscribed after adding it (owner decision)", async () => {
+    const { error } = await adminClient()
+      .from("contacts")
+      .update({
+        unsubscribed_at: new Date().toISOString(),
+        unsubscribed_via: "link",
+      })
+      .in("id", [contactIds[0], contactIds[2]]);
+    expect(error).toBeNull();
+    const { data } = await cancel();
+    // a (unsubscribed, event in their calendar) gets only the removal, not counted as an email;
+    // c (unsubscribed, no event) gets nothing.
+    expect(data).toEqual({ emails: 1 });
+    expect(
+      (await jobsOfKind("cancel")).map((job) => job.invitee_id).sort(),
+    ).toEqual([a.inviteeId, b.inviteeId].sort());
   });
 
   it("refuses Viewers", async () => {

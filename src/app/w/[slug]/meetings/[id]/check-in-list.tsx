@@ -26,10 +26,13 @@ export function CheckInList({
   slug,
   meeting,
   results,
+  live,
 }: {
   slug: string;
   meeting: Meeting;
   results: MeetingResults;
+  /** Refresh the list while the meeting is near (the page's `isLive`), not days later. */
+  live: boolean;
 }) {
   const t = useTranslations("MeetingPage.checkIn");
   const [search, setSearch] = useState("");
@@ -38,12 +41,14 @@ export function CheckInList({
     slug,
     meeting.id,
     "all",
-    true,
+    live,
     settled || null,
   );
-  const mark = useMarkAttendance(slug, meeting.id);
-  const rest = useMarkRest(slug, meeting.id);
   const [failed, setFailed] = useState<Set<string>>(new Set());
+  const mark = useMarkAttendance(slug, meeting.id, (inviteeId) =>
+    setFailed((current) => new Set(current).add(inviteeId)),
+  );
+  const rest = useMarkRest(slug, meeting.id);
   const [confirming, setConfirming] = useState(false);
   const onMark = (inviteeId: string, actual: Mark["actual"] | null) => {
     setFailed((current) => {
@@ -51,12 +56,7 @@ export function CheckInList({
       next.delete(inviteeId);
       return next;
     });
-    mark.mutate(
-      { inviteeId, actual },
-      {
-        onError: () => setFailed((current) => new Set(current).add(inviteeId)),
-      },
-    );
+    mark.mutate({ inviteeId, actual });
   };
   return (
     <Card as="section" className="flex flex-col gap-3">

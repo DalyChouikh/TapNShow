@@ -474,6 +474,38 @@ describe("AnswerView", () => {
       });
     });
 
+    it("says why confirming again failed (review)", async () => {
+      putResponse = () =>
+        new Response(JSON.stringify({ error: { code: "rate_limited" } }), {
+          status: 429,
+        });
+      renderWith("", { meeting: moved, answer: going });
+      fireEvent.click(
+        await screen.findByRole("button", { name: "Yes, still going" }),
+      );
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "Too many attempts.",
+      );
+    });
+
+    it("opens the answer with its reason field when a reason is now needed (review)", async () => {
+      putResponse = () =>
+        new Response(JSON.stringify({ error: { code: "reason_required" } }), {
+          status: 400,
+        });
+      renderWith("", {
+        meeting: moved,
+        answer: { ...going, status: "absent" },
+      });
+      fireEvent.click(
+        await screen.findByRole("button", { name: "Yes, still can't come" }),
+      );
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "Please add a reason.",
+      );
+      expect(screen.getByRole("radio", { name: /I can't come/ })).toBeChecked();
+    });
+
     it("lets the member pick another answer instead", async () => {
       renderWith("", { meeting: moved, answer: going });
       fireEvent.click(

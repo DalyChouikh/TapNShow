@@ -13,7 +13,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Sticker } from "@/components/ui/sticker";
 import { ME_QUERY_KEY } from "@/hooks/use-me";
-import { ApiClientError, apiRequest } from "@/lib/api-client";
+import { apiRequest, errorCodeOf } from "@/lib/api-client";
 import { browserTimezone } from "@/lib/timezones";
 import {
   createWorkspaceBodySchema,
@@ -45,9 +45,7 @@ export function CreateWorkspaceForm() {
     },
   });
   const serverError = create.error
-    ? tErrors(
-        create.error instanceof ApiClientError ? create.error.code : "internal",
-      )
+    ? tErrors(errorCodeOf(create.error))
     : undefined;
 
   return (

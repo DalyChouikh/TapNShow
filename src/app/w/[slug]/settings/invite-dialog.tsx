@@ -20,7 +20,7 @@ import {
 import { RadioCard, RadioGroup } from "@/components/ui/radio-group";
 import { INVITE_BATCH_MAX } from "@/config/invites";
 import { invitesQueryKey } from "@/hooks/use-invites";
-import { ApiClientError, apiRequest } from "@/lib/api-client";
+import { ApiClientError, apiRequest, errorCodeOf } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import {
   createInviteBodySchema,
@@ -112,10 +112,7 @@ export function InviteDialog({
         );
       }
     },
-    onError: (error) =>
-      toast.error(
-        tErrors(error instanceof ApiClientError ? error.code : "internal"),
-      ),
+    onError: (error) => toast.error(tErrors(errorCodeOf(error))),
   });
 
   function close(next: boolean) {
