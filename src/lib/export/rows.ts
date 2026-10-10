@@ -5,14 +5,25 @@ import {
   describeAnswer,
 } from "@/lib/responses/describe-answer";
 import type { InviteeStatus } from "@/shared/api/meetings";
-import type { AttendanceDetailRow, PersonRow } from "@/shared/api/responses";
+import type {
+  AttendanceDetailRow,
+  Mark,
+  PersonRow,
+} from "@/shared/api/responses";
 
 /** Words the rows need (translated by the caller). */
 export type ExportText = {
   yes: string;
   noReply: string;
   emailStatus: (status: InviteeStatus) => string;
+  /** "Present", "Late", "Absent" (the check-in). */
+  actual: (value: Mark["actual"]) => string;
 };
+
+/** The two check-in cells: what happened and who marked it (empty without a check-in). */
+function checkInCells(text: ExportText, mark: Mark | null): ExportCell[] {
+  return mark ? [text.actual(mark.actual), mark.markedByName ?? ""] : ["", ""];
+}
 
 /** One export cell. CSV escaping happens later (`toCsv`); rows keep the text as typed. */
 export type ExportCell = string | number | null;
@@ -71,6 +82,7 @@ export function meetingAnswerRows(
     person.answer ? at(person.answer.updatedAt, timezone) : "",
     person.answer?.afterDeadline ? text.yes : "",
     text.emailStatus(person.emailStatus),
+    ...checkInCells(text, person.mark),
   ]);
 }
 
@@ -122,5 +134,6 @@ export function attendanceDetailRows(
     row.answer?.comment ?? "",
     row.answer?.afterDeadline ? text.yes : "",
     text.emailStatus(row.emailStatus),
+    ...checkInCells(text, row.mark),
   ]);
 }

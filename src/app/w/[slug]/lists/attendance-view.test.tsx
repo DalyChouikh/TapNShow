@@ -95,6 +95,11 @@ const detail = {
     afterDeadline: false,
     updatedAt: "2026-09-30T10:00:00.000Z",
   },
+  mark: {
+    actual: "absent",
+    markedAt: "2026-10-01T16:10:00.000Z",
+    markedByName: "Door Viewer",
+  },
 };
 
 function setup(data: object = summary) {
@@ -200,6 +205,12 @@ describe("AttendanceView", () => {
       null,
       null,
       "Sent",
+      "Absent",
+      "Door Viewer",
+    ]);
+    expect(sheets[1].data[0].slice(-2)).toEqual([
+      "Checked in",
+      "Checked in by",
     ]);
   });
 

@@ -207,6 +207,8 @@ export const historyRowSchema = z.object({
   responseMode: responseModeSchema,
   emailStatus: inviteeStatusSchema,
   answer: organizerAnswerSchema.nullable(),
+  /** What happened at the door (check-in wins in the counts). */
+  mark: markSchema.nullable(),
 });
 /** A history row. */
 export type HistoryRow = z.infer<typeof historyRowSchema>;
@@ -247,6 +249,7 @@ export const attendanceDetailRowSchema = z.object({
   email: z.string(),
   emailStatus: inviteeStatusSchema,
   answer: organizerAnswerSchema.nullable(),
+  mark: markSchema.nullable(),
 });
 /** An export detail row. */
 export type AttendanceDetailRow = z.infer<typeof attendanceDetailRowSchema>;

@@ -10,7 +10,7 @@ import { listNamesByContact, meetingAnswerRows } from "@/lib/export/rows";
 import { saveExport } from "@/lib/export/save";
 import type { Meeting } from "@/shared/api/meetings";
 
-const WIDTHS = [24, 30, 20, 18, 12, 40, 40, 18, 16, 16];
+const WIDTHS = [24, 30, 20, 18, 12, 40, 40, 18, 16, 16, 14, 24];
 const COLUMNS = [
   "name",
   "email",
@@ -22,6 +22,8 @@ const COLUMNS = [
   "answeredAt",
   "afterDeadline",
   "emailStatus",
+  "checkedIn",
+  "checkedInBy",
 ] as const;
 
 /**
@@ -46,6 +48,7 @@ export function useExportAnswers(slug: string, meeting: Meeting) {
         yes: t("yes"),
         noReply: t("columns.noReply"),
         emailStatus: (status) => tStatus(status),
+        actual: (value) => t(`actual.${value}`),
       },
       meeting.timezone,
     );

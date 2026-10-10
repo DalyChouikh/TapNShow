@@ -70,6 +70,7 @@ describe("organizer hooks", () => {
       email: `m${n}@uni.tn`,
       emailStatus: "sent",
       answer: null,
+      mark: null,
     });
     routeFetch({
       [`GET ${base}/attendance/details?from=2026-09-01T00%3A00%3A00.000Z&limit=100`]:

@@ -6,7 +6,12 @@ import { ContactHistory } from "./contact-history";
 
 const CONTACT = "6a1f2b3c-4d5e-4f60-8a71-b2c3d4e5f6aa";
 const MEETING = "4b7f8c2e-2f3a-4c55-9a1e-0d6f6b1c2a10";
-const row = (title: string, answer: object | null, emailStatus = "sent") => ({
+const row = (
+  title: string,
+  answer: object | null,
+  emailStatus = "sent",
+  mark: object | null = null,
+) => ({
   meetingId: MEETING,
   title,
   startsAt: "2026-10-02T17:00:00+00:00",
@@ -14,6 +19,7 @@ const row = (title: string, answer: object | null, emailStatus = "sent") => ({
   responseMode: "attendance",
   emailStatus,
   answer,
+  mark,
 });
 
 describe("ContactHistory", () => {
@@ -100,5 +106,57 @@ describe("ContactHistory", () => {
     expect(
       await screen.findByText("No past meetings in this period."),
     ).toBeInTheDocument();
+  });
+
+  it("puts what the person said next to what happened at the door (M6)", async () => {
+    routeFetch(
+      new Proxy(
+        {},
+        {
+          get: () => () =>
+            new Response(
+              JSON.stringify({
+                counts: { attending: 0, late: 0, absent: 2, noReply: 0 },
+                items: [
+                  row(
+                    "Weekly sync",
+                    {
+                      status: "attending",
+                      delayMinutes: null,
+                      reason: "",
+                      comment: "",
+                      afterDeadline: false,
+                      updatedAt: "2026-10-02T10:00:00+00:00",
+                    },
+                    "sent",
+                    {
+                      actual: "absent",
+                      markedAt: "2026-10-02T17:10:00+00:00",
+                      markedByName: "Daly",
+                    },
+                  ),
+                  row("Kickoff", null, "sent", {
+                    actual: "present",
+                    markedAt: "2026-09-25T17:10:00+00:00",
+                    markedByName: "Daly",
+                  }),
+                ],
+                nextCursor: null,
+              }),
+            ),
+        },
+      ),
+    );
+    renderWithProviders(
+      <ContactHistory
+        slug="club-ab12"
+        contactId={CONTACT}
+        timezone="Africa/Tunis"
+      />,
+    );
+    expect(
+      await screen.findByText("Said going · Was absent"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Didn't answer · Was present")).toBeInTheDocument();
   });
 });

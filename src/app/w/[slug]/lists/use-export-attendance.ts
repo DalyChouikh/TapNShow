@@ -40,6 +40,8 @@ const DETAILS = [
   ["comment", 40],
   ["afterDeadline", 16],
   ["emailStatus", 16],
+  ["checkedIn", 14],
+  ["checkedInBy", 24],
 ] as const;
 
 /**
@@ -85,6 +87,7 @@ export function useExportAttendance(
             yes: t("yes"),
             noReply: t("columns.noReply"),
             emailStatus: (status) => tStatus(status),
+            actual: (value) => t(`actual.${value}`),
           }),
         },
       ],

@@ -256,6 +256,7 @@ export async function getContactHistory(
           response_mode: responseModeSchema,
           email_status: inviteeStatusSchema,
           answer: dbAnswerSchema,
+          mark: dbMarkSchema,
         }),
       ),
     })
@@ -277,6 +278,7 @@ export async function getContactHistory(
         responseMode: row.response_mode,
         emailStatus: row.email_status,
         answer: row.answer,
+        mark: row.mark,
       })),
       nextCursor:
         parsed.has_more && last
@@ -367,6 +369,7 @@ export async function listAttendanceDetails(
       sort_name: z.string(),
       email_status: inviteeStatusSchema,
       answer: dbAnswerSchema,
+      mark: dbMarkSchema,
     }),
   ).parse(data);
   const last = parsed.items.at(-1);
@@ -384,6 +387,7 @@ export async function listAttendanceDetails(
         email: row.email,
         emailStatus: row.email_status,
         answer: row.answer,
+        mark: row.mark,
       })),
       nextCursor:
         parsed.has_more && last

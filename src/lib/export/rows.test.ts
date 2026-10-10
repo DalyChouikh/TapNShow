@@ -19,6 +19,7 @@ const text: ExportText = {
   yes: "Yes",
   noReply: "No reply",
   emailStatus: (status) => `email:${status}`,
+  actual: (value) => `was:${value}`,
 };
 const person = (over: Partial<PersonRow>): PersonRow => ({
   inviteeId: "00000000-0000-4000-8000-000000000001",
@@ -69,6 +70,8 @@ describe("export rows", () => {
       "2026-10-09 11:05",
       "Yes",
       "email:sent",
+      "",
+      "",
     ]);
     expect(rows[1][3]).toBe("");
     expect(rows[2][3]).toBe("No reply");
@@ -103,6 +106,7 @@ describe("export rows", () => {
       email: "o@uni.tn",
       emailStatus: "sent",
       answer: null,
+      mark: null,
     };
     expect(attendanceDetailRows([detail], new Map(), labels, text)[0]).toEqual([
       "Weekly sync",
@@ -116,7 +120,42 @@ describe("export rows", () => {
       "",
       "",
       "email:sent",
+      "",
+      "",
     ]);
+  });
+
+  it("adds who actually came and who checked them in (M6)", () => {
+    const mark = {
+      actual: "absent" as const,
+      markedAt: "2026-10-09T17:05:00.000Z",
+      markedByName: "Amira Ben Ali",
+    };
+    const [row] = meetingAnswerRows(
+      [person({ mark })],
+      new Map(),
+      labels,
+      text,
+      "Africa/Tunis",
+    );
+    expect(row.slice(-2)).toEqual(["was:absent", "Amira Ben Ali"]);
+    const detail: AttendanceDetailRow = {
+      meetingId: "m1",
+      title: "Weekly sync",
+      startsAt: "2026-10-02T17:00:00+00:00",
+      timezone: "Africa/Tunis",
+      responseMode: "attendance",
+      inviteeId: "i1",
+      contactId: "c1",
+      fullName: "Omar",
+      email: "o@uni.tn",
+      emailStatus: "sent",
+      answer: null,
+      mark,
+    };
+    expect(
+      attendanceDetailRows([detail], new Map(), labels, text)[0].slice(-2),
+    ).toEqual(["was:absent", "Amira Ben Ali"]);
   });
 });
 
