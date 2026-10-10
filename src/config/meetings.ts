@@ -72,3 +72,6 @@ export const FROM_NAME_KEPT = true;
 
 /** Longest search in a meeting's people list and check-in (DB twin: `meeting_people` refuses longer). */
 export const PEOPLE_SEARCH_MAX = 120;
+
+/** Wait after the last keystroke before searching the check-in list (ms). */
+export const SEARCH_DEBOUNCE_MS = 250;

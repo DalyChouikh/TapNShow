@@ -6,13 +6,16 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { ExportMenu } from "@/components/forms/export-menu";
 import { Button } from "@/components/ui/button";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMeeting } from "@/hooks/use-meetings";
 import { useMeetingResults } from "@/hooks/use-results";
 import { useWorkspace } from "@/hooks/use-workspace";
+import { canCheckIn } from "@/lib/responses/check-in";
 import { isLive } from "@/lib/responses/live-window";
 import type { Meeting } from "@/shared/api/meetings";
 import type { PeopleFilter } from "@/shared/api/responses";
+import { CheckInList } from "./check-in-list";
 import { DeliverySheet } from "./delivery-sheet";
 import { EmailLine } from "./email-line";
 import { MeetingHeader } from "./meeting-header";
@@ -22,6 +25,31 @@ import { PeopleList } from "./people-list";
 import { ResultTiles } from "./result-tiles";
 import { SendProgress } from "./send-progress";
 import { useExportAnswers } from "./use-export-answers";
+
+type View = "results" | "checkIn";
+const viewKey = (id: string) => `tn:view:${id}`;
+
+/** The Results / Check-in choice, kept per meeting in the tab so a reload stays at the door. */
+function useView(id: string): [View, (view: View) => void] {
+  const [view, setView] = useState<View>(() => {
+    try {
+      return sessionStorage.getItem(viewKey(id)) === "checkIn"
+        ? "checkIn"
+        : "results";
+    } catch {
+      return "results";
+    }
+  });
+  const choose = (next: View) => {
+    setView(next);
+    try {
+      sessionStorage.setItem(viewKey(id), next);
+    } catch {
+      // Blocked storage: the choice lasts until the page reloads.
+    }
+  };
+  return [view, choose];
+}
 
 /** Export of every answer (the hook needs the loaded meeting). */
 function MeetingExport({ slug, meeting }: { slug: string; meeting: Meeting }) {
@@ -44,6 +72,7 @@ export default function MeetingPage() {
   const results = useMeetingResults(slug, id, live);
   const [filter, setFilter] = useState<PeopleFilter>("all");
   const [deliveryOpen, setDeliveryOpen] = useState(false);
+  const [view, setView] = useView(id);
   useEffect(() => {
     if (meeting.data?.status === "draft") {
       router.replace(`/w/${slug}/meetings/${id}/edit`);
@@ -56,6 +85,13 @@ export default function MeetingPage() {
   const started =
     meeting.data.startsAt !== null &&
     new Date(meeting.data.startsAt) <= new Date();
+  // Check-in opens at the start, for people who may check in (spec §7.8).
+  const checkInOpen =
+    meeting.data.status === "scheduled" &&
+    started &&
+    meeting.data.responseMode !== "announcement" &&
+    canCheckIn(workspace.data);
+  const checkingIn = checkInOpen && view === "checkIn";
   const sending = results.data
     ? results.data.emails.queued > 0 || results.data.paused > 0
     : false;
@@ -90,14 +126,36 @@ export default function MeetingPage() {
           onOpen={() => setDeliveryOpen(true)}
         />
       )}
-      {results.data ? (
+      {checkInOpen ? (
+        <SegmentedControl
+          label={t("checkIn.switchLabel")}
+          value={view}
+          onValueChange={(next) =>
+            setView(next === "checkIn" ? "checkIn" : "results")
+          }
+          options={[
+            { value: "results", label: t("checkIn.switchResults") },
+            { value: "checkIn", label: t("checkIn.switchCheckIn") },
+          ]}
+        />
+      ) : null}
+      {checkingIn && results.data ? (
+        <CheckInList
+          slug={slug}
+          meeting={meeting.data}
+          results={results.data}
+        />
+      ) : null}
+      {results.data && !checkingIn ? (
         <ResultTiles
           results={results.data}
           filter={filter}
           onFilter={setFilter}
         />
       ) : null}
-      {results.data && results.data.responseMode !== "announcement" ? (
+      {results.data &&
+      !checkingIn &&
+      results.data.responseMode !== "announcement" ? (
         <PeopleList
           slug={slug}
           meetingId={id}

@@ -939,7 +939,26 @@
       "done": "Reminded {count} at {at} · available again at {next}",
       "askOwner": "Ask {owner} to connect Gmail to send reminders."
     },
-    "cancelledOn": "Cancelled on {date}"
+    "cancelledOn": "Cancelled on {date}",
+    "checkIn": {
+      "switchLabel": "Show",
+      "switchResults": "Results",
+      "switchCheckIn": "Check-in",
+      "count": "{done} of {total} checked in",
+      "present": "Present",
+      "late": "Late",
+      "absent": "Absent",
+      "group": "Check-in for {name}",
+      "said": "Said {answer}",
+      "noReply": "No reply",
+      "search": "Search people",
+      "rest": "Mark the rest as they said",
+      "restTitle": "Mark everyone not checked in yet?",
+      "restBody": "People are marked from their answer. People who didn't answer are marked Absent.",
+      "restConfirm": "Mark the rest",
+      "restDone": "{count, plural, one {Marked # person.} other {Marked # people.}}",
+      "saveFailed": "Couldn't save. Try again."
+    }
   },
   "TokenPages": {
     "invalidTitle": "This link isn't valid",

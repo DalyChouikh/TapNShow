@@ -161,6 +161,18 @@ export const markSchema = z.object({
 /** A check-in mark. */
 export type Mark = z.infer<typeof markSchema>;
 
+/** `PUT …/check-in`: one person's check-in, or null to clear it. */
+export const markBodySchema = z.object({
+  inviteeId: z.uuid(),
+  actual: markSchema.shape.actual.nullable(),
+});
+/** A check-in change. */
+export type MarkBody = z.infer<typeof markBodySchema>;
+/** `PUT …/check-in` response: the mark as saved (null when cleared). */
+export const markResultSchema = z.object({ mark: markSchema.nullable() });
+/** `POST …/check-in/rest` response: how many were marked. */
+export const markRestResultSchema = z.object({ marked: z.number().int() });
+
 /** One invitee with their answer (meeting page). */
 export const personRowSchema = z.object({
   inviteeId: z.uuid(),
