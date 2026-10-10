@@ -34,6 +34,7 @@ function RowAnswer({ row }: { row: HistoryRow }) {
             didntAnswer: t("didntAnswer"),
             said: (answer) => t("saidAnswer", { answer }),
             actual: (value) => t(`actual.${value}`),
+            lateBy: (minutes) => t("lateBy", { minutes }),
             saidWas: (said, was) => t("saidWas", { said, was }),
           },
           row.answer,

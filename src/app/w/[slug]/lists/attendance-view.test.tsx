@@ -99,6 +99,7 @@ const detail = {
     actual: "absent",
     markedAt: "2026-10-01T16:10:00.000Z",
     markedByName: "Door Viewer",
+    lateMinutes: null,
   },
 };
 
@@ -192,8 +193,12 @@ describe("AttendanceView", () => {
     expect(name).toMatch(/-attendance-\d{4}-\d{2}-\d{2}\.xlsx$/);
     const sheets = await readXlsxFile(await blob.arrayBuffer());
     expect(sheets.map((sheet) => sheet.sheet)).toEqual(["Summary", "Details"]);
-    expect(sheets[0].data).toHaveLength(4);
-    expect(sheets[1].data[1]).toEqual([
+    // A title band (title, subtitle, a gap) above the header (#257).
+    const [title, subtitle] = sheets[0].data;
+    expect(title[0]).toBe("Attendance · Summary");
+    expect(subtitle[0]).toMatch(/ · Last 3 months · Exported /);
+    expect(sheets[0].data).toHaveLength(7);
+    expect(sheets[1].data[4]).toEqual([
       "Weekly sync",
       "2026-10-01 17:00",
       "Amira B.",
@@ -207,10 +212,12 @@ describe("AttendanceView", () => {
       "Sent",
       "Absent",
       "Door Viewer",
+      null,
     ]);
-    expect(sheets[1].data[0].slice(-2)).toEqual([
+    expect(sheets[1].data[3].slice(-3)).toEqual([
       "Checked in",
       "Checked in by",
+      "Was late by (min)",
     ]);
   });
 

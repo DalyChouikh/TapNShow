@@ -1,13 +1,19 @@
 import type { ExportFormat } from "@/components/forms/export-menu";
+import type { FillTone } from "@/design/tokens";
 import { toCsv } from "./csv";
 import { downloadBlob } from "./download";
 import { exportFileName } from "./file-name";
 import type { ExportCell } from "./rows";
 
-/** One sheet of an export: its name, column headers and widths, and rows. */
+/**
+ * One sheet of an export: its name, the title band Excel shows above the table (what, workspace,
+ * when, exported at), column headers with their width and an optional header tone, and rows.
+ */
 export type ExportSheet = {
   name: string;
-  columns: { header: string; width: number }[];
+  title: string;
+  subtitle: string;
+  columns: { header: string; width: number; tone?: FillTone }[];
   rows: ExportCell[][];
 };
 

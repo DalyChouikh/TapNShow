@@ -1,14 +1,16 @@
 import readXlsxFile from "read-excel-file/universal";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { downloadBlob } from "./download";
-import { saveExport } from "./save";
+import { type ExportSheet, saveExport } from "./save";
 
 vi.mock("./download", () => ({ downloadBlob: vi.fn() }));
 
 const today = new Date(2026, 9, 9, 12);
-const sheets = [
+const sheets: ExportSheet[] = [
   {
     name: "Summary",
+    title: "Attendance · Summary",
+    subtitle: "Robotics Club",
     columns: [
       { header: "Name", width: 24 },
       { header: "Late", width: 8 },
@@ -20,6 +22,8 @@ const sheets = [
   },
   {
     name: "Details",
+    title: "Attendance · Details",
+    subtitle: "Robotics Club",
     columns: [{ header: "Meeting", width: 24 }],
     rows: [["Weekly sync"]],
   },
@@ -45,6 +49,7 @@ describe("saveExport", () => {
     expect(name).toBe("robotics-club-attendance-2026-10-09.xlsx");
     const read = await readXlsxFile(await blob.arrayBuffer());
     expect(read.map((sheet) => sheet.sheet)).toEqual(["Summary", "Details"]);
-    expect(read[0].data[2][0]).toBe("=HYPERLINK(1)");
+    // Below the title band (title, subtitle, a gap) and the header.
+    expect(read[0].data[5][0]).toBe("=HYPERLINK(1)");
   });
 });

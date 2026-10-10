@@ -188,12 +188,12 @@ describe("/w/[slug]/meetings/[id]", () => {
     );
     const lines = (await blob.text()).split("\r\n");
     expect(lines[0]).toContain(
-      "Name,Email,Lists,Answer,Late by (min),Reason,Comment,Answered at,After the deadline,Email,Checked in,Checked in by",
+      "Name,Email,Lists,Answer,Late by (min),Reason,Comment,Answered at,After the deadline,Email,Checked in,Checked in by,Was late by (min)",
     );
     expect(lines[1]).toMatch(
-      /^Amira B\.,amira@uni\.tn,Design,[^,]+,20,Bus from campus,,[^,]+,Yes,Sent,,$/,
+      /^Amira B\.,amira@uni\.tn,Design,[^,]+,20,Bus from campus,,[^,]+,Yes,Sent,,,$/,
     );
-    expect(lines[2]).toMatch(/^Youssef K\.,youssef@uni\.tn,,,,,,,,Failed,,$/);
+    expect(lines[2]).toMatch(/^Youssef K\.,youssef@uni\.tn,,,,,,,,Failed,,,$/);
   });
 
   it("offers no Export for an announcement", async () => {

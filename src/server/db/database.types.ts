@@ -38,13 +38,13 @@ isOneToOne: false
                   ]
                 },"attendance_marks": {
                   Row: {
-                    "actual": Database["public"]['Enums']["attendance_actual"],"invitee_id": string,"marked_at": string,"marked_by": string | null,"meeting_id": string,"workspace_id": string
+                    "actual": Database["public"]['Enums']["attendance_actual"],"invitee_id": string,"late_minutes": number | null,"marked_at": string,"marked_by": string | null,"meeting_id": string,"workspace_id": string
                   }
                   Insert: {
-                    "actual": Database["public"]['Enums']["attendance_actual"],"invitee_id": string,"marked_at"?: string,"marked_by"?: string | null,"meeting_id": string,"workspace_id": string
+                    "actual": Database["public"]['Enums']["attendance_actual"],"invitee_id": string,"late_minutes"?: number | null,"marked_at"?: string,"marked_by"?: string | null,"meeting_id": string,"workspace_id": string
                   }
                   Update: {
-                    "actual"?: Database["public"]['Enums']["attendance_actual"],"invitee_id"?: string,"marked_at"?: string,"marked_by"?: string | null,"meeting_id"?: string,"workspace_id"?: string
+                    "actual"?: Database["public"]['Enums']["attendance_actual"],"invitee_id"?: string,"late_minutes"?: number | null,"marked_at"?: string,"marked_by"?: string | null,"meeting_id"?: string,"workspace_id"?: string
                   }
                   Relationships: [
                     {
@@ -600,7 +600,7 @@ isOneToOne: false
             }[]
                            },
 "mark_attendance":
-{ Args: { "p_actual"?: Database["public"]['Enums']["attendance_actual"],"p_invitee": string,"p_meeting": string }; Returns: Json
+{ Args: { "p_actual"?: Database["public"]['Enums']["attendance_actual"],"p_invitee": string,"p_late_minutes"?: number,"p_meeting": string }; Returns: Json
                            },
 "mark_rest_as_declared":
 { Args: { "p_meeting": string }; Returns: number

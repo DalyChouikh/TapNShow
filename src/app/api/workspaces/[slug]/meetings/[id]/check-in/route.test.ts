@@ -22,6 +22,7 @@ const mark = {
   actual: "absent",
   markedAt: "2026-10-09T17:05:00.000Z",
   markedByName: "Door Viewer",
+  lateMinutes: null,
 };
 
 beforeEach(() => {
@@ -45,7 +46,31 @@ describe("PUT …/meetings/[id]/check-in", () => {
       MEETING_IDS.meeting,
       MEETING_IDS.invitee,
       "absent",
+      null,
     );
+  });
+
+  it("passes how late someone was, only with Late and within 1–240 minutes (#257)", async () => {
+    const { PUT } = await import("./route");
+    queries.markAttendance.mockResolvedValueOnce({ data: mark, error: null });
+    const late = { inviteeId: MEETING_IDS.invitee, actual: "late" };
+    await PUT(jsonRequest("PUT", { ...late, lateMinutes: 15 }), ctx);
+    expect(queries.markAttendance).toHaveBeenCalledWith(
+      okContext.supabase,
+      MEETING_IDS.meeting,
+      MEETING_IDS.invitee,
+      "late",
+      15,
+    );
+    for (const bad of [
+      { ...body, lateMinutes: 10 },
+      { ...late, lateMinutes: 0 },
+      { ...late, lateMinutes: 241 },
+      { ...late, lateMinutes: 2.5 },
+    ]) {
+      expect((await PUT(jsonRequest("PUT", bad), ctx)).status).toBe(400);
+    }
+    expect(queries.markAttendance).toHaveBeenCalledOnce();
   });
 
   it("refuses a plain Viewer, a bad body, and says when check-in is closed", async () => {

@@ -63,7 +63,7 @@ describe("export rows", () => {
       "Amira, B.",
       "amira@uni.tn",
       "Design, Dev",
-      "Late by 20 min",
+      { text: "Late by 20 min", tone: "warning" },
       20,
       long,
       "",
@@ -72,9 +72,10 @@ describe("export rows", () => {
       "email:sent",
       "",
       "",
+      null,
     ]);
     expect(rows[1][3]).toBe("");
-    expect(rows[2][3]).toBe("No reply");
+    expect(rows[2][3]).toEqual({ text: "No reply", tone: "neutral" });
   });
 
   it("summarizes attendance in the given order and lists details per meeting", () => {
@@ -114,7 +115,7 @@ describe("export rows", () => {
       "Omar",
       "o@uni.tn",
       "",
-      "No reply",
+      { text: "No reply", tone: "neutral" },
       null,
       "",
       "",
@@ -122,6 +123,7 @@ describe("export rows", () => {
       "email:sent",
       "",
       "",
+      null,
     ]);
   });
 
@@ -130,6 +132,7 @@ describe("export rows", () => {
       actual: "absent" as const,
       markedAt: "2026-10-09T17:05:00.000Z",
       markedByName: "Amira Ben Ali",
+      lateMinutes: null,
     };
     const [row] = meetingAnswerRows(
       [person({ mark })],
@@ -138,7 +141,23 @@ describe("export rows", () => {
       text,
       "Africa/Tunis",
     );
-    expect(row.slice(-2)).toEqual(["was:absent", "Amira Ben Ali"]);
+    expect(row.slice(-3)).toEqual([
+      { text: "was:absent", tone: "danger" },
+      "Amira Ben Ali",
+      null,
+    ]);
+    const [late] = meetingAnswerRows(
+      [person({ mark: { ...mark, actual: "late", lateMinutes: 15 } })],
+      new Map(),
+      labels,
+      text,
+      "Africa/Tunis",
+    );
+    expect(late.slice(-3)).toEqual([
+      { text: "was:late", tone: "warning" },
+      "Amira Ben Ali",
+      15,
+    ]);
     const detail: AttendanceDetailRow = {
       meetingId: "m1",
       title: "Weekly sync",
@@ -154,8 +173,8 @@ describe("export rows", () => {
       mark,
     };
     expect(
-      attendanceDetailRows([detail], new Map(), labels, text)[0].slice(-2),
-    ).toEqual(["was:absent", "Amira Ben Ali"]);
+      attendanceDetailRows([detail], new Map(), labels, text)[0].slice(-3),
+    ).toEqual([{ text: "was:absent", tone: "danger" }, "Amira Ben Ali", null]);
   });
 });
 

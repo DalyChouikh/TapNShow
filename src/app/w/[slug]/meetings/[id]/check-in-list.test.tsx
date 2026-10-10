@@ -78,6 +78,7 @@ function setup(putStatus = 200, live = true) {
                   actual: body.actual,
                   markedAt: "2026-10-09T17:05:00.000Z",
                   markedByName: "Daly",
+                  lateMinutes: body.lateMinutes ?? null,
                 }
               : null,
           })()
@@ -145,6 +146,7 @@ describe("CheckInList", () => {
       expect(JSON.parse(bodies[0].body)).toEqual({
         inviteeId: people[0].inviteeId,
         actual: "absent",
+        lateMinutes: null,
       }),
     );
     await userEvent.click(absent);
@@ -152,8 +154,51 @@ describe("CheckInList", () => {
       expect(JSON.parse(bodies[1].body)).toEqual({
         inviteeId: people[0].inviteeId,
         actual: null,
+        lateMinutes: null,
       }),
     );
+  });
+
+  it("asks how late, from the meeting's choices or a custom number (owner feedback #257)", async () => {
+    const { bodies } = setup();
+    await screen.findByText("Bilel");
+    const lastBody = () => JSON.parse(bodies.at(-1)?.body ?? "{}");
+    // Bilel said "Late by 10 min": Late keeps his minutes.
+    await userEvent.click(
+      within(row("Bilel")).getByRole("button", { name: "Late" }),
+    );
+    await vi.waitFor(() =>
+      expect(lastBody()).toEqual({
+        inviteeId: people[1].inviteeId,
+        actual: "late",
+        lateMinutes: 10,
+      }),
+    );
+    const minutes = await screen.findByRole("group", {
+      name: "How late was Bilel?",
+    });
+    expect(
+      within(minutes).getByRole("button", { name: "10 min" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await userEvent.click(
+      within(minutes).getByRole("button", { name: "15 min" }),
+    );
+    await vi.waitFor(() =>
+      expect(lastBody()).toMatchObject({ lateMinutes: 15 }),
+    );
+    await userEvent.click(
+      within(minutes).getByRole("button", { name: "Other" }),
+    );
+    const custom = screen.getByLabelText("Minutes late");
+    await userEvent.type(custom, "300{Enter}");
+    expect(screen.getByText("Enter 1 to 240 minutes.")).toBeInTheDocument();
+    const sent = bodies.length;
+    await userEvent.clear(custom);
+    await userEvent.type(custom, "25{Enter}");
+    await vi.waitFor(() =>
+      expect(lastBody()).toMatchObject({ lateMinutes: 25 }),
+    );
+    expect(bodies).toHaveLength(sent + 1);
   });
 
   it("marks the rest after asking", async () => {

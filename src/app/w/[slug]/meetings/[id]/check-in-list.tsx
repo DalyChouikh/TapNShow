@@ -50,13 +50,17 @@ export function CheckInList({
   );
   const rest = useMarkRest(slug, meeting.id);
   const [confirming, setConfirming] = useState(false);
-  const onMark = (inviteeId: string, actual: Mark["actual"] | null) => {
+  const onMark = (
+    inviteeId: string,
+    actual: Mark["actual"] | null,
+    lateMinutes: number | null,
+  ) => {
     setFailed((current) => {
       const next = new Set(current);
       next.delete(inviteeId);
       return next;
     });
-    mark.mutate({ inviteeId, actual });
+    mark.mutate({ inviteeId, actual, lateMinutes });
   };
   return (
     <Card as="section" className="flex flex-col gap-3">
@@ -80,8 +84,11 @@ export function CheckInList({
               key={person.inviteeId}
               slug={slug}
               person={person}
+              delayOptions={meeting.delayOptions}
               failed={failed.has(person.inviteeId)}
-              onMark={(actual) => onMark(person.inviteeId, actual)}
+              onMark={(actual, lateMinutes) =>
+                onMark(person.inviteeId, actual, lateMinutes)
+              }
             />
           ))}
         </ul>

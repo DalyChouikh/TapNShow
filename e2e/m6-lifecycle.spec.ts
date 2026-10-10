@@ -213,12 +213,12 @@ test("the committee checks people in; History and exports show what happened", a
   await door.getByRole("menuitem", { name: "CSV" }).click();
   const csv = readFileSync((await (await download).path()) ?? "", "utf8");
   const lines = csv.split("\r\n");
-  expect(lines[0]).toContain("Checked in,Checked in by");
+  expect(lines[0]).toContain("Checked in,Checked in by,Was late by (min)");
   expect(lines.find((line) => line.startsWith(going))).toMatch(
-    /,Absent,Door Viewer$/,
+    /,Absent,Door Viewer,$/,
   );
   expect(lines.find((line) => line.startsWith(silent))).toMatch(
-    /,Absent,Door Viewer$/,
+    /,Absent,Door Viewer,$/,
   );
 
   await door.goto(`/w/${slug}/lists?view=attendance`);

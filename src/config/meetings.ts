@@ -3,6 +3,13 @@ import type { ResponseMode } from "@/shared/api/meeting-settings";
 /** Delay chips offered for "I'll be late" (minutes; spec §4 attendance mode). */
 export const DELAY_OPTION_CHOICES = [5, 10, 15, 20, 30, 45, 60] as const;
 
+/**
+ * How late someone can be, in minutes (1 to this): an answer's delay, a delay option and a Late
+ * check-in. Database twins: the checks on `responses.delay_minutes` and
+ * `attendance_marks.late_minutes`, `private.valid_delay_options`, `private.mark_attendance`.
+ */
+export const LATE_MINUTES_MAX = 240;
+
 /** At most this many delay options per meeting (database: `private.valid_delay_options`). */
 export const DELAY_OPTIONS_MAX = 6;
 

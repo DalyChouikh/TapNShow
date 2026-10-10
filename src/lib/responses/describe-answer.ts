@@ -32,13 +32,16 @@ export type CheckInWords = {
   said: (answer: string) => string;
   /** "present", "late", "absent" (inside a sentence). */
   actual: (value: Mark["actual"]) => string;
+  /** "late by 15 min" (inside a sentence), for a Late check-in with minutes. */
+  lateBy: (minutes: number) => string;
   /** "Said going · Was absent". */
   saidWas: (said: string, was: string) => string;
 };
 
 /**
- * What someone said next to what happened (spec §7.7): the plain answer without a check-in or when
- * they agree ("Going"); otherwise "Said going · Was absent" or "Didn't answer · Was present".
+ * What someone said next to what happened (spec §7.7): the plain answer without a check-in;
+ * with one, always both (owner feedback #257): "Going · Was present" when they agree, "Said going
+ * · Was absent" or "Didn't answer · Was late by 15 min" when they differ.
  */
 export function describeCheckIn(
   labels: AnswerLabels,
@@ -47,11 +50,18 @@ export function describeCheckIn(
   mark: Mark | null,
 ): string {
   const plain = answer ? describeAnswer(labels, answer) : words.noReply;
-  if (!mark || mark.actual === declaredActual(answer?.status ?? null)) {
+  if (!mark) {
     return plain;
+  }
+  const was =
+    mark.actual === "late" && mark.lateMinutes !== null
+      ? words.lateBy(mark.lateMinutes)
+      : words.actual(mark.actual);
+  if (mark.actual === declaredActual(answer?.status ?? null)) {
+    return words.saidWas(plain, was);
   }
   const said = answer
     ? words.said(lowerFirst(describeAnswer(labels, answer)))
     : words.didntAnswer;
-  return words.saidWas(said, words.actual(mark.actual));
+  return words.saidWas(said, was);
 }

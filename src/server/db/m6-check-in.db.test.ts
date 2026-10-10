@@ -82,17 +82,19 @@ const mark = (
   actual: "present" | "late" | "absent" | null,
   client = owner.client,
   meetingId = meeting,
+  lateMinutes?: number,
 ) =>
   client.rpc("mark_attendance", {
     p_meeting: meetingId,
     p_invitee: who.inviteeId,
     p_actual: actual,
+    ...(lateMinutes === undefined ? {} : { p_late_minutes: lateMinutes }),
   } as never);
 
 async function marks() {
   const { data } = await adminClient()
     .from("attendance_marks")
-    .select("invitee_id, actual, marked_by")
+    .select("invitee_id, actual, marked_by, late_minutes")
     .eq("meeting_id", meeting);
   return Object.fromEntries((data ?? []).map((row) => [row.invitee_id, row]));
 }
@@ -282,6 +284,56 @@ describe("mark_rest_as_declared", () => {
     expect(all[d.inviteeId].actual).toBe("absent");
     expect(all[e.inviteeId]).toBeUndefined();
     expect((await rest()).data).toBe(0);
+  });
+});
+
+describe("how late, at the door (owner feedback #257)", () => {
+  const late = (who: Person, minutes?: number) =>
+    mark(who, "late", owner.client, meeting, minutes);
+
+  it("keeps the minutes of a Late mark, and only of a Late mark", async () => {
+    expect((await late(b, 15)).data).toMatchObject({
+      actual: "late",
+      late_minutes: 15,
+    });
+    expect((await marks())[b.inviteeId].late_minutes).toBe(15);
+    expect((await late(d)).data).toMatchObject({ late_minutes: null });
+    await expectAppError(
+      mark(a, "present", owner.client, meeting, 10),
+      "invalid_input",
+    );
+    await expectAppError(late(a, 0), "invalid_input");
+    await expectAppError(late(a, 241), "invalid_input");
+  });
+
+  it("keeps a Late person's own minutes when marking the rest", async () => {
+    await owner.client.rpc("mark_rest_as_declared", { p_meeting: meeting });
+    const all = await marks();
+    expect(all[b.inviteeId]).toMatchObject({
+      actual: "late",
+      late_minutes: 10,
+    });
+    expect(all[a.inviteeId].late_minutes).toBeNull();
+  });
+
+  it("shows the minutes in History, Attendance and the meeting's people", async () => {
+    await late(b, 15);
+    expect((await history(b)).items[0].mark).toMatchObject({
+      late_minutes: 15,
+    });
+    expect(
+      (await details()).find((row) => row.invitee_id === b.inviteeId)?.mark,
+    ).toMatchObject({ late_minutes: 15 });
+    const { data, error } = await owner.client.rpc("meeting_people", {
+      p_meeting: meeting,
+      p_filter: "all",
+      p_after_name: null,
+      p_after_id: null,
+      p_limit: 50,
+      p_search: null,
+    } as never);
+    expect(error).toBeNull();
+    expect(JSON.stringify(data)).toContain('"late_minutes":15');
   });
 });
 

@@ -10,7 +10,12 @@ import { useMeetingPeople } from "./use-results";
 const base = `/api/workspaces/club-ab12/meetings/${MEETING_IDS.meeting}`;
 const [amira, youssef] = peopleFixture;
 const markOf = (actual: string) => ({
-  mark: { actual, markedAt: "2026-10-09T17:05:00.000Z", markedByName: "Daly" },
+  mark: {
+    actual,
+    markedAt: "2026-10-09T17:05:00.000Z",
+    markedByName: "Daly",
+    lateMinutes: null,
+  },
 });
 
 function setup(

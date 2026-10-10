@@ -4,45 +4,32 @@ import { z } from "zod";
 import type { Database } from "@/server/db/database.types";
 import { sqlNullable } from "@/server/db/rpc-args";
 import type { Mark } from "@/shared/api/responses";
+import { dbMarkSchema } from "./results";
 import type { DbError } from "./roster";
 
 type Client = SupabaseClient<Database>;
 type Result<T> = { data: T | null; error: DbError | null };
 
-const dbMarkSchema = z
-  .object({
-    actual: z.enum(["present", "late", "absent"]),
-    marked_at: z.string(),
-    marked_by_name: z.string().nullable(),
-  })
-  .nullable();
-
-/** `mark_attendance()`: one person's check-in (null clears it); the saved mark (spec §7.8). */
+/**
+ * `mark_attendance()`: one person's check-in (null clears it), with minutes for Late (#257); the
+ * saved mark (spec §7.8).
+ */
 export async function markAttendance(
   client: Client,
   meetingId: string,
   inviteeId: string,
   actual: Mark["actual"] | null,
+  lateMinutes: number | null,
 ): Promise<Result<Mark | null>> {
   const { data, error } = await client.rpc("mark_attendance", {
     p_meeting: meetingId,
     p_invitee: inviteeId,
     p_actual: sqlNullable(actual),
+    p_late_minutes: sqlNullable(lateMinutes),
   });
-  if (error) {
-    return { data: null, error };
-  }
-  const db = dbMarkSchema.parse(data);
-  return {
-    data: db
-      ? {
-          actual: db.actual,
-          markedAt: db.marked_at,
-          markedByName: db.marked_by_name,
-        }
-      : null,
-    error: null,
-  };
+  return error
+    ? { data: null, error }
+    : { data: dbMarkSchema.parse(data), error: null };
 }
 
 /** `mark_rest_as_declared()`: how many people it marked. */

@@ -960,7 +960,12 @@
       "restBody": "People are marked from their answer. People who didn't answer are marked Absent.",
       "restConfirm": "Mark the rest",
       "restDone": "{count, plural, one {Marked # person.} other {Marked # people.}}",
-      "saveFailed": "Couldn't save. Try again."
+      "saveFailed": "Couldn't save. Try again.",
+      "lateGroup": "How late was {name}?",
+      "lateChip": "{minutes} min",
+      "lateOther": "Other",
+      "lateCustom": "Minutes late",
+      "lateInvalid": "Enter 1 to 240 minutes."
     }
   },
   "TokenPages": {
@@ -1088,7 +1093,8 @@
       "late": "late",
       "absent": "absent"
     },
-    "saidAnswer": "Said {answer}"
+    "saidAnswer": "Said {answer}",
+    "lateBy": "late by {minutes} min"
   },
   "Attendance": {
     "view": {
@@ -1116,6 +1122,12 @@
     "sheetSummary": "Summary",
     "sheetDetails": "Details",
     "sheetAnswers": "Answers",
+    "title": "{what} · {sheet}",
+    "attendance": "Attendance",
+    "exported": "{context} · Exported {at}",
+    "meetingContext": "{workspace} · {date}, {start}–{end} ({zone})",
+    "periodContext": "{workspace} · {period}",
+    "customPeriod": "{from} – {to}",
     "yes": "Yes",
     "columns": {
       "name": "Name",
@@ -1136,7 +1148,8 @@
       "absent": "Absent",
       "noReply": "No reply",
       "checkedIn": "Checked in",
-      "checkedInBy": "Checked in by"
+      "checkedInBy": "Checked in by",
+      "wasLateBy": "Was late by (min)"
     },
     "actual": {
       "present": "Present",

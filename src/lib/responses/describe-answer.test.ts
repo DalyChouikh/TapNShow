@@ -43,21 +43,37 @@ describe("describeCheckIn", () => {
     said: (answer) => `Said ${answer}`,
     actual: (value) =>
       ({ present: "present", late: "late", absent: "absent" })[value],
+    lateBy: (minutes) => `late by ${minutes} min`,
     saidWas: (said, was) => `${said} · Was ${was}`,
   };
-  const mark = (actual: "present" | "late" | "absent") => ({
+  const mark = (
+    actual: "present" | "late" | "absent",
+    lateMinutes: number | null = null,
+  ) => ({
     actual,
     markedAt: "2026-10-09T17:05:00.000Z",
     markedByName: "Daly",
+    lateMinutes,
   });
   const going = { status: "attending" as const, delayMinutes: null };
 
-  it("says the answer alone without a check-in, or when they agree", () => {
+  it("says the answer alone without a check-in", () => {
     expect(describeCheckIn(labels, words, going, null)).toBe("Going");
-    expect(describeCheckIn(labels, words, going, mark("present"))).toBe(
-      "Going",
-    );
     expect(describeCheckIn(labels, words, null, null)).toBe("No reply");
+  });
+
+  it("always shows a check-in, also when it agrees (owner feedback #257)", () => {
+    expect(describeCheckIn(labels, words, going, mark("present"))).toBe(
+      "Going · Was present",
+    );
+    expect(
+      describeCheckIn(
+        labels,
+        words,
+        { status: "late", delayMinutes: 10 },
+        mark("late", 15),
+      ),
+    ).toBe("Late by 10 min · Was late by 15 min");
   });
 
   it("puts what they said next to what happened when they differ", () => {
@@ -66,6 +82,9 @@ describe("describeCheckIn", () => {
     );
     expect(describeCheckIn(labels, words, null, mark("present"))).toBe(
       "Didn't answer · Was present",
+    );
+    expect(describeCheckIn(labels, words, going, mark("late", 20))).toBe(
+      "Said going · Was late by 20 min",
     );
   });
 });

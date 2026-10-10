@@ -10,6 +10,7 @@ import {
   listNamesByContact,
 } from "@/lib/export/rows";
 import { saveExport } from "@/lib/export/save";
+import { formatDeadline } from "@/lib/meetings/format";
 import type { PeriodRange } from "@/shared/api/responses";
 import type { Roster } from "@/shared/api/roster";
 
@@ -23,10 +24,10 @@ const SUMMARY = [
   ["email", 30],
   ["lists", 20],
   ["invited", 10],
-  ["attending", 10],
-  ["late", 10],
-  ["absent", 10],
-  ["noReply", 10],
+  ["attending", 10, "success"],
+  ["late", 10, "warning"],
+  ["absent", 10, "danger"],
+  ["noReply", 10, "neutral"],
 ] as const;
 const DETAILS = [
   ["meeting", 30],
@@ -42,34 +43,55 @@ const DETAILS = [
   ["emailStatus", 16],
   ["checkedIn", 14],
   ["checkedInBy", 24],
+  ["wasLateBy", 14],
 ] as const;
 
 /**
  * The Attendance export (spec §7.7): CSV is the summary as shown; Excel adds a Details sheet
- * (one row per person per counted meeting) for the same people and period.
+ * (one row per person per counted meeting) for the same people and period. Excel's title band
+ * names the sheet, the workspace, the period (`periodLabel`, as the chips say it) and the export
+ * time in the workspace's zone.
  */
 export function useExportAttendance(
-  slug: string,
+  workspace: { slug: string; name: string; timezone: string },
   roster: Roster,
   range: PeriodRange,
+  periodLabel: string,
 ) {
   const t = useTranslations("Export");
   const tStatus = useTranslations("MeetingPage.status");
   const labels = useAnswerLabels();
+  const { slug } = workspace;
   const header = (columns: typeof SUMMARY | typeof DETAILS) =>
-    columns.map(([key, width]) => ({ header: t(`columns.${key}`), width }));
+    columns.map(([key, width, tone]) => ({
+      header: t(`columns.${key}`),
+      width,
+      tone,
+    }));
   return async (
     format: ExportFormat,
     shown: AttendanceExportRow[],
   ): Promise<void> => {
     const listNames = listNamesByContact(roster);
+    const now = new Date();
+    const band = (sheet: string) => ({
+      name: sheet,
+      title: t("title", { what: t("attendance"), sheet }),
+      subtitle: t("exported", {
+        context: t("periodContext", {
+          workspace: workspace.name,
+          period: periodLabel,
+        }),
+        at: formatDeadline(now.toISOString(), workspace.timezone),
+      }),
+    });
     const summary = {
-      name: t("sheetSummary"),
+      ...band(t("sheetSummary")),
       columns: header(SUMMARY),
       rows: attendanceSummaryRows(shown, listNames),
     };
     if (format === "csv") {
-      await saveExport(format, [summary], [slug, "attendance"], new Date());
+      await saveExport(format, [summary], [slug, "attendance"], now);
       return;
     }
     const people = new Set(shown.map((row) => row.contactId));
@@ -81,7 +103,7 @@ export function useExportAttendance(
       [
         summary,
         {
-          name: t("sheetDetails"),
+          ...band(t("sheetDetails")),
           columns: header(DETAILS),
           rows: attendanceDetailRows(details, listNames, labels, {
             yes: t("yes"),
@@ -92,7 +114,7 @@ export function useExportAttendance(
         },
       ],
       [slug, "attendance"],
-      new Date(),
+      now,
     );
   };
 }
