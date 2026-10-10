@@ -12,6 +12,7 @@ import {
 } from "@/test/fixtures/meetings";
 import {
   useAddPeople,
+  useDuplicateMeeting,
   useMeeting,
   useMeetingAudience,
   useSendMeeting,
@@ -132,6 +133,33 @@ describe("after Send", () => {
     await act(() => result.current.mutateAsync());
     expect(spy).toHaveBeenCalledWith({
       queryKey: ["meeting-people", "club-ab12", MEETING_IDS.meeting],
+    });
+  });
+});
+
+describe("Duplicate", () => {
+  it("returns the copy's id and refreshes the Meetings tabs", async () => {
+    const queryClient = new QueryClient();
+    const spy = vi.spyOn(queryClient, "invalidateQueries");
+    const copy = "9b1f2a3c-4d5e-4f60-8a71-b2c3d4e5f6aa";
+    routeFetch({
+      [`POST ${base}/duplicate`]: () =>
+        new Response(JSON.stringify({ id: copy }), { status: 201 }),
+    });
+    const { result } = renderHook(() => useDuplicateMeeting("club-ab12"), {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <QueryClientProvider client={queryClient}>
+          {children}
+        </QueryClientProvider>
+      ),
+    });
+    expect(
+      await act(() => result.current.mutateAsync(MEETING_IDS.meeting)),
+    ).toEqual({
+      id: copy,
+    });
+    expect(spy).toHaveBeenCalledWith({
+      queryKey: ["meetings", "club-ab12"],
     });
   });
 });

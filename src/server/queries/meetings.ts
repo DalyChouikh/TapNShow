@@ -337,6 +337,17 @@ export async function addPeople(
   };
 }
 
+/** `duplicate_meeting()`: the new draft's id (spec §7.9). */
+export async function duplicateMeeting(
+  client: Client,
+  meetingId: string,
+): Promise<Result<string>> {
+  const { data, error } = await client.rpc("duplicate_meeting", {
+    p_meeting: meetingId,
+  });
+  return { data: data ?? null, error };
+}
+
 /** `send_meeting()` (first send and Invite more). */
 export async function sendMeeting(
   client: Client,

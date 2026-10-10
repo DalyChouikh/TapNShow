@@ -1,11 +1,13 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { json, routeFetch } from "@/test/fetch";
 import { workspaceFixture } from "@/test/fixtures/me";
 import { MEETING_IDS } from "@/test/fixtures/meetings";
 import { renderWithProviders } from "@/test/render";
 import { MeetingsList } from "./meetings-list";
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 const soon = new Date(Date.now() + 2 * 24 * 3600_000).toISOString();
 const counts = (over: object = {}) => ({
@@ -109,7 +111,7 @@ describe("MeetingsList", () => {
       `/w/robotics-cd34/meetings/${MEETING_IDS.invitee}/edit`,
     );
     expect(
-      screen.getByRole("button", { name: "Draft actions for Untitled draft" }),
+      screen.getByRole("button", { name: "Actions for Untitled draft" }),
     ).toBeInTheDocument();
   });
 
@@ -130,5 +132,8 @@ describe("MeetingsList", () => {
     await screen.findByRole("link", { name: /Weekly sync/ });
     expect(screen.queryByRole("radio", { name: "Drafts" })).toBeNull();
     expect(screen.queryByRole("link", { name: "New meeting" })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Actions for Weekly sync" }),
+    ).toBeNull();
   });
 });

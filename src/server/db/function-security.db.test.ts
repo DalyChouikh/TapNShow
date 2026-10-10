@@ -25,6 +25,7 @@ const PRIVATE_FUNCTIONS_FOR_AUTHENTICATED = [
   "delete_cancelled_meeting",
   "delete_workspace",
   "disconnect_google_connection",
+  "duplicate_meeting",
   "edit_sent_meeting",
   "hit_user_rate_limit",
   "invite_preview",

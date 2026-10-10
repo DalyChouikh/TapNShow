@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { formatMeetingWhen } from "@/lib/meetings/format";
 import type { MeetingSummary } from "@/shared/api/meetings";
-import { DraftMenu } from "./draft-menu";
+import { MeetingCardMenu } from "./meeting-card-menu";
 import { MeetingStatusLine } from "./meeting-status-line";
 
 type Tab = "upcoming" | "drafts" | "past";
@@ -86,8 +86,8 @@ export function MeetingsList({ slug }: { slug: string }) {
                   <Card
                     className={cn(
                       "flex flex-col gap-1",
-                      // Room for the draft's "…" button in the corner.
-                      meeting.status === "draft" && canEdit && "pr-14",
+                      // Room for the card's "…" button in the corner.
+                      canEdit && "pr-14",
                     )}
                   >
                     <span className="font-display text-lg break-words">
@@ -103,12 +103,8 @@ export function MeetingsList({ slug }: { slug: string }) {
                     </span>
                   </Card>
                 </Link>
-                {meeting.status === "draft" && canEdit ? (
-                  <DraftMenu
-                    slug={slug}
-                    meetingId={meeting.id}
-                    title={meeting.title || t("untitled")}
-                  />
+                {canEdit ? (
+                  <MeetingCardMenu slug={slug} meeting={meeting} />
                 ) : null}
               </li>
             );

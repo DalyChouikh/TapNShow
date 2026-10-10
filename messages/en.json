@@ -645,7 +645,9 @@
     "creating": "Creating your draft…",
     "createFailed": "Couldn't create the draft.",
     "retry": "Try again",
-    "draftActions": "Draft actions for {title}",
+    "cardActions": "Actions for {title}",
+    "duplicate": "Duplicate",
+    "duplicated": "Copy created. Pick a date.",
     "answers": "{attending} going · {late} late · {noReply} no reply",
     "answersRsvp": "{attending} going · {absent} not going · {noReply} no reply"
   },
