@@ -53,3 +53,27 @@ export async function jobsOf(meetingId: string) {
   }
   return data;
 }
+
+/** A meeting's reminder timers (jobs with no invitee; service role). */
+export async function timersOf(meetingId: string) {
+  const { data, error } = await adminClient()
+    .from("outbox_jobs")
+    .select("id, run_after, status, payload")
+    .eq("meeting_id", meetingId)
+    .eq("kind", "reminder")
+    .is("invitee_id", null)
+    .in("status", ["pending", "paused"]);
+  if (error) {
+    throw error;
+  }
+  return z
+    .array(
+      z.object({
+        id: z.uuid(),
+        run_after: z.string(),
+        status: z.string(),
+        payload: z.object({ audience: z.string() }),
+      }),
+    )
+    .parse(data);
+}

@@ -34,6 +34,7 @@ const PRIVATE_FUNCTIONS_FOR_AUTHENTICATED = [
   "meeting_results",
   "meetings_page",
   "members_page",
+  "nudge_meeting",
   "remove_member",
   "renew_invite",
   "revoke_invite",
