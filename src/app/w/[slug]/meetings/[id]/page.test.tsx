@@ -231,4 +231,29 @@ describe("/w/[slug]/meetings/[id]", () => {
     ).toBeNull();
     expect(screen.queryByRole("button", { name: /Remind/ })).toBeNull();
   });
+
+  it("offers Results / Check-in after the start to people who can check in (M6)", async () => {
+    const past = new Date(Date.now() - 3600_000).toISOString();
+    setup({ ...meetingFixture, status: "scheduled", startsAt: past });
+    expect(
+      await screen.findByRole("radio", { name: "Check-in" }),
+    ).toBeInTheDocument();
+  });
+
+  it("lets a Viewer with check-in switch, but not a plain Viewer", async () => {
+    const past = new Date(Date.now() - 3600_000).toISOString();
+    setup(
+      { ...meetingFixture, status: "scheduled", startsAt: past },
+      { ...workspaceFixture, myRole: "viewer", canCheckIn: true },
+    );
+    expect(
+      await screen.findByRole("radio", { name: "Check-in" }),
+    ).toBeInTheDocument();
+  });
+
+  it("has no check-in before the start, for announcements or plain Viewers", async () => {
+    setup({ ...meetingFixture, status: "scheduled", startsAt: future });
+    await screen.findByRole("heading", { level: 1, name: "Weekly sync" });
+    expect(screen.queryByRole("radio", { name: "Check-in" })).toBeNull();
+  });
 });
