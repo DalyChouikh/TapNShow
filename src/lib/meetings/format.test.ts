@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   durationText,
+  formatTime,
   formatDeadline,
   formatMeetingWhen,
   meetingSubject,
@@ -100,5 +101,13 @@ describe("durationText", () => {
     expect(durationText(60, words)).toBe("1 h");
     expect(durationText(90, words)).toBe("1 h 30");
     expect(durationText(120, words)).toBe("2 h");
+  });
+});
+
+describe("formatTime", () => {
+  it("prints the time in the meeting's zone", () => {
+    expect(formatTime("2026-10-08T13:20:00.000Z", "Africa/Tunis")).toBe(
+      "14:20",
+    );
   });
 });

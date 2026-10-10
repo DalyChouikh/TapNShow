@@ -78,4 +78,30 @@ describe("ResultTiles", () => {
       screen.getByText("5 people asked for a calendar invite."),
     ).toBeInTheDocument();
   });
+
+  it("adds a To reconfirm tile while people are asked to confirm again (M6)", () => {
+    const onFilter = vi.fn();
+    renderWithProviders(
+      <ResultTiles
+        results={{
+          ...results,
+          answers: { ...results.answers, toReconfirm: 2 },
+        }}
+        filter="all"
+        onFilter={onFilter}
+      />,
+    );
+    expect(screen.getAllByRole("button")).toHaveLength(5);
+    fireEvent.click(screen.getByRole("button", { name: "To reconfirm 2" }));
+    expect(onFilter).toHaveBeenLastCalledWith("to_reconfirm");
+    expect(screen.getByRole("group").className).toContain("md:grid-cols-5");
+  });
+
+  it("keeps four tiles when nobody is to reconfirm", () => {
+    renderWithProviders(
+      <ResultTiles results={results} filter="all" onFilter={vi.fn()} />,
+    );
+    expect(screen.queryByRole("button", { name: /To reconfirm/ })).toBeNull();
+    expect(screen.getByRole("group").className).toContain("md:grid-cols-4");
+  });
 });

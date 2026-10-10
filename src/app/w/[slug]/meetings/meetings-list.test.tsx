@@ -31,6 +31,12 @@ const sending = {
   responseMode: "attendance",
   counts: counts({ invited: 2, sent: 1, queued: 1 }),
 };
+const cancelled = {
+  ...sending,
+  id: "8c3e4d5f-6071-4b82-9ca3-d4e5f6a7b8c9",
+  title: "Old sync",
+  status: "cancelled",
+};
 const answered = {
   ...sending,
   id: "7b2d3c4e-5f60-4a71-8b92-c3d4e5f6a7b8",
@@ -67,6 +73,7 @@ function setup(workspace = workspaceFixture) {
     }),
     [`GET ${base}?tab=past&limit=50`]: json({
       items: [
+        cancelled,
         {
           ...answered,
           id: "8c3d4e5f-6a71-4b82-9ca3-d4e5f6a7b8c9",
@@ -135,5 +142,13 @@ describe("MeetingsList", () => {
     expect(
       screen.queryByRole("button", { name: "Actions for Weekly sync" }),
     ).toBeNull();
+  });
+
+  it("labels a cancelled meeting instead of its answers, in Past (M6)", async () => {
+    setup();
+    await screen.findByRole("link", { name: /Weekly sync/ });
+    await userEvent.click(screen.getByRole("radio", { name: "Past" }));
+    const card = await screen.findByRole("link", { name: /Old sync/ });
+    expect(within(card).getByText("Cancelled")).toBeInTheDocument();
   });
 });

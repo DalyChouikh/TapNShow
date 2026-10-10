@@ -16,7 +16,7 @@ import { normalizeForSearch } from "@/lib/roster/filter-contacts";
 import { AddPeopleSheet } from "./add-people-sheet";
 import { AudiencePersonRow } from "./audience-person-row";
 import { WizardFooter } from "./wizard-footer";
-import type { WizardStepProps } from "./wizard-steps";
+import { stepAfter, stepBefore, type WizardStepProps } from "./wizard-steps";
 import { CHIP_ROW_CLASS } from "@/components/ui/chip-row";
 
 /** Step 2 (or Invite more): lists first, then untick individuals; "Add people" for anyone else. */
@@ -47,9 +47,9 @@ export function AudienceStep({ slug, meeting, steps, goTo }: WizardStepProps) {
     (p) => !p.excluded && p.listIds.length > 1,
   ).length;
   const extra = people.filter((p) => p.added && p.listIds.length === 0);
-  const index = steps.indexOf("audience");
-  const back = () => (index > 0 ? goTo(steps[index - 1]) : history.back());
-  const nextStep = steps[index + 1];
+  const before = stepBefore(steps, "audience");
+  const after = stepAfter(steps, "audience");
+  const back = () => (before ? goTo(before) : history.back());
   return (
     <div className="flex flex-col gap-4">
       <div
@@ -152,7 +152,7 @@ export function AudienceStep({ slug, meeting, steps, goTo }: WizardStepProps) {
         meetingId={meeting.id}
       />
       <WizardFooter
-        backLabel={index > 0 ? t("back") : t("cancel")}
+        backLabel={before ? t("back") : t("cancel")}
         onBack={back}
         nextLabel={
           inviteMore
@@ -161,7 +161,7 @@ export function AudienceStep({ slug, meeting, steps, goTo }: WizardStepProps) {
         }
         nextDisabled={data.counts.toInvite === 0}
         pending={setAudience.isPending}
-        onNext={() => goTo(nextStep)}
+        onNext={() => (after ? goTo(after) : undefined)}
       />
     </div>
   );

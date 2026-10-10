@@ -25,7 +25,11 @@ import { quotaLine } from "@/lib/meetings/quota-line";
 import { GmailConnectResult } from "@/app/w/[slug]/settings/gmail-connect-result";
 import { EmailPreviewDialog } from "./email-preview-dialog";
 import { WizardFooter } from "./wizard-footer";
-import type { WizardStepProps, WizardStep } from "./wizard-steps";
+import {
+  stepBefore,
+  type WizardStep,
+  type WizardStepProps,
+} from "./wizard-steps";
 
 function Summary({
   title,
@@ -295,7 +299,12 @@ export function ReviewStep({
       ) : (
         <WizardFooter
           backLabel={t("back")}
-          onBack={() => goTo(steps[steps.indexOf("review") - 1])}
+          onBack={() => {
+            const before = stepBefore(steps, "review");
+            if (before) {
+              goTo(before);
+            }
+          }}
           nextLabel={t("review.saveDraft")}
           onNext={() => router.push(`/w/${slug}/meetings`)}
         />
