@@ -17,7 +17,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { ShowMore } from "@/components/ui/show-more";
 import { invitesQueryKey, useInvitesPage } from "@/hooks/use-invites";
-import { ApiClientError, apiRequest } from "@/lib/api-client";
+import { apiRequest, errorCodeOf } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { okSchema } from "@/shared/api/common";
 import { inviteDeliveredSchema, type Invite } from "@/shared/api/invites";
@@ -37,10 +37,7 @@ export function InvitesPanel({ workspace }: { workspace: WorkspaceDetails }) {
     queryClient.invalidateQueries({
       queryKey: invitesQueryKey(workspace.slug),
     });
-  const onError = (error: Error) =>
-    toast.error(
-      tErrors(error instanceof ApiClientError ? error.code : "internal"),
-    );
+  const onError = (error: Error) => toast.error(tErrors(errorCodeOf(error)));
 
   const renew = useMutation({
     mutationFn: (input: { invite: Invite; delivery: "email" | "link" }) =>

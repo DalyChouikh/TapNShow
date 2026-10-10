@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { ApiClientError, apiRequest } from "./api-client";
+import { ApiClientError, apiRequest, errorCodeOf } from "./api-client";
 import { loginPathFor } from "./auth-redirect";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -69,5 +69,15 @@ describe("loginPathFor", () => {
     expect(loginPathFor("/w/club-ab12/settings?tab=people")).toBe(
       "/login?next=%2Fw%2Fclub-ab12%2Fsettings%3Ftab%3Dpeople",
     );
+  });
+});
+
+describe("errorCodeOf", () => {
+  it("keeps an API error's code and calls anything else internal", () => {
+    expect(errorCodeOf(new ApiClientError("rate_limited", 429))).toBe(
+      "rate_limited",
+    );
+    expect(errorCodeOf(new TypeError("Failed to fetch"))).toBe("internal");
+    expect(errorCodeOf("thrown text")).toBe("internal");
   });
 });

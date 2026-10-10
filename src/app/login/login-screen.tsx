@@ -17,7 +17,7 @@ import { Sticker } from "@/components/ui/sticker";
 import { APP_NAME } from "@/config/app";
 import { OTP_LENGTH, OTP_RESEND_SECONDS } from "@/config/auth";
 import { publicEnv } from "@/config/public-env";
-import { ApiClientError, apiRequest } from "@/lib/api-client";
+import { apiRequest, errorCodeOf } from "@/lib/api-client";
 import { safeNextPath } from "@/lib/safe-next-path";
 import { otpSendBodySchema, otpVerifyBodySchema } from "@/shared/api/auth";
 import { okSchema } from "@/shared/api/common";
@@ -88,9 +88,7 @@ export function LoginScreen() {
   };
 
   const errorText = (error: Error | null): string | undefined =>
-    error
-      ? tErrors(error instanceof ApiClientError ? error.code : "internal")
-      : undefined;
+    error ? tErrors(errorCodeOf(error)) : undefined;
 
   if (!email) {
     return (

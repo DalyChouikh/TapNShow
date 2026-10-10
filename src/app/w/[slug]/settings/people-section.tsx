@@ -24,7 +24,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { ShowMore } from "@/components/ui/show-more";
 import { membersQueryKey, useMembersPage } from "@/hooks/use-members";
-import { ApiClientError, apiRequest } from "@/lib/api-client";
+import { apiRequest, errorCodeOf } from "@/lib/api-client";
 import { memberActions, type MemberAction } from "@/lib/member-actions";
 import { okSchema } from "@/shared/api/common";
 import type { Member } from "@/shared/api/members";
@@ -50,10 +50,7 @@ export function PeopleSection({
   const members = useMembersPage(workspace.slug);
   const [removing, setRemoving] = useState<Member | null>(null);
   const base = `/api/workspaces/${workspace.slug}/members`;
-  const onError = (error: Error) =>
-    toast.error(
-      tErrors(error instanceof ApiClientError ? error.code : "internal"),
-    );
+  const onError = (error: Error) => toast.error(tErrors(errorCodeOf(error)));
   const refresh = () =>
     queryClient.invalidateQueries({
       queryKey: membersQueryKey(workspace.slug),

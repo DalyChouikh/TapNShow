@@ -14,8 +14,11 @@ export class ApiClientError extends Error {
   }
 }
 
-/** The `ApiErrors` code to show for a failed request: `internal` for anything but an API error. */
-export function errorCodeOf(error: Error): ApiErrorCode {
+/**
+ * The `ApiErrors` code to show for a failed request: `internal` for anything but an API error.
+ * Takes any thrown value (a `catch` binding too).
+ */
+export function errorCodeOf<Thrown>(error: Thrown): ApiErrorCode {
   return error instanceof ApiClientError ? error.code : "internal";
 }
 

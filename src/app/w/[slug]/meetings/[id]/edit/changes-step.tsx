@@ -15,7 +15,7 @@ import {
 } from "@/config/meeting-edit";
 import { useEditPreview, useSaveEdit } from "@/hooks/use-meeting-lifecycle";
 import { useWorkspaceSender } from "@/hooks/use-sender";
-import { ApiClientError } from "@/lib/api-client";
+import { errorCodeOf } from "@/lib/api-client";
 import { markedCard } from "@/lib/meetings/changes";
 import { quotaLine } from "@/lib/meetings/quota-line";
 import type { ChangeSet, ChangeValue } from "@/shared/api/meeting-changes";
@@ -68,9 +68,7 @@ export function ChangesStep({
   const before = stepBefore(steps, "changes");
   const back = () => (before ? goTo(before) : undefined);
   const errorText = (error: Error | null) =>
-    error
-      ? tErrors(error instanceof ApiClientError ? error.code : "internal")
-      : null;
+    error ? tErrors(errorCodeOf(error)) : null;
 
   if (fields === null) {
     return (

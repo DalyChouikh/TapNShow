@@ -1,4 +1,4 @@
-import { ApiClientError } from "@/lib/api-client";
+import { errorCodeOf } from "@/lib/api-client";
 import type { ApiErrorCode } from "@/shared/api/errors";
 import type { Roster } from "@/shared/api/roster";
 
@@ -11,7 +11,7 @@ export function describeEditError(
   email: string | undefined,
   roster: Roster,
 ): { code: ApiErrorCode; takenBy: string | null } {
-  const code = error instanceof ApiClientError ? error.code : "internal";
+  const code = errorCodeOf(error);
   const takenBy =
     code === "contact_email_taken"
       ? (roster.contacts.find((contact) => contact.email === email)?.fullName ??

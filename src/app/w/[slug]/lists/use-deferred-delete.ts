@@ -5,7 +5,7 @@ import { useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import { UNDO_DELETE_MS } from "@/config/roster";
 import { useBulkContacts, useDeleteContact } from "@/hooks/use-roster";
-import { ApiClientError } from "@/lib/api-client";
+import { errorCodeOf } from "@/lib/api-client";
 import type { Contact } from "@/shared/api/roster";
 
 const EMPTY: ReadonlySet<string> = new Set();
@@ -79,11 +79,7 @@ export function useDeferredDelete(slug: string): {
           ? removeOne.mutateAsync(ids[0])
           : bulk.mutateAsync({ action: "delete", contactIds: ids });
       request
-        .catch((error: Error) =>
-          toast.error(
-            tErrors(error instanceof ApiClientError ? error.code : "internal"),
-          ),
-        )
+        .catch((error: Error) => toast.error(tErrors(errorCodeOf(error))))
         .finally(() => forget(ids));
     };
     toast(

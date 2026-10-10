@@ -26,7 +26,7 @@ import {
 import { ME_QUERY_KEY } from "@/hooks/use-me";
 import { membersQueryKey, useMembersPage } from "@/hooks/use-members";
 import { workspaceQueryKey } from "@/hooks/use-workspace";
-import { ApiClientError, apiRequest } from "@/lib/api-client";
+import { apiRequest, errorCodeOf } from "@/lib/api-client";
 import { okSchema } from "@/shared/api/common";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
 import { SettingsSection } from "./settings-section";
@@ -59,9 +59,7 @@ export function DangerZone({
   });
   const admins = adminPage.items;
   const errorText = (error: Error | null) =>
-    error
-      ? tErrors(error instanceof ApiClientError ? error.code : "internal")
-      : undefined;
+    error ? tErrors(errorCodeOf(error)) : undefined;
   const leaveWorkspace = async () => {
     await queryClient.invalidateQueries({ queryKey: ME_QUERY_KEY });
     router.replace("/welcome");
