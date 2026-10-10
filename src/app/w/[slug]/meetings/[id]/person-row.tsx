@@ -47,13 +47,18 @@ export function AnswerPill({ person }: { person: PersonRow }) {
   const labels = useAnswerLabels();
   if (person.answer) {
     return (
-      <span
-        className={cn(
-          "inline-block rounded-full border-2 border-outline px-2 text-xs font-bold text-on-fill",
-          PILL[person.answer.status],
-        )}
-      >
-        {describeAnswer(labels, person.answer)}
+      <span className="inline-flex flex-wrap items-center gap-1">
+        <span
+          className={cn(
+            "inline-block rounded-full border-2 border-outline px-2 text-xs font-bold text-on-fill",
+            PILL[person.answer.status],
+          )}
+        >
+          {describeAnswer(labels, person.answer)}
+        </span>
+        {person.answer.needsReconfirmation ? (
+          <span className="text-xs font-bold">{t("toReconfirmPill")}</span>
+        ) : null}
       </span>
     );
   }

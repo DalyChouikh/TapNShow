@@ -16,6 +16,8 @@ import type { PeopleFilter } from "@/shared/api/responses";
 import { DeliverySheet } from "./delivery-sheet";
 import { EmailLine } from "./email-line";
 import { MeetingHeader } from "./meeting-header";
+import { MeetingMenu } from "./meeting-menu";
+import { NudgeButton } from "./nudge-button";
 import { PeopleList } from "./people-list";
 import { ResultTiles } from "./result-tiles";
 import { SendProgress } from "./send-progress";
@@ -62,9 +64,16 @@ export default function MeetingPage() {
       <MeetingHeader
         meeting={meeting.data}
         actions={
-          meeting.data.responseMode !== "announcement" ? (
-            <MeetingExport slug={slug} meeting={meeting.data} />
-          ) : null
+          <div className="flex items-center gap-2">
+            {meeting.data.responseMode !== "announcement" ? (
+              <MeetingExport slug={slug} meeting={meeting.data} />
+            ) : null}
+            <MeetingMenu
+              slug={slug}
+              meeting={meeting.data}
+              results={results.data}
+            />
+          </div>
         }
       />
       {!results.data ? (
@@ -95,6 +104,13 @@ export default function MeetingPage() {
           filter={filter}
           live={live}
           timezone={meeting.data.timezone}
+        />
+      ) : null}
+      {canEdit && results.data ? (
+        <NudgeButton
+          slug={slug}
+          meeting={meeting.data}
+          results={results.data}
         />
       ) : null}
       {canEdit && meeting.data.status === "scheduled" && !started ? (

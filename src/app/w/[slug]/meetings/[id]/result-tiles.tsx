@@ -5,9 +5,16 @@ import { cn } from "@/lib/utils";
 import type { MeetingResults, PeopleFilter } from "@/shared/api/responses";
 
 type Tile = {
-  filter: Exclude<PeopleFilter, "all" | "not_delivered" | "to_reconfirm">;
+  filter: Exclude<PeopleFilter, "all" | "not_delivered">;
   count: number;
   fill: string;
+};
+
+/** Columns on wide screens per tile count (whole class names, so Tailwind sees each one). */
+const WIDE_COLUMNS: Record<number, string> = {
+  3: "md:grid-cols-3",
+  4: "md:grid-cols-4",
+  5: "md:grid-cols-5",
 };
 
 /**
@@ -33,7 +40,7 @@ export function ResultTiles({
       </p>
     );
   }
-  const tiles: Tile[] =
+  const answerTiles: Tile[] =
     results.responseMode === "rsvp"
       ? [
           {
@@ -66,13 +73,25 @@ export function ResultTiles({
             fill: "bg-fill-neutral",
           },
         ];
+  // People asked to confirm again after a time change (spec §7.5), only while there are some.
+  const tiles: Tile[] =
+    answers.toReconfirm > 0
+      ? [
+          ...answerTiles,
+          {
+            filter: "to_reconfirm",
+            count: answers.toReconfirm,
+            fill: "bg-fill-warning",
+          },
+        ]
+      : answerTiles;
   return (
     <div
       role="group"
       aria-label={t("tilesLabel")}
       className={cn(
         "grid grid-cols-2 gap-3",
-        tiles.length === 4 ? "md:grid-cols-4" : "md:grid-cols-3",
+        WIDE_COLUMNS[tiles.length] ?? "md:grid-cols-4",
       )}
     >
       {tiles.map((tile) => {

@@ -22,6 +22,7 @@ export function ConfirmDialog({
   title,
   description,
   confirmLabel,
+  cancelLabel,
   tone = "primary",
   pending = false,
   onConfirm,
@@ -32,6 +33,8 @@ export function ConfirmDialog({
   title: string;
   description?: string;
   confirmLabel: string;
+  /** The dismiss button's label when "Cancel" would be ambiguous ("Keep meeting"). */
+  cancelLabel?: string;
   tone?: "primary" | "danger";
   pending?: boolean;
   onConfirm: () => void;
@@ -51,7 +54,9 @@ export function ConfirmDialog({
         </DialogHeader>
         {children}
         <DialogFooter>
-          <Button onClick={() => onOpenChange(false)}>{t("cancel")}</Button>
+          <Button onClick={() => onOpenChange(false)}>
+            {cancelLabel ?? t("cancel")}
+          </Button>
           <Button tone={tone} disabled={pending} onClick={onConfirm}>
             {confirmLabel}
           </Button>
