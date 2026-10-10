@@ -571,6 +571,9 @@ isOneToOne: false
 "dispatch_unclaim":
 { Args: { "p_jobs": (string)[] }; Returns: undefined
                            },
+"duplicate_meeting":
+{ Args: { "p_meeting": string }; Returns: string
+                           },
 "edit_sent_meeting":
 { Args: { "p_dry_run"?: boolean,"p_fields": Json,"p_meeting": string,"p_notify"?: boolean }; Returns: Json
                            },

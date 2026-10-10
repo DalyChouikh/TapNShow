@@ -126,6 +126,21 @@ export function useDeleteMeeting(slug: string) {
   });
 }
 
+/** Duplicate (spec §7.9): the new draft's id; the Meetings tabs refresh. */
+export function useDuplicateMeeting(slug: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (meetingId: string) =>
+      apiRequest(`${base(slug)}/${meetingId}/duplicate`, {
+        method: "POST",
+        body: {},
+        schema: createMeetingResponseSchema,
+      }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: meetingsQueryKey(slug) }),
+  });
+}
+
 /** The resolved audience. */
 export function useMeetingAudience(slug: string, id: string) {
   return useQuery({
