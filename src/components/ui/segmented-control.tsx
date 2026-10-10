@@ -14,6 +14,7 @@ export function SegmentedControl({
   options,
   className,
   compact = false,
+  disabled = false,
 }: {
   label: string;
   value: string;
@@ -22,11 +23,14 @@ export function SegmentedControl({
   className?: string;
   /** Smaller one-line labels for four options on 320 px phones. */
   compact?: boolean;
+  /** Shown but not changeable (e.g. the answer type of a sent meeting). */
+  disabled?: boolean;
 }) {
   return (
     <ToggleGroup.Root
       type="single"
       aria-label={label}
+      disabled={disabled}
       value={value}
       onValueChange={(next) => {
         if (next) {
@@ -43,7 +47,7 @@ export function SegmentedControl({
           key={option.value}
           value={option.value}
           className={cn(
-            "min-h-11 font-bold text-ink transition-colors not-last:border-r-[length:var(--tn-border-width)] not-last:border-outline data-[state=on]:bg-ink data-[state=on]:text-surface motion-reduce:transition-none",
+            "min-h-11 font-bold text-ink transition-colors not-last:border-r-[length:var(--tn-border-width)] not-last:border-outline disabled:cursor-not-allowed disabled:opacity-60 data-[state=on]:bg-ink data-[state=on]:text-surface motion-reduce:transition-none",
             compact
               ? "px-2 text-xs whitespace-nowrap min-[360px]:text-sm"
               : "px-3 text-sm",

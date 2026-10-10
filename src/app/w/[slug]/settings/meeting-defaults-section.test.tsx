@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { routeFetch } from "@/test/fetch";
@@ -93,5 +93,28 @@ describe("MeetingDefaultsSection", () => {
       screen.getByText("Use a link that starts with https://"),
     ).toBeInTheDocument();
     expect(patches()).toEqual([]);
+  });
+
+  it("saves each reminder row at once (M6)", async () => {
+    const patches = setup();
+    const pending = await screen.findByRole("radiogroup", {
+      name: "Remind people who haven't answered",
+    });
+    await userEvent.click(within(pending).getByRole("radio", { name: "48 h" }));
+    await userEvent.click(
+      screen.getByRole("switch", { name: "Remind Going and Late" }),
+    );
+    expect(patches()).toEqual([
+      { reminderPendingHours: 48 },
+      { reminderGoingHours: null },
+    ]);
+  });
+
+  it("shows Viewers the reminders as text", async () => {
+    setup({ ...workspaceFixture, myRole: "viewer" });
+    expect(await screen.findByText("Reminders")).toBeInTheDocument();
+    expect(
+      screen.getByText("24 h before the deadline · 2 h before the start"),
+    ).toBeInTheDocument();
   });
 });

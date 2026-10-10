@@ -367,7 +367,11 @@
       "duration": "Default duration",
       "onlinePlace": "Usual online place",
       "onlinePlaceHint": "New meetings held online start with this place and link.",
-      "onlineLink": "Usual online link (optional)"
+      "onlineLink": "Usual online link (optional)",
+      "reminders": "Reminders",
+      "remindersValue": "{pending} · {going}",
+      "remindPendingValue": "{hours, select, off {No reminder before the deadline} other {{hours} h before the deadline}}",
+      "remindGoingValue": "{hours, select, off {no reminder before the start} other {{hours} h before the start}}"
     }
   },
   "WorkspaceHome": {
@@ -663,14 +667,17 @@
       "details": "Meeting details",
       "audience": "Who's invited?",
       "responses": "Answers",
-      "review": "Review and send"
+      "review": "Review and send",
+      "changes": "Review changes"
     },
     "back": "Back",
     "cancel": "Close",
     "next": {
       "audience": "Next: Audience",
       "responses": "Next: Answers",
-      "review": "Next: Review"
+      "review": "Next: Review",
+      "changes": "Next: Review changes",
+      "details": "Next: Details"
     },
     "details": {
       "title": "Title",
@@ -713,7 +720,13 @@
       "footerNote": "Note under the answer form (optional)",
       "deadline": "Answer deadline",
       "deadlineDate": "Deadline date",
-      "deadlineTime": "Deadline time"
+      "deadlineTime": "Deadline time",
+      "locked": "Fixed once sent. To change it, cancel and duplicate the meeting.",
+      "remindPending": "Remind people who haven't answered",
+      "remindPendingHint": "Before the deadline, or before the start if there is none.",
+      "remindGoing": "Remind Going and Late",
+      "remindGoingHint": "Before the start.",
+      "hoursBefore": "{count} h"
     },
     "errors": {
       "titleRequired": "Give the meeting a title.",
@@ -807,6 +820,35 @@
       "emailInvalid": "Check this email.",
       "added": "{count, plural, one {Added # person} other {Added # people}}",
       "person": "Person {number}"
+    },
+    "stepOfEdit": "Edit meeting · Step {current} of {total}",
+    "changes": {
+      "nothing": "Nothing changed yet.",
+      "whoIsTold": "Who is told",
+      "emails": "{count, plural, =0 {Nobody is emailed.} one {Emails # person.} other {Emails # people.}}",
+      "calendarNote": "{count, plural, one {# person who added it to their calendar gets a short note.} other {# people who added it to their calendar get a short note.}}",
+      "reconfirm": "Everyone will be asked to confirm again.",
+      "senderWaiting": "Emails will wait until Gmail is reconnected.",
+      "notify": "Email everyone about this change",
+      "settings": "Your settings",
+      "discard": "Discard changes",
+      "discardTitle": "Discard your changes?",
+      "discardBody": "Nothing has been saved or sent.",
+      "save": "Save changes",
+      "saveAndEmail": "{count, plural, one {Save and email # person} other {Save and email # people}}",
+      "confirmTitle": "{count, plural, one {Save and email # person?} other {Save and email # people?}}",
+      "confirmBody": "They get one email with the changes.",
+      "confirmReconfirm": "They get one email with the changes and are asked to confirm again.",
+      "saved": "Changes saved.",
+      "keep": "Keep editing",
+      "on": "On",
+      "off": "Off",
+      "setting": {
+        "reason_required": "Ask for a reason",
+        "comments_enabled": "Allow a comment",
+        "reminder_pending_hours": "Reminder for people who haven't answered",
+        "reminder_going_hours": "Reminder for Going and Late"
+      }
     }
   },
   "MeetingPage": {

@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { ReminderChoice } from "@/components/forms/reminder-choice";
 import { SwitchRow } from "@/components/forms/switch-row";
 import { Chip } from "@/components/ui/chip";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -13,7 +14,12 @@ import {
   DELAY_OPTIONS_MAX,
   FOOTER_NOTE_MAX,
 } from "@/config/meetings";
-import { useUpdateMeeting } from "@/hooks/use-meetings";
+import {
+  REMINDER_GOING_CHOICES,
+  REMINDER_GOING_DEFAULT,
+  REMINDER_PENDING_CHOICES,
+  REMINDER_PENDING_DEFAULT,
+} from "@/config/reminders";
 import { utcToZonedParts } from "@/lib/meetings/format";
 import { responseModeSchema } from "@/shared/api/meeting-settings";
 import {
@@ -23,12 +29,25 @@ import {
   type ResponsesValues,
 } from "./responses-form";
 import { WizardFooter } from "./wizard-footer";
-import type { WizardStepProps } from "./wizard-steps";
+import { stepAfter, stepBefore, type WizardStepProps } from "./wizard-steps";
 
-/** Step 3: how members answer (spec §7.2; reminders arrive in M6). */
-export function ResponsesStep({ slug, meeting, goTo }: WizardStepProps) {
+/**
+ * How members answer and the reminders (spec §7.2, §7.6). Editing a sent meeting locks the answer
+ * type and the delays, and keeps a deadline that already passed.
+ */
+export function ResponsesStep({
+  meeting,
+  saved,
+  steps,
+  goTo,
+  mode,
+  saver,
+}: WizardStepProps) {
   const t = useTranslations("Wizard");
-  const update = useUpdateMeeting(slug, meeting.id);
+  const editing = mode === "edit";
+  const savedDeadline = editing ? saved.responseDeadline : null;
+  const after = stepAfter(steps, "responses");
+  const before = stepBefore(steps, "responses");
   const deadline = meeting.responseDeadline
     ? utcToZonedParts(meeting.responseDeadline, meeting.timezone)
     : null;
@@ -42,6 +61,8 @@ export function ResponsesStep({ slug, meeting, goTo }: WizardStepProps) {
     deadlineDate: deadline?.date ?? null,
     deadlineTime: deadline?.time ?? null,
     timezone: meeting.timezone,
+    reminderPendingHours: meeting.reminderPendingHours,
+    reminderGoingHours: meeting.reminderGoingHours,
   });
   const [errors, setErrors] = useState<ResponsesErrors>({});
   const set = <K extends keyof ResponsesValues>(
@@ -57,23 +78,22 @@ export function ResponsesStep({ slug, meeting, goTo }: WizardStepProps) {
           ? [...values.delayOptions, minutes].sort((a, b) => a - b)
           : values.delayOptions,
     );
+  const problems = () =>
+    validateResponses(values, meeting.startsAt, new Date(), savedDeadline);
   const next = () => {
-    const found = validateResponses(values, meeting.startsAt, new Date());
+    const found = problems();
     setErrors(found);
-    if (Object.keys(found).length === 0) {
-      update.mutate(responsesPatch(values), {
-        onSuccess: () => goTo("review"),
-      });
+    if (Object.keys(found).length === 0 && after) {
+      saver.save(responsesPatch(values), () => goTo(after));
     }
   };
   const back = () => {
-    if (
-      Object.keys(validateResponses(values, meeting.startsAt, new Date()))
-        .length === 0
-    ) {
-      update.mutate(responsesPatch(values));
+    if (Object.keys(problems()).length === 0) {
+      saver.save(responsesPatch(values));
     }
-    goTo("audience");
+    if (before) {
+      goTo(before);
+    }
   };
   const today = utcToZonedParts(
     new Date().toISOString(),
@@ -87,6 +107,7 @@ export function ResponsesStep({ slug, meeting, goTo }: WizardStepProps) {
     <div className="flex flex-col gap-5">
       <SegmentedControl
         label={t("responses.mode")}
+        disabled={editing}
         value={values.responseMode}
         onValueChange={(mode) =>
           set("responseMode", responseModeSchema.parse(mode))
@@ -97,6 +118,9 @@ export function ResponsesStep({ slug, meeting, goTo }: WizardStepProps) {
           { value: "attendance", label: t("responses.attendance") },
         ]}
       />
+      {editing ? (
+        <p className="text-sm text-muted-ink">{t("responses.locked")}</p>
+      ) : null}
       {!answers ? (
         <p className="text-muted-ink">{t("responses.announcementHint")}</p>
       ) : null}
@@ -110,6 +134,7 @@ export function ResponsesStep({ slug, meeting, goTo }: WizardStepProps) {
             {DELAY_OPTION_CHOICES.map((minutes) => (
               <Chip
                 key={minutes}
+                disabled={editing}
                 pressed={values.delayOptions.includes(minutes)}
                 onPressedChange={() => toggleDelay(minutes)}
               >
@@ -188,9 +213,27 @@ export function ResponsesStep({ slug, meeting, goTo }: WizardStepProps) {
               />
             </div>
           ) : null}
+          <ReminderChoice
+            id="reminder-pending"
+            label={t("responses.remindPending")}
+            hint={t("responses.remindPendingHint")}
+            value={values.reminderPendingHours}
+            choices={REMINDER_PENDING_CHOICES}
+            fallback={REMINDER_PENDING_DEFAULT}
+            onChange={(value) => set("reminderPendingHours", value)}
+          />
+          <ReminderChoice
+            id="reminder-going"
+            label={t("responses.remindGoing")}
+            hint={t("responses.remindGoingHint")}
+            value={values.reminderGoingHours}
+            choices={REMINDER_GOING_CHOICES}
+            fallback={REMINDER_GOING_DEFAULT}
+            onChange={(value) => set("reminderGoingHours", value)}
+          />
         </>
       ) : null}
-      {update.isError ? (
+      {saver.failed ? (
         <p role="alert" className="font-bold">
           {t("errors.saveFailed")}
         </p>
@@ -198,9 +241,9 @@ export function ResponsesStep({ slug, meeting, goTo }: WizardStepProps) {
       <WizardFooter
         backLabel={t("back")}
         onBack={back}
-        nextLabel={t("next.review")}
+        nextLabel={after ? t(`next.${after}`) : ""}
         onNext={next}
-        pending={update.isPending}
+        pending={saver.pending}
       />
     </div>
   );

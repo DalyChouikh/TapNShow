@@ -6,7 +6,7 @@ import { useMeeting } from "@/hooks/use-meetings";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { WizardShell } from "./wizard-shell";
 
-/** The wizard for one meeting; the step comes from `?step=` (spec §7.2). */
+/** The wizard for one meeting; the step comes from `?step=`, editing a sent one from `?mode=edit`. */
 export function EditMeeting() {
   const { slug, id } = useParams<{ slug: string; id: string }>();
   const params = useSearchParams();
@@ -21,6 +21,7 @@ export function EditMeeting() {
       meeting={meeting.data}
       workspace={workspace.data}
       stepParam={params.get("step")}
+      modeParam={params.get("mode")}
     />
   );
 }

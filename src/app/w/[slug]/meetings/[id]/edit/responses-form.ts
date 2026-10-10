@@ -1,4 +1,4 @@
-import { responseDeadlineProblem } from "@/lib/meetings/deadline";
+import { editDeadlineProblem } from "@/lib/meetings/deadline";
 import { utcToZonedParts, zonedWallTimeToUtc } from "@/lib/meetings/format";
 import type { ResponseMode } from "@/shared/api/meeting-settings";
 import type { UpdateMeetingBody } from "@/shared/api/meetings";
@@ -14,6 +14,8 @@ export type ResponsesValues = {
   deadlineDate: string | null;
   deadlineTime: string | null;
   timezone: string;
+  reminderPendingHours: number | null;
+  reminderGoingHours: number | null;
 };
 
 /** Error keys under `Wizard.errors`, each shown on the field that is wrong. */
@@ -40,6 +42,7 @@ function deadlineErrors(
   values: ResponsesValues,
   startsAt: string | null,
   now: Date,
+  savedDeadline: string | null,
 ): ResponsesErrors {
   const { deadlineDate, deadlineTime, timezone } = values;
   if (!deadlineDate || !deadlineTime) {
@@ -53,7 +56,7 @@ function deadlineErrors(
     time: deadlineTime,
     timezone,
   });
-  const problem = responseDeadlineProblem(deadline, startsAt, now);
+  const problem = editDeadlineProblem(deadline, startsAt, now, savedDeadline);
   if (problem === "inPast") {
     return { deadlineTime: "inPast" };
   }
@@ -68,11 +71,15 @@ function deadlineErrors(
   return {};
 }
 
-/** What blocks "Next" on the Responses step. */
+/**
+ * What blocks "Next" on the Responses step. `savedDeadline`: the sent meeting's deadline while
+ * editing (one that already passed may stay); null for drafts (the plain rule).
+ */
 export function validateResponses(
   values: ResponsesValues,
   startsAt: string | null,
   now: Date,
+  savedDeadline: string | null = null,
 ): ResponsesErrors {
   const errors: ResponsesErrors = {};
   if (
@@ -82,7 +89,7 @@ export function validateResponses(
     errors.delayOptions = "delaysRequired";
   }
   if (values.deadlineEnabled && values.responseMode !== "announcement") {
-    Object.assign(errors, deadlineErrors(values, startsAt, now));
+    Object.assign(errors, deadlineErrors(values, startsAt, now, savedDeadline));
   }
   return errors;
 }
@@ -98,5 +105,7 @@ export function responsesPatch(values: ResponsesValues): UpdateMeetingBody {
     commentsEnabled: answers && values.commentsEnabled,
     footerNote: answers ? values.footerNote.trim() : "",
     responseDeadline: answers ? deadlineOf(values) : null,
+    reminderPendingHours: answers ? values.reminderPendingHours : null,
+    reminderGoingHours: answers ? values.reminderGoingHours : null,
   };
 }
