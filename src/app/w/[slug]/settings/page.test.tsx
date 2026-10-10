@@ -58,6 +58,8 @@ describe("/w/[slug]/settings", () => {
               durationMinutes: 60,
               onlineText: "",
               meetingUrl: "",
+              reminderPendingHours: 24,
+              reminderGoingHours: 2,
             }),
           );
         }

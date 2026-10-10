@@ -24,10 +24,15 @@ const results = {
     notAttending: 0,
     noReply: 0,
     calendarRequested: 0,
+    toReconfirm: 0,
+    remindable: 0,
+    reachable: 1,
   },
   paused: 0,
   resumesAt: null,
   senderState: "ok",
+  checkedIn: 0,
+  nudge: { lastAt: null, lastCount: null, nextAt: null },
 };
 
 describe("organizer hooks", () => {

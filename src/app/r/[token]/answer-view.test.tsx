@@ -28,7 +28,13 @@ function answerFrom(body: string): Answer {
     Answer,
     "status" | "delayMinutes" | "reason" | "comment"
   >;
-  return { ...sent, afterDeadline: false, respondedAt: NOW, updatedAt: NOW };
+  return {
+    ...sent,
+    afterDeadline: false,
+    respondedAt: NOW,
+    updatedAt: NOW,
+    needsReconfirmation: false,
+  };
 }
 
 function renderWith(search: string, overrides: Overrides = {}) {
@@ -163,6 +169,7 @@ describe("AnswerView", () => {
         reason: "Exam",
         comment: "",
         afterDeadline: false,
+        needsReconfirmation: false,
         respondedAt: NOW,
         updatedAt: NOW,
       },
@@ -183,6 +190,7 @@ describe("AnswerView", () => {
         reason: "Exam",
         comment: "",
         afterDeadline: false,
+        needsReconfirmation: false,
         respondedAt: NOW,
         updatedAt: NOW,
       },
@@ -210,6 +218,7 @@ describe("AnswerView", () => {
         reason: "Exam",
         comment: "",
         afterDeadline: false,
+        needsReconfirmation: false,
         respondedAt: NOW,
         updatedAt: NOW,
       },
@@ -267,6 +276,7 @@ describe("AnswerView", () => {
         reason: "<img src=x onerror=alert(1)>",
         comment: "",
         afterDeadline: false,
+        needsReconfirmation: false,
         respondedAt: NOW,
         updatedAt: NOW,
       },
@@ -294,6 +304,7 @@ describe("AnswerView", () => {
         reason: "",
         comment: "",
         afterDeadline: false,
+        needsReconfirmation: false,
         respondedAt: NOW,
         updatedAt: NOW,
       },
@@ -319,6 +330,7 @@ describe("AnswerView", () => {
         reason: "Exam",
         comment: "",
         afterDeadline: false,
+        needsReconfirmation: false,
         respondedAt: NOW,
         updatedAt: NOW,
       },

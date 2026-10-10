@@ -69,3 +69,6 @@ export const AUDIENCE_PAGE_SIZE = 50;
  * send (2026-10-08, the inbox showed the workspace name). When false, Review shows only the address.
  */
 export const FROM_NAME_KEPT = true;
+
+/** Longest search in a meeting's people list and check-in (DB twin: `meeting_people` refuses longer). */
+export const PEOPLE_SEARCH_MAX = 120;

@@ -7,6 +7,10 @@ import {
   type Audience,
   type AudienceBody,
   audienceSchema,
+  cancelResultSchema,
+  type EditFields,
+  type EditMeetingBody,
+  type EditResult,
   type Meeting,
   meetingSchema,
   type MeetingSummary,
@@ -15,12 +19,14 @@ import {
   sendResultSchema,
   type UpdateMeetingBody,
 } from "@/shared/api/meetings";
+import type { EditableField } from "@/config/meeting-edit";
 import { sqlNullable } from "@/server/db/rpc-args";
 import { encodeCursor } from "@/server/http/pagination";
 import {
   locationModeSchema,
   responseModeSchema,
 } from "@/shared/api/meeting-settings";
+import { changeSetSchema } from "@/shared/api/meeting-changes";
 import type { Page } from "@/shared/api/pagination";
 import type { DbError } from "./roster";
 
@@ -28,7 +34,7 @@ type Client = SupabaseClient<Database>;
 type Result<T> = { data: T | null; error: DbError | null };
 
 const MEETING_COLUMNS =
-  "id, workspace_id, title, agenda_md, starts_at, duration_minutes, timezone, location_mode, location_text, online_text, meeting_url, response_mode, response_deadline, delay_options, reason_required, comments_enabled, footer_note, status, sent_at";
+  "id, workspace_id, title, agenda_md, starts_at, duration_minutes, timezone, location_mode, location_text, online_text, meeting_url, response_mode, response_deadline, delay_options, reason_required, comments_enabled, footer_note, status, sent_at, reminder_pending_hours, reminder_going_hours, cancelled_at";
 
 type MeetingRow = Database["public"]["Tables"]["meetings"]["Row"];
 
@@ -53,6 +59,9 @@ function toMeeting(
     | "footer_note"
     | "status"
     | "sent_at"
+    | "reminder_pending_hours"
+    | "reminder_going_hours"
+    | "cancelled_at"
   >,
 ): Meeting {
   return meetingSchema.parse({
@@ -74,6 +83,9 @@ function toMeeting(
     footerNote: row.footer_note,
     status: row.status,
     sentAt: row.sent_at,
+    reminderPendingHours: row.reminder_pending_hours,
+    reminderGoingHours: row.reminder_going_hours,
+    cancelledAt: row.cancelled_at,
   });
 }
 
@@ -210,6 +222,8 @@ export async function updateMeeting(
       reason_required: patch.reasonRequired,
       comments_enabled: patch.commentsEnabled,
       footer_note: patch.footerNote,
+      reminder_pending_hours: patch.reminderPendingHours,
+      reminder_going_hours: patch.reminderGoingHours,
     })
     .eq("id", meetingId)
     .eq("workspace_id", workspaceId)
@@ -369,4 +383,113 @@ export async function sendMeeting(
     },
     error: null,
   };
+}
+
+type EditValue = string | number | boolean | null;
+
+/** The edit's fields with the database's column names (`edit_sent_meeting` p_fields). */
+export function toEditColumns(
+  fields: EditFields,
+): Partial<Record<EditableField, EditValue>> {
+  const pairs: [EditableField, EditValue | undefined][] = [
+    ["title", fields.title],
+    ["agenda_md", fields.agendaMd],
+    ["starts_at", fields.startsAt],
+    ["duration_minutes", fields.durationMinutes],
+    ["timezone", fields.timezone],
+    ["location_mode", fields.locationMode],
+    ["location_text", fields.locationText],
+    ["online_text", fields.onlineText],
+    ["meeting_url", fields.meetingUrl],
+    ["response_deadline", fields.responseDeadline],
+    ["reason_required", fields.reasonRequired],
+    ["comments_enabled", fields.commentsEnabled],
+    ["footer_note", fields.footerNote],
+    ["reminder_pending_hours", fields.reminderPendingHours],
+    ["reminder_going_hours", fields.reminderGoingHours],
+  ];
+  const columns: Partial<Record<EditableField, EditValue>> = {};
+  for (const [column, value] of pairs) {
+    if (value !== undefined) {
+      columns[column] = value;
+    }
+  }
+  return columns;
+}
+
+/** `edit_sent_meeting()`: preview or save an edit of a sent meeting (spec §7.5). */
+export async function editSentMeeting(
+  client: Client,
+  meetingId: string,
+  body: EditMeetingBody,
+): Promise<Result<EditResult>> {
+  const { data, error } = await client.rpc("edit_sent_meeting", {
+    p_meeting: meetingId,
+    p_fields: toEditColumns(body.fields),
+    p_notify: body.notify,
+    p_dry_run: body.dryRun,
+  });
+  if (error) {
+    return { data: null, error };
+  }
+  const db = z
+    .object({
+      changed: z.boolean(),
+      changes: changeSetSchema,
+      emails: z.number().int(),
+      calendar_only: z.number().int(),
+      reconfirm: z.boolean(),
+    })
+    .parse(data);
+  return {
+    data: {
+      changed: db.changed,
+      changes: db.changes,
+      emails: db.emails,
+      calendarOnly: db.calendar_only,
+      reconfirm: db.reconfirm,
+    },
+    error: null,
+  };
+}
+
+/** `cancel_meeting()`: how many people get the cancellation (spec §7.5). */
+export async function cancelMeeting(
+  client: Client,
+  meetingId: string,
+): Promise<Result<{ emails: number }>> {
+  const { data, error } = await client.rpc("cancel_meeting", {
+    p_meeting: meetingId,
+  });
+  return error
+    ? { data: null, error }
+    : { data: cancelResultSchema.parse(data), error: null };
+}
+
+/** `delete_cancelled_meeting()`: once its cancellation emails are out. */
+export async function deleteCancelledMeeting(
+  client: Client,
+  meetingId: string,
+): Promise<{ error: DbError | null }> {
+  const { error } = await client.rpc("delete_cancelled_meeting", {
+    p_meeting: meetingId,
+  });
+  return { error };
+}
+
+/** `nudge_meeting()`: remind everyone who hasn't answered (spec §7.6). */
+export async function nudgeMeeting(
+  client: Client,
+  meetingId: string,
+): Promise<Result<{ reminded: number; nextAt: string }>> {
+  const { data, error } = await client.rpc("nudge_meeting", {
+    p_meeting: meetingId,
+  });
+  if (error) {
+    return { data: null, error };
+  }
+  const db = z
+    .object({ reminded: z.number().int(), next_at: z.string() })
+    .parse(data);
+  return { data: { reminded: db.reminded, nextAt: db.next_at }, error: null };
 }

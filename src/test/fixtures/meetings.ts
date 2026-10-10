@@ -32,6 +32,9 @@ export const meetingFixture: Meeting = {
   footerNote: "",
   status: "draft",
   sentAt: null,
+  reminderPendingHours: 24,
+  reminderGoingHours: 2,
+  cancelledAt: null,
 };
 
 /** Members (Amira, Youssef) + Committee (Youssef, Lina — unsubscribed). */
@@ -87,10 +90,15 @@ export const resultsFixture: MeetingResults = {
     notAttending: 0,
     noReply: 1,
     calendarRequested: 0,
+    toReconfirm: 0,
+    remindable: 1,
+    reachable: 1,
   },
   paused: 0,
   resumesAt: null,
   senderState: "ok",
+  checkedIn: 0,
+  nudge: { lastAt: null, lastCount: null, nextAt: null },
 };
 
 /** Two people: Amira answered Late with a reason, Youssef has not answered. */
@@ -111,7 +119,9 @@ export const peopleFixture: PersonRow[] = [
       comment: "",
       afterDeadline: true,
       updatedAt: "2026-10-08T12:05:00.000Z",
+      needsReconfirmation: false,
     },
+    mark: null,
   },
   {
     inviteeId: "6a1f2b3c-4d5e-4f60-8a71-b2c3d4e5f608",
@@ -123,5 +133,6 @@ export const peopleFixture: PersonRow[] = [
     emailError: null,
     sentAt: null,
     answer: null,
+    mark: null,
   },
 ];

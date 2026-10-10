@@ -49,6 +49,7 @@ const dbAnswerSchema = z
     comment: z.string(),
     after_deadline: z.boolean(),
     updated_at: z.string(),
+    needs_reconfirmation: z.boolean().default(false),
   })
   .nullable()
   .transform((db) =>
@@ -60,6 +61,25 @@ const dbAnswerSchema = z
           comment: db.comment,
           afterDeadline: db.after_deadline,
           updatedAt: db.updated_at,
+          needsReconfirmation: db.needs_reconfirmation,
+        }
+      : null,
+  );
+
+/** A check-in mark as the database writes it (spec §7.8). */
+const dbMarkSchema = z
+  .object({
+    actual: z.enum(["present", "late", "absent"]),
+    marked_at: z.string(),
+    marked_by_name: z.string().nullable(),
+  })
+  .nullable()
+  .transform((db) =>
+    db
+      ? {
+          actual: db.actual,
+          markedAt: db.marked_at,
+          markedByName: db.marked_by_name,
         }
       : null,
   );
@@ -96,10 +116,19 @@ export async function getMeetingResults(
         not_attending: count,
         no_reply: count,
         calendar_requested: count,
+        to_reconfirm: count,
+        remindable: count,
+        reachable: count,
       }),
       paused: count,
       resumes_at: z.string().nullable(),
       sender_state: z.enum(["ok", "missing", "broken"]),
+      checked_in: count,
+      nudge: z.object({
+        last_at: z.string().nullable(),
+        last_count: z.number().int().nullable(),
+        next_at: z.string().nullable(),
+      }),
     })
     .parse(data);
   return {
@@ -113,10 +142,19 @@ export async function getMeetingResults(
         notAttending: db.answers.not_attending,
         noReply: db.answers.no_reply,
         calendarRequested: db.answers.calendar_requested,
+        toReconfirm: db.answers.to_reconfirm,
+        remindable: db.answers.remindable,
+        reachable: db.answers.reachable,
       },
       paused: db.paused,
       resumesAt: db.resumes_at,
       senderState: db.sender_state,
+      checkedIn: db.checked_in,
+      nudge: {
+        lastAt: db.nudge.last_at,
+        lastCount: db.nudge.last_count,
+        nextAt: db.nudge.next_at,
+      },
     },
     error: null,
   };
@@ -133,6 +171,7 @@ const dbPersonSchema = z.object({
   email_error: z.string().nullable(),
   sent_at: z.string().nullable(),
   answer: dbAnswerSchema,
+  mark: dbMarkSchema,
 });
 
 /** One page of a meeting's people (`meeting_people`). */
@@ -142,6 +181,7 @@ export async function listMeetingPeople(
   filter: PeopleFilter,
   limit: number,
   after: [string, string] | null,
+  search: string | null = null,
 ): Promise<Result<Page<PersonRow>>> {
   const { data, error } = await client.rpc("meeting_people", {
     p_meeting: meetingId,
@@ -149,6 +189,7 @@ export async function listMeetingPeople(
     p_after_name: sqlNullable(after?.[0] ?? null),
     p_after_id: sqlNullable(after?.[1] ?? null),
     p_limit: limit,
+    p_search: sqlNullable(search),
   });
   if (error) {
     return { data: null, error };
@@ -167,6 +208,7 @@ export async function listMeetingPeople(
         emailError: row.email_error,
         sentAt: row.sent_at,
         answer: row.answer,
+        mark: row.mark,
       })),
       nextCursor:
         parsed.has_more && last

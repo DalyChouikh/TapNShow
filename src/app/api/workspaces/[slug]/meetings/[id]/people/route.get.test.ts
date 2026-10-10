@@ -35,6 +35,27 @@ describe("GET …/meetings/[id]/people", () => {
       "late",
       20,
       null,
+      null,
+    );
+  });
+
+  it("searches names and emails, trimmed, up to 120 characters (M6)", async () => {
+    queries.listMeetingPeople.mockResolvedValue({
+      data: { items: [], nextCursor: null },
+      error: null,
+    });
+    const { GET } = await import("./route");
+    await GET(get("?filter=to_reconfirm&search=%20sarra%20"), ctx);
+    expect(queries.listMeetingPeople).toHaveBeenLastCalledWith(
+      {},
+      MEETING_IDS.meeting,
+      "to_reconfirm",
+      50,
+      null,
+      "sarra",
+    );
+    expect((await GET(get(`?search=${"x".repeat(121)}`), ctx)).status).toBe(
+      400,
     );
   });
 

@@ -6,6 +6,7 @@ import {
   TITLE_MAX,
 } from "@/config/meetings";
 import { emailSchema } from "./common";
+import { changeSetSchema } from "./meeting-changes";
 import { pageSchema } from "./pagination";
 import {
   delayOptionsSchema,
@@ -14,6 +15,8 @@ import {
   locationModeSchema,
   meetingUrlSchema,
   onlineTextSchema,
+  reminderGoingSchema,
+  reminderPendingSchema,
   responseModeSchema,
 } from "./meeting-settings";
 import { timezoneSchema } from "./workspaces";
@@ -21,7 +24,11 @@ import { timezoneSchema } from "./workspaces";
 /** Lifecycle of a meeting. */
 export const meetingStatusSchema = z.enum(["draft", "scheduled", "cancelled"]);
 
-export { meetingUrlSchema } from "./meeting-settings";
+export {
+  meetingUrlSchema,
+  reminderGoingSchema,
+  reminderPendingSchema,
+} from "./meeting-settings";
 
 const isoInstant = z.iso.datetime({ offset: true });
 
@@ -45,6 +52,9 @@ export const meetingSchema = z.object({
   footerNote: z.string(),
   status: meetingStatusSchema,
   sentAt: z.string().nullable(),
+  reminderPendingHours: z.number().int().nullable(),
+  reminderGoingHours: z.number().int().nullable(),
+  cancelledAt: z.string().nullable(),
 });
 /** A meeting as the editor and meeting page see it. */
 export type Meeting = z.infer<typeof meetingSchema>;
@@ -88,29 +98,74 @@ export const meetingPageSchema = pageSchema(meetingSummarySchema);
 /** `POST …/meetings` response (a new draft). */
 export const createMeetingResponseSchema = z.object({ id: z.uuid() });
 
+/** Every field the wizard edits, with its rules (drafts; sent meetings except two, below). */
+const meetingFieldsSchema = z.object({
+  title: z.string().trim().max(TITLE_MAX),
+  agendaMd: z.string().max(AGENDA_MAX),
+  startsAt: isoInstant.nullable(),
+  durationMinutes: durationMinutesSchema,
+  timezone: timezoneSchema,
+  locationMode: locationModeSchema,
+  locationText: z.string().trim().max(LOCATION_MAX),
+  onlineText: onlineTextSchema,
+  meetingUrl: meetingUrlSchema,
+  responseMode: responseModeSchema,
+  responseDeadline: isoInstant.nullable(),
+  delayOptions: delayOptionsSchema,
+  reasonRequired: z.boolean(),
+  commentsEnabled: z.boolean(),
+  footerNote: footerNoteSchema,
+  reminderPendingHours: reminderPendingSchema,
+  reminderGoingHours: reminderGoingSchema,
+});
+
 /** `PATCH …/meetings/[id]`: one wizard step's fields (drafts only). */
-export const updateMeetingBodySchema = z
-  .object({
-    title: z.string().trim().max(TITLE_MAX),
-    agendaMd: z.string().max(AGENDA_MAX),
-    startsAt: isoInstant.nullable(),
-    durationMinutes: durationMinutesSchema,
-    timezone: timezoneSchema,
-    locationMode: locationModeSchema,
-    locationText: z.string().trim().max(LOCATION_MAX),
-    onlineText: onlineTextSchema,
-    meetingUrl: meetingUrlSchema,
-    responseMode: responseModeSchema,
-    responseDeadline: isoInstant.nullable(),
-    delayOptions: delayOptionsSchema,
-    reasonRequired: z.boolean(),
-    commentsEnabled: z.boolean(),
-    footerNote: footerNoteSchema,
-  })
+export const updateMeetingBodySchema = meetingFieldsSchema
   .partial()
   .refine((body) => Object.keys(body).length > 0);
 /** A partial draft update. */
 export type UpdateMeetingBody = z.infer<typeof updateMeetingBodySchema>;
+
+/**
+ * Fields of a sent meeting that can change (spec §4: not the answer type, not the delays). Strict:
+ * those two, or any unknown key, are a 400 before the database's own check. DB twin of the list:
+ * `c_editable` in `private.edit_sent_meeting` (src/config/meeting-edit.ts).
+ */
+export const editFieldsSchema = meetingFieldsSchema
+  .omit({ responseMode: true, delayOptions: true })
+  .partial()
+  .strict()
+  .refine((body) => Object.keys(body).length > 0);
+/** Changed fields of a sent meeting. */
+export type EditFields = z.infer<typeof editFieldsSchema>;
+
+/** `POST …/changes`: preview (`dryRun`) or save. `notify`: "Email everyone about this change". */
+export const editMeetingBodySchema = z.object({
+  fields: editFieldsSchema,
+  notify: z.boolean(),
+  dryRun: z.boolean(),
+});
+/** An edit request. */
+export type EditMeetingBody = z.infer<typeof editMeetingBodySchema>;
+
+/** What an edit changes and who it emails (`calendarOnly`: calendar updates without a message). */
+export const editResultSchema = z.object({
+  changed: z.boolean(),
+  changes: changeSetSchema,
+  emails: z.number().int(),
+  calendarOnly: z.number().int(),
+  reconfirm: z.boolean(),
+});
+/** An edit's preview or result. */
+export type EditResult = z.infer<typeof editResultSchema>;
+
+/** `POST …/cancel` response: how many people get the cancellation. */
+export const cancelResultSchema = z.object({ emails: z.number().int() });
+/** `POST …/nudge` response: how many were reminded and when the next nudge is possible. */
+export const nudgeResultSchema = z.object({
+  reminded: z.number().int(),
+  nextAt: z.string(),
+});
 
 /** `PUT …/audience`: picked lists and individual include / exclude sets (replaced as a whole). */
 export const audienceBodySchema = z.object({

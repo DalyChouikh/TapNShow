@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   addPeopleBodySchema,
+  editMeetingBodySchema,
+  editResultSchema,
   meetingUrlSchema,
   updateMeetingBodySchema,
 } from "./meetings";
@@ -80,5 +82,48 @@ describe("online place", () => {
         meetingUrl: "javascript:alert(1)",
       }).success,
     ).toBe(false);
+  });
+});
+
+describe("edit after sending (M6)", () => {
+  it("refuses the answer type and the delays in an edit", () => {
+    const body = (fields: object) => ({ fields, notify: false, dryRun: true });
+    expect(
+      editMeetingBodySchema.safeParse(body({ responseMode: "rsvp" })).success,
+    ).toBe(false);
+    expect(
+      editMeetingBodySchema.safeParse(body({ delayOptions: [5] })).success,
+    ).toBe(false);
+    expect(editMeetingBodySchema.safeParse(body({})).success).toBe(false);
+    expect(
+      editMeetingBodySchema.safeParse(body({ title: "Weekly sync" })).success,
+    ).toBe(true);
+  });
+
+  it("accepts reminder choices and off, nothing else", () => {
+    expect(
+      updateMeetingBodySchema.safeParse({ reminderPendingHours: 24 }).success,
+    ).toBe(true);
+    expect(
+      updateMeetingBodySchema.safeParse({ reminderPendingHours: null }).success,
+    ).toBe(true);
+    expect(
+      updateMeetingBodySchema.safeParse({ reminderPendingHours: 3 }).success,
+    ).toBe(false);
+    expect(
+      updateMeetingBodySchema.safeParse({ reminderGoingHours: 48 }).success,
+    ).toBe(false);
+  });
+
+  it("reads an edit result", () => {
+    expect(
+      editResultSchema.parse({
+        changed: true,
+        changes: { title: ["Old", "New"] },
+        emails: 3,
+        calendarOnly: 1,
+        reconfirm: false,
+      }).calendarOnly,
+    ).toBe(1);
   });
 });

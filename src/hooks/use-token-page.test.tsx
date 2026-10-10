@@ -22,6 +22,7 @@ const ANSWER = {
   afterDeadline: false,
   respondedAt: "2026-10-08T10:00:00.000Z",
   updatedAt: "2026-10-08T10:00:00.000Z",
+  needsReconfirmation: false,
 };
 
 describe("useSubmitAnswer", () => {

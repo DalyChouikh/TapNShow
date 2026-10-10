@@ -1,5 +1,9 @@
 import { z } from "zod";
 import {
+  REMINDER_GOING_CHOICES,
+  REMINDER_PENDING_CHOICES,
+} from "@/config/reminders";
+import {
   DELAY_OPTIONS_MAX,
   DURATION_MAX,
   DURATION_MIN,
@@ -48,6 +52,19 @@ export const meetingUrlSchema = z.union([
 /** Where an online meeting happens, in words (e.g. "Club Discord, Meetings voice channel"). */
 export const onlineTextSchema = z.string().trim().max(LOCATION_MAX);
 
+const oneOf = (choices: readonly number[]) =>
+  z
+    .number()
+    .int()
+    .refine((value) => choices.includes(value));
+/**
+ * "People who haven't answered" reminder, hours before the deadline (else the start); null = off.
+ * Choices: src/config/reminders.ts (DB twin: the reminder_pending_hours checks).
+ */
+export const reminderPendingSchema = oneOf(REMINDER_PENDING_CHOICES).nullable();
+/** "Going and Late" reminder, hours before the start; null = off (DB twin: the checks). */
+export const reminderGoingSchema = oneOf(REMINDER_GOING_CHOICES).nullable();
+
 /** Settings > Meeting defaults (spec §7.2, §6 workspaces). */
 export const meetingDefaultsSchema = z.object({
   responseMode: responseModeSchema,
@@ -60,6 +77,9 @@ export const meetingDefaultsSchema = z.object({
   onlineText: onlineTextSchema,
   /** The usual online link new meetings start with. */
   meetingUrl: meetingUrlSchema,
+  /** Reminders new meetings start with (spec §7.6). */
+  reminderPendingHours: reminderPendingSchema,
+  reminderGoingHours: reminderGoingSchema,
 });
 /** Workspace meeting defaults. */
 export type MeetingDefaults = z.infer<typeof meetingDefaultsSchema>;

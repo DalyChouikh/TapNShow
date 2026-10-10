@@ -26,6 +26,8 @@ export const tokenInfoSchema = z.object({
     meetingUrl: z.string(),
     agendaMd: z.string(),
     status: meetingStatusSchema,
+    /** While the person is to reconfirm: the time they answered for (struck through). */
+    previousStartsAt: z.string().nullable().default(null),
   }),
   answers: answerSettingsSchema,
   answer: answerSchema.nullable(),

@@ -19,6 +19,7 @@ const ctx = {
 const queries = vi.hoisted(() => ({
   updateMeeting: vi.fn(),
   deleteMeeting: vi.fn(),
+  deleteCancelledMeeting: vi.fn(),
 }));
 vi.mock("@/server/queries/meetings", () => queries);
 
@@ -79,6 +80,24 @@ describe("/api/workspaces/[slug]/meetings/[id]", () => {
       ...okContext,
       meeting: { ...meetingFixture, status: "scheduled" },
     };
+    expect((await DELETE(jsonRequest("DELETE"), ctx)).status).toBe(409);
+    expect(queries.deleteCancelledMeeting).not.toHaveBeenCalled();
+  });
+
+  it("deletes a cancelled meeting through its own rule (M6)", async () => {
+    queries.deleteCancelledMeeting.mockResolvedValueOnce({ error: null });
+    mocks.context.value = {
+      ...okContext,
+      meeting: { ...meetingFixture, status: "cancelled" },
+    };
+    const { DELETE } = await import("./route");
+    expect(await (await DELETE(jsonRequest("DELETE"), ctx)).json()).toEqual({
+      ok: true,
+    });
+    expect(queries.deleteMeeting).not.toHaveBeenCalled();
+    queries.deleteCancelledMeeting.mockResolvedValueOnce({
+      error: { code: "P0001", message: "tn:cancel_emails_pending" },
+    });
     expect((await DELETE(jsonRequest("DELETE"), ctx)).status).toBe(409);
   });
 });

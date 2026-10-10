@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import type { MeetingResults, PeopleFilter } from "@/shared/api/responses";
 
 type Tile = {
-  filter: Exclude<PeopleFilter, "all" | "not_delivered">;
+  filter: Exclude<PeopleFilter, "all" | "not_delivered" | "to_reconfirm">;
   count: number;
   fill: string;
 };

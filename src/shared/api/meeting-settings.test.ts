@@ -28,3 +28,18 @@ describe("meeting settings schemas", () => {
     ).toEqual({ durationMinutes: 90 });
   });
 });
+
+describe("reminder defaults (M6)", () => {
+  it("accepts the reminder choices and off", () => {
+    expect(
+      updateMeetingDefaultsBodySchema.safeParse({
+        reminderPendingHours: 48,
+        reminderGoingHours: null,
+      }).success,
+    ).toBe(true);
+    expect(
+      updateMeetingDefaultsBodySchema.safeParse({ reminderGoingHours: 3 })
+        .success,
+    ).toBe(false);
+  });
+});
