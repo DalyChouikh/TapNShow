@@ -267,8 +267,9 @@ async function drainSender(
 }
 
 /**
- * An update says something when members see a change or are asked to confirm again, or when it
- * moves a calendar event. Twin of the "nothing to send" rule in `dispatch_reserve` (Task 5).
+ * An update says something when something members see changed or they are asked to confirm again,
+ * and it goes to someone notified or carries a calendar update. Changes that cancelled out say
+ * nothing, even to a calendar holder. Twin of the "nothing_to_send" rule in `dispatch_reserve`.
  */
 function updateHasSomethingToSay(
   job: ClaimedJob,
@@ -276,7 +277,7 @@ function updateHasSomethingToSay(
 ): boolean {
   const { changes, notify, reconfirm } = job.payload;
   return (
-    decision !== null || (notify && (reconfirm || hasMemberChanges(changes)))
+    (reconfirm || hasMemberChanges(changes)) && (decision !== null || notify)
   );
 }
 

@@ -466,6 +466,32 @@ describe("runDispatch", () => {
     expect(summary).toMatchObject({ sent: 0, skipped: 2 });
   });
 
+  it("skips a calendar holder's update whose changes cancelled out", async () => {
+    const { deps, store } = setup({
+      jobs: [
+        {
+          ...job(1, undefined, "t-1"),
+          kind: "update",
+          payload: {
+            changes: {},
+            notify: false,
+            reconfirm: false,
+            audience: "pending",
+          },
+        },
+      ],
+      reserve: [{ kind: "ok", calendar: { action: "request", sequence: 1 } }],
+    });
+    await runDispatch(deps, OPTIONS);
+    expect(deps.gmail).not.toHaveBeenCalled();
+    expect(store.finish).toHaveBeenCalledWith(
+      job(1).jobId,
+      "skipped",
+      "nothing_to_send",
+      null,
+    );
+  });
+
   it("sends a cancellation with METHOD:CANCEL only for a calendar holder", async () => {
     const holder = setup({
       jobs: [{ ...job(1, undefined, "t-1"), kind: "cancel" }],
