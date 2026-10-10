@@ -19,6 +19,8 @@ const plain = (mime: string) =>
   mime.replace(/=\r?\n/g, "").replace(/\r\n[ \t]/g, "");
 
 test.describe.configure({ timeout: 180_000 });
+// The workspace takes the browser's time zone; pin it so "19:00" is 18:00 UTC on any runner.
+test.use({ timezoneId: "Africa/Tunis" });
 
 test("an organizer changes, reminds, cancels and deletes a sent meeting", async ({
   page,
