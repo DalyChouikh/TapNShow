@@ -22,11 +22,21 @@ import { meetingPlatform } from "@/lib/meetings/platform";
  * The meeting basics on a public page: title, when (in its own zone, plus the member's own time
  * when their browser is elsewhere, spec §7.10), where, and the agenda folded.
  */
-export function MeetingCard({ meeting }: { meeting: TokenInfo["meeting"] }) {
+export function MeetingCard({
+  meeting,
+  previousStartsAt = null,
+}: {
+  meeting: TokenInfo["meeting"];
+  /** The time the person answered for, struck through above the new one (spec §7.3). */
+  previousStartsAt?: string | null;
+}) {
   const t = useTranslations("TokenPages");
   const platform = meetingPlatform(meeting.meetingUrl);
   const when = meeting.startsAt
     ? formatMeetingWhen({ ...meeting, startsAt: meeting.startsAt })
+    : null;
+  const before = previousStartsAt
+    ? formatMeetingWhen({ ...meeting, startsAt: previousStartsAt })
     : null;
   const [agendaOpen, setAgendaOpen] = useState(false);
   // Read only after hydration so the server HTML and the first client render match.
@@ -48,7 +58,20 @@ export function MeetingCard({ meeting }: { meeting: TokenInfo["meeting"] }) {
           <CalendarDots weight="bold" aria-hidden className="mt-1 shrink-0" />
           <span>
             <span className="sr-only">{t("when")}: </span>
-            {`${when.date}, ${when.start}–${when.end} (${when.zone})`}
+            {before ? (
+              <del className="block text-muted-ink">
+                <span className="sr-only">{t("before")} </span>
+                {`${before.date}, ${before.start}–${before.end} (${before.zone})`}
+              </del>
+            ) : null}
+            {before ? (
+              <ins className="rounded-sm bg-fill-warning/25 px-1 font-bold text-ink no-underline">
+                <span className="sr-only">{t("now")} </span>
+                {`${when.date}, ${when.start}–${when.end} (${when.zone})`}
+              </ins>
+            ) : (
+              `${when.date}, ${when.start}–${when.end} (${when.zone})`
+            )}
             {yourTime ? (
               <span className="block text-sm text-muted-ink">
                 {t("yourTime", { time: yourTime })}

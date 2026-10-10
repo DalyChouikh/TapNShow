@@ -18,6 +18,7 @@ import { AnnouncementCalendar } from "./announcement-calendar";
 import { AnswerSummary } from "./answer-summary";
 import { ChoiceCards } from "./choice-cards";
 import { NotYou } from "./not-you";
+import { ReconfirmBanner } from "./reconfirm-banner";
 
 function initials(name: string): string {
   return name
@@ -94,6 +95,15 @@ export function AnswerView() {
     !savedHere &&
     emailChoice !== null &&
     emailChoice !== answer.status;
+  // The time changed after this answer: ask once to confirm it again (spec §7.3).
+  const reconfirming =
+    !closed &&
+    answer !== null &&
+    answer.needsReconfirmation &&
+    !editing &&
+    !justSaved &&
+    !emailOverride &&
+    meeting.startsAt !== null;
   const deadlinePassed =
     answers.responseDeadline !== null &&
     new Date(answers.responseDeadline) < new Date();
@@ -135,13 +145,31 @@ export function AnswerView() {
         </span>
       </StaggerItem>
       <StaggerItem>
-        <MeetingCard meeting={meeting} />
+        <MeetingCard
+          meeting={meeting}
+          previousStartsAt={reconfirming ? meeting.previousStartsAt : null}
+        />
       </StaggerItem>
       <StaggerItem>
         {closed ? (
           <ClosedState info={data} />
         ) : answers.responseMode === "announcement" ? (
           <AnnouncementCalendar token={token} info={data} />
+        ) : reconfirming && answer && meeting.startsAt ? (
+          <ReconfirmBanner
+            meeting={{ ...meeting, startsAt: meeting.startsAt }}
+            answer={answer}
+            pending={submit.isPending}
+            onConfirm={() =>
+              save({
+                status: answer.status,
+                delayMinutes: answer.delayMinutes,
+                reason: answer.reason,
+                comment: answer.comment,
+              })
+            }
+            onChange={() => setEditing(true)}
+          />
         ) : answer && !editing && !emailOverride ? (
           <AnswerSummary
             token={token}

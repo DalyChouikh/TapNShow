@@ -890,7 +890,9 @@
     "agenda": "Agenda",
     "showAgenda": "Show agenda",
     "hideAgenda": "Hide agenda",
-    "yourTime": "Your time: {time}"
+    "yourTime": "Your time: {time}",
+    "before": "Before:",
+    "now": "Now:"
   },
   "AnswerPage": {
     "question": "Are you coming?",
@@ -948,7 +950,11 @@
     "pickAnswer": "Pick an answer above",
     "calendarLinksIntro": "Not in your calendar? Add it yourself:",
     "addToGoogle": "Add to Google Calendar",
-    "downloadIcs": "Download calendar file"
+    "downloadIcs": "Download calendar file",
+    "reconfirmChanged": "The time changed to {when}.",
+    "reconfirmYouSaid": "You said: {answer}.",
+    "reconfirmYes": "Yes, still {answer}",
+    "reconfirmChange": "Change my answer"
   },
   "Pagination": {
     "more": "Show more",
