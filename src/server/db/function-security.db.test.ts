@@ -32,6 +32,8 @@ const PRIVATE_FUNCTIONS_FOR_AUTHENTICATED = [
   "is_valid_email",
   "leave_workspace",
   "list_members",
+  "mark_attendance",
+  "mark_rest_as_declared",
   "meeting_audience",
   "meeting_people",
   "meeting_results",

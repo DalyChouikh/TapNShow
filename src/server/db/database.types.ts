@@ -596,6 +596,12 @@ isOneToOne: false
               "avatar_url": string,"can_check_in": boolean,"display_name": string,"email": string,"joined_at": string,"role": Database["public"]['Enums']["workspace_role"],"user_id": string
             }[]
                            },
+"mark_attendance":
+{ Args: { "p_actual"?: Database["public"]['Enums']["attendance_actual"],"p_invitee": string,"p_meeting": string }; Returns: Json
+                           },
+"mark_rest_as_declared":
+{ Args: { "p_meeting": string }; Returns: number
+                           },
 "meeting_audience":
 { Args: { "p_meeting": string }; Returns: Json
                            },
