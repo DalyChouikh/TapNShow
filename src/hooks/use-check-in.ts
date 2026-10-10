@@ -19,13 +19,21 @@ import {
 type MarkInput = { inviteeId: string; actual: Mark["actual"] | null };
 type PeoplePages = InfiniteData<Page<PersonRow>>;
 
-/** Check one person in (spec §7.8): shown at once, sent one request at a time per person. */
-export function useMarkAttendance(slug: string, id: string) {
+/**
+ * Check one person in (spec §7.8): shown at once, sent one request at a time per person. A failed
+ * save puts back only that person's mark and calls `onFailure` with them, whichever tap came last.
+ */
+export function useMarkAttendance(
+  slug: string,
+  id: string,
+  onFailure?: (inviteeId: string) => void,
+) {
   const queryClient = useQueryClient();
   const chains = useRef(new Map<string, Promise<void>>());
+  const peopleKey = meetingPeopleKey(slug, id);
   const setMark = (inviteeId: string, mark: Mark | null) =>
     queryClient.setQueriesData<PeoplePages>(
-      { queryKey: meetingPeopleKey(slug, id) },
+      { queryKey: peopleKey },
       (data) =>
         data && {
           ...data,
@@ -59,10 +67,15 @@ export function useMarkAttendance(slug: string, id: string) {
       );
       return request;
     },
-    onMutate: (input) => {
-      const before = queryClient.getQueriesData<PeoplePages>({
-        queryKey: meetingPeopleKey(slug, id),
-      });
+    onMutate: async (input) => {
+      // A refresh already on its way holds the marks from before this tap.
+      await queryClient.cancelQueries({ queryKey: peopleKey });
+      const previous =
+        queryClient
+          .getQueriesData<PeoplePages>({ queryKey: peopleKey })
+          .flatMap(([, data]) => data?.pages ?? [])
+          .flatMap((page) => page.items)
+          .find((person) => person.inviteeId === input.inviteeId)?.mark ?? null;
       setMark(
         input.inviteeId,
         input.actual
@@ -73,12 +86,11 @@ export function useMarkAttendance(slug: string, id: string) {
             }
           : null,
       );
-      return { before };
+      return { previous };
     },
-    onError: (_error, _input, context) => {
-      for (const [key, data] of context?.before ?? []) {
-        queryClient.setQueryData(key, data);
-      }
+    onError: (_error, input, context) => {
+      setMark(input.inviteeId, context?.previous ?? null);
+      onFailure?.(input.inviteeId);
     },
     onSuccess: (result, input) => {
       setMark(input.inviteeId, result.mark);
