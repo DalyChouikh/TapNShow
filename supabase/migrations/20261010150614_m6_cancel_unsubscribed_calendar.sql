@@ -1,5 +1,6 @@
 -- M6 final review fix pass (owner decision 2026-10-10): cancelling a meeting removes it from the
--- calendar of a member who unsubscribed after adding it; nothing else reaches them.
+-- calendar of a member who unsubscribed after adding it; nothing else reaches them. Final review:
+-- a cancel racing an invite's reserve could leave someone invited and never told.
 -- cancel_meeting and dispatch_reserve: latest bodies from 20261009235635_m6_edit_cancel.sql.
 -- Same signatures, so the grants stay.
 
@@ -32,6 +33,13 @@ begin
 
   update public.meetings set status = 'cancelled', cancelled_at = pg_catalog.now(), ics_sequence = ics_sequence + 1
   where id = p_meeting;
+  -- Wait for any invite the dispatcher is reserving or finishing right now; then every claimed invite
+  -- counts as on its way (as in update_targets). Whichever commits first, that person is told:
+  -- dispatch_reserve drops the invite and then the cancellation, or both go out.
+  perform 1 from public.outbox_jobs j
+  join public.meeting_invitees i on i.id = j.invitee_id
+  where i.meeting_id = p_meeting and j.kind = 'invite' and j.status = 'processing'
+  for update of j;
   -- Nothing else of this meeting goes out: unsent invites, updates, reminders (timers included)
   -- and calendar emails. The cancellation below carries any calendar removal.
   update public.outbox_jobs j
@@ -40,13 +48,13 @@ begin
     and j.kind in ('invite', 'update', 'reminder', 'calendar_confirm')
     and (j.meeting_id = p_meeting
          or j.invitee_id in (select i.id from public.meeting_invitees i where i.meeting_id = p_meeting));
-  -- An invite already handed to Gmail still goes out: that person gets the cancellation too.
+  -- A claimed invite may still go out: that person gets the cancellation too.
   update public.meeting_invitees i
   set email_status = 'skipped', email_error = 'meeting_cancelled'
   where i.meeting_id = p_meeting and i.email_status = 'queued'
     and not exists (
       select 1 from public.outbox_jobs j
-      where j.invitee_id = i.id and j.kind = 'invite' and j.status = 'processing' and j.send_started_at is not null);
+      where j.invitee_id = i.id and j.kind = 'invite' and j.status = 'processing');
 
   -- Someone who unsubscribed after adding the event to their calendar still gets it removed
   -- (owner decision 2026-10-10); dispatch_reserve sends them the removal only. They are not
@@ -60,8 +68,7 @@ begin
       and (i.email_status in ('sent', 'unknown')
         or (i.email_status = 'queued' and exists (
           select 1 from public.outbox_jobs j
-          where j.invitee_id = i.id and j.kind = 'invite' and j.status = 'processing'
-            and j.send_started_at is not null)))
+          where j.invitee_id = i.id and j.kind = 'invite' and j.status = 'processing')))
     on conflict (idempotency_key) do nothing
     returning invitee_id
   )

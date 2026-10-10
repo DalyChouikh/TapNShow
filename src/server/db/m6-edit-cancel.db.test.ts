@@ -598,6 +598,33 @@ describe("cancel_meeting", () => {
     expect(row?.email_status).toBe("queued");
   });
 
+  it("tells the person whose invite was claimed but not yet sent, whichever happens first (review)", async () => {
+    // A cancel racing the invite's reserve must never leave someone invited and not told.
+    await inviteInFlight(false);
+    const { data } = await cancel();
+    expect(data).toEqual({ emails: 4 });
+    expect(byInvitee(await jobsOfKind("cancel"), d)).toHaveLength(1);
+    const { data: invite } = await adminClient()
+      .from("outbox_jobs")
+      .select("id")
+      .eq("invitee_id", d.inviteeId)
+      .eq("kind", "invite")
+      .single();
+    // Reserved after the cancel: the invite is dropped, so the cancellation will be too.
+    expect(
+      await serviceRpc("dispatch_reserve", {
+        p_job: invite?.id ?? "",
+        p_token_hash: null,
+      }),
+    ).toEqual({ kind: "done" });
+    const { data: row } = await adminClient()
+      .from("meeting_invitees")
+      .select("email_status")
+      .eq("id", d.inviteeId)
+      .single();
+    expect(row?.email_status).toBe("skipped");
+  });
+
   it("removes the event from the calendar of someone who unsubscribed after adding it (owner decision)", async () => {
     const { error } = await adminClient()
       .from("contacts")
