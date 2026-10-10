@@ -44,6 +44,14 @@ describe("fromDatabaseError", () => {
     });
   });
 
+  it("maps bad dates and out-of-range numbers to invalid_input", () => {
+    for (const code of ["22007", "22008", "22003", "22009"]) {
+      expect(fromDatabaseError({ code, message: "bad value" }).status).toBe(
+        400,
+      );
+    }
+  });
+
   it("ignores unknown tn codes", () => {
     expect(
       fromDatabaseError({ code: "P0001", message: "tn:made_up" }).status,

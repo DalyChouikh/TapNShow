@@ -30,6 +30,11 @@ const POSTGRES_CODES: Record<string, ApiErrorCode> = {
   "22P02": "invalid_input",
   // A NUL character in text (anything Zod didn't already strip) is bad input, not a crash.
   "22P05": "invalid_input",
+  // Bad timestamps, out-of-range numbers and offsets (a direct call skipping the API's checks).
+  "22007": "invalid_input",
+  "22008": "invalid_input",
+  "22003": "invalid_input",
+  "22009": "invalid_input",
   "23505": "conflict",
 };
 
