@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Sticker } from "@/components/ui/sticker";
 import { useAnswerLabels } from "@/hooks/use-answer-labels";
 import { useSubmitAnswer, useTokenInfo } from "@/hooks/use-token-page";
-import { ApiClientError } from "@/lib/api-client";
+import { ApiClientError, errorCodeOf } from "@/lib/api-client";
 import { describeAnswer } from "@/lib/responses/describe-answer";
 import { choiceToStatus, type SubmitAnswerBody } from "@/shared/api/responses";
 import type { TokenInfo } from "@/shared/api/tokens";
@@ -123,11 +123,13 @@ export function AnswerView() {
         setSavedHere(true);
       },
       onError: (failure) => {
-        if (
-          failure instanceof ApiClientError &&
-          failure.code === "answers_closed"
-        ) {
+        const code = errorCodeOf(failure);
+        if (code === "answers_closed") {
           setClosedByServer(true);
+        }
+        // The organizer may now ask for something this answer lacks: open it on the cards.
+        if (code === "reason_required" || code === "delay_required") {
+          setEditing(true);
         }
       },
     });
@@ -160,6 +162,7 @@ export function AnswerView() {
             meeting={{ ...meeting, startsAt: meeting.startsAt }}
             answer={answer}
             pending={submit.isPending}
+            errorText={errorText}
             onConfirm={() =>
               save({
                 status: answer.status,
