@@ -151,6 +151,11 @@ begin
       and m.response_mode <> 'announcement' and i.email_status in ('sent', 'unknown')
       and c.unsubscribed_at is null
       and private.reminder_eligible(p_audience, r.status, r.needs_reconfirmation)
+      -- One reminder at a time: a nudge or a timer never doubles one still waiting (paused, quota).
+      and not exists (
+        select 1 from public.outbox_jobs o
+        where o.invitee_id = i.id and o.kind = 'reminder' and o.status in ('pending', 'paused', 'processing')
+      )
   ), inserted as (
     insert into public.outbox_jobs (kind, workspace_id, invitee_id, meeting_id, payload, idempotency_key)
     select 'reminder', e.workspace_id, e.id, p_meeting, pg_catalog.jsonb_build_object('audience', p_audience),
@@ -400,9 +405,15 @@ begin
         and not private.reminder_eligible(v_job.payload ->> 'audience', v_job.answer, v_job.needs_reconfirmation)
         then 'not_eligible'
       when v_job.kind = 'calendar_confirm' and v_action is null then 'nothing_to_send'
+      -- Twin of updateHasSomethingToSay (src/server/dispatch/run-dispatch.ts): changes that cancelled
+      -- out say nothing, even to a calendar holder; without a calendar part, only a notified person
+      -- gets an email.
+      when v_job.kind = 'update'
+        and coalesce(v_job.payload -> 'changes', '{}'::jsonb) = '{}'::jsonb
+        and not coalesce((v_job.payload ->> 'reconfirm')::boolean, false)
+        then 'nothing_to_send'
       when v_job.kind = 'update' and v_action is null
-        and (not coalesce((v_job.payload ->> 'notify')::boolean, false)
-             or (v_job.payload -> 'changes' = '{}'::jsonb and not coalesce((v_job.payload ->> 'reconfirm')::boolean, false)))
+        and not coalesce((v_job.payload ->> 'notify')::boolean, false)
         then 'nothing_to_send'
     end;
     if v_skip is not null then
@@ -556,3 +567,95 @@ returns jsonb language sql security invoker set search_path = ''
 as $$ select private.nudge_meeting(p_meeting) $$;
 revoke execute on function public.nudge_meeting(uuid) from public, anon;
 grant execute on function public.nudge_meeting(uuid) to authenticated;
+
+-- Reminder timers are not emails: holding a sender back, marking it broken or reconnecting it must
+-- leave them at their due time (review of Task 5: otherwise every upcoming reminder would fire at
+-- once). Latest bodies from 20261007205641_m4_outbox.sql; only `j.invitee_id is not null` is new.
+create or replace function public.dispatch_defer_sender(p_run uuid, p_connection uuid, p_until timestamptz, p_error text)
+returns void
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+begin
+  delete from public.send_log s using public.outbox_jobs j
+  where s.job_id = j.id and j.run_id = p_run and j.status = 'processing';
+  update public.outbox_jobs j
+  set status = 'pending', run_after = p_until, last_error = p_error, locked_until = null, run_id = null,
+    send_started_at = null,
+    attempts = case when j.status = 'processing' then greatest(j.attempts - 1, 0) else j.attempts end
+  where (j.status = 'processing' and j.run_id = p_run)
+    or (j.status = 'pending' and j.invitee_id is not null and j.workspace_id in (
+      select w.id from public.workspaces w where w.sender_connection_id = p_connection
+    ));
+end;
+$$;
+
+create or replace function private.dispatch_mark_broken(p_run uuid, p_connection uuid, p_reason text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_rows integer;
+  v_alert boolean := false;
+begin
+  update public.google_connections
+  set status = 'broken', broken_reason = left(p_reason, 200), broken_at = pg_catalog.now()
+  where id = p_connection and status = 'active';
+  get diagnostics v_rows = row_count;
+
+  delete from public.send_log s using public.outbox_jobs j
+  where s.job_id = j.id and j.run_id = p_run and j.status = 'processing';
+  update public.outbox_jobs j
+  set status = 'paused', last_error = 'sender_broken', locked_until = null, run_id = null, send_started_at = null,
+    attempts = case when j.status = 'processing' then greatest(j.attempts - 1, 0) else j.attempts end
+  where (j.status = 'processing' and j.run_id = p_run)
+    or (j.status = 'pending' and j.invitee_id is not null and j.workspace_id in (
+      select w.id from public.workspaces w where w.sender_connection_id = p_connection
+    ));
+
+  if v_rows > 0 then
+    v_alert := private.hit_rate_limit(
+      'invite_email:platform', private.app_limit('invite_email_platform_per_day'), interval '24 hours'
+    );
+  end if;
+  return pg_catalog.jsonb_build_object(
+    'newly_broken', v_rows > 0,
+    'alert', case when v_alert then coalesce((
+      select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object('email', u.email, 'workspace_name', w.name, 'workspace_slug', w.slug))
+      from public.workspaces w
+      join public.workspace_roles r on r.workspace_id = w.id and r.role = 'owner'
+      join auth.users u on u.id = r.user_id
+      where w.sender_connection_id = p_connection
+    ), '[]'::jsonb) else '[]'::jsonb end
+  );
+end;
+$$;
+
+create or replace function private.resume_paused_jobs()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if tg_table_name = 'workspaces' then
+    if new.sender_connection_id is not null then
+      update public.outbox_jobs j set status = 'pending', run_after = pg_catalog.now(), last_error = null
+      where j.workspace_id = new.id and j.status = 'paused' and j.invitee_id is not null;
+    end if;
+  elsif new.status = 'active' and old.status = 'broken' then
+    update public.outbox_jobs j set status = 'pending', run_after = pg_catalog.now(), last_error = null
+    where j.status = 'paused' and j.invitee_id is not null
+      and j.workspace_id in (select w.id from public.workspaces w where w.sender_connection_id = new.id);
+  end if;
+  return null;
+end;
+$$;
+
+-- The every-minute fan-out probe reads only due timers.
+create index outbox_jobs_due_timers_idx on public.outbox_jobs (run_after)
+  where kind = 'reminder' and invitee_id is null and status = 'pending';
+

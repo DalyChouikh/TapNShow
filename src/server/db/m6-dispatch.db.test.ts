@@ -21,6 +21,7 @@ import {
 
 let owner: TestUser;
 let workspace: TestWorkspace;
+let connection: string;
 let meeting: string;
 let contacts: string[];
 let a: { inviteeId: string; hash: string };
@@ -194,7 +195,8 @@ beforeEach(async () => {
   parkAllJobs();
   owner = await createTestUser({ fullName: "Owner" });
   workspace = await createWorkspaceAs(owner, "Reminder Club");
-  await setSender(workspace.id, await seedConnection(owner.id));
+  connection = await seedConnection(owner.id);
+  await setSender(workspace.id, connection);
   contacts = await seedContacts(
     workspace.id,
     3,
@@ -285,6 +287,70 @@ describe("reminder timers fan out", () => {
     expect(claimed).toBeNull();
     expect((await jobRow(timer)).status).toBe("pending");
   });
+
+  it("fans a due timer out even without a sender; only the reminders wait (paused)", async () => {
+    await setSender(workspace.id, null);
+    const timer = await insertJob("reminder", null, { audience: "pending" });
+    await claim();
+    expect((await jobRow(timer)).status).toBe("done");
+    expect((await remindersOf()).map((r) => r.status)).toEqual([
+      "paused",
+      "paused",
+    ]);
+  });
+
+  it("keeps future timers in place when the sender is held back or reconnected (review)", async () => {
+    const due = hoursFromNow(72);
+    const timer = await insertJob(
+      "reminder",
+      null,
+      { audience: "pending" },
+      due,
+    );
+    const same = async () => {
+      const { data } = await adminClient()
+        .from("outbox_jobs")
+        .select("status, run_after")
+        .eq("id", timer)
+        .single();
+      expect(data?.status).toBe("pending");
+      expect(new Date(data?.run_after ?? "").getTime()).toBe(
+        new Date(due).getTime(),
+      );
+    };
+    await serviceRpc("dispatch_defer_sender", {
+      p_run: crypto.randomUUID(),
+      p_connection: connection,
+      p_until: hoursFromNow(0.1),
+      p_error: "gmail_throttled",
+    });
+    await same();
+    await serviceRpc("dispatch_mark_broken", {
+      p_run: crypto.randomUUID(),
+      p_connection: connection,
+      p_reason: "invalid_grant",
+    });
+    await same();
+    await adminClient()
+      .from("google_connections")
+      .update({ status: "active" })
+      .eq("id", connection);
+    await same();
+  });
+
+  it("never queues a second reminder for someone who already has one waiting (review)", async () => {
+    await answer(a, "attending");
+    await insertJob("reminder", b.inviteeId, { audience: "pending" });
+    await expectAppError(
+      owner.client.rpc("nudge_meeting", { p_meeting: meeting }),
+      "nothing_to_send",
+    );
+    await insertJob("reminder", null, { audience: "pending" });
+    await claim();
+    expect(
+      (await remindersOf()).filter((r) => r.invitee_id === b.inviteeId),
+    ).toHaveLength(1);
+  });
 });
 
 describe("dispatch_reserve for M6 kinds", () => {
@@ -328,7 +394,13 @@ describe("dispatch_reserve for M6 kinds", () => {
       kind: "ok",
       calendar: { action: "request", sequence: 1 },
     });
-    await finish(job, "sent");
+    // "unknown" would mark an invite "Delivery unknown"; an update must leave the invite alone.
+    await serviceRpc("dispatch_finish", {
+      p_job: job,
+      p_outcome: "unknown",
+      p_error: "delivery_unknown",
+      p_token_hash: null,
+    });
     expect(await invitee(a.inviteeId)).toEqual({
       calendar_state: "added",
       calendar_sequence: 2,
@@ -360,6 +432,22 @@ describe("dispatch_reserve for M6 kinds", () => {
     });
     result = await reserveOne(confirm);
     expect(result.reserved).toEqual({ kind: "ok" });
+  });
+
+  it("sends a calendar holder nothing when the changes cancelled out (review)", async () => {
+    await answer(a, "attending");
+    await setInvitee(a.inviteeId, {
+      calendar_state: "added",
+      calendar_sequence: 1,
+    });
+    const job = await insertJob("update", a.inviteeId, {
+      changes: {},
+      notify: false,
+      reconfirm: false,
+    });
+    const { reserved, job: row } = await reserveOne(job);
+    expect(reserved).toEqual({ kind: "done" });
+    expect(row.last_error).toBe("nothing_to_send");
   });
 
   it("forgets an earlier calendar decision when a retry decides none", async () => {
@@ -473,7 +561,13 @@ describe("nudge_meeting", () => {
       b.inviteeId,
     ]);
     await expectAppError(nudge(), "nudge_too_soon");
-    // 12 h later (limits must be positive, so move the last nudge back instead).
+    // 12 h later (limits must be positive, so move the last nudge back instead), once the first
+    // reminder went out.
+    await adminClient()
+      .from("outbox_jobs")
+      .update({ status: "done" })
+      .eq("meeting_id", meeting)
+      .eq("kind", "reminder");
     await adminClient()
       .from("meetings")
       .update({ last_nudged_at: ago(12 * 3600_000 + 60_000) })
@@ -504,6 +598,11 @@ describe("nudge_meeting", () => {
   });
 
   it("asks for a connected Gmail first (Review Focus 4)", async () => {
+    await adminClient()
+      .from("google_connections")
+      .update({ status: "broken" })
+      .eq("id", connection);
+    await expectAppError(nudge(), "sender_broken");
     await setSender(workspace.id, null);
     await expectAppError(nudge(), "sender_not_connected");
   });
@@ -570,8 +669,8 @@ describe("send_meeting timers", () => {
       reminder_pending_hours: 24,
       reminder_going_hours: 2,
     });
-    await sendTo(off, [contact]);
-    await sendTo(announcement, [contact]);
+    expect((await sendTo(off, [contact])).error).toBeNull();
+    expect((await sendTo(announcement, [contact])).error).toBeNull();
     expect(await timersOf(off)).toEqual([]);
     expect(await timersOf(announcement)).toEqual([]);
   });
@@ -581,13 +680,19 @@ describe("send_meeting timers", () => {
       starts_at: hoursFromNow(72),
       reminder_pending_hours: 24,
     });
-    await sendTo(id, [contact]);
+    expect((await sendTo(id, [contact])).error).toBeNull();
+    // The timer fired; Invite more must not create a new one (only the first send does).
+    const [timer] = await timersOf(id);
+    await adminClient()
+      .from("outbox_jobs")
+      .update({ status: "done" })
+      .eq("id", timer.id);
     const [later] = await seedContacts(
       workspace.id,
       1,
       `more-${crypto.randomUUID().slice(0, 6)}`,
     );
-    await sendTo(id, [contact, later]);
-    expect(await timersOf(id)).toHaveLength(1);
+    expect((await sendTo(id, [contact, later])).error).toBeNull();
+    expect(await timersOf(id)).toEqual([]);
   });
 });
