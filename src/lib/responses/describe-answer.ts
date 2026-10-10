@@ -17,3 +17,8 @@ export function describeAnswer(
     ? labels.late(answer.delayMinutes ?? 0)
     : labels[answer.status];
 }
+
+/** "Going" → "going", to use an answer inside a sentence ("Yes, still going"). */
+export function lowerFirst(text: string): string {
+  return text.charAt(0).toLowerCase() + text.slice(1);
+}

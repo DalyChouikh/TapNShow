@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { describeAnswer, type AnswerLabels } from "./describe-answer";
+import {
+  describeAnswer,
+  lowerFirst,
+  type AnswerLabels,
+} from "./describe-answer";
 
 const labels: AnswerLabels = {
   attending: "Going",
@@ -19,5 +23,13 @@ describe("describeAnswer", () => {
     expect(
       describeAnswer(labels, { status: "not_attending", delayMinutes: null }),
     ).toBe("Not going");
+  });
+});
+
+describe("lowerFirst", () => {
+  it("lower-cases only the first letter, for use inside a sentence", () => {
+    expect(lowerFirst("Going")).toBe("going");
+    expect(lowerFirst("Late by 10 min")).toBe("late by 10 min");
+    expect(lowerFirst("")).toBe("");
   });
 });

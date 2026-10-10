@@ -5,6 +5,7 @@ import type { TokenInfo } from "@/shared/api/tokens";
 import { json, routeFetch } from "@/test/fetch";
 import { tokenInfoFixture } from "@/test/fixtures/tokens";
 import { renderWithProviders } from "@/test/render";
+import { formatMeetingWhen } from "@/lib/meetings/format";
 import { AnswerView } from "./answer-view";
 
 const TOKEN = "a".repeat(43);
@@ -397,5 +398,106 @@ describe("AnswerView", () => {
     expect(
       await screen.findByText("This link is personal"),
     ).toBeInTheDocument();
+  });
+
+  describe("after a time change (M6)", () => {
+    const later = new Date(Date.now() + 3 * 86_400_000);
+    later.setUTCHours(17, 0, 0, 0);
+    const earlier = new Date(later.getTime() - 86_400_000);
+    const moved = {
+      startsAt: later.toISOString(),
+      previousStartsAt: earlier.toISOString(),
+    };
+    const when = (iso: string) =>
+      formatMeetingWhen({
+        startsAt: iso,
+        durationMinutes: 60,
+        timezone: "Africa/Tunis",
+      });
+    const going: Answer = {
+      status: "attending",
+      delayMinutes: null,
+      reason: "",
+      comment: "",
+      afterDeadline: false,
+      respondedAt: NOW,
+      updatedAt: NOW,
+      needsReconfirmation: true,
+    };
+    const lastPut = () => JSON.parse(fetchCalls("PUT").at(-1)?.body ?? "{}");
+
+    it("asks to confirm the same answer, with the old time struck through", async () => {
+      renderWith("", { meeting: moved, answer: going });
+      const now = when(moved.startsAt);
+      const before = when(moved.previousStartsAt);
+      expect(
+        await screen.findByText(
+          `The time changed to ${now.date}, ${now.start}.`,
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen
+          .getByText(`${before.date}, ${before.start}–${before.end}`, {
+            exact: false,
+          })
+          .closest("del"),
+      ).not.toBeNull();
+      expect(screen.getByText("You said: Going.")).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Yes, still going" }));
+      await waitFor(() => expect(fetchCalls("PUT")).toHaveLength(1));
+      expect(lastPut()).toEqual({
+        status: "attending",
+        delayMinutes: null,
+        reason: "",
+        comment: "",
+      });
+      expect(await screen.findByText("Your answer: Going")).toBeInTheDocument();
+    });
+
+    it("keeps the delay and the reason when Late confirms again", async () => {
+      renderWith("", {
+        meeting: moved,
+        answer: { ...going, status: "late", delayMinutes: 10, reason: "Bus" },
+        answers: { delayOptions: [10, 20] },
+      });
+      fireEvent.click(
+        await screen.findByRole("button", {
+          name: "Yes, still late by 10 min",
+        }),
+      );
+      await waitFor(() => expect(fetchCalls("PUT")).toHaveLength(1));
+      expect(lastPut()).toEqual({
+        status: "late",
+        delayMinutes: 10,
+        reason: "Bus",
+        comment: "",
+      });
+    });
+
+    it("lets the member pick another answer instead", async () => {
+      renderWith("", { meeting: moved, answer: going });
+      fireEvent.click(
+        await screen.findByRole("button", { name: "Change my answer" }),
+      );
+      expect(
+        await screen.findByRole("radio", { name: /I can't come/ }),
+      ).toBeInTheDocument();
+    });
+
+    it("shows no question once the meeting has started", async () => {
+      renderWith("", {
+        meeting: {
+          startsAt: new Date(Date.now() - 60_000).toISOString(),
+          previousStartsAt: moved.previousStartsAt,
+        },
+        answer: going,
+      });
+      expect(
+        await screen.findByText(
+          "The meeting has started, so answers are closed.",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/The time changed/)).toBeNull();
+    });
   });
 });
