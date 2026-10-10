@@ -26,13 +26,23 @@ const withRemindable = (remindable: number, nudge = resultsFixture.nudge) => ({
   nudge,
 });
 
-function setup(meeting: Meeting, results: MeetingResults, connected = true) {
+function setup(
+  meeting: Meeting,
+  results: MeetingResults,
+  connected = true,
+  refusal: string | null = null,
+) {
   const fetchMock = routeFetch({
     [`GET ${base}/sender`]: json(senderFixture(connected)),
-    [`POST ${meetingPath}/nudge`]: json({
-      reminded: results.answers.remindable,
-      nextAt: new Date(Date.now() + 12 * 3600_000).toISOString(),
-    }),
+    [`POST ${meetingPath}/nudge`]: refusal
+      ? () =>
+          new Response(JSON.stringify({ error: { code: refusal } }), {
+            status: 409,
+          })
+      : json({
+          reminded: results.answers.remindable,
+          nextAt: new Date(Date.now() + 12 * 3600_000).toISOString(),
+        }),
     [`GET ${meetingPath}/results`]: json(results),
   });
   const view = renderWithProviders(
@@ -43,6 +53,30 @@ function setup(meeting: Meeting, results: MeetingResults, connected = true) {
 }
 
 describe("NudgeButton", () => {
+  it.each([
+    ["nudge_too_soon", "You can remind people again later."],
+    [
+      "nothing_to_send",
+      "Everyone has answered, or a reminder is already on its way.",
+    ],
+    ["sender_broken", "Ask Daly to connect Gmail to send reminders."],
+  ])(
+    "says in plain words why a %s nudge was refused (review)",
+    async (code, text) => {
+      setup(scheduled, withRemindable(6), true, code);
+      await userEvent.click(
+        await screen.findByRole("button", {
+          name: "Remind 6 who haven't answered",
+        }),
+      );
+      const dialog = await screen.findByRole("dialog");
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: "Send reminders" }),
+      );
+      expect(await within(dialog).findByRole("alert")).toHaveTextContent(text);
+    },
+  );
+
   it("reminds people who haven't answered after saying from which Gmail", async () => {
     const { fetchMock } = setup(scheduled, withRemindable(6));
     await userEvent.click(
