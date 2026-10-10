@@ -1169,5 +1169,14 @@
       "late": "Late",
       "absent": "Absent"
     }
+  },
+  "Sheet": {
+    "fileName": "{workspace} · TapNShow",
+    "band": "{workspace} · Responses {tab}",
+    "subtitle": "Updated {at} · Changes made here are replaced by TapNShow",
+    "meetingCell": "{title} · {date}",
+    "cancelled": "{meeting} · Cancelled",
+    "tabRange": "{year} · {from} – {to}",
+    "tabTaken": "{title} (TapNShow)"
   }
 }
