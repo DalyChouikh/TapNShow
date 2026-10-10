@@ -34,6 +34,8 @@ test("an organizer changes, reminds, cancels and deletes a sent meeting", async 
   const meetingPath = await sendMeetingThroughUi(page, slug, {
     stamp,
     title: "Lifecycle sync",
+    // Two days ahead, so the 24 h "not answered" reminder is still ahead at any time of day.
+    daysAhead: 2,
     people: [
       { fullName: "Amira Ben Ali", email: amira },
       { fullName: "Bilel Trabelsi", email: bilel },

@@ -21,16 +21,16 @@ export async function createWorkspace(
   return new URL(page.url()).pathname.split("/")[2];
 }
 
-/** Picks tomorrow in the Details step's calendar (moving a month on when needed). */
-async function pickTomorrow(page: Page): Promise<void> {
+/** Picks the day `days` from today in the Details step's calendar (moving a month on when needed). */
+async function pickDay(page: Page, days: number): Promise<void> {
   const today = new Date();
-  const tomorrow = addDays(today, 1);
+  const day = addDays(today, days);
   await page.getByRole("button", { name: /Pick a date/ }).click();
-  if (tomorrow.getMonth() !== today.getMonth()) {
+  if (day.getMonth() !== today.getMonth()) {
     await page.getByRole("button", { name: "Next month" }).click();
   }
   await page
-    .getByRole("button", { name: format(tomorrow, "EEEE, MMMM do, yyyy") })
+    .getByRole("button", { name: format(day, "EEEE, MMMM do, yyyy") })
     .click();
 }
 
@@ -86,8 +86,9 @@ export function answerLinkFrom(mime: string, choice: string): string {
 }
 
 /**
- * Seeds `people` (on one list) and a sender, then creates and sends a meeting for tomorrow 18:00
- * through the wizard, waiting until every invite is out. Returns the meeting page's path.
+ * Seeds `people` (on one list) and a sender, then creates and sends a meeting at 18:00 `daysAhead`
+ * days from today (default tomorrow) through the wizard, waiting until every invite is out. Returns
+ * the meeting page's path.
  */
 export async function sendMeetingThroughUi(
   page: Page,
@@ -96,6 +97,7 @@ export async function sendMeetingThroughUi(
     stamp: string;
     people: Array<{ fullName: string; email: string }>;
     title: string;
+    daysAhead?: number;
   },
 ): Promise<string> {
   const count = options.people.length;
@@ -114,7 +116,7 @@ export async function sendMeetingThroughUi(
     .click();
   await expect(page).toHaveURL(/edit\?step=details/);
   await page.getByLabel("Title").fill(options.title);
-  await pickTomorrow(page);
+  await pickDay(page, options.daysAhead ?? 1);
   await page.getByRole("button", { name: /Pick a time/ }).click();
   await page.getByRole("option", { name: "18:00" }).click();
   await page.getByLabel("Place").fill("Room 1");
