@@ -9,7 +9,7 @@ import { ShowMore } from "@/components/ui/show-more";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAnswerLabels } from "@/hooks/use-answer-labels";
 import { useContactHistory } from "@/hooks/use-results";
-import { describeAnswer } from "@/lib/responses/describe-answer";
+import { describeCheckIn } from "@/lib/responses/describe-answer";
 import { usePeriod } from "@/lib/responses/use-period";
 import { cn } from "@/lib/utils";
 import type { HistoryRow } from "@/shared/api/responses";
@@ -24,9 +24,22 @@ const COUNT_FILL = {
 function RowAnswer({ row }: { row: HistoryRow }) {
   const t = useTranslations("History");
   const labels = useAnswerLabels();
-  if (row.answer) {
+  if (row.answer || row.mark) {
     return (
-      <span className="font-bold">{describeAnswer(labels, row.answer)}</span>
+      <span className="font-bold">
+        {describeCheckIn(
+          labels,
+          {
+            noReply: t("noReply"),
+            didntAnswer: t("didntAnswer"),
+            said: (answer) => t("saidAnswer", { answer }),
+            actual: (value) => t(`actual.${value}`),
+            saidWas: (said, was) => t("saidWas", { said, was }),
+          },
+          row.answer,
+          row.mark,
+        )}
+      </span>
     );
   }
   return (
