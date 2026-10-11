@@ -138,6 +138,8 @@ export const meetingResultsSchema = z.object({
   resumesAt: z.string().nullable(),
   senderState: z.enum(["ok", "missing", "broken"]),
   checkedIn: count,
+  /** The door's "of N": people whose invite went out, plus anyone marked by hand (#255). */
+  checkInTotal: count,
   nudge: z.object({
     lastAt: z.string().nullable(),
     lastCount: z.number().int().nullable(),

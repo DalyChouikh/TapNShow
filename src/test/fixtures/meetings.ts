@@ -98,6 +98,7 @@ export const resultsFixture: MeetingResults = {
   resumesAt: null,
   senderState: "ok",
   checkedIn: 0,
+  checkInTotal: 1,
   nudge: { lastAt: null, lastCount: null, nextAt: null },
 };
 

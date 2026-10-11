@@ -54,6 +54,7 @@ export const API_ERROR_CODES = [
   "delay_required",
   "reason_required",
   "sheet_wrong_account",
+  "cancel_emails_waiting",
 ] as const;
 
 /** An API error code. */
@@ -113,6 +114,7 @@ export const API_ERROR_STATUS: Record<ApiErrorCode, number> = {
   delay_required: 400,
   reason_required: 400,
   sheet_wrong_account: 409,
+  cancel_emails_waiting: 409,
 };
 
 /** Body of every non-2xx API response. */

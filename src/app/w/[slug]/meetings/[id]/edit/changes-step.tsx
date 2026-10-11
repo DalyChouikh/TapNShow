@@ -91,7 +91,8 @@ export function ChangesStep({
       </div>
     );
   }
-  const { changes, emails, calendarOnly, reconfirm } = preview.data;
+  const { changes, emails, calendarOnly, reconfirm, remindersSkipped } =
+    preview.data;
   const settingValue = (field: string, value: ChangeValue) =>
     typeof value === "boolean"
       ? tc(value ? "on" : "off")
@@ -162,6 +163,9 @@ export function ChangesStep({
         <h2 className="font-display text-lg">{tc("whoIsTold")}</h2>
         <p className="font-bold">{tc("emails", { count: emails })}</p>
         {reconfirm ? <p>{tc("reconfirm")}</p> : null}
+        {remindersSkipped.map((audience) => (
+          <p key={audience}>{tc(`reminderSkipped.${audience}`)}</p>
+        ))}
         {calendarOnlyNote ? (
           <p>{tc("calendarNote", { count: calendarOnly })}</p>
         ) : null}

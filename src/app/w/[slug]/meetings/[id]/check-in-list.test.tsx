@@ -55,6 +55,7 @@ const results = {
   ...resultsFixture,
   emails: { ...resultsFixture.emails, total: 3, sent: 3, queued: 0 },
   checkedIn: 1,
+  checkInTotal: 3,
 };
 
 function setup(putStatus = 200, live = true) {
@@ -108,6 +109,29 @@ const row = (name: string) =>
   screen.getByRole("group", { name: `Check-in for ${name}` });
 
 describe("CheckInList", () => {
+  it("counts only invites that went out at the door (#255)", () => {
+    routeFetch({
+      [`GET ${base}/people?filter=all&limit=50`]: json({
+        items: people,
+        nextCursor: null,
+      }),
+      [`GET ${base}/results`]: json(results),
+    });
+    renderWithProviders(
+      <CheckInList
+        slug="club-ab12"
+        meeting={started}
+        results={{
+          ...results,
+          emails: { ...results.emails, total: 4, sent: 3, failed: 1 },
+          checkInTotal: 3,
+        }}
+        live={false}
+      />,
+    );
+    expect(screen.getByText("1 of 3 checked in")).toBeInTheDocument();
+  });
+
   it("refreshes the list only while the meeting is near (review)", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {

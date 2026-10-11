@@ -45,6 +45,8 @@ export function MeetingMenu({
     meeting.startsAt !== null && new Date(meeting.startsAt) <= new Date();
   const open = meeting.status === "scheduled" && !started;
   const reachable = results?.answers.reachable ?? 0;
+  // Without a working Gmail the cancellation emails wait; say so instead of "going out" (#255).
+  const waiting = results !== undefined && results.senderState !== "ok";
   const errorOf = (error: Error | null) =>
     error ? tErrors(errorCodeOf(error)) : null;
   return (
@@ -94,7 +96,7 @@ export function MeetingMenu({
             ? t("cancel.title", { count: reachable })
             : t("cancel.titleNobody")
         }
-        description={t("cancel.body")}
+        description={waiting ? t("cancel.bodyWaiting") : t("cancel.body")}
         confirmLabel={t("cancel.confirm")}
         cancelLabel={t("cancel.keep")}
         tone="danger"
@@ -104,9 +106,11 @@ export function MeetingMenu({
             onSuccess: ({ emails }) => {
               setDialog(null);
               toast.success(
-                emails > 0
-                  ? t("cancel.done", { count: emails })
-                  : t("cancel.doneNobody"),
+                emails === 0
+                  ? t("cancel.doneNobody")
+                  : waiting
+                    ? t("cancel.doneWaiting")
+                    : t("cancel.done", { count: emails }),
               );
             },
           })
