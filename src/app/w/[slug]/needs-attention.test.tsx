@@ -37,10 +37,24 @@ const draft = {
   },
 };
 
+const sheet = (state: "off" | "on" | "paused") => ({
+  state,
+  spreadsheetId: state === "off" ? null : "file-abcdefghij",
+  pausedReason: state === "paused" ? "trashed" : null,
+  syncedAt: null,
+  behind: false,
+  createdAt: null,
+  turnedOnBy: "",
+  accountEmail: null,
+  ownerName: "Amira Ben Ali",
+  tabs: [],
+});
+
 function setup(
   sender: object | null,
   meetings: object[],
   workspace = workspaceFixture,
+  sheetState: "off" | "on" | "paused" = "off",
 ) {
   routeFetch({
     "GET /api/workspaces/robotics-cd34/sender": json({
@@ -52,6 +66,7 @@ function setup(
       items: meetings,
       nextCursor: null,
     }),
+    "GET /api/workspaces/robotics-cd34/sheet": json(sheet(sheetState)),
   });
   return renderWithProviders(<NeedsAttention workspace={workspace} />);
 }
@@ -87,6 +102,42 @@ describe("NeedsAttention", () => {
 
   it("renders nothing when all is well", async () => {
     setup({ ...broken, status: "active" }, [draft]);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.queryByText("Needs attention")).toBeNull();
+  });
+
+  it("tells the Owner the Google Sheet stopped updating, below the Gmail line", async () => {
+    setup(broken, [], workspaceFixture, "paused");
+    const sheetLine = await screen.findByText(
+      "The Google Sheet stopped updating.",
+    );
+    const gmailLine = screen.getByText(
+      "Gmail sending needs reconnecting. Queued invites are paused.",
+    );
+    expect(
+      gmailLine.compareDocumentPosition(sheetLine) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Open Settings" })).toHaveAttribute(
+      "href",
+      "/w/robotics-cd34/settings#sheets",
+    );
+  });
+
+  it("shows a paused sheet even when Gmail is fine", async () => {
+    setup({ ...broken, status: "active" }, [], workspaceFixture, "paused");
+    expect(
+      await screen.findByText("The Google Sheet stopped updating."),
+    ).toBeInTheDocument();
+  });
+
+  it("shows Admins nothing about the sheet", async () => {
+    setup(
+      { ...broken, status: "active" },
+      [],
+      { ...workspaceFixture, myRole: "admin" },
+      "paused",
+    );
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(screen.queryByText("Needs attention")).toBeNull();
   });

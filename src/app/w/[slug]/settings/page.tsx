@@ -12,6 +12,7 @@ import { InvitesPanel } from "./invites-panel";
 import { MeetingDefaultsSection } from "./meeting-defaults-section";
 import { PeopleSection } from "./people-section";
 import { SendingSection } from "./sending-section";
+import { SheetsSection } from "./sheets-section";
 
 /**
  * `/w/[slug]/settings` (spec §10): General, Sending, Meeting defaults, People, Danger zone. Only
@@ -29,9 +30,12 @@ export default function SettingsPage() {
     <div className="flex flex-col gap-4">
       <h1 className="font-display text-3xl">{t("title")}</h1>
       <GeneralSection key={workspace.data.id} workspace={workspace.data} />
-      {/* SendingSection reads ?gmail=… through useSearchParams. */}
+      {/* Both read the Google connect result (?google_for=…) through useSearchParams. */}
       <Suspense fallback={<Skeleton className="h-40 w-full" />}>
         <SendingSection workspace={workspace.data} defaultOpen={false} />
+      </Suspense>
+      <Suspense fallback={<Skeleton className="h-40 w-full" />}>
+        <SheetsSection workspace={workspace.data} defaultOpen={false} />
       </Suspense>
       <MeetingDefaultsSection workspace={workspace.data} defaultOpen={false} />
       <PeopleSection

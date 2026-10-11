@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ROSTER_GRID_MEDIA } from "@/config/roster";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useAttendance } from "@/hooks/use-results";
+import { useExportSheetLink } from "@/hooks/use-sheet";
 import { usePeriod } from "@/lib/responses/use-period";
 import { filterContacts, type ListFilter } from "@/lib/roster/filter-contacts";
 import { cn } from "@/lib/utils";
@@ -57,6 +58,8 @@ export function AttendanceView({
   const wide = useMediaQuery(ROSTER_GRID_MEDIA);
   const period = usePeriod(workspace.timezone);
   const summary = useAttendance(workspace.slug, period.range);
+  // Attendance spans years, so the link opens the newest tab.
+  const sheet = useExportSheetLink(workspace.slug);
   const tHistory = useTranslations("History");
   const tExport = useTranslations("Export");
   const exportAttendance = useExportAttendance(
@@ -130,6 +133,7 @@ export function AttendanceView({
                   rows.map((row) => ({ ...row, contactId: row.id })),
                 )
               }
+              sheet={sheet}
             />
           </div>
           {wide ? (
