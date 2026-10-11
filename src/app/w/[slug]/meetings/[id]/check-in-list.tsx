@@ -13,6 +13,8 @@ import { PEOPLE_SEARCH_MAX, SEARCH_DEBOUNCE_MS } from "@/config/meetings";
 import { useMarkAttendance, useMarkRest } from "@/hooks/use-check-in";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useMeetingPeople } from "@/hooks/use-results";
+import { errorCodeOf } from "@/lib/api-client";
+import type { ApiErrorCode } from "@/shared/api/errors";
 import type { Meeting } from "@/shared/api/meetings";
 import type { Mark, MeetingResults } from "@/shared/api/responses";
 import { CheckInRow } from "./check-in-row";
@@ -35,6 +37,7 @@ export function CheckInList({
   live: boolean;
 }) {
   const t = useTranslations("MeetingPage.checkIn");
+  const tErrors = useTranslations("ApiErrors");
   const [search, setSearch] = useState("");
   const settled = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS);
   const people = useMeetingPeople(
@@ -44,9 +47,10 @@ export function CheckInList({
     live,
     settled || null,
   );
-  const [failed, setFailed] = useState<Set<string>>(new Set());
-  const mark = useMarkAttendance(slug, meeting.id, (inviteeId) =>
-    setFailed((current) => new Set(current).add(inviteeId)),
+  // Why each person's last tap didn't save, until they're tapped again.
+  const [failed, setFailed] = useState<Map<string, ApiErrorCode>>(new Map());
+  const mark = useMarkAttendance(slug, meeting.id, (inviteeId, code) =>
+    setFailed((current) => new Map(current).set(inviteeId, code)),
   );
   const rest = useMarkRest(slug, meeting.id);
   const [confirming, setConfirming] = useState(false);
@@ -56,7 +60,7 @@ export function CheckInList({
     lateMinutes: number | null,
   ) => {
     setFailed((current) => {
-      const next = new Set(current);
+      const next = new Map(current);
       next.delete(inviteeId);
       return next;
     });
@@ -85,7 +89,7 @@ export function CheckInList({
               slug={slug}
               person={person}
               delayOptions={meeting.delayOptions}
-              failed={failed.has(person.inviteeId)}
+              failed={failed.get(person.inviteeId) ?? null}
               onMark={(actual, lateMinutes) =>
                 onMark(person.inviteeId, actual, lateMinutes)
               }
@@ -114,7 +118,10 @@ export function CheckInList({
               setConfirming(false);
               toast.success(t("restDone", { count: marked }));
             },
-            onError: () => setConfirming(false),
+            onError: (error) => {
+              setConfirming(false);
+              toast.error(tErrors(errorCodeOf(error)));
+            },
           })
         }
       />

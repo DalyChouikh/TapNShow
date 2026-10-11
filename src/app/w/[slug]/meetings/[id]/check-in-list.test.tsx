@@ -58,7 +58,15 @@ const results = {
   checkInTotal: 3,
 };
 
-function setup(putStatus = 200, live = true) {
+const failure = (status: number, code: string) =>
+  new Response(JSON.stringify({ error: { code } }), { status });
+
+function setup(
+  putStatus = 200,
+  live = true,
+  failCode = "internal",
+  restStatus = 200,
+) {
   const bodies: { method: string; body: string }[] = [];
   const fetchMock = routeFetch({
     [`GET ${base}/people?filter=all&limit=50`]: json({
@@ -83,13 +91,13 @@ function setup(putStatus = 200, live = true) {
                 }
               : null,
           })()
-        : new Response(JSON.stringify({ error: { code: "internal" } }), {
-            status: putStatus,
-          });
+        : failure(putStatus, failCode);
     },
     [`POST ${base}/check-in/rest`]: () => {
       bodies.push({ method: "POST", body: "" });
-      return json({ marked: 2 })();
+      return restStatus === 200
+        ? json({ marked: 2 })()
+        : failure(restStatus, failCode);
     },
     [`GET ${base}/results`]: json(results),
   });
@@ -264,5 +272,33 @@ describe("CheckInList", () => {
       await screen.findByText("Couldn't save. Try again."),
     ).toBeInTheDocument();
     expect(late).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("says why a tap failed when it has a reason (#255 rate limit)", async () => {
+    setup(429, true, "rate_limited");
+    await screen.findByText("Amira");
+    await userEvent.click(
+      within(row("Bilel")).getByRole("button", { name: "Late" }),
+    );
+    expect(
+      await screen.findByText("Too many attempts. Wait a bit and try again."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Couldn't save. Try again.")).toBeNull();
+  });
+
+  it("says why marking the rest failed", async () => {
+    setup(200, true, "rate_limited", 429);
+    await screen.findByText("Amira");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Mark the rest as they said" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Mark the rest" }),
+    );
+    expect(
+      await screen.findByText("Too many attempts. Wait a bit and try again."),
+    ).toBeInTheDocument();
+    await vi.waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 });

@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Browser, type Page } from "@playwright/test";
 
 /**
  * Waits until entrance animations have settled so audits see the final colors. File inputs are
@@ -13,6 +13,42 @@ async function waitForEntrance(page: Page): Promise<void> {
         getComputedStyle(el).opacity === "1",
     ),
   );
+}
+
+/** The page background of each theme (the `--color-background` tokens). */
+const BACKGROUND = { light: "rgb(243, 238, 255)", dark: "rgb(22, 19, 31)" };
+
+/**
+ * Opens /design with the OS in `os` and an optional stored choice, and checks first paint shows
+ * `theme`. The theme is decided by next-themes' inline script, which sets `data-theme` on <html>
+ * before <body> is parsed: read it once (no retry) as soon as <body> exists, so a late set fails.
+ * The background is then polled, because under load the stylesheet can apply after <body>.
+ */
+async function expectFirstPaint(
+  browser: Browser,
+  os: "light" | "dark",
+  stored: "light" | "dark" | null,
+  theme: "light" | "dark",
+): Promise<void> {
+  const context = await browser.newContext({ colorScheme: os });
+  if (stored) {
+    await context.addInitScript(
+      (value) => window.localStorage.setItem("theme", value),
+      stored,
+    );
+  }
+  const page = await context.newPage();
+  await page.goto("/design", { waitUntil: "commit" });
+  await page.waitForSelector("body");
+  expect(await page.locator("html").getAttribute("data-theme")).toBe(theme);
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => getComputedStyle(document.documentElement).backgroundColor,
+      ),
+    )
+    .toBe(BACKGROUND[theme]);
+  await context.close();
 }
 
 test.describe("/design", () => {
@@ -47,49 +83,19 @@ test.describe("/design", () => {
   test("dark-mode users get the dark background on first paint (no flash)", async ({
     browser,
   }) => {
-    const context = await browser.newContext({ colorScheme: "dark" });
-    const page = await context.newPage();
-    await page.goto("/design", { waitUntil: "commit" });
-    await page.waitForSelector("body");
-    const bg = await page.evaluate(
-      () => getComputedStyle(document.documentElement).backgroundColor,
-    );
-    expect(bg).toBe("rgb(22, 19, 31)");
-    await context.close();
+    await expectFirstPaint(browser, "dark", null, "dark");
   });
 
   test("a stored light preference wins over a dark OS on first paint", async ({
     browser,
   }) => {
-    const context = await browser.newContext({ colorScheme: "dark" });
-    await context.addInitScript(() =>
-      window.localStorage.setItem("theme", "light"),
-    );
-    const page = await context.newPage();
-    await page.goto("/design", { waitUntil: "commit" });
-    await page.waitForSelector("body");
-    const bg = await page.evaluate(
-      () => getComputedStyle(document.documentElement).backgroundColor,
-    );
-    expect(bg).toBe("rgb(243, 238, 255)");
-    await context.close();
+    await expectFirstPaint(browser, "dark", "light", "light");
   });
 
   test("a stored dark preference wins over a light OS on first paint", async ({
     browser,
   }) => {
-    const context = await browser.newContext({ colorScheme: "light" });
-    await context.addInitScript(() =>
-      window.localStorage.setItem("theme", "dark"),
-    );
-    const page = await context.newPage();
-    await page.goto("/design", { waitUntil: "commit" });
-    await page.waitForSelector("body");
-    const bg = await page.evaluate(
-      () => getComputedStyle(document.documentElement).backgroundColor,
-    );
-    expect(bg).toBe("rgb(22, 19, 31)");
-    await context.close();
+    await expectFirstPaint(browser, "light", "dark", "dark");
   });
 
   test("theme toggle switches data-theme", async ({ page }) => {

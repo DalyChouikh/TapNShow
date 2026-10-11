@@ -4,7 +4,7 @@ export type ResponseDeadlineProblem = "inPast" | "afterStart";
 /**
  * The answer-deadline rule (spec §7.2): `now < deadline < start`, so a deadline later the same day
  * as the meeting is fine. `null` when the deadline is valid; only the past is checked while the
- * start is unknown. The database twin is in `private.send_meeting`.
+ * start is unknown. The database twin is `private.response_deadline_problem`.
  */
 export function responseDeadlineProblem(
   deadline: string,

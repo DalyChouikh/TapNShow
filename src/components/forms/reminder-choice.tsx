@@ -8,7 +8,8 @@ import { CHIP_ROW_CLASS } from "@/components/ui/chip-row";
 /**
  * A reminder setting (spec §7.6; owner's mockup B, 2026-10-09): a switch like the other switches
  * of the Answers step, then the hours before as one-choice chips while it is on. Switching on picks
- * `fallback` (the workspace default); switching off sends `null`.
+ * `fallback` (callers pass `REMINDER_PENDING_DEFAULT` / `REMINDER_GOING_DEFAULT`); switching off
+ * sends `null`.
  */
 export function ReminderChoice({
   id,

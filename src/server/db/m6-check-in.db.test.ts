@@ -8,6 +8,7 @@ import {
 } from "@/test/db/clients";
 import { seedInvitee } from "@/test/db/invitees";
 import { seedMeeting } from "@/test/db/meetings";
+import { overrideLimit } from "@/test/db/outbox";
 import { explainCall } from "@/test/db/plans";
 import { seedContacts } from "@/test/db/roster";
 import { runLocalSql } from "@/test/db/sql";
@@ -269,6 +270,18 @@ describe("mark_attendance", () => {
     const o = await person(other, "Omar");
     await expectAppError(mark(o, "present"), "not_found");
   });
+
+  it("check-in taps are rate limited per user", async () => {
+    const restore = overrideLimit("check_in_marks_per_user_per_hour", 2);
+    try {
+      expect((await mark(a, "present")).error).toBeNull();
+      expect((await mark(b, "late")).error).toBeNull();
+      await expectAppError(mark(c, "absent"), "rate_limited");
+      expect((await mark(c, "absent", admin.client)).error).toBeNull();
+    } finally {
+      restore();
+    }
+  });
 });
 
 describe("mark_rest_as_declared", () => {
@@ -284,6 +297,20 @@ describe("mark_rest_as_declared", () => {
     expect(all[d.inviteeId].actual).toBe("absent");
     expect(all[e.inviteeId]).toBeUndefined();
     expect((await rest()).data).toBe(0);
+  });
+
+  it("is rate limited per user", async () => {
+    const rest = (client = owner.client) =>
+      client.rpc("mark_rest_as_declared", { p_meeting: meeting });
+    const restore = overrideLimit("check_in_rests_per_user_per_hour", 2);
+    try {
+      expect((await rest()).error).toBeNull();
+      expect((await rest()).error).toBeNull();
+      await expectAppError(rest(), "rate_limited");
+      expect((await rest(admin.client)).error).toBeNull();
+    } finally {
+      restore();
+    }
   });
 });
 
@@ -435,5 +462,36 @@ describe("plans at workspace size", () => {
     expect(/Nested Loop[\s\S]*Seq Scan on attendance_marks/.test(plan)).toBe(
       false,
     );
+    // Stale statistics (#255): one more started meeting of 400, bulk-inserted without analyze.
+    const late = await seedMeeting(workspace.id, { status: "scheduled" });
+    expect(
+      (
+        await adminClient()
+          .from("meeting_invitees")
+          .insert(
+            contacts.slice(0, 400).map((contact) => ({
+              workspace_id: workspace.id,
+              meeting_id: late,
+              contact_id: contact,
+              email_status: "sent" as const,
+            })),
+          )
+      ).error,
+    ).toBeNull();
+    await startedAgo(late, 1);
+    const staleDetails = explainCall(
+      `public.attendance_details('${workspace.id}', null, null, null, null, null, null, 50)`,
+      owner.id,
+    );
+    expect(/Seq Scan on meeting_invitees\b/.test(staleDetails)).toBe(false);
+    // The summary reads every invitee of the workspace's counted meetings (here about half the
+    // table, where one scan is rightly cheapest): it must be able to use an index, not choose one.
+    const staleSummary = explainCall(
+      `public.attendance_summary('${workspace.id}', null, null)`,
+      owner.id,
+      "authenticated",
+      ["enable_seqscan = off"],
+    );
+    expect(/Seq Scan on meeting_invitees\b/.test(staleSummary)).toBe(false);
   }, 120_000);
 });

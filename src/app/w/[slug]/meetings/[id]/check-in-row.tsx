@@ -7,6 +7,7 @@ import { declaredActual } from "@/lib/responses/check-in";
 import { describeAnswer, lowerFirst } from "@/lib/responses/describe-answer";
 import { ACTUAL_TONE } from "@/lib/responses/tones";
 import { cn } from "@/lib/utils";
+import type { ApiErrorCode } from "@/shared/api/errors";
 import type { Mark, PersonRow } from "@/shared/api/responses";
 import { LateMinutes } from "./late-minutes";
 import { PersonName } from "./person-row";
@@ -31,10 +32,12 @@ export function CheckInRow({
   person: PersonRow;
   /** The meeting's delay choices, offered when marked Late. */
   delayOptions: number[];
-  failed: boolean;
+  /** Why the last tap didn't save, or null. */
+  failed: ApiErrorCode | null;
   onMark: (actual: Mark["actual"] | null, lateMinutes: number | null) => void;
 }) {
   const t = useTranslations("MeetingPage.checkIn");
+  const tErrors = useTranslations("ApiErrors");
   const labels = useAnswerLabels();
   const said = person.answer ? describeAnswer(labels, person.answer) : null;
   const hint = person.mark
@@ -95,7 +98,8 @@ export function CheckInRow({
       ) : null}
       {failed ? (
         <p role="alert" className="text-sm font-bold">
-          {t("saveFailed")}
+          {/* A reason the person can act on (e.g. too many taps), else the generic retry line. */}
+          {failed === "internal" ? t("saveFailed") : tErrors(failed)}
         </p>
       ) : null}
     </li>
