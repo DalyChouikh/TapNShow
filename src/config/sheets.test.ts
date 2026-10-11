@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { maxDuration as retryRouteMax } from "@/app/api/workspaces/[slug]/sheet/retry/route";
 import { DISPATCH_MAX_DURATION_S, DISPATCH_SAFETY_MARGIN_MS } from "./meetings";
 import {
   SHEET_BUDGET_MS,
@@ -19,5 +20,9 @@ describe("sheet worker timing (spec §8)", () => {
 
   it("leases a sheet for twice the route's maxDuration, so a live run never loses it", () => {
     expect(SHEET_LEASE_SECONDS).toBe(2 * DISPATCH_MAX_DURATION_S);
+  });
+
+  it("the Try again route, which runs the sheet worker, uses the dispatcher routes' maxDuration", () => {
+    expect(retryRouteMax).toBe(DISPATCH_MAX_DURATION_S);
   });
 });
