@@ -6,8 +6,10 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import type { ExportSheetLink } from "@/components/forms/export-menu";
 import { SHEET_STATUS_POLL_MS } from "@/config/sheets";
 import { senderQueryKey } from "@/hooks/use-sender";
+import { useWorkspace } from "@/hooks/use-workspace";
 import { apiRequest } from "@/lib/api-client";
 import { sheetUrl, tabForMeeting } from "@/lib/sheets/url";
 import { okSchema } from "@/shared/api/common";
@@ -103,4 +105,25 @@ export function useSheetLink(
     ),
     paused: false,
   };
+}
+
+/**
+ * `useSheetLink` shaped for `ExportMenu`: a paused sheet links the Owner to Settings > Sheets
+ * (where Try again and Reconnect live); undefined when the workspace has no sheet.
+ */
+export function useExportSheetLink(
+  slug: string,
+  meeting?: { startsAt: string | null; timezone: string },
+): ExportSheetLink | undefined {
+  const link = useSheetLink(slug, meeting);
+  const isOwner = useWorkspace(slug).data?.myRole === "owner";
+  if (!link) {
+    return undefined;
+  }
+  return link.paused && isOwner
+    ? {
+        ...link,
+        settingsHref: `/w/${encodeURIComponent(slug)}/settings#sheets`,
+      }
+    : link;
 }

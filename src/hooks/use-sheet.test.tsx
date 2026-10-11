@@ -7,6 +7,7 @@ import { json, routeFetch } from "@/test/fetch";
 import {
   sheetQueryKey,
   useRetrySheet,
+  useExportSheetLink,
   useSheetLink,
   useTurnOffSheet,
   useWorkspaceSheet,
@@ -144,5 +145,54 @@ describe("useSheetLink", () => {
       status({ state: "off", spreadsheetId: null, tabs: [] }),
     );
     await waitFor(() => expect(result.current).toBeNull());
+  });
+});
+
+describe("useExportSheetLink", () => {
+  const exportLink = async (role: "owner" | "viewer", reply: SheetStatus) => {
+    routeFetch({
+      [`GET ${PATH}`]: json(reply),
+      "GET /api/workspaces/club-ab12": json({
+        id: "0b1f6a3e-5d0a-4a0e-9a49-3e2d0f5b9c11",
+        slug: "club-ab12",
+        name: "Club",
+        timezone: "Africa/Tunis",
+        myRole: role,
+        canCheckIn: false,
+      }),
+    });
+    const { result } = renderHook(() => useExportSheetLink("club-ab12"), {
+      wrapper: wrapperWith(client()),
+    });
+    return result;
+  };
+
+  it("links the Owner to Settings when the sheet is paused", async () => {
+    const result = await exportLink(
+      "owner",
+      status({ state: "paused", pausedReason: "trashed" }),
+    );
+    await waitFor(() =>
+      expect(result.current).toEqual({
+        href: null,
+        paused: true,
+        settingsHref: "/w/club-ab12/settings#sheets",
+      }),
+    );
+  });
+
+  it("gives others no Settings link, and nothing without a sheet", async () => {
+    const paused = await exportLink(
+      "viewer",
+      status({ state: "paused", pausedReason: "trashed" }),
+    );
+    await waitFor(() =>
+      expect(paused.current).toEqual({ href: null, paused: true }),
+    );
+    const none = await exportLink(
+      "viewer",
+      status({ state: "off", spreadsheetId: null, tabs: [] }),
+    );
+    await waitFor(() => expect(none.current).toBeUndefined());
   });
 });

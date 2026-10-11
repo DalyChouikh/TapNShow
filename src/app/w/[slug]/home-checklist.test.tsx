@@ -16,20 +16,39 @@ const activeSender = {
   dailyLimit: 400,
 };
 
-function senderIs(sender: object | null) {
+const sheet = (state: "off" | "on") => ({
+  state,
+  spreadsheetId: state === "on" ? "file-abcdefghij" : null,
+  pausedReason: null,
+  syncedAt: null,
+  behind: false,
+  createdAt: null,
+  turnedOnBy: "",
+  accountEmail: null,
+  ownerName: "Amira Ben Ali",
+  tabs: [],
+});
+
+function senderIs(sender: object | null, sheetState: "off" | "on" = "off") {
   routeFetch({
     "GET /api/workspaces/robotics-cd34/sender": json({
       sender,
       ownerName: "Amira Ben Ali",
       myConnections: [],
     }),
+    "GET /api/workspaces/robotics-cd34/sheet": json(sheet(sheetState)),
   });
 }
+
+const connectLinks = async () =>
+  (await screen.findAllByRole("link", { name: "Connect" })).map((link) =>
+    link.getAttribute("href"),
+  );
 
 beforeEach(() => senderIs(null));
 
 describe("HomeChecklist", () => {
-  it("offers the Viewer invite now and marks later steps as coming soon", () => {
+  it("offers the Viewer invite now and no step is coming soon any more", () => {
     renderWithProviders(<HomeChecklist workspace={workspaceFixture} />);
     expect(
       screen.getByRole("heading", { name: "Welcome to Robotics Club" }),
@@ -38,20 +57,22 @@ describe("HomeChecklist", () => {
       "href",
       "/w/robotics-cd34/settings#people",
     );
-    expect(screen.getAllByText("Coming soon")).toHaveLength(1);
+    expect(screen.queryByText("Coming soon")).toBeNull();
   });
 
-  it("sends the Owner to Settings > Sending, then marks Gmail done", async () => {
+  it("sends the Owner to Settings > Sending and Settings > Sheets, where the confirm lives", async () => {
     renderWithProviders(<HomeChecklist workspace={workspaceFixture} />);
-    expect(
-      await screen.findByRole("link", { name: "Connect" }),
-    ).toHaveAttribute("href", "/w/robotics-cd34/settings#sending");
+    await screen.findByText("Sync responses to Google Sheets");
+    expect(await connectLinks()).toEqual([
+      "/w/robotics-cd34/settings#sending",
+      "/w/robotics-cd34/settings#sheets",
+    ]);
   });
 
-  it("shows Done once a sender is active", async () => {
-    senderIs(activeSender);
+  it("shows Done once a sender is active and a sheet is on", async () => {
+    senderIs(activeSender, "on");
     renderWithProviders(<HomeChecklist workspace={workspaceFixture} />);
-    expect(await screen.findByText("Done")).toBeInTheDocument();
+    expect(await screen.findAllByText("Done")).toHaveLength(2);
     expect(screen.queryByRole("link", { name: "Connect" })).toBeNull();
   });
 
@@ -61,6 +82,9 @@ describe("HomeChecklist", () => {
     );
     expect(
       await screen.findByText("Amira Ben Ali connects Gmail"),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText("Amira Ben Ali connects Google Sheets"),
     ).toBeInTheDocument();
   });
 

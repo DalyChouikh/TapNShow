@@ -136,4 +136,26 @@ describe("SendingSection", () => {
       screen.queryByRole("link", { name: /Gmail/ }),
     ).not.toBeInTheDocument();
   });
+
+  it("the Disconnect dialog says which Google Sheets keep updating", async () => {
+    routeFetch({
+      [`GET ${path}`]: json({
+        ...active,
+        myConnections: active.myConnections.map((connection, index) =>
+          index === 0
+            ? { ...connection, sheets: ["Robotics Club"] }
+            : connection,
+        ),
+      }),
+    });
+    renderWithProviders(<SendingSection workspace={workspaceFixture} />);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Disconnect club@gmail.com" }),
+    );
+    expect(
+      within(screen.getByRole("dialog")).getByText(
+        /The Google Sheet of Robotics Club keeps updating\./,
+      ),
+    ).toBeInTheDocument();
+  });
 });

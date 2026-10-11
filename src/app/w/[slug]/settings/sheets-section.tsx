@@ -1,0 +1,258 @@
+"use client";
+
+import { Table } from "@phosphor-icons/react";
+import { format } from "date-fns";
+import { useSearchParams } from "next/navigation";
+import { useFormatter, useNow, useTranslations } from "next-intl";
+import { useState } from "react";
+import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/forms/confirm-dialog";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Sticker } from "@/components/ui/sticker";
+import {
+  useRetrySheet,
+  useTurnOffSheet,
+  useWorkspaceSheet,
+} from "@/hooks/use-sheet";
+import { goTo } from "@/lib/navigation";
+import { sheetUrl } from "@/lib/sheets/url";
+import { cn } from "@/lib/utils";
+import {
+  GOOGLE_RESULT_PARAMS,
+  googleConnectHref,
+} from "@/shared/api/google-connect";
+import type { SheetStatus } from "@/shared/api/sheets";
+import type { WorkspaceDetails } from "@/shared/api/workspaces";
+import { GoogleConnectResult } from "./google-connect-result";
+import { SettingsSection } from "./settings-section";
+
+type Pending = "connect" | "recreate" | "turnOff" | null;
+
+/** "Updated 2 minutes ago" refreshes once a minute. */
+const NOW_TICK_MS = 60_000;
+
+const TONE: Record<SheetStatus["state"], "primary" | "success" | "warning"> = {
+  off: "primary",
+  creating: "warning",
+  on: "success",
+  paused: "warning",
+};
+
+/**
+ * Settings > Sheets (spec §7.17): the workspace's Google Sheet. Every member sees its state and the
+ * link; only the Owner connects, retries, replaces or turns it off, each consequence confirmed.
+ */
+export function SheetsSection({
+  workspace,
+  defaultOpen = true,
+}: {
+  workspace: WorkspaceDetails;
+  defaultOpen?: boolean;
+}) {
+  const t = useTranslations("Settings.sheets");
+  const formatter = useFormatter();
+  const now = useNow({ updateInterval: NOW_TICK_MS });
+  const params = useSearchParams();
+  const returning = params.get(GOOGLE_RESULT_PARAMS.purpose) === "sheets";
+  // After Try again, follow the status until the sheet is up to date.
+  const [following, setFollowing] = useState(false);
+  const sheet = useWorkspaceSheet(workspace.slug, { following });
+  const turnOff = useTurnOffSheet(workspace.slug);
+  const retry = useRetrySheet(workspace.slug);
+  const [pending, setPending] = useState<Pending>(null);
+  const isOwner = workspace.myRole === "owner";
+  if (!sheet.data) {
+    return <Skeleton className="h-40 w-full" />;
+  }
+  const status = sheet.data;
+  const connectHref = googleConnectHref(workspace.slug, "sheets");
+  const href = status.spreadsheetId ? sheetUrl(status.spreadsheetId) : null;
+  const when = status.syncedAt
+    ? formatter.relativeTime(new Date(status.syncedAt), now)
+    : null;
+  const updated = when ? t("updatedAgo", { when }) : t("neverUpdated");
+  const copy = async (link: string) => {
+    try {
+      await navigator.clipboard.writeText(link);
+      toast.success(t("copied"));
+    } catch {
+      toast.error(t("copyFailed"));
+    }
+  };
+  const openLink = (link: string) => (
+    <Button asChild tone="primary">
+      <a href={link} target="_blank" rel="noopener noreferrer">
+        {t("open")}
+      </a>
+    </Button>
+  );
+
+  return (
+    <SettingsSection
+      id="sheets"
+      title={t("title")}
+      defaultOpen={defaultOpen}
+      forceOpen={returning}
+      className="gap-3"
+      icon={
+        <Sticker tone={TONE[status.state]}>
+          <Table weight="bold" />
+        </Sticker>
+      }
+    >
+      <GoogleConnectResult purpose="sheets" />
+      {!isOwner ? (
+        <div className="flex flex-col gap-2">
+          {status.state === "off" ? (
+            <p>{t("viewerOff", { owner: status.ownerName })}</p>
+          ) : status.state === "paused" ? (
+            <p>{t("viewerPaused")}</p>
+          ) : status.state === "creating" || !href ? (
+            <p>{t("creating")}</p>
+          ) : (
+            <>
+              <p>{t("viewerOn", { when: when ?? t("neverUpdated") })}</p>
+              {openLink(href)}
+              <p className="text-sm text-muted-ink">
+                {t("viewerAccess", { owner: status.ownerName })}
+              </p>
+            </>
+          )}
+        </div>
+      ) : status.state === "off" ? (
+        <div className="flex flex-col gap-2">
+          <p>{t("offBody")}</p>
+          <Button tone="primary" onClick={() => setPending("connect")}>
+            {t("connect")}
+          </Button>
+          <p className="text-sm text-muted-ink">{t("tipGroup")}</p>
+        </div>
+      ) : status.state === "creating" ? (
+        <p className="font-bold">{t("creating")}</p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1">
+            <p className="font-bold break-words">
+              {t("fileName", { workspace: workspace.name })}
+            </p>
+            {status.accountEmail && status.createdAt ? (
+              <p className="text-sm break-words text-muted-ink">
+                {t("where", {
+                  account: status.accountEmail,
+                  name: status.turnedOnBy,
+                  date: format(new Date(status.createdAt), "d MMM yyyy"),
+                })}
+              </p>
+            ) : null}
+            <p className="text-sm">
+              <span
+                className={cn(
+                  "rounded-full border-2 border-outline px-2 text-xs font-bold text-on-fill",
+                  status.state === "paused"
+                    ? "bg-fill-warning"
+                    : status.behind
+                      ? "bg-fill-info"
+                      : "bg-fill-success",
+                )}
+              >
+                {status.state === "paused"
+                  ? t("paused")
+                  : status.behind
+                    ? t("updating")
+                    : t("upToDate")}
+              </span>{" "}
+              {status.state === "paused" ? null : updated}
+            </p>
+          </div>
+          {status.state === "paused" && status.pausedReason ? (
+            <>
+              <p className="text-sm">
+                {t(`pausedLine.${status.pausedReason}`)}
+              </p>
+              {status.pausedReason === "trashed" ? (
+                <Button
+                  tone="primary"
+                  disabled={retry.isPending}
+                  onClick={() =>
+                    retry.mutate(undefined, {
+                      onSuccess: () => setFollowing(true),
+                    })
+                  }
+                >
+                  {t("tryAgain")}
+                </Button>
+              ) : null}
+              {status.pausedReason === "access_lost" ? (
+                <Button asChild tone="primary">
+                  <a href={connectHref}>{t("reconnect")}</a>
+                </Button>
+              ) : null}
+              <Button
+                tone={
+                  status.pausedReason === "deleted" ||
+                  status.pausedReason === "full"
+                    ? "primary"
+                    : undefined
+                }
+                onClick={() => setPending("recreate")}
+              >
+                {t("recreate")}
+              </Button>
+            </>
+          ) : href ? (
+            <>
+              {openLink(href)}
+              <Button onClick={() => void copy(href)}>{t("copy")}</Button>
+              <p className="text-sm text-muted-ink">{t("shareTip")}</p>
+            </>
+          ) : null}
+          <Button tone="danger" onClick={() => setPending("turnOff")}>
+            {t("turnOff")}
+          </Button>
+        </div>
+      )}
+      <ConfirmDialog
+        open={pending === "connect"}
+        onOpenChange={(open) => !open && setPending(null)}
+        title={t("connectTitle", { workspace: workspace.name })}
+        description={t("connectBody")}
+        confirmLabel={t("continue")}
+        onConfirm={() => goTo(connectHref)}
+      >
+        <p className="text-sm text-muted-ink">{t("connectNote")}</p>
+      </ConfirmDialog>
+      <ConfirmDialog
+        open={pending === "recreate"}
+        onOpenChange={(open) => !open && setPending(null)}
+        title={t("recreateTitle")}
+        description={t("recreateBody")}
+        confirmLabel={t("continue")}
+        onConfirm={() =>
+          goTo(googleConnectHref(workspace.slug, "sheets", { replace: true }))
+        }
+      >
+        <p className="text-sm text-muted-ink">{t("connectNote")}</p>
+      </ConfirmDialog>
+      <ConfirmDialog
+        open={pending === "turnOff"}
+        onOpenChange={(open) => !open && setPending(null)}
+        title={t("turnOffTitle")}
+        description={t("turnOffBody", {
+          account: status.accountEmail ?? "",
+        })}
+        confirmLabel={t("turnOff")}
+        tone="danger"
+        pending={turnOff.isPending}
+        onConfirm={() =>
+          turnOff.mutate(undefined, {
+            onSuccess: () => {
+              setPending(null);
+              toast(t("turnedOff"));
+            },
+          })
+        }
+      />
+    </SettingsSection>
+  );
+}

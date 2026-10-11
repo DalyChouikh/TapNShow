@@ -14,18 +14,22 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Sticker } from "@/components/ui/sticker";
 import { useWorkspaceSender } from "@/hooks/use-sender";
+import { useWorkspaceSheet } from "@/hooks/use-sheet";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
 
 type StepKey =
   "inviteCommittee" | "importMembers" | "connectGmail" | "connectSheets";
 type ActionKey =
-  "inviteCommitteeAction" | "importMembersAction" | "connectGmailAction";
+  | "inviteCommitteeAction"
+  | "importMembersAction"
+  | "connectGmailAction"
+  | "connectSheetsAction";
 
 const STEPS: ReadonlyArray<{
   key: StepKey;
   icon: Icon;
-  href?: (slug: string) => string;
-  actionKey?: ActionKey;
+  href: (slug: string) => string;
+  actionKey: ActionKey;
 }> = [
   {
     key: "inviteCommittee",
@@ -45,13 +49,20 @@ const STEPS: ReadonlyArray<{
     href: (slug) => `/w/${slug}/settings#sending`,
     actionKey: "connectGmailAction",
   },
-  { key: "connectSheets", icon: Table },
+  {
+    key: "connectSheets",
+    icon: Table,
+    // Settings, not Google: the privacy text is always read before connecting.
+    href: (slug) => `/w/${slug}/settings#sheets`,
+    actionKey: "connectSheetsAction",
+  },
 ];
 
 /** Home (spec §7.1): onboarding checklist for Owners/Admins, a short welcome for Viewers. */
 export function HomeChecklist({ workspace }: { workspace: WorkspaceDetails }) {
   const t = useTranslations("WorkspaceHome");
   const sender = useWorkspaceSender(workspace.slug);
+  const sheet = useWorkspaceSheet(workspace.slug);
   if (workspace.myRole === "viewer") {
     return (
       <Card as="section" className="flex flex-col gap-3">
@@ -75,25 +86,36 @@ export function HomeChecklist({ workspace }: { workspace: WorkspaceDetails }) {
         <ul className="mt-3 flex flex-col gap-3">
           {STEPS.map(({ key, icon: Glyph, href, actionKey }) => (
             <li key={key} className="flex items-center gap-3">
-              <Sticker tone={href ? "primary" : "neutral"}>
+              <Sticker tone="primary">
                 <Glyph weight="bold" />
               </Sticker>
               <span className="flex-1 font-bold">{t(key)}</span>
-              {key === "connectGmail" && href ? (
-                <GmailStatus
-                  workspace={workspace}
-                  active={sender.data?.sender?.status === "active"}
-                  ownerName={sender.data?.ownerName}
+              {key === "connectGmail" ? (
+                <ConnectStatus
+                  done={sender.data?.sender?.status === "active"}
+                  isOwner={workspace.myRole === "owner"}
+                  ownerText={
+                    sender.data &&
+                    t("ownerConnects", { owner: sender.data.ownerName })
+                  }
                   href={href(workspace.slug)}
+                  action={t(actionKey)}
                 />
-              ) : href && actionKey ? (
+              ) : key === "connectSheets" ? (
+                <ConnectStatus
+                  done={sheet.data !== undefined && sheet.data.state !== "off"}
+                  isOwner={workspace.myRole === "owner"}
+                  ownerText={
+                    sheet.data &&
+                    t("ownerConnectsSheets", { owner: sheet.data.ownerName })
+                  }
+                  href={href(workspace.slug)}
+                  action={t(actionKey)}
+                />
+              ) : (
                 <Button asChild tone="primary">
                   <Link href={href(workspace.slug)}>{t(actionKey)}</Link>
                 </Button>
-              ) : (
-                <span className="rounded-full border-2 border-outline bg-fill-neutral px-2 text-xs font-bold text-on-fill">
-                  {t("soon")}
-                </span>
               )}
             </li>
           ))}
@@ -103,36 +125,41 @@ export function HomeChecklist({ workspace }: { workspace: WorkspaceDetails }) {
   );
 }
 
-/** The Gmail step: Done once a sender is active; the Owner connects, Admins are told who does. */
-function GmailStatus({
-  workspace,
-  active,
-  ownerName,
+/**
+ * A connect step (Gmail, Google Sheets): Done once connected; the Owner gets the link, Admins are
+ * told who connects it.
+ */
+function ConnectStatus({
+  done,
+  isOwner,
+  ownerText,
   href,
+  action,
 }: {
-  workspace: WorkspaceDetails;
-  active: boolean;
-  ownerName: string | undefined;
+  done: boolean;
+  isOwner: boolean;
+  ownerText: string | undefined;
   href: string;
+  action: string;
 }) {
   const t = useTranslations("WorkspaceHome");
-  if (active) {
+  if (done) {
     return (
       <span className="rounded-full border-2 border-outline bg-fill-success px-2 text-xs font-bold text-on-fill">
         {t("done")}
       </span>
     );
   }
-  if (workspace.myRole !== "owner") {
-    return ownerName ? (
+  if (!isOwner) {
+    return ownerText ? (
       <span className="max-w-32 text-right text-sm text-muted-ink">
-        {t("ownerConnects", { owner: ownerName })}
+        {ownerText}
       </span>
     ) : null;
   }
   return (
     <Button asChild tone="primary">
-      <Link href={href}>{t("connectGmailAction")}</Link>
+      <Link href={href}>{action}</Link>
     </Button>
   );
 }
