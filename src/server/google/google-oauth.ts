@@ -4,7 +4,8 @@ import {
   GOOGLE_AUTHORIZATION_ENDPOINT,
   GOOGLE_TOKEN_ENDPOINT,
 } from "@/config/auth";
-import { GMAIL_CONNECT_SCOPES, GOOGLE_REVOKE_ENDPOINT } from "@/config/gmail";
+import { getServerEnv } from "@/config/env";
+import { GMAIL_CONNECT_SCOPES } from "@/config/gmail";
 import { SHEETS_CONNECT_SCOPES } from "@/config/sheets";
 import { generateToken, sha256Base64Url } from "@/server/crypto/tokens";
 import {
@@ -222,13 +223,17 @@ export async function refreshGoogleAccessToken(
   }
 }
 
-/** Best-effort revocation on disconnect (spec §9). Never throws; false when Google did not confirm. */
+/**
+ * Best-effort revocation on disconnect (spec §9), at `GOOGLE_OAUTH_REVOKE_URL` by default. Never
+ * throws; false when Google did not confirm.
+ */
 export async function revokeGoogleToken(
   token: string,
   fetchImpl: typeof fetch = fetch,
+  revokeUrl: string = getServerEnv().GOOGLE_OAUTH_REVOKE_URL,
 ): Promise<boolean> {
   try {
-    const response = await fetchImpl(GOOGLE_REVOKE_ENDPOINT, {
+    const response = await fetchImpl(revokeUrl, {
       method: "POST",
       headers: { "content-type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({ token }).toString(),

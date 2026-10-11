@@ -248,4 +248,12 @@ describe("revokeGoogleToken", () => {
       .mockRejectedValue(new TypeError("fetch failed"));
     expect(await revokeGoogleToken("rt", offline)).toBe(false);
   });
+
+  it("revokes at the configured URL (e2e points it at the fake)", async () => {
+    const ok = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response("", { status: 200 }));
+    await revokeGoogleToken("rt", ok, "http://127.0.0.1:44399/revoke");
+    expect(String(ok.mock.calls[0][0])).toBe("http://127.0.0.1:44399/revoke");
+  });
 });

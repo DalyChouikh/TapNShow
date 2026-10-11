@@ -1,5 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
-import { FAKE_GMAIL_URL } from "./e2e/helpers/fake-gmail";
+import { FAKE_GOOGLE_URL } from "./e2e/helpers/fake-google";
 import {
   E2E_DISPATCH_SECRET,
   E2E_INVITE_SECRET,
@@ -26,11 +26,14 @@ export default defineConfig({
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 240_000,
-    // Meetings send through the fake Gmail in e2e/helpers/fake-gmail.ts (test-only secrets).
+    // Every Google call goes to the fake in e2e/helpers/fake-google.ts (test-only secrets).
     env: {
       ...process.env,
-      GMAIL_API_BASE_URL: FAKE_GMAIL_URL,
-      GOOGLE_OAUTH_TOKEN_URL: `${FAKE_GMAIL_URL}/token`,
+      GMAIL_API_BASE_URL: FAKE_GOOGLE_URL,
+      GOOGLE_SHEETS_API_BASE_URL: FAKE_GOOGLE_URL,
+      GOOGLE_DRIVE_API_BASE_URL: FAKE_GOOGLE_URL,
+      GOOGLE_OAUTH_TOKEN_URL: `${FAKE_GOOGLE_URL}/token`,
+      GOOGLE_OAUTH_REVOKE_URL: `${FAKE_GOOGLE_URL}/revoke`,
       GOOGLE_CLIENT_ID: "e2e-client",
       GOOGLE_CLIENT_SECRET: "e2e-secret",
       GOOGLE_TOKEN_ENCRYPTION_KEY: E2E_TOKEN_KEY,

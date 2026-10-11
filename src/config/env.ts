@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { GOOGLE_TOKEN_ENDPOINT } from "./auth";
+import { GOOGLE_REVOKE_ENDPOINT } from "./gmail";
 import { blankToUndefined, formatEnvError, type EnvSource } from "./env-utils";
 
 const serverEnvSchema = z
@@ -30,6 +31,8 @@ const serverEnvSchema = z
     DISPATCH_SECRET: z.string().min(32).optional(),
     GMAIL_API_BASE_URL: z.url().default("https://gmail.googleapis.com"),
     GOOGLE_OAUTH_TOKEN_URL: z.url().default(GOOGLE_TOKEN_ENDPOINT),
+    /** Where disconnects revoke a Google grant (spec §9); e2e points it at the fake. */
+    GOOGLE_OAUTH_REVOKE_URL: z.url().default(GOOGLE_REVOKE_ENDPOINT),
     /** Google Sheets API v4 (spec §10); e2e points it at the fake. */
     GOOGLE_SHEETS_API_BASE_URL: z
       .url()
