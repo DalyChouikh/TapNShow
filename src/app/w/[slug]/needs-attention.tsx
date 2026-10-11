@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Sticker } from "@/components/ui/sticker";
 import { useHasDrafts } from "@/hooks/use-meetings";
-import { gmailConnectHref, useWorkspaceSender } from "@/hooks/use-sender";
+import { useWorkspaceSender } from "@/hooks/use-sender";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
+import { googleConnectHref } from "@/shared/api/google-connect";
 
 /** Home "needs attention" (spec §7.2, §7.15): a broken sender, or drafts waiting for a sender. */
 export function NeedsAttention({ workspace }: { workspace: WorkspaceDetails }) {
@@ -43,7 +44,7 @@ export function NeedsAttention({ workspace }: { workspace: WorkspaceDetails }) {
       </p>
       {isOwner ? (
         <Button asChild tone="primary">
-          <a href={gmailConnectHref(workspace.slug)}>
+          <a href={googleConnectHref(workspace.slug, "sending")}>
             {broken ? t("reconnect") : t("connect")}
           </a>
         </Button>

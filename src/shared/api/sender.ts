@@ -34,15 +34,3 @@ export type WorkspaceSender = z.infer<typeof workspaceSenderSchema>;
 
 /** `PUT …/sender` body (Owner: use one of my connections). */
 export const setSenderBodySchema = z.object({ connectionId: z.uuid() });
-
-/** `?gmail_error=` values the connect callback can return. */
-export const GMAIL_CONNECT_ERRORS = [
-  "unavailable",
-  "owner_only",
-  "cancelled",
-  "scope_denied",
-  "no_refresh_token",
-  "failed",
-] as const;
-/** One connect failure reason. */
-export type GmailConnectError = (typeof GMAIL_CONNECT_ERRORS)[number];

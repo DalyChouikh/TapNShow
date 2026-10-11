@@ -5,40 +5,56 @@ import {
   GOOGLE_TOKEN_ENDPOINT,
 } from "@/config/auth";
 import { GMAIL_CONNECT_SCOPES, GOOGLE_REVOKE_ENDPOINT } from "@/config/gmail";
+import { SHEETS_CONNECT_SCOPES } from "@/config/sheets";
 import { generateToken, sha256Base64Url } from "@/server/crypto/tokens";
+import {
+  GOOGLE_CONNECT_PURPOSES,
+  type GoogleConnectPurpose,
+} from "@/shared/api/google-connect";
 
 const connectStateSchema = z.object({
   state: z.string().min(1),
   verifier: z.string().min(1),
   workspaceSlug: z.string().min(1),
   next: z.string().nullable(),
+  // Cookies set before M7 have neither: they were Gmail sending connects.
+  purpose: z.enum(GOOGLE_CONNECT_PURPOSES).default("sending"),
+  replace: z.boolean().default(false),
 });
 
 /** What the connect route remembers (httpOnly cookie) for the callback. */
 export type GoogleConnectState = z.infer<typeof connectStateSchema>;
 
 /**
- * Google's authorization URL for a Google connection (spec §9): `openid email gmail.send`,
- * offline access (refresh token), forced consent so a refresh token is always issued, incremental
- * scopes, and PKCE S256.
+ * Google's authorization URL for a Google connection (spec §9): `openid email` plus `gmail.send`
+ * (sending) or `drive.file` (the Google Sheet), offline access (refresh token), forced consent and
+ * the account chooser so a refresh token is always issued, incremental scopes (earlier grants are
+ * kept), and PKCE S256. `replace` asks the callback for a new sheet instead of reattaching.
  */
 export function createGoogleConnectAuthorization(input: {
   clientId: string;
   redirectUri: string;
   workspaceSlug: string;
   next: string | null;
+  purpose: GoogleConnectPurpose;
+  replace: boolean;
 }): { url: string; state: GoogleConnectState } {
   const state: GoogleConnectState = {
     state: generateToken(),
     verifier: generateToken(),
     workspaceSlug: input.workspaceSlug,
     next: input.next,
+    purpose: input.purpose,
+    replace: input.replace,
   };
   const params = new URLSearchParams({
     client_id: input.clientId,
     redirect_uri: input.redirectUri,
     response_type: "code",
-    scope: GMAIL_CONNECT_SCOPES.join(" "),
+    scope: (input.purpose === "sheets"
+      ? SHEETS_CONNECT_SCOPES
+      : GMAIL_CONNECT_SCOPES
+    ).join(" "),
     state: state.state,
     code_challenge: sha256Base64Url(state.verifier),
     code_challenge_method: "S256",

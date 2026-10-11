@@ -58,7 +58,7 @@ describe("SendingSection", () => {
     const connect = await screen.findByRole("link", { name: "Connect Gmail" });
     expect(connect).toHaveAttribute(
       "href",
-      "/api/integrations/google/connect?workspace=robotics-cd34",
+      "/api/integrations/google/connect?workspace=robotics-cd34&purpose=sending",
     );
     expect(
       screen.getByText(/connect your group's own Gmail/),

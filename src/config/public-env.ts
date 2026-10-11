@@ -6,6 +6,7 @@ const publicEnvSchema = z.object({
   NEXT_PUBLIC_SENTRY_DSN: z.url().optional(),
   NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: z.string().min(1).optional(),
   NEXT_PUBLIC_GOOGLE_SIGN_IN_ENABLED: z.stringbool().default(false),
+  /** Gates every Google connection (Gmail sending and, since M7, Google Sheets); the name predates M7. */
   NEXT_PUBLIC_GMAIL_CONNECT_ENABLED: z.stringbool().default(false),
   NEXT_PUBLIC_VERCEL_ENV: z
     .enum(["production", "preview", "development"])

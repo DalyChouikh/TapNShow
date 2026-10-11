@@ -66,7 +66,7 @@ describe("NeedsAttention", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Reconnect" })).toHaveAttribute(
       "href",
-      "/api/integrations/google/connect?workspace=robotics-cd34",
+      "/api/integrations/google/connect?workspace=robotics-cd34&purpose=sending",
     );
   });
 

@@ -6,11 +6,12 @@ import {
   GMAIL_CONNECT_COOKIE_PATH,
   GMAIL_SEND_SCOPE,
 } from "@/config/gmail";
+import { DRIVE_FILE_SCOPE } from "@/config/sheets";
 import { publicEnv } from "@/config/public-env";
 import { requireSecret } from "@/config/secrets";
 import { loginPathFor } from "@/lib/auth-redirect";
 import { logger } from "@/lib/logger";
-import { senderSettingsPath, withQuery } from "@/lib/with-query";
+import { resultPath, settingsPath } from "@/lib/with-query";
 import {
   connectionAssociatedData,
   parseEncryptionKey,
@@ -23,15 +24,21 @@ import {
   revokeGoogleToken,
   type GoogleConnectGrant,
 } from "@/server/google/google-oauth";
+import { revokeReleased } from "@/server/google/release";
 import { requireUser } from "@/server/http/require-user";
 import {
   saveGoogleConnection,
   setWorkspaceSender,
 } from "@/server/queries/sender";
+import { googleConnectionSaved, startSheet } from "@/server/queries/sheets";
 import { getWorkspaceBySlug } from "@/server/queries/workspaces";
 import { createSupabaseAdminClient } from "@/server/supabase/admin-client";
 import { createSupabaseServerClient } from "@/server/supabase/server-client";
-import type { GmailConnectError } from "@/shared/api/sender";
+import { scheduleWorkers } from "@/server/workers/schedule-workers";
+import {
+  GOOGLE_RESULT_PARAMS,
+  type GoogleConnectError,
+} from "@/shared/api/google-connect";
 
 function redirectClearingCookie(
   path: string,
@@ -45,7 +52,12 @@ function redirectClearingCookie(
   return response;
 }
 
-/** Finishes "Connect Gmail sending": verify state, exchange, check scopes, seal, save, set sender. */
+/**
+ * Finishes a Google connection (spec §9): verify state, exchange, check scopes, seal, save, re-check
+ * the sheets on that account, then set the sender (`sending`) or start the sheet (`sheets`). A
+ * grant holding either permission is kept even when the purpose's own box was unticked: with
+ * incremental consent it can carry the other purpose's permission, which must not be revoked.
+ */
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const env = getServerEnv();
   const stored = decodeConnectCookie(
@@ -54,9 +66,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   if (!stored) {
     return redirectClearingCookie("/welcome", request);
   }
-  const returnTo = stored.next ?? senderSettingsPath(stored.workspaceSlug);
-  const fail = (reason: GmailConnectError) =>
-    redirectClearingCookie(withQuery(returnTo, "gmail_error", reason), request);
+  const returnTo =
+    stored.next ?? settingsPath(stored.workspaceSlug, stored.purpose);
+  const fail = (reason: GoogleConnectError) =>
+    redirectClearingCookie(
+      resultPath(returnTo, stored.purpose, GOOGLE_RESULT_PARAMS.error, reason),
+      request,
+    );
   const params = request.nextUrl.searchParams;
   if (params.get("error") === "access_denied") {
     return fail("cancelled");
@@ -101,10 +117,15 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       redirectUri: `${publicEnv.NEXT_PUBLIC_APP_URL}${GMAIL_CONNECT_CALLBACK_PATH}`,
     });
   } catch (error) {
-    logger.error({ err: error }, "Gmail connect code exchange failed");
+    logger.error({ err: error }, "Google connect code exchange failed");
     return fail("failed");
   }
-  if (!grant.scopes.includes(GMAIL_SEND_SCOPE)) {
+  const purposeScope =
+    stored.purpose === "sheets" ? DRIVE_FILE_SCOPE : GMAIL_SEND_SCOPE;
+  const usable =
+    grant.scopes.includes(GMAIL_SEND_SCOPE) ||
+    grant.scopes.includes(DRIVE_FILE_SCOPE);
+  if (!usable) {
     if (grant.refreshToken) {
       await revokeGoogleToken(grant.refreshToken);
     }
@@ -120,7 +141,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const key = parseEncryptionKey(
     requireSecret("GOOGLE_TOKEN_ENCRYPTION_KEY", env),
   );
-  const saved = await saveGoogleConnection(createSupabaseAdminClient(), {
+  const admin = createSupabaseAdminClient();
+  const saved = await saveGoogleConnection(admin, {
     userId: user.id,
     googleSub: grant.claims.sub,
     googleEmail: grant.claims.email,
@@ -132,16 +154,55 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     ),
   });
   if (saved.error || !saved.data) {
-    logger.error({ err: saved.error }, "saving the Gmail connection failed");
+    logger.error({ err: saved.error }, "saving the Google connection failed");
     return fail("failed");
   }
-  const sender = await setWorkspaceSender(supabase, workspace.id, saved.data);
-  if (sender.error) {
-    logger.error({ err: sender.error }, "setting the workspace sender failed");
-    return fail("failed");
+  const resumed = await googleConnectionSaved(admin, {
+    userId: user.id,
+    connectionId: saved.data,
+  });
+  if (resumed.error) {
+    logger.error(
+      { err: resumed.error },
+      "re-checking the account's sheets failed",
+    );
+  }
+  if (!grant.scopes.includes(purposeScope)) {
+    return fail("scope_denied");
+  }
+  if (stored.purpose === "sending") {
+    const sender = await setWorkspaceSender(supabase, workspace.id, saved.data);
+    if (sender.error) {
+      logger.error(
+        { err: sender.error },
+        "setting the workspace sender failed",
+      );
+      return fail("failed");
+    }
+  } else {
+    const started = await startSheet(admin, {
+      userId: user.id,
+      workspaceId: workspace.id,
+      connectionId: saved.data,
+      replace: stored.replace,
+    });
+    if (started.error) {
+      if (started.error.message === "tn:sheet_wrong_account") {
+        return fail("sheet_wrong_account");
+      }
+      logger.error({ err: started.error }, "starting the Google Sheet failed");
+      return fail("failed");
+    }
+    await revokeReleased([started.data?.released ?? null]);
+    scheduleWorkers(["sheets"]);
   }
   return redirectClearingCookie(
-    withQuery(returnTo, "gmail", "connected"),
+    resultPath(
+      returnTo,
+      stored.purpose,
+      GOOGLE_RESULT_PARAMS.done,
+      "connected",
+    ),
     request,
   );
 }

@@ -4,8 +4,8 @@ import { format } from "date-fns";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { gmailConnectHref } from "@/hooks/use-sender";
 import type { MeetingResults } from "@/shared/api/responses";
+import { googleConnectHref } from "@/shared/api/google-connect";
 
 /** Live send progress (spec §7.2): a bar, one caption for the current state, the bounce note. */
 export function SendProgress({
@@ -77,7 +77,7 @@ export function SendProgress({
       ) : null}
       {paused && canConnect ? (
         <Button asChild tone="primary">
-          <a href={gmailConnectHref(slug)}>{t("connect")}</a>
+          <a href={googleConnectHref(slug, "sending")}>{t("connect")}</a>
         </Button>
       ) : null}
       <p className="text-sm">{t("bounces")}</p>

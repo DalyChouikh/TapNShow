@@ -10,15 +10,6 @@ export const senderQueryKey = (slug: string) => ["sender", slug] as const;
 
 const base = (slug: string) => `/api/workspaces/${encodeURIComponent(slug)}`;
 
-/** Where "Connect Gmail" navigates (a full page load: Google's consent screen follows). */
-export function gmailConnectHref(slug: string, next?: string): string {
-  const params = new URLSearchParams({ workspace: slug });
-  if (next) {
-    params.set("next", next);
-  }
-  return `/api/integrations/google/connect?${params.toString()}`;
-}
-
 /** The workspace's sender, usage and my connections. */
 export function useWorkspaceSender(slug: string) {
   return useQuery({

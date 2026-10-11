@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
       myRole: string;
     } | null,
   },
+  limit: vi.fn(async () => ({ data: true, error: null })),
 }));
 vi.mock("@/config/public-env", () => ({
   publicEnv: {
@@ -40,6 +41,9 @@ vi.mock("@/server/http/require-user", () => ({
 }));
 vi.mock("@/server/queries/workspaces", () => ({
   getWorkspaceBySlug: async () => mocks.workspace.value,
+}));
+vi.mock("@/server/queries/sheets", () => ({
+  hitGoogleConnectLimit: mocks.limit,
 }));
 
 const request = (query: string) =>
@@ -78,13 +82,13 @@ describe("GET /api/integrations/google/connect", () => {
     expect(
       (await GET(request("workspace=club-ab12"))).headers.get("location"),
     ).toBe(
-      "http://localhost:3000/w/club-ab12/settings?gmail_error=owner_only#sending",
+      "http://localhost:3000/w/club-ab12/settings?google_error=owner_only&google_for=sending#sending",
     );
     mocks.enabled.value = false;
     expect(
       (await GET(request("workspace=club-ab12"))).headers.get("location"),
     ).toBe(
-      "http://localhost:3000/w/club-ab12/settings?gmail_error=unavailable#sending",
+      "http://localhost:3000/w/club-ab12/settings?google_error=unavailable&google_for=sending#sending",
     );
   });
 
@@ -111,5 +115,48 @@ describe("GET /api/integrations/google/connect", () => {
     expect(
       (await GET(request("workspace=club-ab12"))).headers.get("location"),
     ).toMatch(/\/login\?next=/);
+  });
+
+  it("asks for the Sheets permission and remembers a replace in the cookie", async () => {
+    const { GET } = await import("./route");
+    const response = await GET(
+      request("workspace=club-ab12&purpose=sheets&replace=1"),
+    );
+    const location = new URL(response.headers.get("location") ?? "");
+    expect(location.searchParams.get("scope")).toContain(
+      "https://www.googleapis.com/auth/drive.file",
+    );
+    const cookie = /tn_gmail_connect=([^;]+)/.exec(
+      response.headers.get("set-cookie") ?? "",
+    )?.[1];
+    const { decodeConnectCookie } =
+      await import("@/server/google/google-oauth");
+    expect(decodeConnectCookie(cookie)).toMatchObject({
+      purpose: "sheets",
+      replace: true,
+      next: "/w/club-ab12/settings#sheets",
+    });
+  });
+
+  it("treats an unknown purpose as Gmail sending", async () => {
+    const { GET } = await import("./route");
+    const location = new URL(
+      (await GET(request("workspace=club-ab12&purpose=fax"))).headers.get(
+        "location",
+      ) ?? "",
+    );
+    expect(location.searchParams.get("scope")).toContain("gmail.send");
+  });
+
+  it("sends people back after too many connects in an hour", async () => {
+    mocks.limit.mockResolvedValueOnce({ data: false, error: null });
+    const { GET } = await import("./route");
+    expect(
+      (await GET(request("workspace=club-ab12&purpose=sheets"))).headers.get(
+        "location",
+      ),
+    ).toBe(
+      "http://localhost:3000/w/club-ab12/settings?google_error=rate_limited&google_for=sheets#sheets",
+    );
   });
 });

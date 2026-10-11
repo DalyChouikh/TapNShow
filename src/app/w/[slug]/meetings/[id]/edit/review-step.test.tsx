@@ -132,7 +132,7 @@ describe("ReviewStep", () => {
       name: "Connect Gmail to send",
     });
     expect(link.getAttribute("href")).toBe(
-      `/api/integrations/google/connect?workspace=${workspaceFixture.slug}&next=${encodeURIComponent(`/w/${workspaceFixture.slug}/meetings/${MEETING_IDS.meeting}/edit?step=review`)}`,
+      `/api/integrations/google/connect?workspace=${workspaceFixture.slug}&purpose=sending&next=${encodeURIComponent(`/w/${workspaceFixture.slug}/meetings/${MEETING_IDS.meeting}/edit?step=review`)}`,
     );
   });
 
