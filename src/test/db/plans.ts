@@ -5,12 +5,17 @@ const ADMIN_URL =
   "postgresql://supabase_admin:postgres@127.0.0.1:44322/postgres";
 
 /**
- * Runs `select <call>` as `userId` (role `authenticated`, JWT claims set) inside a rolled-back
- * transaction with auto_explain logging every nested statement, and returns psql's output with the
- * plans (auto_explain prints them as NOTICEs on stderr). Test assertions only.
+ * Runs `select <call>` as `userId` (role `authenticated` by default, or `service_role` for worker
+ * functions; JWT claims set) inside a rolled-back transaction with auto_explain logging every
+ * nested statement, and returns psql's output with the plans (auto_explain prints them as NOTICEs
+ * on stderr). Test assertions only.
  */
-export function explainCall(call: string, userId: string): string {
-  const claims = JSON.stringify({ sub: userId, role: "authenticated" });
+export function explainCall(
+  call: string,
+  userId: string,
+  role: "authenticated" | "service_role" = "authenticated",
+): string {
+  const claims = JSON.stringify({ sub: userId, role });
   const sql = [
     "begin;",
     "load 'auto_explain';",
@@ -19,14 +24,14 @@ export function explainCall(call: string, userId: string): string {
     "set local auto_explain.log_level = notice;",
     "set local client_min_messages = notice;",
     `select set_config('request.jwt.claims', '${claims}', true);`,
-    "set local role authenticated;",
+    `set local role ${role};`,
     `select ${call};`,
     "rollback;",
   ].join("\n");
   const result = spawnSync(
     "psql",
     [ADMIN_URL, "-v", "ON_ERROR_STOP=1", "-c", sql],
-    { encoding: "utf8" },
+    { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 },
   );
   if (result.status !== 0) {
     throw new Error(`psql failed: ${result.stderr}`);

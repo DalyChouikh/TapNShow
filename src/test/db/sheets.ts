@@ -1,4 +1,5 @@
 import { adminClient } from "./clients";
+import { runLocalSql } from "./sql";
 
 /** A sheet row as the callback would create it (service role); returns nothing. */
 export async function seedSheet(
@@ -40,4 +41,28 @@ export async function dirtyYears(
     throw error;
   }
   return data;
+}
+
+/** Makes a workspace's marked years due now (as if the 1-minute quiet time had passed). */
+export function makeDue(workspaceId: string): void {
+  runLocalSql(
+    `update public.sheet_dirty_years set changed_at = now() - interval '2 minutes', first_changed_at = now() - interval '2 minutes' where workspace_id = '${workspaceId}'`,
+  );
+}
+
+/**
+ * Parks every sheet and frees every lease. `sheet_claim` is global (like `dispatch_claim`), so a
+ * test that claims must not see sheets other test files left behind.
+ */
+export function parkAllSheets(): void {
+  runLocalSql(
+    "update public.sheet_syncs set retry_at = now() + interval '1 day', run_id = null, locked_until = null",
+  );
+}
+
+/** Makes one workspace's sheet claimable again after `parkAllSheets` (retry time now). */
+export function unparkSheet(workspaceId: string): void {
+  runLocalSql(
+    `update public.sheet_syncs set retry_at = now() where workspace_id = '${workspaceId}'`,
+  );
 }
