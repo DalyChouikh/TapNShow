@@ -2,24 +2,30 @@ import { adminClient } from "./clients";
 
 /**
  * Inserts a Google connection for `userId` (service role; the token is an opaque test string, not
- * a real ciphertext). Returns its id.
+ * a real ciphertext). `scopes` default to a Gmail sender's. Returns its id and Google account id.
  */
 export async function seedConnection(
   userId: string,
-  options: { email?: string; sub?: string; status?: "active" | "broken" } = {},
-): Promise<string> {
+  options: {
+    email?: string;
+    sub?: string;
+    status?: "active" | "broken";
+    scopes?: string[];
+  } = {},
+): Promise<{ id: string; sub: string }> {
+  const sub = options.sub ?? `sub-${crypto.randomUUID()}`;
   const { data, error } = await adminClient()
     .from("google_connections")
     .insert({
       user_id: userId,
-      google_sub: options.sub ?? `sub-${crypto.randomUUID()}`,
+      google_sub: sub,
       google_email:
         options.email ??
         `sender-${crypto.randomUUID().slice(0, 8)}@example.test`,
       granted_scopes: [
         "openid",
         "email",
-        "https://www.googleapis.com/auth/gmail.send",
+        ...(options.scopes ?? ["https://www.googleapis.com/auth/gmail.send"]),
       ],
       refresh_token_encrypted: "v1.test.test.test",
       status: options.status ?? "active",
@@ -29,7 +35,7 @@ export async function seedConnection(
   if (error) {
     throw error;
   }
-  return data.id;
+  return { id: data.id, sub };
 }
 
 /** Makes `connectionId` the workspace's sender (service role, bypasses the Owner check). */

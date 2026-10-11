@@ -190,7 +190,7 @@ beforeEach(async () => {
   parkAllJobs();
   owner = await createTestUser({ fullName: "Owner" });
   workspace = await createWorkspaceAs(owner, "Edit Club");
-  await setSender(workspace.id, await seedConnection(owner.id));
+  await setSender(workspace.id, (await seedConnection(owner.id)).id);
   const contacts = await seedContacts(
     workspace.id,
     4,
@@ -691,7 +691,7 @@ describe("cancel_meeting", () => {
     expect(
       (await jobsOfKind("cancel", ["paused"])).map((job) => job.status),
     ).toEqual(["paused", "paused", "paused"]);
-    await setSender(workspace.id, await seedConnection(owner.id));
+    await setSender(workspace.id, (await seedConnection(owner.id)).id);
     expect(
       (await jobsOfKind("cancel", ["pending"])).map((job) => job.status),
     ).toEqual(["pending", "pending", "pending"]);

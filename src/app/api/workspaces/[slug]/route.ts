@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { revokeReleased } from "@/server/google/release";
 import { fromDatabaseError, ok } from "@/server/http/errors";
 import { parseJsonBody, rejectCrossOrigin } from "@/server/http/request";
 import { loadWorkspaceContext } from "@/server/http/workspace-context";
@@ -43,7 +44,10 @@ export async function PATCH(
   return error ? fromDatabaseError(error) : ok();
 }
 
-/** Deletes the workspace after the typed name (Owner only, `delete_workspace`). */
+/**
+ * Deletes the workspace after the typed name (Owner only, `delete_workspace`), then revokes the
+ * Google accounts it released (best effort).
+ */
 export async function DELETE(
   request: NextRequest,
   ctx: Ctx,
@@ -60,10 +64,14 @@ export async function DELETE(
   if (!body.ok) {
     return body.response;
   }
-  const { error } = await deleteWorkspace(
+  const { data, error } = await deleteWorkspace(
     context.supabase,
     context.workspace.id,
     body.data.confirmName,
   );
-  return error ? fromDatabaseError(error) : ok();
+  if (error) {
+    return fromDatabaseError(error);
+  }
+  await revokeReleased(data?.released ?? []);
+  return ok();
 }

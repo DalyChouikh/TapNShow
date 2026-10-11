@@ -1,14 +1,19 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ReleasedConnection } from "@/server/google/release";
 import { jsonRequest, okContext } from "@/test/workspace-context-mock";
 
 const mocks = vi.hoisted(() => ({
   updateWorkspace: vi.fn(async () => ({
     error: null as { message: string } | null,
   })),
-  deleteWorkspace: vi.fn(async () => ({
-    error: null as { message: string } | null,
-  })),
+  deleteWorkspace: vi.fn(
+    async (): Promise<{
+      data: { released: ReleasedConnection[] } | null;
+      error: { message: string } | null;
+    }> => ({ data: { released: [] }, error: null }),
+  ),
+  revokeReleased: vi.fn(async () => undefined),
 }));
 vi.mock("@/server/http/workspace-context", () => ({
   loadWorkspaceContext: async () => okContext,
@@ -19,6 +24,9 @@ vi.mock("@/server/queries/workspaces", () => ({
 }));
 vi.mock("@/server/queries/members", () => ({
   deleteWorkspace: mocks.deleteWorkspace,
+}));
+vi.mock("@/server/google/release", () => ({
+  revokeReleased: mocks.revokeReleased,
 }));
 
 const ctx = { params: Promise.resolve({ slug: "club-ab12" }) };
@@ -64,6 +72,7 @@ describe("PATCH/DELETE /api/workspaces/[slug]", () => {
       "Robotics Club",
     );
     mocks.deleteWorkspace.mockResolvedValueOnce({
+      data: null,
       error: { message: "tn:name_mismatch" },
     });
     expect(
@@ -74,5 +83,27 @@ describe("PATCH/DELETE /api/workspaces/[slug]", () => {
         )
       ).status,
     ).toBe(400);
+  });
+
+  it("DELETE revokes the Google accounts the deleted workspace released", async () => {
+    const released = {
+      tokenEncrypted: "v1.a.b.c",
+      googleSub: "g-1",
+      userId: "00000000-0000-4000-8000-000000000001",
+    };
+    mocks.deleteWorkspace.mockResolvedValueOnce({
+      data: { released: [released] },
+      error: null,
+    });
+    const { DELETE } = await import("./route");
+    expect(
+      (
+        await DELETE(
+          asNext(jsonRequest("DELETE", { confirmName: "Robotics Club" })),
+          ctx,
+        )
+      ).status,
+    ).toBe(200);
+    expect(mocks.revokeReleased).toHaveBeenCalledWith([released]);
   });
 });

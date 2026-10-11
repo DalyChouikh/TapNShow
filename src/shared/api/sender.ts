@@ -24,6 +24,8 @@ export const workspaceSenderSchema = z.object({
       email: z.string(),
       status: connectionStatusSchema,
       usedBy: z.array(z.string()),
+      /** Workspaces whose Google Sheet lives in this account (Disconnect keeps it for them). */
+      sheets: z.array(z.string()),
     }),
   ),
 });

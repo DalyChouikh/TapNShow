@@ -33,8 +33,15 @@ const active = {
       email: "club@gmail.com",
       status: "active",
       usedBy: ["Robotics Club", "Chess Club"],
+      sheets: [],
     },
-    { id: OTHER, email: "other@gmail.com", status: "active", usedBy: [] },
+    {
+      id: OTHER,
+      email: "other@gmail.com",
+      status: "active",
+      usedBy: [],
+      sheets: [],
+    },
   ],
 };
 

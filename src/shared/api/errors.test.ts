@@ -31,3 +31,9 @@ describe("M6 error codes", () => {
     });
   });
 });
+
+describe("M7 error codes", () => {
+  it("map to the statuses the plan names", () => {
+    expect(API_ERROR_STATUS.sheet_wrong_account).toBe(409);
+  });
+});

@@ -2,6 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { Database } from "@/server/db/database.types";
+import { releasedSchema } from "@/server/google/release";
 import {
   type MeetingDefaults,
   meetingDefaultsSchema,
@@ -36,6 +37,7 @@ const dbSenderSchema = z
         email: z.string(),
         status: z.enum(["active", "broken"]),
         used_by: z.array(z.string()),
+        sheets: z.array(z.string()),
       }),
     ),
   })
@@ -57,6 +59,7 @@ const dbSenderSchema = z
         email: c.email,
         status: c.status,
         usedBy: c.used_by,
+        sheets: c.sheets,
       })),
     }),
   );
@@ -113,13 +116,13 @@ export async function saveGoogleConnection(
 }
 
 const disconnectedSchema = z
-  .object({ refresh_token_encrypted: z.string(), google_sub: z.string() })
-  .transform((db) => ({
-    tokenEncrypted: db.refresh_token_encrypted,
-    googleSub: db.google_sub,
-  }));
+  .object({ released: releasedSchema, sheets_kept: z.array(z.string()) })
+  .transform((db) => ({ released: db.released, sheetsKept: db.sheets_kept }));
 
-/** `disconnect_google_connection()`: deletes my connection, returns what revocation needs. */
+/**
+ * `disconnect_google_connection()`: stops sending from my connection everywhere and releases it
+ * unless a Google Sheet lives in it (spec §9). Returns what to revoke and which sheets keep it.
+ */
 export async function disconnectGoogleConnection(
   client: Client,
   connectionId: string,

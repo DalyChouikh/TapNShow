@@ -222,7 +222,8 @@
     "answers_closed": "The meeting has started, so answers are closed.",
     "invalid_choice": "That answer isn't available for this meeting.",
     "delay_required": "Pick how late you'll be.",
-    "reason_required": "Please add a reason."
+    "reason_required": "Please add a reason.",
+    "sheet_wrong_account": "This sheet is in another Google account's Drive. Pick that account, or create a new sheet."
   },
   "Auth": {
     "title": "Sign in to {appName}",

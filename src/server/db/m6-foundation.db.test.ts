@@ -37,7 +37,7 @@ async function sendTo(meeting: string, contactIds: string[]) {
 beforeEach(async () => {
   owner = await createTestUser({ fullName: "Owner" });
   workspace = await createWorkspaceAs(owner, "M6 Club");
-  await setSender(workspace.id, await seedConnection(owner.id));
+  await setSender(workspace.id, (await seedConnection(owner.id)).id);
   [contact] = await seedContacts(
     workspace.id,
     1,

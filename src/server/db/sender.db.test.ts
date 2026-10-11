@@ -110,7 +110,7 @@ describe("google_connections", () => {
   });
 
   it("never exposes the token column and hides other users' rows", async () => {
-    const id = await seedConnection(owner.id);
+    const id = (await seedConnection(owner.id)).id;
     const token = await owner.client
       .from("google_connections")
       .select("refresh_token_encrypted")
@@ -136,9 +136,9 @@ describe("google_connections", () => {
 
 describe("set_workspace_sender", () => {
   it("lets only the Owner choose their own active connection", async () => {
-    const mine = await seedConnection(owner.id);
-    const adminsOwn = await seedConnection(admin.id);
-    const broken = await seedConnection(owner.id, { status: "broken" });
+    const mine = (await seedConnection(owner.id)).id;
+    const adminsOwn = (await seedConnection(admin.id)).id;
+    const broken = (await seedConnection(owner.id, { status: "broken" })).id;
     await expectAppError(
       admin.client.rpc("set_workspace_sender", {
         p_workspace: workspace.id,
@@ -188,8 +188,8 @@ describe("set_workspace_sender", () => {
 });
 
 describe("disconnect_google_connection", () => {
-  it("returns the token, deletes the row and clears every workspace using it", async () => {
-    const id = await seedConnection(owner.id, { sub: "sub-disc" });
+  it("releases the unused connection with its token and clears every workspace using it", async () => {
+    const id = (await seedConnection(owner.id, { sub: "sub-disc" })).id;
     await setSender(workspace.id, id);
     await expectAppError(
       admin.client.rpc("disconnect_google_connection", { p_connection: id }),
@@ -199,8 +199,12 @@ describe("disconnect_google_connection", () => {
       p_connection: id,
     });
     expect(result.data).toEqual({
-      refresh_token_encrypted: "v1.test.test.test",
-      google_sub: "sub-disc",
+      released: {
+        refresh_token_encrypted: "v1.test.test.test",
+        google_sub: "sub-disc",
+        user_id: owner.id,
+      },
+      sheets_kept: [],
     });
     const row = await adminClient()
       .from("workspaces")
@@ -215,10 +219,12 @@ describe("workspace_sender", () => {
   it("shows the sender to every member, with usage, and lists only my connections", async () => {
     // send_log outlives test runs (no reset between runs), so the Google account id is unique per run.
     const sub = `sub-club-${crypto.randomUUID()}`;
-    const id = await seedConnection(owner.id, {
-      email: "club@gmail.com",
-      sub,
-    });
+    const id = (
+      await seedConnection(owner.id, {
+        email: "club@gmail.com",
+        sub,
+      })
+    ).id;
     await setSender(workspace.id, id);
     // Bulk inserts send null for a key missing from some rows, so every row names sent_at.
     const logged = await adminClient()
