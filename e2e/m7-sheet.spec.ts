@@ -10,7 +10,12 @@ import {
   sendMeetingThroughUi,
 } from "./helpers/meetings";
 import { seedMember } from "./helpers/seed";
-import { makeSheetDue, seedSheet, sheetStatus } from "./helpers/seed-sheet";
+import { ownerEmailOf, workspaceIdOf } from "./helpers/admin";
+import {
+  makeSheetDue,
+  moveMeetingStart,
+  sheetStatus,
+} from "./helpers/seed-sheet";
 import { openSettingsSection } from "./helpers/settings";
 import { signInWithCode } from "./helpers/sign-in";
 
@@ -54,7 +59,7 @@ async function syncUntil(
     .toBe(true);
 }
 
-test("the Google Sheet follows the answers, pauses in the trash and stays when turned off", async ({
+test("the Owner connects a Google Sheet that follows answers and check-ins, pauses in the trash and stays when turned off", async ({
   page,
   browser,
   request,
@@ -63,8 +68,24 @@ test("the Google Sheet follows the answers, pauses in the trash and stays when t
   const workspaceName = `Sheet Club ${stamp}`;
   const fileName = `${workspaceName} · TapNShow`;
   const slug = await createWorkspace(page, workspaceName);
-  const { workspaceId, ownerEmail } = await seedSheet(slug);
+  const workspaceId = await workspaceIdOf(slug);
+  const ownerEmail = await ownerEmailOf(workspaceId);
   const viewer = await seedMember(slug, "viewer", "Sheet Viewer");
+
+  // The Owner connects through Google's consent screen (the fake agrees at once).
+  await page.goto(`/w/${slug}/settings`);
+  await openSettingsSection(page, "Google Sheets");
+  await page.getByRole("button", { name: "Connect Google Sheets" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Continue to Google" })
+    .click();
+  await expect(
+    page.getByText("Google Sheet connected. It fills in within a minute."),
+  ).toBeVisible();
+  // The banner then clears the result from the URL; a reload or click before that would race it.
+  await expect(page).toHaveURL(/\/settings#sheets$/);
+
   const people = ["Amira", "Bilel", "Chiraz"].map((first) => ({
     fullName: `${first} ${stamp}`,
     email: `${first.toLowerCase()}-${stamp}@example.test`,
@@ -185,7 +206,29 @@ test("the Google Sheet follows the answers, pauses in the trash and stays when t
   await openSettingsSection(page, "Google Sheets");
   await expect(page.getByText("Up to date")).toBeVisible();
 
+  // A check-in at the door reaches its row once the meeting has started.
+  await moveMeetingStart(
+    meetingPath.split("/").at(-1) ?? "",
+    new Date(Date.now() - 3_600_000),
+  );
+  await page.goto(meetingPath);
+  await page.getByRole("radio", { name: "Check-in" }).click();
+  await page
+    .getByRole("group", { name: `Check-in for ${people[0].fullName}` })
+    .getByRole("button", { name: "Present" })
+    .click();
+  await syncUntil(
+    request,
+    workspaceId,
+    async () =>
+      rowOf(await tabOf(fileName), people[0].fullName)?.[
+        column("checkedIn")
+      ] === "Present",
+  );
+
   // Turned off, the file stays in Drive.
+  await page.goto(`/w/${slug}/settings`);
+  await openSettingsSection(page, "Google Sheets");
   await page.getByRole("button", { name: "Turn off the Google Sheet" }).click();
   await page
     .getByRole("dialog")

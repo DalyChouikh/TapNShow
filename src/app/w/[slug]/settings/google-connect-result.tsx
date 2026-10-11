@@ -26,8 +26,11 @@ function connectError(code: string | null): GoogleConnectError | null {
  */
 export function GoogleConnectResult({
   purpose,
+  account,
 }: {
   purpose: GoogleConnectPurpose;
+  /** The Google account the sheet is in (named by "pick that account"); Sheets only. */
+  account?: string | null;
 }) {
   const sending = useTranslations("Settings.sending");
   const sheets = useTranslations("Settings.sheets");
@@ -62,7 +65,7 @@ export function GoogleConnectResult({
       role="alert"
       className="rounded-control border-[length:var(--tn-border-width)] border-outline bg-fill-danger p-3 text-sm font-bold text-on-fill"
     >
-      {t(`error.${error}`)}
+      {t(`error.${error}`, { account: account ?? sheets("anotherAccount") })}
     </p>
   ) : null;
 }

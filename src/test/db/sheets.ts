@@ -1,3 +1,4 @@
+import type { SheetPauseReason } from "@/shared/api/sheets";
 import { adminClient } from "./clients";
 import { runLocalSql } from "./sql";
 
@@ -9,7 +10,7 @@ export async function seedSheet(
     googleSub: string;
     spreadsheetId?: string | null;
     status?: "active" | "paused";
-    pausedReason?: "trashed" | "deleted" | "access_lost" | "full" | null;
+    pausedReason?: SheetPauseReason | null;
   } = { googleSub: "" },
 ): Promise<void> {
   const { error } = await adminClient()

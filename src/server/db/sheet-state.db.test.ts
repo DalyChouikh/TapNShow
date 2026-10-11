@@ -385,6 +385,36 @@ describe("workspace_sheet and retry_sheet", () => {
     ]);
   });
 
+  it("Try again also resumes a sheet paused because its Drive was full, but not a deleted one (#291)", async () => {
+    const { id, sub } = await seedConnection(owner.id, {
+      scopes: [DRIVE_FILE],
+    });
+    await seedSheet(workspace.id, id, {
+      googleSub: sub,
+      spreadsheetId: "file-abcdefghij",
+      status: "paused",
+      pausedReason: "drive_full",
+    });
+    expect(
+      (await owner.client.rpc("retry_sheet", { p_workspace: workspace.id }))
+        .error,
+    ).toBeNull();
+    const { data } = await adminClient()
+      .from("sheet_syncs")
+      .select("status, paused_reason")
+      .eq("workspace_id", workspace.id)
+      .single();
+    expect(data).toEqual({ status: "active", paused_reason: null });
+    await adminClient()
+      .from("sheet_syncs")
+      .update({ status: "paused", paused_reason: "deleted" })
+      .eq("workspace_id", workspace.id);
+    await expectAppError(
+      owner.client.rpc("retry_sheet", { p_workspace: workspace.id }),
+      "invalid_input",
+    );
+  });
+
   it("never shows another workspace's sheet tables to a member", async () => {
     const { id, sub } = await seedConnection(owner.id, {
       scopes: [DRIVE_FILE],

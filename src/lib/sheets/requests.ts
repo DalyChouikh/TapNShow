@@ -101,6 +101,16 @@ export function addSheetRequest(
   return { addSheet: { properties: { sheetId, title, index } } };
 }
 
+/** Gives a TapNShow tab its title back (only the title; a redraw sets the rest). */
+export function renameSheetRequest(
+  sheetId: number,
+  title: string,
+): SheetsRequest {
+  return {
+    updateSheetProperties: { properties: { sheetId, title }, fields: "title" },
+  };
+}
+
 /** Removes a TapNShow tab that has nothing left to show. */
 export function deleteSheetRequest(sheetId: number): SheetsRequest {
   return { deleteSheet: { sheetId } };

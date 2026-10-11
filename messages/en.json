@@ -167,7 +167,8 @@
         "trashed": "The Google Sheet was moved to the trash. Restore it from Google Drive, then tap Try again in Settings. Or create a new one.",
         "deleted": "The Google Sheet was deleted. You can create a new one in Settings.",
         "access_lost": "{appName} can no longer update the Google Sheet, for example after a password change or if access was removed. Reconnect Google in Settings.",
-        "full": "The Google Sheet is full. You can create a new one in Settings."
+        "full": "The Google Sheet is full. You can create a new one in Settings.",
+        "drive_full": "The Google Drive holding the Google Sheet is full, so {appName} can't update it. Free some space in that Drive, then tap Try again in Settings. Or create a new one."
       },
       "button": "Open Settings",
       "fallback": "If the button doesn't work, copy this link:"
@@ -410,7 +411,8 @@
         "trashed": "The Google Sheet was moved to the trash. Restore it from Google Drive, then tap Try again. Or create a new one.",
         "deleted": "The Google Sheet was deleted.",
         "access_lost": "TapNShow can no longer update the Google Sheet.",
-        "full": "The Google Sheet is full."
+        "full": "The Google Sheet is full.",
+        "drive_full": "The Google Drive holding the sheet is full. Free some space in it, then tap Try again. Or create a new one."
       },
       "tryAgain": "Try again",
       "reconnect": "Reconnect Google",
@@ -430,8 +432,9 @@
         "no_refresh_token": "Google didn't return lasting access. Try again; if it keeps happening, remove TapNShow at myaccount.google.com/permissions first.",
         "failed": "Connecting Google failed. Try again.",
         "rate_limited": "Too many tries. Wait a few minutes, then connect again.",
-        "sheet_wrong_account": "This sheet is in another Google account's Drive. Pick that account, or create a new sheet."
-      }
+        "sheet_wrong_account": "This sheet is in {account}'s Drive. Pick that account, or create a new sheet."
+      },
+      "anotherAccount": "another Google account"
     },
     "defaults": {
       "title": "Meeting defaults",

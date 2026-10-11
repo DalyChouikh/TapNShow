@@ -38,3 +38,14 @@ export async function ownerIdOf(workspaceId: string): Promise<string> {
   }
   return data.user_id;
 }
+
+/** The sign-in email of a workspace's Owner (where Owner alerts go). */
+export async function ownerEmailOf(workspaceId: string): Promise<string> {
+  const { data, error } = await adminClient().auth.admin.getUserById(
+    await ownerIdOf(workspaceId),
+  );
+  if (error || !data.user.email) {
+    throw error ?? new Error("the Owner has no email");
+  }
+  return data.user.email;
+}

@@ -5,11 +5,11 @@ import {
   type FetchLike,
 } from "./sheets-client";
 
-const error = (code: number, reason: string, status = "") =>
+const error = (code: number, reason: string, status = "", message = "x") =>
   JSON.stringify({
     error: {
       code,
-      message: "x",
+      message,
       status,
       errors: [{ reason }],
       details: [{ reason }],
@@ -51,6 +51,19 @@ describe("classifyGoogleResponse (spec §8 errors)", () => {
       400,
       error(400, "badRequest"),
       { kind: "bug", status: 400, reason: "badRequest" },
+    ],
+    // The Owner's Drive is out of storage: Google refuses new files and edits (#291).
+    [403, error(403, "storageQuotaExceeded"), { kind: "drive_full" }],
+    // The whole file passed Google's cell limit, the Owner's own tabs included (#291).
+    [
+      400,
+      error(
+        400,
+        "badRequest",
+        "INVALID_ARGUMENT",
+        "Invalid requests[3].updateSheetProperties: This action would increase the number of cells in the workbook above the limit of 20000000 cells.",
+      ),
+      { kind: "full" },
     ],
   ])("HTTP %i → %o", (status, body, expected) => {
     expect(classifyGoogleResponse(status, body)).toEqual(expected);

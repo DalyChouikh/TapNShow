@@ -33,6 +33,16 @@ describe("GoogleConnectResult", () => {
     );
   });
 
+  it("names the account the sheet is in when another account was picked (#291)", async () => {
+    mocks.params.value = "google_error=sheet_wrong_account&google_for=sheets";
+    renderWithProviders(
+      <GoogleConnectResult purpose="sheets" account="club@gmail.com" />,
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "This sheet is in club@gmail.com's Drive. Pick that account, or create a new sheet.",
+    );
+  });
+
   it("confirms a Gmail connect with a toast", async () => {
     mocks.params.value = "google=connected&google_for=sending";
     renderWithProviders(<GoogleConnectResult purpose="sending" />, {

@@ -5,8 +5,9 @@ const ADMIN_URL =
   "postgresql://supabase_admin:postgres@127.0.0.1:44322/postgres";
 
 /**
- * Runs `select <call>` as `userId` (role `authenticated` by default, or `service_role` for worker
- * functions; JWT claims set) inside a rolled-back transaction with auto_explain logging every
+ * Runs `select <call>` as `userId` (role `authenticated` by default, `service_role` for worker
+ * functions, or `postgres` for private functions only the cron runs; JWT claims set) inside a
+ * rolled-back transaction with auto_explain logging every
  * nested statement, and returns psql's output with the plans (auto_explain prints them as NOTICEs
  * on stderr). `settings` are extra `set local` lines (e.g. "enable_seqscan = off"). Test
  * assertions only.
@@ -14,7 +15,7 @@ const ADMIN_URL =
 export function explainCall(
   call: string,
   userId: string,
-  role: "authenticated" | "service_role" = "authenticated",
+  role: "authenticated" | "service_role" | "postgres" = "authenticated",
   settings: ReadonlyArray<string> = [],
 ): string {
   const claims = JSON.stringify({ sub: userId, role });

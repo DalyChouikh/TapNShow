@@ -150,6 +150,58 @@ describe("change marks (statement-level triggers)", () => {
     expect(await years()).toEqual([yearOf(startsAt)]);
   });
 
+  it("renaming the person who checked someone in marks that year; renaming anyone else does not (#291)", async () => {
+    const startsAt = new Date(Date.now() - 3_600_000).toISOString();
+    await adminClient()
+      .from("meetings")
+      .update({ starts_at: startsAt })
+      .eq("id", meeting);
+    await owner.client.rpc("mark_attendance", {
+      p_meeting: meeting,
+      p_invitee: a.inviteeId,
+      p_actual: "present",
+    } as never);
+    clearMarks();
+    const bystander = await createTestUser({ fullName: "Bystander" });
+    await adminClient()
+      .from("profiles")
+      .update({ display_name: "Someone Else" })
+      .eq("user_id", bystander.id);
+    expect(await years()).toEqual([]);
+    await adminClient()
+      .from("profiles")
+      .update({ display_name: "Worker Owner Renamed" })
+      .eq("user_id", owner.id);
+    expect(await years()).toEqual([yearOf(startsAt)]);
+  });
+
+  it("one statement over 1,000 invitees costs one mark at workspace size (2,000 contacts)", async () => {
+    // 2,000 with Amira and Badr: the workspace cap.
+    const contacts = await seedContacts(workspace.id, 1998, "bulk");
+    const big = await seedMeeting(workspace.id, { status: "scheduled" });
+    clearMarks();
+    const started = performance.now();
+    const { error } = await adminClient()
+      .from("meeting_invitees")
+      .insert(
+        contacts.slice(0, 1000).map((contact) => ({
+          workspace_id: workspace.id,
+          meeting_id: big,
+          contact_id: contact,
+          email_status: "queued" as const,
+        })),
+      );
+    expect(error).toBeNull();
+    await adminClient()
+      .from("meeting_invitees")
+      .update({ email_status: "sent" })
+      .eq("meeting_id", big);
+    expect(performance.now() - started).toBeLessThan(5_000);
+    expect(await dirtyYears(workspace.id)).toEqual([
+      { year: meetingYear, version: 2 },
+    ]);
+  }, 60_000);
+
   it("renaming an invited contact marks; renaming one never invited does not", async () => {
     await adminClient()
       .from("contacts")
@@ -566,6 +618,19 @@ describe("workers_due (the per-minute wake-up)", () => {
     const queued = await person(workspace.id, meeting, "Queued", "queued");
     await job("update", queued.inviteeId);
     expect(workersDue()).toBe(false);
+  });
+
+  it("finds due sheets through the due index, in the wake-up and in the claim (#291)", () => {
+    // A tiny table makes a sequential scan rightly cheapest: prove the index can serve both reads.
+    const dueByIndex = /Index Cond: \(retry_at <= now\(\)\)/;
+    for (const [call, role] of [
+      ["private.workers_due()", "postgres"],
+      [`public.sheet_claim('${crypto.randomUUID()}', 5, 120)`, "service_role"],
+    ] as const) {
+      const plan = explainCall(call, owner.id, role, ["enable_seqscan = off"]);
+      expect(planUsesIndex(plan, "sheet_syncs_due_idx")).toBe(true);
+      expect(dueByIndex.test(plan)).toBe(true);
+    }
   });
 
   it("is true with a due sheet", async () => {
