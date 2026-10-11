@@ -70,7 +70,7 @@ beforeEach(async () => {
   await addMember(workspace.id, admin.id, "admin");
   await addMember(workspace.id, viewer.id, "viewer");
   sub = `sub-${crypto.randomUUID()}`;
-  connection = await seedConnection(owner.id, { sub });
+  connection = (await seedConnection(owner.id, { sub })).id;
   await setSender(workspace.id, connection);
   contacts = await seedContacts(
     workspace.id,

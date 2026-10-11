@@ -196,7 +196,7 @@ beforeEach(async () => {
   parkAllJobs();
   owner = await createTestUser({ fullName: "Owner" });
   workspace = await createWorkspaceAs(owner, "Reminder Club");
-  connection = await seedConnection(owner.id);
+  connection = (await seedConnection(owner.id)).id;
   await setSender(workspace.id, connection);
   contacts = await seedContacts(
     workspace.id,

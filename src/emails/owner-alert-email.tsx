@@ -1,11 +1,9 @@
 import { Button, render, Text } from "react-email";
 import { APP_NAME } from "@/config/app";
+import type { SheetPauseReason } from "@/shared/api/sheets";
 import { EmailLayout } from "./email-layout";
 import { brutalBox, emailTheme as t } from "./theme";
 import { getEmailTranslator } from "./translator";
-
-/** Why a Google Sheet paused (spec §7.17); twin: `public.sheet_pause_reason`. */
-export type SheetPauseReason = "trashed" | "deleted" | "access_lost" | "full";
 
 /** What an alert to a workspace Owner needs (sent by the platform sender, spec §8). */
 export type OwnerAlertEmailProps =

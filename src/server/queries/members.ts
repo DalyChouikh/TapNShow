@@ -3,6 +3,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { Database } from "@/server/db/database.types";
 import { sqlNullable } from "@/server/db/rpc-args";
+import {
+  type ReleasedConnection,
+  releasedSchema,
+} from "@/server/google/release";
 import { encodeCursor } from "@/server/http/pagination";
 import { type WorkspaceRole, workspaceRoleSchema } from "@/shared/api/me";
 import type { Member } from "@/shared/api/members";
@@ -119,14 +123,25 @@ export function transferOwnership(
   });
 }
 
-/** `delete_workspace` (Owner only, typed name). */
-export function deleteWorkspace(
+const deletedSchema = z.object({ released: z.array(releasedSchema) });
+
+/**
+ * `delete_workspace` (Owner only, typed name). Returns the Google connections it released (those
+ * nothing else uses), whose tokens the route revokes.
+ */
+export async function deleteWorkspace(
   client: Client,
   workspaceId: string,
   confirmName: string,
-) {
-  return client.rpc("delete_workspace", {
+): Promise<{
+  data: { released: (ReleasedConnection | null)[] } | null;
+  error: DbError | null;
+}> {
+  const { data, error } = await client.rpc("delete_workspace", {
     p_workspace: workspaceId,
     p_confirm_name: confirmName,
   });
+  return error
+    ? { data: null, error }
+    : { data: deletedSchema.parse(data), error: null };
 }

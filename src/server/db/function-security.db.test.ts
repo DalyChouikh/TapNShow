@@ -43,14 +43,17 @@ const PRIVATE_FUNCTIONS_FOR_AUTHENTICATED = [
   "nudge_meeting",
   "remove_member",
   "renew_invite",
+  "retry_sheet",
   "revoke_invite",
   "role_of",
   "send_meeting",
   "set_meeting_audience",
   "set_workspace_sender",
   "transfer_ownership",
+  "turn_off_sheet",
   "valid_delay_options",
   "workspace_sender",
+  "workspace_sheet",
 ];
 
 describe("function security (spec §11)", () => {

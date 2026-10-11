@@ -406,6 +406,69 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"sheet_dirty_years": {
+                  Row: {
+                    "changed_at": string,"first_changed_at": string,"version": number,"workspace_id": string,"year": number
+                  }
+                  Insert: {
+                    "changed_at"?: string,"first_changed_at"?: string,"version"?: number,"workspace_id": string,"year": number
+                  }
+                  Update: {
+                    "changed_at"?: string,"first_changed_at"?: string,"version"?: number,"workspace_id"?: string,"year"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "sheet_dirty_years_workspace_id_fkey"
+      columns: ["workspace_id"]
+isOneToOne: false
+      referencedRelation: "sheet_syncs"
+      referencedColumns: ["workspace_id"]
+    }
+                  ]
+                },"sheet_syncs": {
+                  Row: {
+                    "alerted_at": string | null,"attempts": number,"connection_id": string | null,"create_key": string,"created_at": string,"created_by": string | null,"google_email": string,"google_sub": string,"locked_until": string | null,"paused_at": string | null,"paused_reason": Database["public"]['Enums']["sheet_pause_reason"] | null,"retry_at": string,"run_id": string | null,"spreadsheet_id": string | null,"status": Database["public"]['Enums']["sheet_status"],"synced_at": string | null,"updated_at": string,"workspace_id": string
+                  }
+                  Insert: {
+                    "alerted_at"?: string | null,"attempts"?: number,"connection_id"?: string | null,"create_key"?: string,"created_at"?: string,"created_by"?: string | null,"google_email": string,"google_sub": string,"locked_until"?: string | null,"paused_at"?: string | null,"paused_reason"?: Database["public"]['Enums']["sheet_pause_reason"] | null,"retry_at"?: string,"run_id"?: string | null,"spreadsheet_id"?: string | null,"status"?: Database["public"]['Enums']["sheet_status"],"synced_at"?: string | null,"updated_at"?: string,"workspace_id": string
+                  }
+                  Update: {
+                    "alerted_at"?: string | null,"attempts"?: number,"connection_id"?: string | null,"create_key"?: string,"created_at"?: string,"created_by"?: string | null,"google_email"?: string,"google_sub"?: string,"locked_until"?: string | null,"paused_at"?: string | null,"paused_reason"?: Database["public"]['Enums']["sheet_pause_reason"] | null,"retry_at"?: string,"run_id"?: string | null,"spreadsheet_id"?: string | null,"status"?: Database["public"]['Enums']["sheet_status"],"synced_at"?: string | null,"updated_at"?: string,"workspace_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "sheet_syncs_connection_id_fkey"
+      columns: ["connection_id"]
+isOneToOne: false
+      referencedRelation: "google_connections"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "sheet_syncs_workspace_id_fkey"
+      columns: ["workspace_id"]
+isOneToOne: true
+      referencedRelation: "workspaces"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"sheet_tabs": {
+                  Row: {
+                    "content_hash": string,"created_at": string,"format_version": number,"google_sheet_id": number,"row_count": number,"starts_from": string | null,"starts_to": string | null,"tab_key": string,"title": string,"updated_at": string,"workspace_id": string,"year": number
+                  }
+                  Insert: {
+                    "content_hash": string,"created_at"?: string,"format_version": number,"google_sheet_id": number,"row_count": number,"starts_from"?: string | null,"starts_to"?: string | null,"tab_key": string,"title": string,"updated_at"?: string,"workspace_id": string,"year": number
+                  }
+                  Update: {
+                    "content_hash"?: string,"created_at"?: string,"format_version"?: number,"google_sheet_id"?: number,"row_count"?: number,"starts_from"?: string | null,"starts_to"?: string | null,"tab_key"?: string,"title"?: string,"updated_at"?: string,"workspace_id"?: string,"year"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "sheet_tabs_workspace_id_fkey"
+      columns: ["workspace_id"]
+isOneToOne: false
+      referencedRelation: "sheet_syncs"
+      referencedColumns: ["workspace_id"]
+    }
+                  ]
                 },"workspace_invites": {
                   Row: {
                     "accepted_at": string | null,"accepted_by": string | null,"created_at": string,"email": string,"expires_at": string,"id": string,"invited_by": string | null,"revoked_at": string | null,"role": Database["public"]['Enums']["workspace_role"],"token_hash": string,"updated_at": string,"workspace_id": string
@@ -539,7 +602,7 @@ isOneToOne: false
 { Args: { "p_meeting": string }; Returns: undefined
                            },
 "delete_workspace":
-{ Args: { "p_confirm_name": string,"p_workspace": string }; Returns: undefined
+{ Args: { "p_confirm_name": string,"p_workspace": string }; Returns: Json
                            },
 "disconnect_google_connection":
 { Args: { "p_connection": string }; Returns: Json
@@ -577,8 +640,14 @@ isOneToOne: false
 "edit_sent_meeting":
 { Args: { "p_dry_run"?: boolean,"p_fields": Json,"p_meeting": string,"p_notify"?: boolean }; Returns: Json
                            },
+"google_connection_saved":
+{ Args: { "p_connection": string,"p_user": string }; Returns: undefined
+                           },
 "healthcheck":
 { Args: Record<PropertyKey, never>; Returns: string
+                           },
+"hit_google_connect_limit":
+{ Args: Record<PropertyKey, never>; Returns: boolean
                            },
 "import_contacts":
 { Args: { "p_also_add_to_list"?: string,"p_dry_run": boolean,"p_rows": Json,"p_workspace": string }; Returns: Json
@@ -629,6 +698,9 @@ isOneToOne: false
 "renew_invite":
 { Args: { "p_invite": string,"p_token_hash": string }; Returns: undefined
                            },
+"retry_sheet":
+{ Args: { "p_workspace": string }; Returns: undefined
+                           },
 "revoke_invite":
 { Args: { "p_invite": string }; Returns: undefined
                            },
@@ -650,6 +722,9 @@ isOneToOne: false
 "set_workspace_sender":
 { Args: { "p_connection": string,"p_workspace": string }; Returns: undefined
                            },
+"start_sheet":
+{ Args: { "p_connection": string,"p_replace": boolean,"p_user": string,"p_workspace": string }; Returns: Json
+                           },
 "token_invitee":
 { Args: { "p_token_hash": string }; Returns: Json
                            },
@@ -668,15 +743,21 @@ isOneToOne: false
 "transfer_ownership":
 { Args: { "p_confirm_name": string,"p_new_owner": string,"p_workspace": string }; Returns: undefined
                            },
+"turn_off_sheet":
+{ Args: { "p_workspace": string }; Returns: Json
+                           },
 "update_contact":
 { Args: { "p_contact": string,"p_email": string,"p_full_name": string,"p_list_ids": (string)[],"p_workspace": string }; Returns: undefined
                            },
 "workspace_sender":
 { Args: { "p_workspace": string }; Returns: Json
+                           },
+"workspace_sheet":
+{ Args: { "p_workspace": string }; Returns: Json
                            }
           }
           Enums: {
-            "attendance_actual": "present"|"late"|"absent","audience_mode": "include"|"exclude","calendar_state": "none"|"added","connection_status": "active"|"broken","invitee_email_status": "queued"|"sent"|"skipped"|"failed"|"unknown","job_kind": "invite"|"calendar_confirm"|"update"|"cancel"|"reminder","job_status": "pending"|"processing"|"done"|"failed"|"paused","location_mode": "in_person"|"online"|"hybrid","meeting_change_kind": "edit"|"cancel","meeting_status": "draft"|"scheduled"|"cancelled","response_mode": "announcement"|"rsvp"|"attendance","response_status": "attending"|"late"|"absent"|"not_attending","unsubscribe_via": "link"|"report","workspace_role": "owner"|"admin"|"viewer"
+            "attendance_actual": "present"|"late"|"absent","audience_mode": "include"|"exclude","calendar_state": "none"|"added","connection_status": "active"|"broken","invitee_email_status": "queued"|"sent"|"skipped"|"failed"|"unknown","job_kind": "invite"|"calendar_confirm"|"update"|"cancel"|"reminder","job_status": "pending"|"processing"|"done"|"failed"|"paused","location_mode": "in_person"|"online"|"hybrid","meeting_change_kind": "edit"|"cancel","meeting_status": "draft"|"scheduled"|"cancelled","response_mode": "announcement"|"rsvp"|"attendance","response_status": "attending"|"late"|"absent"|"not_attending","sheet_pause_reason": "trashed"|"deleted"|"access_lost"|"full","sheet_status": "active"|"paused","unsubscribe_via": "link"|"report","workspace_role": "owner"|"admin"|"viewer"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -792,7 +873,7 @@ export type CompositeTypes<
 export const Constants = {
   "public": {
           Enums: {
-            "attendance_actual": ["present", "late", "absent"],"audience_mode": ["include", "exclude"],"calendar_state": ["none", "added"],"connection_status": ["active", "broken"],"invitee_email_status": ["queued", "sent", "skipped", "failed", "unknown"],"job_kind": ["invite", "calendar_confirm", "update", "cancel", "reminder"],"job_status": ["pending", "processing", "done", "failed", "paused"],"location_mode": ["in_person", "online", "hybrid"],"meeting_change_kind": ["edit", "cancel"],"meeting_status": ["draft", "scheduled", "cancelled"],"response_mode": ["announcement", "rsvp", "attendance"],"response_status": ["attending", "late", "absent", "not_attending"],"unsubscribe_via": ["link", "report"],"workspace_role": ["owner", "admin", "viewer"]
+            "attendance_actual": ["present", "late", "absent"],"audience_mode": ["include", "exclude"],"calendar_state": ["none", "added"],"connection_status": ["active", "broken"],"invitee_email_status": ["queued", "sent", "skipped", "failed", "unknown"],"job_kind": ["invite", "calendar_confirm", "update", "cancel", "reminder"],"job_status": ["pending", "processing", "done", "failed", "paused"],"location_mode": ["in_person", "online", "hybrid"],"meeting_change_kind": ["edit", "cancel"],"meeting_status": ["draft", "scheduled", "cancelled"],"response_mode": ["announcement", "rsvp", "attendance"],"response_status": ["attending", "late", "absent", "not_attending"],"sheet_pause_reason": ["trashed", "deleted", "access_lost", "full"],"sheet_status": ["active", "paused"],"unsubscribe_via": ["link", "report"],"workspace_role": ["owner", "admin", "viewer"]
           }
         }
 } as const

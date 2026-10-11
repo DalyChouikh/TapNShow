@@ -53,6 +53,7 @@ export const API_ERROR_CODES = [
   "invalid_choice",
   "delay_required",
   "reason_required",
+  "sheet_wrong_account",
 ] as const;
 
 /** An API error code. */
@@ -111,6 +112,7 @@ export const API_ERROR_STATUS: Record<ApiErrorCode, number> = {
   invalid_choice: 400,
   delay_required: 400,
   reason_required: 400,
+  sheet_wrong_account: 409,
 };
 
 /** Body of every non-2xx API response. */

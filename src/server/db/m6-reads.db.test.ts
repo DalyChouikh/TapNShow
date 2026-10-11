@@ -157,7 +157,7 @@ beforeEach(async () => {
   parkAllJobs();
   owner = await createTestUser({ fullName: "Owner Person" });
   workspace = await createWorkspaceAs(owner, "Reads Club");
-  await setSender(workspace.id, await seedConnection(owner.id));
+  await setSender(workspace.id, (await seedConnection(owner.id)).id);
   startsAt = daysAhead(3);
   meeting = await seedMeeting(workspace.id, {
     status: "scheduled",
