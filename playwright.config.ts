@@ -35,6 +35,8 @@ export default defineConfig({
       GOOGLE_OAUTH_AUTHORIZE_URL: `${FAKE_GOOGLE_URL}/o/oauth2/v2/auth`,
       GOOGLE_OAUTH_TOKEN_URL: `${FAKE_GOOGLE_URL}/token`,
       GOOGLE_OAUTH_REVOKE_URL: `${FAKE_GOOGLE_URL}/revoke`,
+      // Connecting Google is off unless switched on (never rely on a developer's .env.local).
+      NEXT_PUBLIC_GMAIL_CONNECT_ENABLED: "true",
       GOOGLE_CLIENT_ID: "e2e-client",
       GOOGLE_CLIENT_SECRET: "e2e-secret",
       GOOGLE_TOKEN_ENCRYPTION_KEY: E2E_TOKEN_KEY,

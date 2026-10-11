@@ -83,6 +83,8 @@ test("the Owner connects a Google Sheet that follows answers and check-ins, paus
   await expect(
     page.getByText("Google Sheet connected. It fills in within a minute."),
   ).toBeVisible();
+  // The banner then clears the result from the URL; a reload or click before that would race it.
+  await expect(page).toHaveURL(/\/settings#sheets$/);
 
   const people = ["Amira", "Bilel", "Chiraz"].map((first) => ({
     fullName: `${first} ${stamp}`,
