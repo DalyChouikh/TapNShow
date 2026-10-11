@@ -17,12 +17,12 @@ import {
   useSendMeeting,
 } from "@/hooks/use-meetings";
 import { useRoster } from "@/hooks/use-roster";
-import { gmailConnectHref, useWorkspaceSender } from "@/hooks/use-sender";
+import { useWorkspaceSender } from "@/hooks/use-sender";
 import { ApiClientError } from "@/lib/api-client";
 import { responseDeadlineProblem } from "@/lib/meetings/deadline";
 import { formatDeadline, formatMeetingWhen } from "@/lib/meetings/format";
 import { quotaLine } from "@/lib/meetings/quota-line";
-import { GmailConnectResult } from "@/app/w/[slug]/settings/gmail-connect-result";
+import { GoogleConnectResult } from "@/app/w/[slug]/settings/google-connect-result";
 import { EmailPreviewDialog } from "./email-preview-dialog";
 import { WizardFooter } from "./wizard-footer";
 import {
@@ -30,6 +30,7 @@ import {
   type WizardStep,
   type WizardStepProps,
 } from "./wizard-steps";
+import { googleConnectHref } from "@/shared/api/google-connect";
 
 function Summary({
   title,
@@ -135,7 +136,7 @@ export function ReviewStep({
     });
   return (
     <div className="flex flex-col gap-3">
-      <GmailConnectResult />
+      <GoogleConnectResult purpose="sending" />
       <Summary
         title={meeting.title}
         editLabel={t("review.edit")}
@@ -217,7 +218,9 @@ export function ReviewStep({
         </div>
       ) : isOwner ? (
         <Button asChild tone="primary">
-          <a href={gmailConnectHref(slug, editUrl)}>{t("review.connect")}</a>
+          <a href={googleConnectHref(slug, "sending", { next: editUrl })}>
+            {t("review.connect")}
+          </a>
         </Button>
       ) : (
         <p className="px-1 text-sm font-bold">

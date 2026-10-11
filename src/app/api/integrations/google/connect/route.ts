@@ -9,27 +9,42 @@ import {
 import { publicEnv } from "@/config/public-env";
 import { loginPathFor } from "@/lib/auth-redirect";
 import { safeNextPath } from "@/lib/safe-next-path";
-import { senderSettingsPath, withQuery } from "@/lib/with-query";
+import { resultPath, settingsPath } from "@/lib/with-query";
 import {
   createGoogleConnectAuthorization,
   encodeConnectCookie,
 } from "@/server/google/google-oauth";
 import { requireUser } from "@/server/http/require-user";
+import { hitGoogleConnectLimit } from "@/server/queries/sheets";
 import { getWorkspaceBySlug } from "@/server/queries/workspaces";
 import { createSupabaseServerClient } from "@/server/supabase/server-client";
-import type { GmailConnectError } from "@/shared/api/sender";
+import {
+  GOOGLE_CONNECT_PURPOSES,
+  GOOGLE_RESULT_PARAMS,
+  type GoogleConnectError,
+} from "@/shared/api/google-connect";
 
-/** Starts "Connect Gmail sending" for the workspace's Owner (spec §9). */
+/**
+ * Starts a Google connection for the workspace's Owner (spec §9): Gmail sending, or the Google
+ * Sheet (`purpose=sheets`, `replace=1` for "Create a new sheet"). Rate limited per person.
+ */
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const env = getServerEnv();
   const params = request.nextUrl.searchParams;
   const slug = params.get("workspace") ?? "";
+  const purpose =
+    GOOGLE_CONNECT_PURPOSES.find((value) => value === params.get("purpose")) ??
+    "sending";
+  const replace = params.get("replace") === "1";
   const returnTo =
     safeNextPath(params.get("next")) ??
-    (slug ? senderSettingsPath(slug) : "/welcome");
-  const back = (reason: GmailConnectError) =>
+    (slug ? settingsPath(slug, purpose) : "/welcome");
+  const back = (reason: GoogleConnectError) =>
     NextResponse.redirect(
-      new URL(withQuery(returnTo, "gmail_error", reason), request.url),
+      new URL(
+        resultPath(returnTo, purpose, GOOGLE_RESULT_PARAMS.error, reason),
+        request.url,
+      ),
     );
 
   if (
@@ -55,11 +70,17 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   if (!workspace || workspace.myRole !== "owner") {
     return back("owner_only");
   }
+  const limit = await hitGoogleConnectLimit(supabase);
+  if (limit.error || !limit.data) {
+    return back("rate_limited");
+  }
   const { url, state } = createGoogleConnectAuthorization({
     clientId: env.GOOGLE_CLIENT_ID,
     redirectUri: `${publicEnv.NEXT_PUBLIC_APP_URL}${GMAIL_CONNECT_CALLBACK_PATH}`,
     workspaceSlug: workspace.slug,
     next: returnTo,
+    purpose,
+    replace,
   });
   const response = NextResponse.redirect(url);
   response.cookies.set(GMAIL_CONNECT_COOKIE, encodeConnectCookie(state), {

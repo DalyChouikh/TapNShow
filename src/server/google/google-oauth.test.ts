@@ -15,6 +15,55 @@ const jsonResponse = (body: object, status = 200) =>
   new Response(JSON.stringify(body), { status });
 
 describe("createGoogleConnectAuthorization", () => {
+  it("asks for Gmail sending or for the Sheets file permission, keeping earlier grants", () => {
+    const sending = createGoogleConnectAuthorization({
+      clientId: "c",
+      redirectUri: "r",
+      workspaceSlug: "w",
+      next: null,
+      purpose: "sending",
+      replace: false,
+    });
+    const sheets = createGoogleConnectAuthorization({
+      clientId: "c",
+      redirectUri: "r",
+      workspaceSlug: "w",
+      next: null,
+      purpose: "sheets",
+      replace: true,
+    });
+    expect(new URL(sending.url).searchParams.get("scope")).toBe(
+      "openid email https://www.googleapis.com/auth/gmail.send",
+    );
+    expect(new URL(sheets.url).searchParams.get("scope")).toBe(
+      "openid email https://www.googleapis.com/auth/drive.file",
+    );
+    expect(new URL(sheets.url).searchParams.get("include_granted_scopes")).toBe(
+      "true",
+    );
+    expect(
+      decodeConnectCookie(encodeConnectCookie(sheets.state)),
+    ).toMatchObject({
+      purpose: "sheets",
+      replace: true,
+    });
+  });
+
+  it("reads an old cookie without a purpose as Gmail sending", () => {
+    const old = Buffer.from(
+      JSON.stringify({
+        state: "s",
+        verifier: "v",
+        workspaceSlug: "w",
+        next: null,
+      }),
+    ).toString("base64url");
+    expect(decodeConnectCookie(old)).toMatchObject({
+      purpose: "sending",
+      replace: false,
+    });
+  });
+
   it("asks for offline gmail.send with PKCE, consent and incremental scopes", () => {
     const { url, state } = createGoogleConnectAuthorization({
       clientId: "client",
@@ -22,6 +71,8 @@ describe("createGoogleConnectAuthorization", () => {
         "https://tapnshow.vercel.app/api/integrations/google/callback",
       workspaceSlug: "club-ab12",
       next: "/w/club-ab12/settings",
+      purpose: "sending",
+      replace: false,
     });
     const params = new URL(url).searchParams;
     expect(params.get("scope")).toBe(
@@ -43,6 +94,8 @@ describe("connect cookie", () => {
       verifier: "v",
       workspaceSlug: "club",
       next: null,
+      purpose: "sheets" as const,
+      replace: true,
     };
     expect(decodeConnectCookie(encodeConnectCookie(state))).toEqual(state);
     expect(decodeConnectCookie("not-base64-json")).toBeNull();

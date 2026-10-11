@@ -1,3 +1,7 @@
+import {
+  GOOGLE_RESULT_PARAMS,
+  type GoogleConnectPurpose,
+} from "@/shared/api/google-connect";
 import { safeNextPath } from "./safe-next-path";
 
 const BASE = "http://local.invalid";
@@ -17,11 +21,32 @@ export function withQuery(path: string, key: string, value: string): string {
 }
 
 /**
- * Where the Gmail connect flow returns by default (Settings > Sending). Only a real slug is used:
- * the value can come from a query string, and `../..//host` must never become a redirect target.
+ * Where a Google connect flow returns by default (Settings > Sending or Settings > Sheets). Only a
+ * real slug is used: the value can come from a query string, and `../..//host` must never become a
+ * redirect target.
  */
-export function senderSettingsPath(slug: string): string {
+export function settingsPath(
+  slug: string,
+  section: "sending" | "sheets",
+): string {
   return slug.length <= SLUG_MAX && SLUG.test(slug)
-    ? `/w/${slug}/settings#sending`
+    ? `/w/${slug}/settings#${section}`
     : "/welcome";
+}
+
+/**
+ * A Google connect result on the way back (`google` / `google_error`, plus `google_for` naming the
+ * purpose), so only the banner of that purpose reacts. Shared by the connect route and the callback.
+ */
+export function resultPath(
+  path: string,
+  purpose: GoogleConnectPurpose,
+  key: (typeof GOOGLE_RESULT_PARAMS)["done" | "error"],
+  value: string,
+): string {
+  return withQuery(
+    withQuery(path, key, value),
+    GOOGLE_RESULT_PARAMS.purpose,
+    purpose,
+  );
 }

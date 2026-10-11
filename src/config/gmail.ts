@@ -8,16 +8,16 @@ export const GMAIL_CONNECT_SCOPES = [
   GMAIL_SEND_SCOPE,
 ] as const;
 
-/** Registered redirect path of OAuth client `tapnshow-web` for the connect flow. */
+/** Registered redirect path of OAuth client `tapnshow-web` for every Google connection (sending, Sheets). */
 export const GMAIL_CONNECT_CALLBACK_PATH = "/api/integrations/google/callback";
 
-/** httpOnly cookie carrying state + PKCE verifier between connect and callback. */
+/** httpOnly cookie carrying a Google connection's state, PKCE verifier and purpose between connect and callback (the name predates M7). */
 export const GMAIL_CONNECT_COOKIE = "tn_gmail_connect";
 
 /** The cookie is only sent to the connect routes. */
 export const GMAIL_CONNECT_COOKIE_PATH = "/api/integrations/google";
 
-/** The Google round trip must finish within this many seconds. */
+/** A Google connection's round trip must finish within this many seconds. */
 export const GMAIL_CONNECT_COOKIE_MAX_AGE_SECONDS = 600;
 
 /** From Google's OAuth 2.0 web-server guide (checked 2026-10-07). */

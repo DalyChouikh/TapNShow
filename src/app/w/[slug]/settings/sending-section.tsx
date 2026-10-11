@@ -12,14 +12,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Sticker } from "@/components/ui/sticker";
 import { cn } from "@/lib/utils";
 import {
-  gmailConnectHref,
   useDisconnectGmail,
   useSetSender,
   useWorkspaceSender,
 } from "@/hooks/use-sender";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
-import { GmailConnectResult } from "./gmail-connect-result";
+import { GoogleConnectResult } from "./google-connect-result";
 import { SettingsSection } from "./settings-section";
+import {
+  GOOGLE_RESULT_PARAMS,
+  googleConnectHref,
+} from "@/shared/api/google-connect";
 
 type Pending =
   | { kind: "use"; id: string; email: string }
@@ -38,7 +41,7 @@ export function SendingSection({
   const t = useTranslations("Settings.sending");
   const params = useSearchParams();
   // Coming back from Google: the result shows inside this section.
-  const returning = params.has("gmail") || params.has("gmail_error");
+  const returning = params.get(GOOGLE_RESULT_PARAMS.purpose) === "sending";
   const sender = useWorkspaceSender(workspace.slug);
   const setSender = useSetSender(workspace.slug);
   const disconnect = useDisconnectGmail(workspace.slug);
@@ -48,7 +51,7 @@ export function SendingSection({
     return <Skeleton className="h-40 w-full" />;
   }
   const { sender: current, myConnections, ownerName } = sender.data;
-  const connectHref = gmailConnectHref(workspace.slug);
+  const connectHref = googleConnectHref(workspace.slug, "sending");
   const others = myConnections.filter(
     (c) => c.status === "active" && c.id !== current?.connectionId,
   );
@@ -72,7 +75,7 @@ export function SendingSection({
         </Sticker>
       }
     >
-      <GmailConnectResult />
+      <GoogleConnectResult purpose="sending" />
       {current ? (
         <div className="flex flex-col gap-1">
           <p className="font-bold break-words">

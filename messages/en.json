@@ -371,7 +371,22 @@
         "cancelled": "Connecting was cancelled. Nothing changed.",
         "scope_denied": "Google didn't give permission to send email. Try again and keep \"Send email on your behalf\" ticked.",
         "no_refresh_token": "Google didn't return lasting access. Try again; if it keeps happening, remove TapNShow at myaccount.google.com/permissions first.",
-        "failed": "Connecting Gmail failed. Try again."
+        "failed": "Connecting Gmail failed. Try again.",
+        "rate_limited": "Too many tries. Wait a few minutes, then connect again.",
+        "sheet_wrong_account": "This sheet is in another Google account's Drive. Pick that account, or create a new sheet."
+      }
+    },
+    "sheets": {
+      "connected": "Google Sheet connected. It fills in within a minute.",
+      "error": {
+        "unavailable": "Connecting Google isn't available right now.",
+        "owner_only": "Only the workspace Owner can connect Google Sheets.",
+        "cancelled": "Connecting was cancelled. Nothing changed.",
+        "scope_denied": "Google didn't give permission to create the sheet. Try again and keep \"See, edit, create, and delete only the specific Google Drive files you use with this app\" ticked.",
+        "no_refresh_token": "Google didn't return lasting access. Try again; if it keeps happening, remove TapNShow at myaccount.google.com/permissions first.",
+        "failed": "Connecting Google failed. Try again.",
+        "rate_limited": "Too many tries. Wait a few minutes, then connect again.",
+        "sheet_wrong_account": "This sheet is in another Google account's Drive. Pick that account, or create a new sheet."
       }
     },
     "defaults": {
