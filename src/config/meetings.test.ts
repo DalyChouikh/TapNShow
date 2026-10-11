@@ -10,8 +10,8 @@ import {
   DISPATCH_SAFETY_MARGIN_MS,
 } from "./meetings";
 
-vi.mock("@/server/dispatch/schedule-dispatch", () => ({
-  scheduleDispatch: vi.fn(),
+vi.mock("@/server/workers/schedule-workers", () => ({
+  scheduleWorkers: vi.fn(),
 }));
 
 describe("dispatch timing (#168)", () => {

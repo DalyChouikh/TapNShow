@@ -3,7 +3,12 @@ import messages from "../../../messages/en.json";
 import { EXPORT_COLORS } from "@/lib/export/theme";
 import { sheetRow } from "@/test/fixtures/sheet-rows";
 import { tabContent } from "./content";
-import { formatRequests, redrawRequests, SHEET_COLUMNS } from "./requests";
+import {
+  formatRequests,
+  redrawRequests,
+  SHEET_COLUMNS,
+  SHEET_RULE_COUNT,
+} from "./requests";
 import { planYearTabs } from "./tabs";
 import { sheetWords } from "./words";
 
@@ -106,5 +111,18 @@ describe("formatRequests", () => {
         ) / 1000,
       ),
     );
+  });
+});
+
+describe("SHEET_RULE_COUNT", () => {
+  it("is how many colour rules formatRequests adds (a tab with fewer lost some)", () => {
+    expect(
+      formatRequests(
+        1,
+        { conditionalFormats: 0, slicerIds: [] },
+        words,
+        2,
+      ).filter((request) => "addConditionalFormatRule" in request),
+    ).toHaveLength(SHEET_RULE_COUNT);
   });
 });

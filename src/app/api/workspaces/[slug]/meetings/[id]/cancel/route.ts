@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { scheduleDispatch } from "@/server/dispatch/schedule-dispatch";
+import { scheduleWorkers } from "@/server/workers/schedule-workers";
 import { fromDatabaseError } from "@/server/http/errors";
 import { forbidViewer } from "@/server/http/forbid-viewer";
 import { loadMeetingContext } from "@/server/http/meeting-context";
@@ -31,6 +31,6 @@ export async function POST(
   if (error) {
     return fromDatabaseError(error);
   }
-  scheduleDispatch();
+  scheduleWorkers(["emails"]);
   return NextResponse.json(data);
 }

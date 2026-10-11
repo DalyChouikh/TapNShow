@@ -19,8 +19,8 @@ const queries = vi.hoisted(() => ({ sendMeeting: vi.fn(), schedule: vi.fn() }));
 vi.mock("@/server/queries/meetings", () => ({
   sendMeeting: queries.sendMeeting,
 }));
-vi.mock("@/server/dispatch/schedule-dispatch", () => ({
-  scheduleDispatch: queries.schedule,
+vi.mock("@/server/workers/schedule-workers", () => ({
+  scheduleWorkers: queries.schedule,
 }));
 
 beforeEach(() => {
@@ -39,7 +39,7 @@ describe("POST …/meetings/[id]/send", () => {
       invited: 27,
       skippedUnsubscribed: 1,
     });
-    expect(queries.schedule).toHaveBeenCalledTimes(1);
+    expect(queries.schedule).toHaveBeenCalledExactlyOnceWith(["emails"]);
   });
 
   it("names a missing sender and does not dispatch; refuses Viewers", async () => {

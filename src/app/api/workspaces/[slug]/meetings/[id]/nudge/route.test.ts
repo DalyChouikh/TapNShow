@@ -12,8 +12,8 @@ const queries = vi.hoisted(() => ({
 vi.mock("@/server/queries/meetings", () => ({
   nudgeMeeting: queries.nudgeMeeting,
 }));
-vi.mock("@/server/dispatch/schedule-dispatch", () => ({
-  scheduleDispatch: queries.schedule,
+vi.mock("@/server/workers/schedule-workers", () => ({
+  scheduleWorkers: queries.schedule,
 }));
 
 const ctx = {
@@ -34,7 +34,7 @@ describe("POST …/meetings/[id]/nudge", () => {
     const { POST } = await import("./route");
     const response = await POST(jsonRequest("POST", {}), ctx);
     expect(await response.json()).toEqual({ reminded: 4, nextAt: next });
-    expect(queries.schedule).toHaveBeenCalledTimes(1);
+    expect(queries.schedule).toHaveBeenCalledExactlyOnceWith(["emails"]);
   });
 
   it("says when it is too soon, or Gmail isn't connected", async () => {

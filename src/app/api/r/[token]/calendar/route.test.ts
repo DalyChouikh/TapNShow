@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { loadTokenContext, requestCalendar, scheduleDispatch } = vi.hoisted(
+const { loadTokenContext, requestCalendar, scheduleWorkers } = vi.hoisted(
   () => ({
     loadTokenContext: vi.fn(),
     requestCalendar: vi.fn(),
-    scheduleDispatch: vi.fn(),
+    scheduleWorkers: vi.fn(),
   }),
 );
 vi.mock("@/server/http/token-context", () => ({ loadTokenContext }));
 vi.mock("@/server/queries/tokens", () => ({ requestCalendar }));
-vi.mock("@/server/dispatch/schedule-dispatch", () => ({ scheduleDispatch }));
+vi.mock("@/server/workers/schedule-workers", () => ({ scheduleWorkers }));
 
 const TOKEN = "a".repeat(43);
 const ctx = { params: Promise.resolve({ token: TOKEN }) };
@@ -35,7 +35,7 @@ describe("POST /api/r/[token]/calendar", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ ok: true });
     expect(requestCalendar).toHaveBeenCalledWith({}, "h");
-    expect(scheduleDispatch).toHaveBeenCalledOnce();
+    expect(scheduleWorkers).toHaveBeenCalledExactlyOnceWith(["emails"]);
   });
 
   it("refuses another site (403) before touching the token", async () => {
@@ -53,6 +53,6 @@ describe("POST /api/r/[token]/calendar", () => {
       error: { message: "tn:invalid_choice" },
     });
     expect((await POST(post(), ctx)).status).toBe(400);
-    expect(scheduleDispatch).not.toHaveBeenCalled();
+    expect(scheduleWorkers).not.toHaveBeenCalled();
   });
 });

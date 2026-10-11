@@ -41,7 +41,8 @@ export const detailsCursorSchema = z.tuple([
   z.uuid(),
 ]);
 
-const dbAnswerSchema = z
+/** An answer as the database writes it (`answer` in the people, history and detail reads). */
+export const dbAnswerSchema = z
   .object({
     status: answerStatusSchema,
     delay_minutes: z.number().int().nullable(),
@@ -336,6 +337,46 @@ export async function getAttendanceSummary(
   };
 }
 
+/**
+ * One person at one meeting as `attendance_details()` returns it; the Google Sheet's `sheet_rows`
+ * returns the same shape plus the meeting's status and the person's lists.
+ */
+export const dbDetailRowSchema = z.object({
+  meeting_id: z.uuid(),
+  title: z.string(),
+  starts_at: z.string(),
+  timezone: z.string(),
+  response_mode: responseModeSchema,
+  invitee_id: z.uuid(),
+  contact_id: z.uuid(),
+  full_name: z.string(),
+  email: z.string(),
+  sort_name: z.string(),
+  email_status: inviteeStatusSchema,
+  answer: dbAnswerSchema,
+  mark: dbMarkSchema,
+});
+
+/** A parsed `dbDetailRowSchema` row as the app reads it. */
+export function toDetailRow(
+  row: z.output<typeof dbDetailRowSchema>,
+): AttendanceDetailRow {
+  return {
+    meetingId: row.meeting_id,
+    title: row.title,
+    startsAt: row.starts_at,
+    timezone: row.timezone,
+    responseMode: row.response_mode,
+    inviteeId: row.invitee_id,
+    contactId: row.contact_id,
+    fullName: row.full_name,
+    email: row.email,
+    emailStatus: row.email_status,
+    answer: row.answer,
+    mark: row.mark,
+  };
+}
+
 /** One page of `attendance_details()` (exports). */
 export async function listAttendanceDetails(
   client: Client,
@@ -357,40 +398,11 @@ export async function listAttendanceDetails(
   if (error) {
     return { data: null, error };
   }
-  const parsed = pageOf(
-    z.object({
-      meeting_id: z.uuid(),
-      title: z.string(),
-      starts_at: z.string(),
-      timezone: z.string(),
-      response_mode: responseModeSchema,
-      invitee_id: z.uuid(),
-      contact_id: z.uuid(),
-      full_name: z.string(),
-      email: z.string(),
-      sort_name: z.string(),
-      email_status: inviteeStatusSchema,
-      answer: dbAnswerSchema,
-      mark: dbMarkSchema,
-    }),
-  ).parse(data);
+  const parsed = pageOf(dbDetailRowSchema).parse(data);
   const last = parsed.items.at(-1);
   return {
     data: {
-      items: parsed.items.map((row) => ({
-        meetingId: row.meeting_id,
-        title: row.title,
-        startsAt: row.starts_at,
-        timezone: row.timezone,
-        responseMode: row.response_mode,
-        inviteeId: row.invitee_id,
-        contactId: row.contact_id,
-        fullName: row.full_name,
-        email: row.email,
-        emailStatus: row.email_status,
-        answer: row.answer,
-        mark: row.mark,
-      })),
+      items: parsed.items.map(toDetailRow),
       nextCursor:
         parsed.has_more && last
           ? encodeCursor([

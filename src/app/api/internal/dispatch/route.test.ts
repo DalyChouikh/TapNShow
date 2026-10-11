@@ -10,8 +10,8 @@ vi.mock("@/config/env", () => ({
     LOG_LEVEL: "info",
   }),
 }));
-vi.mock("@/server/dispatch/schedule-dispatch", () => ({
-  scheduleDispatch: mocks.schedule,
+vi.mock("@/server/workers/schedule-workers", () => ({
+  scheduleWorkers: mocks.schedule,
 }));
 
 const post = (authorization?: string) =>
@@ -26,19 +26,16 @@ beforeEach(() => {
 });
 
 describe("POST /api/internal/dispatch", () => {
-  it("starts a run for the right secret", async () => {
+  it("starts both workers for the right secret", async () => {
     const { POST } = await import("./route");
     const response = await POST(post(`Bearer ${"s".repeat(43)}`));
     expect(response.status).toBe(202);
-    expect(mocks.schedule).toHaveBeenCalledTimes(1);
+    expect(mocks.schedule).toHaveBeenCalledWith();
   });
 
-  it("refuses a wrong or missing secret and hides the route where it is not configured", async () => {
+  it("starts nothing for a wrong secret (the check itself: internal-secret.test.ts)", async () => {
     const { POST } = await import("./route");
     expect((await POST(post("Bearer nope"))).status).toBe(401);
-    expect((await POST(post())).status).toBe(401);
-    mocks.secret.value = undefined;
-    expect((await POST(post(`Bearer ${"s".repeat(43)}`))).status).toBe(404);
     expect(mocks.schedule).not.toHaveBeenCalled();
   });
 });
