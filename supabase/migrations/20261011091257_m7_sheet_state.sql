@@ -134,9 +134,12 @@ as $$
     or exists (select 1 from public.sheet_syncs s where s.connection_id = p_connection)
 $$;
 
--- The only place a Google connection is deleted: when nothing uses it any more. Returns what the
--- route needs to revoke the token at Google (null when kept or already gone).
-create function private.release_connection(p_connection uuid)
+-- The only place a Google connection is deleted: when nothing uses it any more, and only by its own
+-- user's action (security review: a new Owner's Turn off, Create a new sheet or workspace deletion
+-- must never revoke someone else's Google account; an unused one stays in that person's Sending
+-- settings for them to disconnect). Returns what the route needs to revoke the token at Google
+-- (null when kept or already gone).
+create function private.release_connection(p_connection uuid, p_actor uuid)
 returns jsonb
 language plpgsql
 security definer
@@ -149,7 +152,7 @@ begin
     return null;
   end if;
   delete from public.google_connections c
-  where c.id = p_connection
+  where c.id = p_connection and c.user_id = p_actor
   returning pg_catalog.jsonb_build_object(
     'refresh_token_encrypted', c.refresh_token_encrypted, 'google_sub', c.google_sub, 'user_id', c.user_id)
   into v_released;
@@ -213,7 +216,7 @@ begin
   end if;
   update public.workspaces set sender_connection_id = null where sender_connection_id = p_connection;
   return pg_catalog.jsonb_build_object(
-    'released', private.release_connection(p_connection),
+    'released', private.release_connection(p_connection, auth.uid()),
     'sheets_kept', coalesce((
       select pg_catalog.jsonb_agg(w.name order by w.name)
       from public.sheet_syncs s join public.workspaces w on w.id = s.workspace_id
@@ -323,7 +326,7 @@ begin
   -- Accounts nothing else uses are released; the synced Google Sheet stays in Drive (spec §7.11).
   return pg_catalog.jsonb_build_object('released', coalesce((
     select pg_catalog.jsonb_agg(r.released) from (
-      select private.release_connection(c) as released from pg_catalog.unnest(v_connections) as c
+      select private.release_connection(c, auth.uid()) as released from pg_catalog.unnest(v_connections) as c
     ) r where r.released is not null
   ), '[]'::jsonb));
 end;
@@ -408,7 +411,7 @@ begin
   if not found then
     raise exception 'tn:not_found' using errcode = 'P0001';
   end if;
-  return pg_catalog.jsonb_build_object('released', private.release_connection(v_connection));
+  return pg_catalog.jsonb_build_object('released', private.release_connection(v_connection, auth.uid()));
 end;
 $$;
 
@@ -493,7 +496,7 @@ begin
   return pg_catalog.jsonb_build_object(
     'started', true,
     'released', case when v_sheet.connection_id is distinct from v_conn.id
-                     then private.release_connection(v_sheet.connection_id) end);
+                     then private.release_connection(v_sheet.connection_id, p_user) end);
 end;
 $$;
 
@@ -586,7 +589,7 @@ as $$ select private.google_connection_saved(p_user, p_connection) $$;
 
 revoke execute on function
   private.sheet_year(timestamptz, text), private.sheet_mark(uuid[], integer[]), private.sheet_mark_all(uuid[]),
-  private.connection_in_use(uuid), private.release_connection(uuid), private.require_owner(uuid),
+  private.connection_in_use(uuid), private.release_connection(uuid, uuid), private.require_owner(uuid),
   private.start_sheet(uuid, uuid, uuid, boolean), private.google_connection_saved(uuid, uuid)
 from public, anon, authenticated;
 grant execute on function

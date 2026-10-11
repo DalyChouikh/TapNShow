@@ -194,6 +194,66 @@ describe("the release rule", () => {
   });
 });
 
+describe("the release rule never touches another person's account (security review)", () => {
+  it("Turn off by a new Owner keeps the previous Owner's account", async () => {
+    const previous = await seedConnection(owner.id, { scopes: [DRIVE_FILE] });
+    await seedSheet(workspace.id, previous.id, { googleSub: previous.sub });
+    const next = await createTestUser({ fullName: "Next Owner" });
+    await adminClient()
+      .from("workspace_roles")
+      .update({ role: "admin" })
+      .eq("workspace_id", workspace.id)
+      .eq("user_id", owner.id);
+    await addMember(workspace.id, next.id, "owner");
+    const { data, error } = await next.client.rpc("turn_off_sheet", {
+      p_workspace: workspace.id,
+    });
+    expect(error).toBeNull();
+    expect(data).toEqual({ released: null });
+    const kept = await adminClient()
+      .from("google_connections")
+      .select("id")
+      .eq("id", previous.id);
+    expect(kept.data).toEqual([{ id: previous.id }]);
+  });
+
+  it("Create a new sheet keeps the previous account when it belongs to someone else", async () => {
+    const previous = await seedConnection(viewer.id, { scopes: [DRIVE_FILE] });
+    await seedSheet(workspace.id, previous.id, {
+      googleSub: previous.sub,
+      spreadsheetId: "file-abcdefghij",
+    });
+    const fresh = await seedConnection(owner.id, { scopes: [DRIVE_FILE] });
+    const { data } = await adminClient().rpc("start_sheet", {
+      p_user: owner.id,
+      p_workspace: workspace.id,
+      p_connection: fresh.id,
+      p_replace: true,
+    });
+    expect(data).toEqual({ started: true, released: null });
+    const kept = await adminClient()
+      .from("google_connections")
+      .select("id")
+      .eq("id", previous.id);
+    expect(kept.data).toEqual([{ id: previous.id }]);
+  });
+
+  it("deleting a workspace keeps a sender account that belongs to someone else", async () => {
+    const theirs = await seedConnection(viewer.id);
+    await setSender(workspace.id, theirs.id);
+    const { data } = await owner.client.rpc("delete_workspace", {
+      p_workspace: workspace.id,
+      p_confirm_name: "Sheet Club",
+    });
+    expect(data).toEqual({ released: [] });
+    const kept = await adminClient()
+      .from("google_connections")
+      .select("id")
+      .eq("id", theirs.id);
+    expect(kept.data).toEqual([{ id: theirs.id }]);
+  });
+});
+
 describe("google_connection_saved (resume rule)", () => {
   it("moves an access-lost sheet on the same Google account to the new connection", async () => {
     const lost = await seedConnection(owner.id, { scopes: [DRIVE_FILE] });
