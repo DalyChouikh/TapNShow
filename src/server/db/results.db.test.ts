@@ -264,26 +264,42 @@ describe("attendance_summary and attendance_details", () => {
 });
 
 describe("query plans (fresh and stale statistics)", () => {
-  /** Invites `count` new contacts to a new meeting in one bulk insert (PostgREST sends every key). */
-  async function bulkInvite(count: number): Promise<void> {
+  /** A meeting with 1,000 invitees: the workspace-sized table every plan here is read against. */
+  let busy: string;
+
+  /**
+   * Invites `count` new contacts to a new meeting in one bulk insert (PostgREST sends every key)
+   * and returns the meeting.
+   */
+  async function bulkInvite(count: number): Promise<string> {
     const bulk = await seedContacts(
       workspace.id,
       count,
       `res-bulk-${crypto.randomUUID().slice(0, 6)}`,
     );
-    const busy = await seedMeeting(workspace.id, { status: "scheduled" });
+    const meetingId = await seedMeeting(workspace.id, { status: "scheduled" });
     const { error } = await adminClient()
       .from("meeting_invitees")
       .insert(
         bulk.map((contact) => ({
           workspace_id: workspace.id,
-          meeting_id: busy,
+          meeting_id: meetingId,
           contact_id: contact,
           email_status: "sent" as const,
         })),
       );
     expect(error).toBeNull();
+    return meetingId;
   }
+
+  beforeAll(async () => {
+    // A fresh database (CI) holds a handful of invitees, where a sequential scan is the right
+    // plan; seed a workspace-sized table first so the plans reflect real use.
+    busy = await bulkInvite(1000);
+    runLocalSql(
+      "analyze public.meeting_invitees, public.responses, public.meetings",
+    );
+  }, 60_000);
 
   /**
    * True when the plan reads a meeting's invitees through an index that leads with `meeting_id`
@@ -299,12 +315,6 @@ describe("query plans (fresh and stale statistics)", () => {
   }
 
   it("uses the meeting and contact indexes, also right after a bulk insert without analyze", async () => {
-    // A fresh database (CI) holds a handful of invitees, where a sequential scan is the right
-    // plan; seed a workspace-sized table first so the plan reflects real use.
-    await bulkInvite(1000);
-    for (const table of ["meeting_invitees", "responses", "meetings"]) {
-      runLocalSql(`analyze public.${table}`);
-    }
     const fresh = explainCall(
       `public.meeting_people('${past}', 'all', null, null, 50)`,
       owner.id,
@@ -323,5 +333,37 @@ describe("query plans (fresh and stale statistics)", () => {
     expect(planUsesIndex(history, "meeting_invitees_contact_ws_idx")).toBe(
       true,
     );
+  });
+
+  it("reads only due reminder timers, and holds updates by the invitee key (#255)", () => {
+    // 500 per-person reminders waiting for later, and 3 due timers.
+    runLocalSql(
+      `insert into public.outbox_jobs (kind, workspace_id, meeting_id, invitee_id, payload, idempotency_key, run_after)
+       select 'reminder', i.workspace_id, i.meeting_id, i.id, '{"audience":"pending"}', 'plan-' || i.id,
+         now() + interval '1 day'
+       from public.meeting_invitees i where i.meeting_id = '${busy}' limit 500`,
+    );
+    runLocalSql(
+      `insert into public.outbox_jobs (kind, workspace_id, meeting_id, payload, idempotency_key, run_after)
+       select 'reminder', '${workspace.id}', '${busy}', '{"audience":"pending"}', 'plan-timer-' || n,
+         now() - interval '1 minute'
+       from generate_series(1, 3) n`,
+    );
+    try {
+      runLocalSql("analyze public.outbox_jobs");
+      const plan = explainCall(
+        `public.dispatch_claim('${crypto.randomUUID()}', 1, 60)`,
+        owner.id,
+        "service_role",
+      );
+      expect(planUsesIndex(plan, "outbox_jobs_due_timers_idx")).toBe(true);
+      // private.job_held probes one invitee by id (inlined or not), never the whole table.
+      expect(/Seq Scan on meeting_invitees\b/.test(plan)).toBe(false);
+      expect(planUsesIndex(plan, "meeting_invitees_pkey")).toBe(true);
+    } finally {
+      runLocalSql(
+        `delete from public.outbox_jobs where idempotency_key like 'plan-%' and meeting_id = '${busy}'`,
+      );
+    }
   });
 });

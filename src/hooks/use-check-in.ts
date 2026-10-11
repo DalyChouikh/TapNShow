@@ -7,7 +7,8 @@ import {
 } from "@tanstack/react-query";
 import { useRef } from "react";
 import { meetingPeopleKey, meetingResultsKey } from "@/hooks/use-results";
-import { apiRequest } from "@/lib/api-client";
+import { apiRequest, errorCodeOf } from "@/lib/api-client";
+import type { ApiErrorCode } from "@/shared/api/errors";
 import type { Page } from "@/shared/api/pagination";
 import {
   type Mark,
@@ -26,12 +27,13 @@ type PeoplePages = InfiniteData<Page<PersonRow>>;
 
 /**
  * Check one person in (spec §7.8): shown at once, sent one request at a time per person. A failed
- * save puts back only that person's mark and calls `onFailure` with them, whichever tap came last.
+ * save puts back only that person's mark and calls `onFailure` with them and the reason, whichever
+ * tap came last.
  */
 export function useMarkAttendance(
   slug: string,
   id: string,
-  onFailure?: (inviteeId: string) => void,
+  onFailure?: (inviteeId: string, code: ApiErrorCode) => void,
 ) {
   const queryClient = useQueryClient();
   const chains = useRef(new Map<string, Promise<void>>());
@@ -94,9 +96,9 @@ export function useMarkAttendance(
       );
       return { previous };
     },
-    onError: (_error, input, context) => {
+    onError: (error, input, context) => {
       setMark(input.inviteeId, context?.previous ?? null);
-      onFailure?.(input.inviteeId);
+      onFailure?.(input.inviteeId, errorCodeOf(error));
     },
     onSuccess: (result, input) => {
       setMark(input.inviteeId, result.mark);

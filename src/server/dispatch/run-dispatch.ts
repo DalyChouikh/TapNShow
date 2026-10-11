@@ -2,12 +2,12 @@ import "server-only";
 import { REFRESH_FAILURE_DEFER_MS, THROTTLE_DEFER_MS } from "@/config/meetings";
 import { renderCalendarConfirmEmail } from "@/emails/calendar-confirm-email";
 import { renderMeetingCancelEmail } from "@/emails/meeting-cancel-email";
-import {
-  type MeetingInviteEmailProps,
-  renderMeetingInviteEmail,
-} from "@/emails/meeting-invite-email";
+import { renderMeetingInviteEmail } from "@/emails/meeting-invite-email";
 import { renderMeetingReminderEmail } from "@/emails/meeting-reminder-email";
-import { renderMeetingUpdateEmail } from "@/emails/meeting-update-email";
+import {
+  type MeetingUpdateEmailProps,
+  renderMeetingUpdateEmail,
+} from "@/emails/meeting-update-email";
 import {
   buildMeetingIcs,
   icsDescription,
@@ -295,11 +295,17 @@ function calendarOnly(job: ClaimedJob): ClaimedJob {
   };
 }
 
+/** What every kind's email shares: the invite's props, with the meeting's footer note kept. */
+type CommonEmailProps = Omit<
+  MeetingUpdateEmailProps,
+  "changes" | "notify" | "reconfirm" | "calendar"
+>;
+
 /** Renders one job's email by kind (the `.ics`, when any, is attached separately). */
 async function renderJob(
   job: ClaimedJob,
   { calendar: decision, reconfirm }: Reservation,
-  common: MeetingInviteEmailProps,
+  common: CommonEmailProps,
 ): Promise<{ subject: string; html: string; text: string }> {
   switch (job.kind) {
     case "invite":
@@ -313,7 +319,6 @@ async function renderJob(
     case "update":
       return renderMeetingUpdateEmail({
         ...common,
-        meeting: { ...common.meeting, footerNote: job.meeting.footerNote },
         changes: job.payload.changes,
         notify: job.payload.notify,
         reconfirm: job.payload.reconfirm,
@@ -381,7 +386,7 @@ async function sendJob(
     unsubscribe: `${deps.appUrl}/u/${token}`,
     report: `${deps.appUrl}/report/${token}`,
   };
-  const common: MeetingInviteEmailProps = {
+  const common: CommonEmailProps = {
     workspaceName: job.workspaceName,
     recipientName: job.contact.fullName,
     senderEmail: session.claim.connection.googleEmail,

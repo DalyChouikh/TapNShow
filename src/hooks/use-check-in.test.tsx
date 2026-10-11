@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
+import type { ApiErrorCode } from "@/shared/api/errors";
 import { json, routeFetch } from "@/test/fetch";
 import { MEETING_IDS, peopleFixture } from "@/test/fixtures/meetings";
 import { useMarkAttendance } from "./use-check-in";
@@ -39,7 +40,7 @@ function setup(
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
-  const onFailure = vi.fn();
+  const onFailure = vi.fn<(inviteeId: string, code: ApiErrorCode) => void>();
   const { result } = renderHook(
     () => ({
       people: useMeetingPeople("club-ab12", MEETING_IDS.meeting, "all", false),
@@ -166,7 +167,10 @@ describe("useMarkAttendance", () => {
     await waitFor(() => expect(result.current.mark.isPending).toBe(false));
     await act(async () => failAmira());
     await waitFor(() =>
-      expect(onFailure).toHaveBeenCalledWith(amira.inviteeId),
+      expect(onFailure).toHaveBeenCalledWith(
+        amira.inviteeId,
+        "check_in_closed",
+      ),
     );
     expect(markOfRow(amira.inviteeId)).toBeNull();
     expect(markOfRow(youssef.inviteeId)).toBe("absent");

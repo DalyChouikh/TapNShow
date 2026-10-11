@@ -10,6 +10,8 @@ const path = `POST /api/workspaces/club-ab12/meetings/${MEETING_IDS.meeting}/peo
 
 describe("AddPeopleSheet", () => {
   it("adds several people from rows and a paste, saved to the roster by default", async () => {
+    // No delay between keystrokes: under a loaded suite the default one pushed this past 5 s (#255).
+    const user = userEvent.setup({ delay: null });
     const fetchMock = routeFetch({
       [path]: () =>
         new Response(
@@ -32,21 +34,21 @@ describe("AddPeopleSheet", () => {
       />,
       { toaster: true },
     );
-    await userEvent.type(
+    await user.type(
       screen.getByRole("textbox", { name: "Full name" }),
       "Nour Hamdi",
     );
-    await userEvent.type(
+    await user.type(
       screen.getByRole("textbox", { name: "Email" }),
       "nour@uni.tn",
     );
-    await userEvent.click(screen.getByRole("button", { name: "Paste a list" }));
-    await userEvent.type(
+    await user.click(screen.getByRole("button", { name: "Paste a list" }));
+    await user.click(
       screen.getByRole("textbox", { name: "One person per line: name, email" }),
-      "Sami, sami@uni.tn{enter}Lina <lina@uni.tn>",
     );
-    await userEvent.click(screen.getByRole("button", { name: "Use these 2" }));
-    await userEvent.click(screen.getByRole("button", { name: "Add 3 people" }));
+    await user.paste("Sami, sami@uni.tn\nLina <lina@uni.tn>");
+    await user.click(screen.getByRole("button", { name: "Use these 2" }));
+    await user.click(screen.getByRole("button", { name: "Add 3 people" }));
     const body = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
     expect(body).toEqual({
       people: [
@@ -61,6 +63,7 @@ describe("AddPeopleSheet", () => {
   });
 
   it("blocks rows with a missing name or a bad email", async () => {
+    const user = userEvent.setup({ delay: null });
     const fetchMock = routeFetch({});
     renderWithProviders(
       <AddPeopleSheet
@@ -70,11 +73,8 @@ describe("AddPeopleSheet", () => {
         meetingId={MEETING_IDS.meeting}
       />,
     );
-    await userEvent.type(
-      screen.getByRole("textbox", { name: "Email" }),
-      "nope",
-    );
-    await userEvent.click(screen.getByRole("button", { name: "Add 1 person" }));
+    await user.type(screen.getByRole("textbox", { name: "Email" }), "nope");
+    await user.click(screen.getByRole("button", { name: "Add 1 person" }));
     expect(screen.getByText("Add a name.")).toBeInTheDocument();
     expect(screen.getByText("Check this email.")).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();

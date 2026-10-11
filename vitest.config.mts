@@ -19,6 +19,9 @@ export default defineConfig({
     include: ["src/**/*.test.{ts,tsx}", "scripts/**/*.test.ts"],
     exclude: [...configDefaults.exclude, "src/**/*.db.test.ts"],
     css: false,
+    // Route tests import their route inside the first test; under a full parallel run that cold
+    // import alone has passed the 5 s default (invites route, 5.5 s).
+    testTimeout: 15_000,
     env: {
       NEXT_PUBLIC_APP_URL: "http://localhost:3000",
       NEXT_PUBLIC_SUPABASE_URL: "https://test.supabase.co",

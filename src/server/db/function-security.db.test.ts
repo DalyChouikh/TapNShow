@@ -89,4 +89,12 @@ describe("function security (spec §11)", () => {
     );
     expect(rows).toHaveLength(14);
   });
+
+  it("service_role cannot nudge (a nudge is a signed-in Owner's or Admin's action, #255)", () => {
+    const [row] = queryLocalSql(
+      `select has_function_privilege('service_role', 'public.nudge_meeting(uuid)', 'execute') as allowed`,
+      z.array(z.object({ allowed: z.boolean() })).length(1),
+    );
+    expect(row.allowed).toBe(false);
+  });
 });
