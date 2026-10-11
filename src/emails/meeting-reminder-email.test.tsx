@@ -35,6 +35,26 @@ describe("meeting reminder email", () => {
     expect(email.text).not.toContain("Please answer by");
   });
 
+  it("asks someone who must reconfirm to confirm, not to answer (#255)", async () => {
+    const withBy = await renderMeetingReminderEmail({
+      ...PROPS,
+      reconfirm: true,
+      meeting: withDeadline,
+    });
+    expect(withBy.text).toContain(
+      "The time changed. Please confirm by Fri 9 Oct, 13:00 that you can still come.",
+    );
+    expect(withBy.text).not.toContain("Please answer by");
+    const without = await renderMeetingReminderEmail({
+      ...PROPS,
+      reconfirm: true,
+    });
+    expect(without.text).toContain(
+      "The time changed. Please confirm that you can still come.",
+    );
+    expect(without.text).not.toContain("know if you're coming");
+  });
+
   it("tells Going people when and where", async () => {
     const email = await renderMeetingReminderEmail({
       ...PROPS,

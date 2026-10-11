@@ -762,7 +762,7 @@ isOneToOne: false
 { Args: { "p_token_hash": string }; Returns: boolean
                            },
 "token_submit_response":
-{ Args: { "p_comment"?: string,"p_delay_minutes"?: number,"p_reason"?: string,"p_status": Database["public"]['Enums']["response_status"],"p_token_hash": string }; Returns: Json
+{ Args: { "p_comment"?: string,"p_delay_minutes"?: number,"p_reason"?: string,"p_seen_starts_at"?: string,"p_status": Database["public"]['Enums']["response_status"],"p_token_hash": string }; Returns: Json
                            },
 "token_unsubscribe":
 { Args: { "p_token_hash": string,"p_via": Database["public"]['Enums']["unsubscribe_via"] }; Returns: boolean

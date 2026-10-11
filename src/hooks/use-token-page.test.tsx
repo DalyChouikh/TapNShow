@@ -45,11 +45,13 @@ describe("useSubmitAnswer", () => {
       }),
     );
     const put = fetchMock.mock.calls.find(([, init]) => init?.method === "PUT");
+    // The start the page showed, so an answer from before a time change still asks to reconfirm.
     expect(JSON.parse(String(put?.[1]?.body))).toEqual({
       status: "late",
       delayMinutes: 20,
       reason: "Bus",
       comment: "",
+      seenStartsAt: tokenInfoFixture.meeting.startsAt,
     });
     await waitFor(() =>
       expect(result.current.info.data?.answer).toEqual(ANSWER),

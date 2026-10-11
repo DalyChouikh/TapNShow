@@ -8,12 +8,14 @@ const ADMIN_URL =
  * Runs `select <call>` as `userId` (role `authenticated` by default, or `service_role` for worker
  * functions; JWT claims set) inside a rolled-back transaction with auto_explain logging every
  * nested statement, and returns psql's output with the plans (auto_explain prints them as NOTICEs
- * on stderr). Test assertions only.
+ * on stderr). `settings` are extra `set local` lines (e.g. "enable_seqscan = off"). Test
+ * assertions only.
  */
 export function explainCall(
   call: string,
   userId: string,
   role: "authenticated" | "service_role" = "authenticated",
+  settings: ReadonlyArray<string> = [],
 ): string {
   const claims = JSON.stringify({ sub: userId, role });
   const sql = [
@@ -24,6 +26,7 @@ export function explainCall(
     "set local auto_explain.log_level = notice;",
     "set local client_min_messages = notice;",
     `select set_config('request.jwt.claims', '${claims}', true);`,
+    ...settings.map((setting) => `set local ${setting};`),
     `set local role ${role};`,
     `select ${call};`,
     "rollback;",

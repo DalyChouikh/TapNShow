@@ -161,6 +161,7 @@ export async function submitAnswer(
     p_delay_minutes: sqlNullable(body.delayMinutes),
     p_reason: body.reason,
     p_comment: body.comment,
+    p_seen_starts_at: sqlNullable(body.seenStartsAt ?? null),
   });
   return error
     ? { data: null, error }

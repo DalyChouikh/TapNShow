@@ -53,6 +53,24 @@ describe("PUT /api/r/[token]/response", () => {
     expect(scheduleWorkers).toHaveBeenCalledExactlyOnceWith(["emails"]);
   });
 
+  it("passes the start the page showed", async () => {
+    submitAnswer.mockResolvedValue({ data: ANSWER, error: null });
+    const { PUT } = await import("./route");
+    await PUT(
+      put({
+        status: "attending",
+        delayMinutes: null,
+        reason: "",
+        comment: "",
+        seenStartsAt: "2026-10-15T17:00:00.000Z",
+      }),
+      ctx,
+    );
+    expect(submitAnswer.mock.calls[0][2]).toMatchObject({
+      seenStartsAt: "2026-10-15T17:00:00.000Z",
+    });
+  });
+
   it("refuses another site (403) before touching the token", async () => {
     const { PUT } = await import("./route");
     const response = await PUT(

@@ -181,6 +181,8 @@ const reserveSchema = z
         .optional(),
       /** The person unsubscribed: only the removal of a cancelled meeting from their calendar. */
       unsubscribed: z.literal(true).optional(),
+      /** A reminder to someone who must confirm the new time again (#255). */
+      reconfirm: z.boolean().default(false),
     }),
     z.object({ kind: z.literal("quota"), retry_at: z.string() }),
     z.object({ kind: z.literal("done") }),
@@ -194,6 +196,7 @@ const reserveSchema = z
         return {
           kind: db.kind,
           calendar: db.calendar ?? null,
+          reconfirm: db.reconfirm,
           ...(db.unsubscribed && { unsubscribed: db.unsubscribed }),
         };
       default:

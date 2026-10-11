@@ -115,6 +115,7 @@ describe("AnswerView", () => {
       delayMinutes: 20,
       reason: "Bus from campus",
       comment: "",
+      seenStartsAt: expect.any(String),
     });
     expect(await screen.findByText("CONFIRMED")).toBeInTheDocument();
     expect(screen.getByText("Your answer: Late by 20 min")).toBeInTheDocument();
@@ -450,6 +451,7 @@ describe("AnswerView", () => {
         delayMinutes: null,
         reason: "",
         comment: "",
+        seenStartsAt: moved.startsAt,
       });
       expect(await screen.findByText("Your answer: Going")).toBeInTheDocument();
     });
@@ -471,6 +473,7 @@ describe("AnswerView", () => {
         delayMinutes: 10,
         reason: "Bus",
         comment: "",
+        seenStartsAt: moved.startsAt,
       });
     });
 

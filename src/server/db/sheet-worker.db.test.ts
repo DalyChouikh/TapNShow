@@ -513,12 +513,20 @@ describe("sheet_rows", () => {
     runLocalSql(
       "analyze public.meetings, public.meeting_invitees, public.contacts, public.responses, public.attendance_marks, public.list_contacts",
     );
+    // A test database's meetings table is a few pages, where a full scan is rightly cheapest; with
+    // full scans discouraged, the plan shows whether the query can use an index at all.
     const plan = explainCall(
       `public.sheet_rows('${workspace.id}', 2026)`,
       owner.id,
       "service_role",
+      ["enable_seqscan = off"],
     );
-    expect(planUsesIndex(plan, "meetings_workspace_starts_idx")).toBe(true);
+    expect(
+      planUsesIndex(plan, "meetings_workspace_starts_idx") ||
+        planUsesIndex(plan, "meetings_ws_status_starts_idx"),
+    ).toBe(true);
+    expect(plan).not.toMatch(/Seq Scan on meetings\b/);
+    expect(planUsesIndex(plan, "meeting_invitees_meeting_ws_idx")).toBe(true);
   });
 });
 
