@@ -91,6 +91,9 @@ describe("parseServerEnv", () => {
     expect(env.GOOGLE_OAUTH_TOKEN_URL).toBe(
       "https://oauth2.googleapis.com/token",
     );
+    expect(env.GOOGLE_OAUTH_REVOKE_URL).toBe(
+      "https://oauth2.googleapis.com/revoke",
+    );
   });
 
   it("points the Google Sheet at Google unless overridden (e2e fakes)", () => {

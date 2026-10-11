@@ -1,6 +1,6 @@
 import { addDays, format } from "date-fns";
 import { expect, type APIRequestContext, type Page } from "@playwright/test";
-import { sentMessages } from "./fake-gmail";
+import { sentMessages } from "./fake-google";
 import { expectNoHorizontalScroll } from "./layout";
 import { seedRoster } from "./seed";
 import { E2E_DISPATCH_SECRET, seedSender } from "./seed-sender";
@@ -48,16 +48,25 @@ export async function messagesFor(stamp: string) {
 }
 
 /**
- * Runs the dispatcher the way Supabase Cron does, then returns this run's messages: lets calendar
- * emails that became due after the answer's own dispatch kick go out (local stacks have no cron).
+ * Wakes both workers (emails and the Google Sheet) the way Supabase Cron does; local stacks have no
+ * cron. They run after the route answers, so their work lands a moment later.
+ */
+export async function runWorkers(request: APIRequestContext): Promise<void> {
+  const response = await request.post("/api/internal/dispatch", {
+    headers: { authorization: `Bearer ${E2E_DISPATCH_SECRET}` },
+  });
+  expect(response.status()).toBe(202);
+}
+
+/**
+ * Runs the workers, then returns this run's messages: lets calendar emails that became due after
+ * the answer's own dispatch kick go out.
  */
 export async function dispatchAndRead(
   request: APIRequestContext,
   stamp: string,
 ) {
-  await request.post("/api/internal/dispatch", {
-    headers: { authorization: `Bearer ${E2E_DISPATCH_SECRET}` },
-  });
+  await runWorkers(request);
   return messagesFor(stamp);
 }
 

@@ -1,16 +1,5 @@
 import { createHash } from "node:crypto";
-import { createClient } from "@supabase/supabase-js";
-
-function admin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SECRET_KEY;
-  if (!url || !key) {
-    throw new Error("Supabase env missing: run e2e with `bun run test:e2e`");
-  }
-  return createClient(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-}
+import { adminClient, workspaceIdOf } from "./admin";
 
 /** Adds a named member with `role` to the workspace at `slug` (service role; test setup only). */
 export async function seedMember(
@@ -19,7 +8,7 @@ export async function seedMember(
   displayName: string,
   canCheckIn = false,
 ): Promise<{ id: string; email: string }> {
-  const client = admin();
+  const client = adminClient();
   const email = `seed-${crypto.randomUUID().slice(0, 8)}@example.test`;
   const created = await client.auth.admin.createUser({
     email,
@@ -29,20 +18,13 @@ export async function seedMember(
     throw created.error;
   }
   const id = created.data.user.id;
-  const workspace = await client
-    .from("workspaces")
-    .select("id")
-    .eq("slug", slug)
-    .single();
-  if (workspace.error) {
-    throw workspace.error;
-  }
+  const workspaceId = await workspaceIdOf(slug);
   const profile = await client
     .from("profiles")
     .update({ display_name: displayName })
     .eq("user_id", id);
   const member = await client.from("workspace_roles").insert({
-    workspace_id: workspace.data.id,
+    workspace_id: workspaceId,
     user_id: id,
     role,
     can_check_in: canCheckIn,
@@ -58,16 +40,8 @@ export async function seedRoster(
   slug: string,
   people: Array<{ fullName: string; email: string; lists?: string[] }>,
 ): Promise<void> {
-  const client = admin();
-  const workspace = await client
-    .from("workspaces")
-    .select("id")
-    .eq("slug", slug)
-    .single();
-  if (workspace.error) {
-    throw workspace.error;
-  }
-  const workspaceId = workspace.data.id;
+  const client = adminClient();
+  const workspaceId = await workspaceIdOf(slug);
   const names = [...new Set(people.flatMap((person) => person.lists ?? []))];
   const lists = names.length
     ? await client
@@ -117,16 +91,8 @@ export async function seedPastMeetingWithAnswer(
   stamp: string,
   answer: { status: "late"; delayMinutes: number; reason: string },
 ): Promise<string> {
-  const client = admin();
-  const workspace = await client
-    .from("workspaces")
-    .select("id")
-    .eq("slug", slug)
-    .single();
-  if (workspace.error) {
-    throw workspace.error;
-  }
-  const workspaceId = workspace.data.id;
+  const client = adminClient();
+  const workspaceId = await workspaceIdOf(slug);
   const fullName = `Lina ${stamp}`;
   const contact = await client
     .from("contacts")
@@ -199,16 +165,8 @@ export async function seedStartedMeeting(
   stamp: string,
   names: { going: string; silent: string },
 ): Promise<string> {
-  const client = admin();
-  const workspace = await client
-    .from("workspaces")
-    .select("id")
-    .eq("slug", slug)
-    .single();
-  if (workspace.error) {
-    throw workspace.error;
-  }
-  const workspaceId = workspace.data.id;
+  const client = adminClient();
+  const workspaceId = await workspaceIdOf(slug);
   const meeting = await client
     .from("meetings")
     .insert({
@@ -281,7 +239,7 @@ export async function seedStartedMeeting(
 
 /** Makes a meeting's "not answered" reminder timer due now, as if its time came (service role). */
 export async function dueTimers(meetingId: string): Promise<void> {
-  const { error } = await admin()
+  const { error } = await adminClient()
     .from("outbox_jobs")
     .update({ run_after: new Date(Date.now() - 1000).toISOString() })
     .eq("meeting_id", meetingId)
