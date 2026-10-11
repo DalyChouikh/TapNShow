@@ -238,6 +238,27 @@ describe("the release rule never touches another person's account (security revi
     expect(kept.data).toEqual([{ id: previous.id }]);
   });
 
+  it("never revokes a Google grant another person's connection to the same account shares (final review)", async () => {
+    // Google's revoke removes the whole grant of a Google account, so the club's shared account
+    // must stay granted while anyone else's connection uses it.
+    const theirs = await seedConnection(viewer.id, { scopes: [GMAIL_SEND] });
+    const mine = await seedConnection(owner.id, {
+      sub: theirs.sub,
+      scopes: [GMAIL_SEND, DRIVE_FILE],
+    });
+    await seedSheet(workspace.id, mine.id, { googleSub: mine.sub });
+    const { data, error } = await owner.client.rpc("turn_off_sheet", {
+      p_workspace: workspace.id,
+    });
+    expect(error).toBeNull();
+    expect(data).toEqual({ released: null });
+    const left = await adminClient()
+      .from("google_connections")
+      .select("id")
+      .in("id", [mine.id, theirs.id]);
+    expect(left.data).toEqual([{ id: theirs.id }]);
+  });
+
   it("deleting a workspace keeps a sender account that belongs to someone else", async () => {
     const theirs = await seedConnection(viewer.id);
     await setSender(workspace.id, theirs.id);

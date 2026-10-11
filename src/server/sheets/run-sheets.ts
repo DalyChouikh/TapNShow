@@ -72,18 +72,47 @@ export type SheetSyncSummary = {
   retried: number;
 };
 
+/** A Google call not made because the run's budget is spent: the sheet waits for the next run. */
+type Late = { kind: "late" };
+const LATE: Late = { kind: "late" };
+
 const cellsOf = (rows: number) =>
   (EXPORT_HEADER_ROWS + Math.max(rows, 1)) * SHEET_COLUMNS;
+
+/** A tab key's part of a split year: 0 for a whole year ("2026"), 1, 2 … for "2026-1", "2026-2" … */
+const chunkOf = (key: string) => Number(key.split("-")[1] ?? 0);
 
 /** Tabs newest first: a later year first, then chunk 1 before chunk 2. */
 function newer(
   a: { year: number; tabKey: string },
   b: { year: number; tabKey: string },
 ): boolean {
-  const chunk = (key: string) => Number(key.split("-")[1] ?? 0);
   return (
-    a.year > b.year || (a.year === b.year && chunk(a.tabKey) < chunk(b.tabKey))
+    a.year > b.year ||
+    (a.year === b.year && chunkOf(a.tabKey) < chunkOf(b.tabKey))
   );
+}
+
+/**
+ * The stored tab a planned tab rewrites, so our tabs keep their ids (spec §7.17): the one with the
+ * same key, or, when the year splits or stops splitting, the year's first stored tab for the year's
+ * first planned tab ("2026" ↔ "2026-1").
+ */
+function previousTab(
+  tab: PlannedTab,
+  planned: PlannedTab[],
+  stored: StoredTab[],
+): StoredTab | undefined {
+  const same = stored.find((candidate) => candidate.tabKey === tab.key);
+  if (same || tab !== planned[0]) {
+    return same;
+  }
+  const keys = new Set(planned.map((each) => each.key));
+  return stored
+    .filter(
+      (candidate) => candidate.year === tab.year && !keys.has(candidate.tabKey),
+    )
+    .sort((a, b) => chunkOf(a.tabKey) - chunkOf(b.tabKey))[0];
 }
 
 /** Where a new tab goes so ours stay newest first: before the first older TapNShow tab. */
@@ -179,7 +208,12 @@ async function syncSheet(
         );
     }
   };
-  const fail = async (failure: GoogleFailure, where: string) => {
+  // Not a failure: the sheet is handed back unfinished and the next run carries on.
+  const late = () => deps.store.release(workspace, run, false);
+  const fail = async (failure: GoogleFailure | Late, where: string) => {
+    if (failure.kind === "late") {
+      return late();
+    }
     if (failure.kind === "access_lost" || failure.kind === "unauthorized") {
       return pause("access_lost");
     }
@@ -223,18 +257,33 @@ async function syncSheet(
     }
     return "stop";
   };
+  if (!canCall()) {
+    return late();
+  }
   if ((await refresh()) === "stop") {
     return;
   }
-  /** One Google call; a 401 gets one fresh token and one more try (spec §8). */
+  /**
+   * One Google call, only with `minLeftMs` of the budget left (spec §8); a 401 gets one fresh token
+   * and one more try.
+   */
   const google = async <T>(
     call: (token: string) => Promise<GoogleResult<T>>,
-  ): Promise<GoogleResult<T>> => {
+  ): Promise<GoogleResult<T> | Late> => {
+    if (!canCall()) {
+      return LATE;
+    }
     const first = await call(token ?? "");
-    if (first.kind !== "unauthorized" || (await refresh()) === "stop") {
+    if (first.kind !== "unauthorized") {
       return first;
     }
-    return call(token ?? "");
+    if (!canCall()) {
+      return LATE;
+    }
+    if ((await refresh()) === "stop") {
+      return first;
+    }
+    return canCall() ? call(token ?? "") : LATE;
   };
 
   let spreadsheetId = claim.spreadsheetId;
@@ -316,7 +365,7 @@ async function syncSheet(
         complete = false;
         break;
       }
-      const previous = stored.find((candidate) => candidate.tabKey === tab.key);
+      const previous = previousTab(tab, planned, stored);
       const existing = previous
         ? live.find((item) => item.sheetId === previous.googleSheetId)
         : undefined;
@@ -344,7 +393,7 @@ async function syncSheet(
         reuse.conditionalFormats >= SHEET_RULE_COUNT &&
         reuse.slicerIds.length === 1;
       if (
-        previous &&
+        previous?.tabKey === tab.key &&
         existing &&
         formatted &&
         previous.contentHash === hash &&
@@ -427,8 +476,16 @@ async function syncSheet(
       (tab) => tab.year === year && !keep.has(tab.tabKey),
     );
     if (leftovers.length > 0) {
-      const present = leftovers.filter((tab) =>
-        live.some((item) => item.sheetId === tab.googleSheetId),
+      // A leftover key whose tab now serves a kept key (a split or un-split year) stays in Google.
+      const keptIds = new Set(
+        stored
+          .filter((tab) => tab.year === year && keep.has(tab.tabKey))
+          .map((tab) => tab.googleSheetId),
+      );
+      const present = leftovers.filter(
+        (tab) =>
+          !keptIds.has(tab.googleSheetId) &&
+          live.some((item) => item.sheetId === tab.googleSheetId),
       );
       if (present.length > 0) {
         const dropped = await google((t) =>

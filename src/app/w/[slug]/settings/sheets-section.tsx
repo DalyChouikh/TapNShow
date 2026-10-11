@@ -15,6 +15,7 @@ import {
   useTurnOffSheet,
   useWorkspaceSheet,
 } from "@/hooks/use-sheet";
+import { errorCodeOf } from "@/lib/api-client";
 import { goTo } from "@/lib/navigation";
 import { sheetUrl } from "@/lib/sheets/url";
 import { cn } from "@/lib/utils";
@@ -51,6 +52,7 @@ export function SheetsSection({
   defaultOpen?: boolean;
 }) {
   const t = useTranslations("Settings.sheets");
+  const tErrors = useTranslations("ApiErrors");
   const formatter = useFormatter();
   const now = useNow({ updateInterval: NOW_TICK_MS });
   const params = useSearchParams();
@@ -80,6 +82,13 @@ export function SheetsSection({
       toast.error(t("copyFailed"));
     }
   };
+  const failed = (error: Error) => toast.error(tErrors(errorCodeOf(error)));
+  // Also while the sheet is being created: one that never gets made must not leave the Owner stuck.
+  const turnOffButton = (
+    <Button tone="danger" onClick={() => setPending("turnOff")}>
+      {t("turnOff")}
+    </Button>
+  );
   const openLink = (link: string) => (
     <Button asChild tone="primary">
       <a href={link} target="_blank" rel="noopener noreferrer">
@@ -129,7 +138,10 @@ export function SheetsSection({
           <p className="text-sm text-muted-ink">{t("tipGroup")}</p>
         </div>
       ) : status.state === "creating" ? (
-        <p className="font-bold">{t("creating")}</p>
+        <div className="flex flex-col gap-2">
+          <p className="font-bold">{t("creating")}</p>
+          {turnOffButton}
+        </div>
       ) : (
         <div className="flex flex-col gap-2">
           <div className="flex flex-col gap-1">
@@ -177,6 +189,7 @@ export function SheetsSection({
                   onClick={() =>
                     retry.mutate(undefined, {
                       onSuccess: () => setFollowing(true),
+                      onError: failed,
                     })
                   }
                 >
@@ -207,9 +220,7 @@ export function SheetsSection({
               <p className="text-sm text-muted-ink">{t("shareTip")}</p>
             </>
           ) : null}
-          <Button tone="danger" onClick={() => setPending("turnOff")}>
-            {t("turnOff")}
-          </Button>
+          {turnOffButton}
         </div>
       )}
       <ConfirmDialog
@@ -249,6 +260,10 @@ export function SheetsSection({
             onSuccess: () => {
               setPending(null);
               toast(t("turnedOff"));
+            },
+            onError: (error) => {
+              setPending(null);
+              failed(error);
             },
           })
         }

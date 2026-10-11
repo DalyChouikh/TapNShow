@@ -85,6 +85,53 @@ describe("SheetsSection", () => {
     ).toBeInTheDocument();
   });
 
+  it("creating: the Owner can still turn it off (final review)", async () => {
+    routeFetch({
+      [`GET ${PATH}`]: json(
+        status({ state: "creating", spreadsheetId: null, tabs: [] }),
+      ),
+    });
+    renderWithProviders(<SheetsSection workspace={workspaceFixture} />);
+    await screen.findByText("Creating your Google Sheet…");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Turn off the Google Sheet" }),
+    );
+    expect(
+      dialog().getByText("Turn off the Google Sheet?"),
+    ).toBeInTheDocument();
+  });
+
+  it("Try again and Turn off say why they failed (final review)", async () => {
+    const failure = (status: number, code: string) => () =>
+      new Response(JSON.stringify({ error: { code } }), { status });
+    routeFetch({
+      [`GET ${PATH}`]: json(
+        status({ state: "paused", pausedReason: "trashed" }),
+      ),
+      [`POST ${PATH}/retry`]: failure(429, "rate_limited"),
+      [`DELETE ${PATH}`]: failure(500, "internal"),
+    });
+    renderWithProviders(<SheetsSection workspace={workspaceFixture} />, {
+      toaster: true,
+    });
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Try again" }),
+    );
+    expect(
+      await screen.findByText("Too many attempts. Wait a bit and try again."),
+    ).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Turn off the Google Sheet" }),
+    );
+    await userEvent.click(
+      dialog().getByRole("button", { name: "Turn off the Google Sheet" }),
+    );
+    expect(
+      await screen.findByText("Something went wrong on our side. Try again."),
+    ).toBeInTheDocument();
+    await vi.waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
   it("Owner, on: names the file and account, opens, copies, and turns off after confirming", async () => {
     const fetchMock = routeFetch({
       [`GET ${PATH}`]: json(status()),
