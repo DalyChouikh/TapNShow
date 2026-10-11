@@ -52,6 +52,9 @@ function redirectClearingCookie(
   return response;
 }
 
+/** `after()` work may run this long (the sheet worker started here keeps to its own budget). */
+export const maxDuration = 60;
+
 /**
  * Finishes a Google connection (spec §9): verify state, exchange, check scopes, seal, save, re-check
  * the sheets on that account, then set the sender (`sending`) or start the sheet (`sheets`). A

@@ -23,7 +23,7 @@ import {
   GOOGLE_RESULT_PARAMS,
   googleConnectHref,
 } from "@/shared/api/google-connect";
-import type { SheetStatus } from "@/shared/api/sheets";
+import { SHEET_RETRYABLE_REASONS, type SheetStatus } from "@/shared/api/sheets";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
 import { GoogleConnectResult } from "./google-connect-result";
 import { SettingsSection } from "./settings-section";
@@ -110,7 +110,7 @@ export function SheetsSection({
         </Sticker>
       }
     >
-      <GoogleConnectResult purpose="sheets" />
+      <GoogleConnectResult purpose="sheets" account={status.accountEmail} />
       {!isOwner ? (
         <div className="flex flex-col gap-2">
           {status.state === "off" ? (
@@ -182,7 +182,7 @@ export function SheetsSection({
               <p className="text-sm">
                 {t(`pausedLine.${status.pausedReason}`)}
               </p>
-              {status.pausedReason === "trashed" ? (
+              {SHEET_RETRYABLE_REASONS.has(status.pausedReason) ? (
                 <Button
                   tone="primary"
                   disabled={retry.isPending}

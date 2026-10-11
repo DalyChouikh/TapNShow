@@ -103,6 +103,52 @@ describe("connect cookie", () => {
   });
 });
 
+describe("the Google URLs e2e points at the fake (#291)", () => {
+  it("builds the consent URL on the configured authorize endpoint", () => {
+    const { url } = createGoogleConnectAuthorization(
+      {
+        clientId: "c",
+        redirectUri: "r",
+        workspaceSlug: "w",
+        next: null,
+        purpose: "sheets",
+        replace: false,
+      },
+      "http://127.0.0.1:44399/o/oauth2/v2/auth",
+    );
+    expect(url.startsWith("http://127.0.0.1:44399/o/oauth2/v2/auth?")).toBe(
+      true,
+    );
+  });
+
+  it("exchanges the code at the configured token endpoint", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      jsonResponse({
+        scope: "openid",
+        id_token: idToken({
+          sub: "1",
+          email: "a@b.test",
+          email_verified: true,
+        }),
+      }),
+    );
+    await exchangeGoogleCode(
+      {
+        code: "c",
+        verifier: "v",
+        clientId: "id",
+        clientSecret: "secret",
+        redirectUri: "https://x/cb",
+      },
+      fetchMock,
+      "http://127.0.0.1:44399/token",
+    );
+    expect(String(fetchMock.mock.calls[0][0])).toBe(
+      "http://127.0.0.1:44399/token",
+    );
+  });
+});
+
 describe("exchangeGoogleCode", () => {
   it("returns the refresh token, granted scopes and verified claims", async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(

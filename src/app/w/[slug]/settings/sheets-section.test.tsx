@@ -220,6 +220,23 @@ describe("SheetsSection", () => {
     );
   });
 
+  it("paused with a full Drive: says so, with Try again (#291)", async () => {
+    routeFetch({
+      [`GET ${PATH}`]: json(
+        status({ state: "paused", pausedReason: "drive_full" }),
+      ),
+    });
+    renderWithProviders(<SheetsSection workspace={workspaceFixture} />);
+    expect(
+      await screen.findByText(
+        "The Google Drive holding the sheet is full. Free some space in it, then tap Try again. Or create a new one.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Try again" }),
+    ).toBeInTheDocument();
+  });
+
   it("paused without access: Reconnect Google goes straight to Google", async () => {
     routeFetch({
       [`GET ${PATH}`]: json(

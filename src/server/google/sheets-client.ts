@@ -9,6 +9,10 @@ export type GoogleFailure =
   | { kind: "unauthorized" }
   | { kind: "access_lost" }
   | { kind: "not_found" }
+  /** The file passed Google's cell limit (the Owner's own tabs count too). */
+  | { kind: "full" }
+  /** The Drive holding the file is out of storage. */
+  | { kind: "drive_full" }
   | { kind: "bug"; status: number; reason: string };
 
 /** A Google call's value, or why it failed. */
@@ -25,29 +29,35 @@ export type SheetTabMeta = {
 
 const errorSchema = z.object({
   error: z.object({
+    message: z.string().default(""),
     status: z.string().default(""),
     errors: z.array(z.object({ reason: z.string().optional() })).default([]),
     details: z.array(z.object({ reason: z.string().optional() })).default([]),
   }),
 });
 const RATE_LIMIT = new Set(["rateLimitExceeded", "userRateLimitExceeded"]);
+/** Google's wording when a write would pass a spreadsheet's cell limit (the number may change). */
+const CELL_LIMIT = /above the limit of [\d,]+ cells/i;
 const DISABLED = new Set(["accessNotConfigured", "SERVICE_DISABLED"]);
 
 /**
  * Maps a non-2xx Sheets or Drive response (Google's "Resolve errors" guides; S6). Drive reports
- * rate limits as 403, and a disabled API is our setup, not the Owner's, so neither pauses a sheet.
+ * rate limits as 403, and a disabled API is our setup, not the Owner's, so neither pauses a sheet; a
+ * full Drive or a file past the cell limit pauses it with its own plain line (#291).
  */
 export function classifyGoogleResponse(
   status: number,
   body: string,
 ): GoogleFailure {
   let reasons: string[] = [];
+  let message = "";
   try {
     const parsed = errorSchema.safeParse(JSON.parse(body));
     if (parsed.success) {
       reasons = [...parsed.data.error.errors, ...parsed.data.error.details]
         .map((entry) => entry.reason ?? "")
         .filter(Boolean);
+      message = parsed.data.error.message;
     }
   } catch {
     reasons = [];
@@ -59,6 +69,9 @@ export function classifyGoogleResponse(
     if (reasons.some((reason) => RATE_LIMIT.has(reason))) {
       return { kind: "retry", status };
     }
+    if (reasons.includes("storageQuotaExceeded")) {
+      return { kind: "drive_full" };
+    }
     const disabled = reasons.find((reason) => DISABLED.has(reason));
     return disabled
       ? { kind: "bug", status, reason: disabled }
@@ -68,6 +81,9 @@ export function classifyGoogleResponse(
     return { kind: "not_found" };
   }
   if (status === 400) {
+    if (CELL_LIMIT.test(message)) {
+      return { kind: "full" };
+    }
     return { kind: "bug", status, reason: reasons[0] ?? "bad_request" };
   }
   return { kind: "retry", status };

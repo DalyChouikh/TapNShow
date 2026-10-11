@@ -373,6 +373,41 @@ describe("runSheetSync", () => {
     expect(store.release).toHaveBeenCalledWith("w1", "run-1", true);
   });
 
+  it("adopts Google's default tab when an earlier run made the file but wrote no tab (#291)", async () => {
+    const store = fakeStore([claimOf()], { 2026: people(["Amira"]) });
+    const fake = fakeGoogle([
+      {
+        sheetId: 0,
+        title: "Sheet1",
+        index: 0,
+        conditionalFormats: 0,
+        slicerIds: [],
+      },
+    ]);
+    await runSheetSync(depsOf(store, fake), OPTIONS);
+    expect(fake.batches.flat().some((request) => "addSheet" in request)).toBe(
+      false,
+    );
+    expect(fake.tabs().map((tab) => [tab.sheetId, tab.title])).toEqual([
+      [0, "2026"],
+    ]);
+  });
+
+  it("never adopts a lone tab the Owner made", async () => {
+    const store = fakeStore([claimOf()], { 2026: people(["Amira"]) });
+    const fake = fakeGoogle([
+      {
+        sheetId: 77,
+        title: "Budget",
+        index: 0,
+        conditionalFormats: 0,
+        slicerIds: [],
+      },
+    ]);
+    await runSheetSync(depsOf(store, fake), OPTIONS);
+    expect(fake.tabs().find((tab) => tab.sheetId === 77)?.title).toBe("Budget");
+  });
+
   it("skips a tab whose content and title didn't change", async () => {
     const rows = people(["Amira"]);
     const { saved, fake } = await firstRun(rows);
@@ -446,6 +481,56 @@ describe("runSheetSync", () => {
       addSheet: { properties: { title: "2026 (TapNShow)" } },
     });
     expect(fake.tabs().find((tab) => tab.sheetId === 9)?.title).toBe("2026");
+  });
+
+  it("gives our own tab its title back when the Owner renamed it to the title a new tab needs (#291)", async () => {
+    const store = fakeStore(
+      [
+        claimOf({
+          tabs: [
+            {
+              tabKey: "2025",
+              year: 2025,
+              googleSheetId: 12,
+              title: "2025",
+              contentHash: "old",
+              rowCount: 1,
+              formatVersion: 1,
+            },
+          ],
+        }),
+      ],
+      { 2026: people(["Amira"]) },
+    );
+    const fake = fakeGoogle([
+      {
+        sheetId: 12,
+        title: "2026",
+        index: 0,
+        conditionalFormats: 10,
+        slicerIds: [5],
+      },
+    ]);
+    await runSheetSync(depsOf(store, fake), OPTIONS);
+    const [batch] = fake.batches;
+    const restore = batch.findIndex(
+      (request) =>
+        "updateSheetProperties" in request &&
+        JSON.stringify(request).includes('"sheetId":12'),
+    );
+    const add = batch.findIndex((request) => "addSheet" in request);
+    expect(restore).toBeGreaterThanOrEqual(0);
+    expect(restore).toBeLessThan(add);
+    expect(
+      fake
+        .tabs()
+        .map((tab) => [tab.sheetId === 12 ? "ours-2025" : "new", tab.title]),
+    ).toEqual(
+      expect.arrayContaining([
+        ["ours-2025", "2025"],
+        ["new", "2026"],
+      ]),
+    );
   });
 
   it("a split year that shrinks keeps its first tab and drops the rest (spec §7.17)", async () => {
@@ -627,9 +712,23 @@ describe("runSheetSync", () => {
       },
     ],
     ["a full sheet", "full", () => undefined, {}, {}],
+    [
+      "a write past Google's cell limit (the Owner's own tabs count too)",
+      "full",
+      (fake) => fake.force("batchUpdate", { kind: "full" }),
+      {},
+      {},
+    ],
+    [
+      "a full Drive",
+      "drive_full",
+      (fake) => fake.force("createFile", { kind: "drive_full" }),
+      {},
+      { spreadsheetId: null },
+    ],
   ])(
     "pauses on %s, alerting once",
-    async (_, reason, arrange, over, claimOver) => {
+    async (name, reason, arrange, over, claimOver) => {
       const store = fakeStore([claimOf(claimOver)], {
         2026: people(["Amira"]),
       });
@@ -638,7 +737,7 @@ describe("runSheetSync", () => {
       const deps = depsOf(store, fake, over);
       await runSheetSync(
         deps,
-        reason === "full" ? { ...OPTIONS, cellsMax: 10 } : OPTIONS,
+        name === "a full sheet" ? { ...OPTIONS, cellsMax: 10 } : OPTIONS,
       );
       expect(store.pause).toHaveBeenCalledWith("w1", "run-1", reason);
       expect(deps.alertPaused).toHaveBeenCalledWith(
@@ -762,6 +861,39 @@ describe("runSheetSync", () => {
     expect(fake.google.readTabs).not.toHaveBeenCalled();
     expect(store.release).toHaveBeenCalledWith("w1", "run-1", false);
     expect(store.retry).not.toHaveBeenCalled();
+  });
+
+  it("stops at once when its lease was lost: no more Google calls, no finish, no release (spec §12)", async () => {
+    // Saving the new file id finds another run holds the sheet now.
+    const lostOnFile = fakeStore([claimOf({ spreadsheetId: null })], {
+      2026: people(["Amira"]),
+    });
+    lostOnFile.saveFile.mockResolvedValueOnce(false);
+    const first = fakeGoogle();
+    await runSheetSync(depsOf(lostOnFile, first), OPTIONS);
+    expect(first.google.readTabs).not.toHaveBeenCalled();
+    expect(lostOnFile.release).not.toHaveBeenCalled();
+    // Saving a written tab finds the same.
+    const lostOnTab = fakeStore(
+      [
+        claimOf({
+          years: [
+            { year: 2026, version: 1 },
+            { year: 2025, version: 1 },
+          ],
+        }),
+      ],
+      {
+        2026: people(["Amira"]),
+        2025: [sheetRow({ id: "m0", startsAt: "2025-10-15T17:00:00.000Z" })],
+      },
+    );
+    lostOnTab.saveTab.mockResolvedValueOnce(false);
+    const second = fakeGoogle();
+    await runSheetSync(depsOf(lostOnTab, second), OPTIONS);
+    expect(second.google.batchUpdate).toHaveBeenCalledTimes(1);
+    expect(lostOnTab.finishYear).not.toHaveBeenCalled();
+    expect(lostOnTab.release).not.toHaveBeenCalled();
   });
 
   it("never writes a formula", async () => {

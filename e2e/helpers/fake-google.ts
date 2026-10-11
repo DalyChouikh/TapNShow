@@ -6,6 +6,13 @@ export const FAKE_GOOGLE_PORT = 44399;
 /** Base URL the e2e app build uses for every Google API. */
 export const FAKE_GOOGLE_URL = `http://127.0.0.1:${FAKE_GOOGLE_PORT}`;
 
+/** The Google account every fake consent signs in with (its ID token claims). */
+export const FAKE_GOOGLE_ACCOUNT = {
+  sub: "e2e-google-account",
+  email: "e2e-google@example.test",
+  email_verified: true,
+};
+
 /** One message the app "sent": `threadId` as requested, `assignedThread` as answered. */
 export type FakeGmailMessage = {
   raw: string;
@@ -163,8 +170,9 @@ function apply(
 
 /**
  * Starts the fake Google:
- * - `POST /token` (refresh grant), `POST /revoke`, and `POST /gmail/v1/users/me/messages/send`
- *   (stores the message, threads like Gmail);
+ * - the consent screen (`GET /o/oauth2/v2/auth`, agreed at once), `POST /token` (code exchange
+ *   for `FAKE_GOOGLE_ACCOUNT`, granting the requested scopes, and refresh), `POST /revoke`, and
+ *   `POST /gmail/v1/users/me/messages/send` (stores the message, threads like Gmail);
  * - Drive `files` create / find by `tapnshow_create_key` / `?fields=trashed`, and Sheets
  *   `spreadsheets.get` (tabs, rule counts, slicers) / `batchUpdate` (applied to the stored file);
  * - for assertions: `GET /__messages`, `GET /__sheets`, and `POST /__sheets/trash/<id>` (flips the
@@ -194,8 +202,34 @@ export function startFakeGoogle(): Promise<Server> {
         )?.[1];
       const file = files.find((each) => each.id === fileId);
 
+      if (route === "GET /o/oauth2/v2/auth") {
+        // The consent screen, already agreed: back to the app with a code that carries the scopes.
+        const back = new URL(url.searchParams.get("redirect_uri") ?? "");
+        back.searchParams.set(
+          "code",
+          Buffer.from(url.searchParams.get("scope") ?? "").toString(
+            "base64url",
+          ),
+        );
+        back.searchParams.set("state", url.searchParams.get("state") ?? "");
+        response.writeHead(302, { location: back.toString() });
+        response.end();
+        return;
+      }
       if (route === "POST /token") {
-        return reply(200, { access_token: "fake", expires_in: 3600 });
+        const form = new URLSearchParams(body);
+        if (form.get("grant_type") !== "authorization_code") {
+          return reply(200, { access_token: "fake", expires_in: 3600 });
+        }
+        return reply(200, {
+          access_token: "fake",
+          expires_in: 3600,
+          refresh_token: "1//e2e-consented",
+          scope: Buffer.from(form.get("code") ?? "", "base64url").toString(
+            "utf8",
+          ),
+          id_token: `x.${Buffer.from(JSON.stringify(FAKE_GOOGLE_ACCOUNT)).toString("base64url")}.y`,
+        });
       }
       if (route === "POST /revoke") {
         return reply(200, {});

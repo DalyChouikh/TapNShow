@@ -6,9 +6,19 @@ export const sheetPauseReasonSchema = z.enum([
   "deleted",
   "access_lost",
   "full",
+  "drive_full",
 ]);
 /** Why a Google Sheet paused. */
 export type SheetPauseReason = z.infer<typeof sheetPauseReasonSchema>;
+
+/**
+ * Pauses that Try again resumes once the Owner fixed the cause (restored the file, freed space).
+ * Twin: the paused_reason check in `private.retry_sheet`.
+ */
+export const SHEET_RETRYABLE_REASONS: ReadonlySet<SheetPauseReason> = new Set([
+  "trashed",
+  "drive_full",
+]);
 
 /** One TapNShow tab, for links that open a meeting's year (`sheet_tabs`). */
 export const sheetTabSchema = z.object({

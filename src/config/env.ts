@@ -1,6 +1,6 @@
 import "server-only";
 import { z } from "zod";
-import { GOOGLE_TOKEN_ENDPOINT } from "./auth";
+import { GOOGLE_AUTHORIZATION_ENDPOINT, GOOGLE_TOKEN_ENDPOINT } from "./auth";
 import { GOOGLE_REVOKE_ENDPOINT } from "./gmail";
 import { blankToUndefined, formatEnvError, type EnvSource } from "./env-utils";
 
@@ -30,6 +30,8 @@ const serverEnvSchema = z
     INVITE_TOKEN_SECRET: z.string().min(32).optional(),
     DISPATCH_SECRET: z.string().min(32).optional(),
     GMAIL_API_BASE_URL: z.url().default("https://gmail.googleapis.com"),
+    /** Google's consent screen for connects (spec §9); e2e points it at the fake. */
+    GOOGLE_OAUTH_AUTHORIZE_URL: z.url().default(GOOGLE_AUTHORIZATION_ENDPOINT),
     GOOGLE_OAUTH_TOKEN_URL: z.url().default(GOOGLE_TOKEN_ENDPOINT),
     /** Where disconnects revoke a Google grant (spec §9); e2e points it at the fake. */
     GOOGLE_OAUTH_REVOKE_URL: z.url().default(GOOGLE_REVOKE_ENDPOINT),

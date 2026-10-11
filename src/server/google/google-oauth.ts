@@ -1,9 +1,5 @@
 import "server-only";
 import { z } from "zod";
-import {
-  GOOGLE_AUTHORIZATION_ENDPOINT,
-  GOOGLE_TOKEN_ENDPOINT,
-} from "@/config/auth";
 import { getServerEnv } from "@/config/env";
 import { GMAIL_CONNECT_SCOPES } from "@/config/gmail";
 import { SHEETS_CONNECT_SCOPES } from "@/config/sheets";
@@ -32,14 +28,17 @@ export type GoogleConnectState = z.infer<typeof connectStateSchema>;
  * the account chooser so a refresh token is always issued, incremental scopes (earlier grants are
  * kept), and PKCE S256. `replace` asks the callback for a new sheet instead of reattaching.
  */
-export function createGoogleConnectAuthorization(input: {
-  clientId: string;
-  redirectUri: string;
-  workspaceSlug: string;
-  next: string | null;
-  purpose: GoogleConnectPurpose;
-  replace: boolean;
-}): { url: string; state: GoogleConnectState } {
+export function createGoogleConnectAuthorization(
+  input: {
+    clientId: string;
+    redirectUri: string;
+    workspaceSlug: string;
+    next: string | null;
+    purpose: GoogleConnectPurpose;
+    replace: boolean;
+  },
+  authorizeUrl: string = getServerEnv().GOOGLE_OAUTH_AUTHORIZE_URL,
+): { url: string; state: GoogleConnectState } {
   const state: GoogleConnectState = {
     state: generateToken(),
     verifier: generateToken(),
@@ -64,7 +63,7 @@ export function createGoogleConnectAuthorization(input: {
     include_granted_scopes: "true",
   });
   return {
-    url: `${GOOGLE_AUTHORIZATION_ENDPOINT}?${params.toString()}`,
+    url: `${authorizeUrl}?${params.toString()}`,
     state,
   };
 }
@@ -148,8 +147,9 @@ export async function exchangeGoogleCode(
     redirectUri: string;
   },
   fetchImpl: typeof fetch = fetch,
+  tokenUrl: string = getServerEnv().GOOGLE_OAUTH_TOKEN_URL,
 ): Promise<GoogleConnectGrant> {
-  const response = await fetchImpl(GOOGLE_TOKEN_ENDPOINT, {
+  const response = await fetchImpl(tokenUrl, {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({

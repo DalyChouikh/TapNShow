@@ -7,6 +7,7 @@ import {
   deleteSheetRequest,
   formatRequests,
   redrawRequests,
+  renameSheetRequest,
   SHEET_COLUMNS,
   SHEET_RULE_COUNT,
 } from "@/lib/sheets/requests";
@@ -220,6 +221,9 @@ async function syncSheet(
     if (failure.kind === "not_found") {
       return pause("deleted");
     }
+    if (failure.kind === "full" || failure.kind === "drive_full") {
+      return pause(failure.kind);
+    }
     if (failure.kind === "bug") {
       deps.reportBug({ where, status: failure.status, reason: failure.reason });
     }
@@ -287,7 +291,6 @@ async function syncSheet(
   };
 
   let spreadsheetId = claim.spreadsheetId;
-  let created = false;
   if (!spreadsheetId) {
     const found = await google((t) => deps.google.findFile(t, claim.createKey));
     if (found.kind !== "ok") {
@@ -307,7 +310,6 @@ async function syncSheet(
       }
       spreadsheetId = made.value;
     }
-    created = true;
     if (!(await deps.store.saveFile(workspace, run, spreadsheetId))) {
       return;
     }
@@ -330,9 +332,13 @@ async function syncSheet(
   let live = meta.value;
   const stored = [...claim.tabs];
   const ourIds = () => new Set(stored.map((tab) => tab.googleSheetId));
-  // A file made in this run has Google's default tab, which becomes the newest year's tab.
+  // A file we made but never wrote a tab to still has only Google's default tab (id 0, whatever its
+  // title in the account's language): it becomes the newest year's tab, also when the run that made
+  // the file failed before writing (#291). A lone tab the Owner made has another id.
   let adoptable: SheetTabMeta | undefined =
-    created && stored.length === 0 && live.length === 1 ? live[0] : undefined;
+    stored.length === 0 && live.length === 1 && live[0].sheetId === 0
+      ? live[0]
+      : undefined;
   const currentYear = sheetYear(
     new Date(deps.now()).toISOString(),
     claim.timezone,
@@ -379,6 +385,23 @@ async function syncSheet(
           .map((item) => item.title),
       );
       const title = resolveTitle(tab.title, taken, words);
+      // One of our other tabs the Owner renamed to this title gets its own title back first, or
+      // Google refuses the duplicate title on every run (#291).
+      const clashing = live.find(
+        (item) =>
+          item.title === title &&
+          item.sheetId !== reuse?.sheetId &&
+          ourIds().has(item.sheetId),
+      );
+      const clashTitle = clashing
+        ? stored.find(
+            (candidate) => candidate.googleSheetId === clashing.sheetId,
+          )?.title
+        : undefined;
+      const restored =
+        clashing && clashTitle && clashTitle !== title
+          ? { sheetId: clashing.sheetId, title: clashTitle }
+          : null;
       const content = tabContent(tab, {
         workspaceName: claim.workspaceName,
         updatedAt: new Date(deps.now()),
@@ -408,6 +431,9 @@ async function syncSheet(
         (formatted ? reuse?.slicerIds[0] : undefined) ?? deps.newObjectId();
       const index = insertIndex({ year, tabKey: tab.key }, stored, live);
       const requests = [
+        ...(restored
+          ? [renameSheetRequest(restored.sheetId, restored.title)]
+          : []),
         ...(reuse ? [] : [addSheetRequest(sheetId, title, index)]),
         ...(formatted
           ? []
@@ -441,6 +467,13 @@ async function syncSheet(
       };
       if (!(await deps.store.saveTab(workspace, run, saved))) {
         return;
+      }
+      if (restored) {
+        live = live.map((item) =>
+          item.sheetId === restored.sheetId
+            ? { ...item, title: restored.title }
+            : item,
+        );
       }
       if (!reuse) {
         live = [

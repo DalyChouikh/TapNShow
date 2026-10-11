@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { maxDuration as callbackRouteMax } from "@/app/api/integrations/google/callback/route";
 import { maxDuration as retryRouteMax } from "@/app/api/workspaces/[slug]/sheet/retry/route";
 import { DISPATCH_MAX_DURATION_S, DISPATCH_SAFETY_MARGIN_MS } from "./meetings";
 import {
@@ -22,7 +23,8 @@ describe("sheet worker timing (spec §8)", () => {
     expect(SHEET_LEASE_SECONDS).toBe(2 * DISPATCH_MAX_DURATION_S);
   });
 
-  it("the Try again route, which runs the sheet worker, uses the dispatcher routes' maxDuration", () => {
+  it("the routes that run the sheet worker (Try again, the connect callback) use the dispatcher routes' maxDuration", () => {
     expect(retryRouteMax).toBe(DISPATCH_MAX_DURATION_S);
+    expect(callbackRouteMax).toBe(DISPATCH_MAX_DURATION_S);
   });
 });
