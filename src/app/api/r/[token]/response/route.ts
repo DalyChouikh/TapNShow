@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { scheduleDispatch } from "@/server/dispatch/schedule-dispatch";
+import { scheduleWorkers } from "@/server/workers/schedule-workers";
 import { apiError, fromDatabaseError } from "@/server/http/errors";
 import { parseJsonBody, rejectCrossOrigin } from "@/server/http/request";
 import { loadTokenContext } from "@/server/http/token-context";
@@ -42,6 +42,6 @@ export async function PUT(
   if (!data) {
     return apiError("not_found");
   }
-  scheduleDispatch();
+  scheduleWorkers(["emails"]);
   return NextResponse.json(data);
 }

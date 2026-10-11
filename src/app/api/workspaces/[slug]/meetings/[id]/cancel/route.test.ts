@@ -18,8 +18,8 @@ const queries = vi.hoisted(() => ({
 vi.mock("@/server/queries/meetings", () => ({
   cancelMeeting: queries.cancelMeeting,
 }));
-vi.mock("@/server/dispatch/schedule-dispatch", () => ({
-  scheduleDispatch: queries.schedule,
+vi.mock("@/server/workers/schedule-workers", () => ({
+  scheduleWorkers: queries.schedule,
 }));
 
 const ctx = {
@@ -40,7 +40,7 @@ describe("POST …/meetings/[id]/cancel", () => {
     const { POST } = await import("./route");
     const response = await POST(jsonRequest("POST", {}), ctx);
     expect(await response.json()).toEqual({ emails: 3 });
-    expect(queries.schedule).toHaveBeenCalledTimes(1);
+    expect(queries.schedule).toHaveBeenCalledExactlyOnceWith(["emails"]);
   });
 
   it("refuses a started meeting, Viewers and other sites", async () => {

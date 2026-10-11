@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { loadTokenContext, submitAnswer, scheduleDispatch } = vi.hoisted(() => ({
+const { loadTokenContext, submitAnswer, scheduleWorkers } = vi.hoisted(() => ({
   loadTokenContext: vi.fn(),
   submitAnswer: vi.fn(),
-  scheduleDispatch: vi.fn(),
+  scheduleWorkers: vi.fn(),
 }));
 vi.mock("@/server/http/token-context", () => ({ loadTokenContext }));
 vi.mock("@/server/queries/tokens", () => ({ submitAnswer }));
-vi.mock("@/server/dispatch/schedule-dispatch", () => ({ scheduleDispatch }));
+vi.mock("@/server/workers/schedule-workers", () => ({ scheduleWorkers }));
 
 const TOKEN = "a".repeat(43);
 const ctx = { params: Promise.resolve({ token: TOKEN }) };
@@ -50,7 +50,7 @@ describe("PUT /api/r/[token]/response", () => {
       reason: "Bus",
       comment: "",
     });
-    expect(scheduleDispatch).toHaveBeenCalledOnce();
+    expect(scheduleWorkers).toHaveBeenCalledExactlyOnceWith(["emails"]);
   });
 
   it("refuses another site (403) before touching the token", async () => {
@@ -99,6 +99,6 @@ describe("PUT /api/r/[token]/response", () => {
       ).status,
     ).toBe(404);
     expect((await PUT(put({ status: "maybe" }), ctx)).status).toBe(400);
-    expect(scheduleDispatch).not.toHaveBeenCalled();
+    expect(scheduleWorkers).not.toHaveBeenCalled();
   });
 });

@@ -1,26 +1,20 @@
 import { NextResponse } from "next/server";
-import { getServerEnv } from "@/config/env";
-import { tokensEqual } from "@/server/crypto/tokens";
-import { scheduleDispatch } from "@/server/dispatch/schedule-dispatch";
-import { apiError } from "@/server/http/errors";
+import { requireInternalSecret } from "@/server/http/internal-secret";
+import { scheduleWorkers } from "@/server/workers/schedule-workers";
 
-/** `after()` work may run this long (the dispatcher's budget is 50 s). */
+/** `after()` work may run this long (each worker keeps to its own budget inside it). */
 export const maxDuration = 60;
 
 /**
- * Called every minute by Supabase Cron when jobs are due, and by nothing else (spec §8). Answers at
- * once so pg_net's 10 s timeout is never hit; the run continues after the response.
+ * Called every minute by Supabase Cron when emails or a Google Sheet are due, and by nothing else
+ * (spec §8). Answers at once so pg_net's 10 s timeout is never hit; both workers run after the
+ * response, side by side.
  */
 export async function POST(request: Request): Promise<NextResponse> {
-  const secret = getServerEnv().DISPATCH_SECRET;
-  if (!secret) {
-    return apiError("not_found");
+  const refused = requireInternalSecret(request);
+  if (refused) {
+    return refused;
   }
-  const provided =
-    request.headers.get("authorization")?.replace(/^Bearer /, "") ?? "";
-  if (!tokensEqual(provided, secret)) {
-    return apiError("unauthenticated");
-  }
-  scheduleDispatch();
+  scheduleWorkers();
   return NextResponse.json({ ok: true }, { status: 202 });
 }

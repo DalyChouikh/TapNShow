@@ -26,6 +26,8 @@ const TINTS: ReadonlyArray<FillTone> = [
   "danger",
   "neutral",
 ];
+/** How many colour rules `formatRequests` adds (two band rules, two per tint); a tab with fewer lost some. */
+export const SHEET_RULE_COUNT = 2 + TINTS.length * 2;
 /** Pixels per character, matching how Excel sizes the same widths. */
 const PX_PER_CHAR = 7;
 
