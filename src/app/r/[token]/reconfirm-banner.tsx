@@ -36,7 +36,10 @@ export function ReconfirmBanner({
   return (
     <Card className="flex flex-col gap-3 bg-fill-warning/25">
       <p className="font-bold">
-        {t("reconfirmChanged", { when: `${when.date}, ${when.start}` })}
+        {meeting.previousStartsAt
+          ? t("reconfirmChanged", { when: `${when.date}, ${when.start}` })
+          : // The time moved and moved back: nothing "changed" to show (#255).
+            t("reconfirmAgain")}
       </p>
       <p>{t("reconfirmYouSaid", { answer: said })}</p>
       <Button

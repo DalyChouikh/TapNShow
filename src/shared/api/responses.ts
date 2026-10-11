@@ -58,6 +58,11 @@ export const submitAnswerBodySchema = z.object({
   delayMinutes: lateMinutesSchema.nullable(),
   reason: answerText(REASON_MAX),
   comment: answerText(COMMENT_MAX),
+  /**
+   * The start the answer page showed. An answer from a page opened before a time change still
+   * needs reconfirming (#255).
+   */
+  seenStartsAt: z.iso.datetime({ offset: true }).optional(),
 });
 /** An answer save. */
 export type SubmitAnswerBody = z.infer<typeof submitAnswerBodySchema>;

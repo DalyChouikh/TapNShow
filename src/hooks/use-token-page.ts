@@ -40,14 +40,22 @@ export function useTokenAction(
   });
 }
 
-/** Saves the member's answer and shows it at once (spec §7.3). */
+/**
+ * Saves the member's answer and shows it at once (spec §7.3). It sends the start the page showed,
+ * so an answer from a page opened before a time change still asks to reconfirm (#255).
+ */
 export function useSubmitAnswer(token: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: SubmitAnswerBody) =>
       apiRequest(`/api/r/${token}/response`, {
         method: "PUT",
-        body,
+        body: {
+          ...body,
+          seenStartsAt:
+            queryClient.getQueryData<TokenInfo>(key(token))?.meeting.startsAt ??
+            undefined,
+        },
         schema: answerSchema,
         onUnauthenticated: noLogin,
       }),

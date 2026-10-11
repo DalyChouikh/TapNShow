@@ -234,7 +234,7 @@ describe("dispatcher claim and leases", () => {
     const [started, notStarted] = first?.jobs ?? [];
     expect(
       await serviceRpc("dispatch_reserve", { p_job: started.job_id }),
-    ).toEqual({ kind: "ok" });
+    ).toEqual({ kind: "ok", reconfirm: false });
     runLocalSql(
       "update public.outbox_jobs set locked_until = now() - interval '1 second' where status = 'processing'",
     );

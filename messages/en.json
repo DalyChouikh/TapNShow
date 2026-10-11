@@ -144,6 +144,8 @@
       "preview": "A reminder from {workspace}.",
       "answerBy": "Please answer by {deadline}.",
       "answer": "Please let {workspace} know if you're coming.",
+      "reconfirmBy": "The time changed. Please confirm by {deadline} that you can still come.",
+      "reconfirm": "The time changed. Please confirm that you can still come.",
       "seeYou": "See you on {date} at {time}.",
       "change": "Change my answer",
       "subjectPending": "Reminder: {title} · {date}, {time}",
@@ -1128,6 +1130,7 @@
     "addToGoogle": "Add to Google Calendar",
     "downloadIcs": "Download calendar file",
     "reconfirmChanged": "The time changed to {when}.",
+    "reconfirmAgain": "Please confirm your answer again.",
     "reconfirmYouSaid": "You said: {answer}.",
     "reconfirmYes": "Yes, still {answer}",
     "reconfirmChange": "Change my answer"

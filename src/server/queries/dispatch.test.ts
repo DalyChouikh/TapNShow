@@ -129,15 +129,24 @@ describe("parseReserve", () => {
     expect(parseReserve({ kind: "ok", calendar })).toEqual({
       kind: "ok",
       calendar,
+      reconfirm: false,
     });
     expect(parseReserve({ kind: "ok", calendar, unsubscribed: true })).toEqual({
       kind: "ok",
       calendar,
+      reconfirm: false,
       unsubscribed: true,
     });
     expect(parseReserve({ kind: "ok" })).toEqual({
       kind: "ok",
       calendar: null,
+      reconfirm: false,
+    });
+  });
+
+  it("says when a reminder goes to someone who must reconfirm (#255)", () => {
+    expect(parseReserve({ kind: "ok", reconfirm: true })).toMatchObject({
+      reconfirm: true,
     });
   });
 });

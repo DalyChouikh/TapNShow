@@ -14,6 +14,8 @@ import { getEmailTranslator } from "./translator";
 /** One person's reminder (spec §7.6): `pending` hasn't answered; `going` said Going or Late. */
 export type MeetingReminderEmailProps = MeetingInviteEmailProps & {
   audience: "pending" | "going";
+  /** The time changed since this person answered: ask them to confirm, not to answer (#255). */
+  reconfirm?: boolean;
 };
 
 /** A reminder: answer buttons for people who haven't answered, "See you" for people coming. */
@@ -23,6 +25,7 @@ export function MeetingReminderEmail({
   meeting,
   links,
   audience,
+  reconfirm = false,
   now,
 }: MeetingReminderEmailProps) {
   const tr = getEmailTranslator();
@@ -45,9 +48,13 @@ export function MeetingReminderEmail({
       <Text style={body}>
         {audience === "going"
           ? tr("meetingReminder.seeYou", { date: when.date, time: when.start })
-          : deadline
-            ? tr("meetingReminder.answerBy", { deadline })
-            : tr("meetingReminder.answer", { workspace: workspaceName })}
+          : reconfirm
+            ? deadline
+              ? tr("meetingReminder.reconfirmBy", { deadline })
+              : tr("meetingReminder.reconfirm")
+            : deadline
+              ? tr("meetingReminder.answerBy", { deadline })
+              : tr("meetingReminder.answer", { workspace: workspaceName })}
       </Text>
       <MeetingWhenWhere meeting={meeting} />
       {responseMode === "announcement" ? null : audience === "pending" ? (

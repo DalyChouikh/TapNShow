@@ -101,7 +101,7 @@ function setup(options: {
     }),
     reserve: vi.fn(
       async (): Promise<ReserveResult> =>
-        reserves.shift() ?? { kind: "ok", calendar: null },
+        reserves.shift() ?? { kind: "ok", calendar: null, reconfirm: false },
     ),
     finish: vi.fn(async () => undefined),
     retry: vi.fn(async () => undefined),
@@ -318,7 +318,13 @@ describe("runDispatch", () => {
   it("sends a pre-accepted calendar invitation for a calendar job, in the meeting's thread", async () => {
     const { deps, store } = setup({
       jobs: [calendarJob(1)],
-      reserve: [{ kind: "ok", calendar: { action: "request", sequence: 0 } }],
+      reserve: [
+        {
+          kind: "ok",
+          calendar: { action: "request", sequence: 0 },
+          reconfirm: false,
+        },
+      ],
     });
     const summary = await runDispatch(deps, OPTIONS);
     const sent = vi.mocked(deps.gmail).mock.calls[0][0];
@@ -342,7 +348,13 @@ describe("runDispatch", () => {
     const spy = vi.spyOn(icsModule, "buildMeetingIcs");
     const { deps } = setup({
       jobs: [calendarJob(1)],
-      reserve: [{ kind: "ok", calendar: { action: "cancel", sequence: 3 } }],
+      reserve: [
+        {
+          kind: "ok",
+          calendar: { action: "cancel", sequence: 3 },
+          reconfirm: false,
+        },
+      ],
     });
     await runDispatch(deps, OPTIONS);
     const ics = String(spy.mock.results[0]?.value);
@@ -392,7 +404,13 @@ describe("runDispatch", () => {
           },
         },
       ],
-      reserve: [{ kind: "ok", calendar: { action: "request", sequence: 1 } }],
+      reserve: [
+        {
+          kind: "ok",
+          calendar: { action: "request", sequence: 1 },
+          reconfirm: false,
+        },
+      ],
     });
     const summary = await runDispatch(deps, OPTIONS);
     expect(summary).toMatchObject({ sent: 1, updates: 1, calendar: 1 });
@@ -484,6 +502,7 @@ describe("runDispatch", () => {
         {
           kind: "ok",
           calendar: { action: "request", sequence: 1 },
+          reconfirm: false,
           unsubscribed: true,
         },
       ],
@@ -511,7 +530,13 @@ describe("runDispatch", () => {
           },
         },
       ],
-      reserve: [{ kind: "ok", calendar: { action: "request", sequence: 1 } }],
+      reserve: [
+        {
+          kind: "ok",
+          calendar: { action: "request", sequence: 1 },
+          reconfirm: false,
+        },
+      ],
     });
     await runDispatch(deps, OPTIONS);
     expect(deps.gmail).not.toHaveBeenCalled();
@@ -526,7 +551,13 @@ describe("runDispatch", () => {
   it("sends a cancellation with METHOD:CANCEL only for a calendar holder", async () => {
     const holder = setup({
       jobs: [{ ...job(1, undefined, "t-1"), kind: "cancel" }],
-      reserve: [{ kind: "ok", calendar: { action: "cancel", sequence: 2 } }],
+      reserve: [
+        {
+          kind: "ok",
+          calendar: { action: "cancel", sequence: 2 },
+          reconfirm: false,
+        },
+      ],
     });
     const summary = await runDispatch(holder.deps, OPTIONS);
     expect(summary).toMatchObject({ sent: 1, cancellations: 1, calendar: 1 });
@@ -547,6 +578,7 @@ describe("runDispatch", () => {
         {
           kind: "ok",
           calendar: { action: "cancel", sequence: 2 },
+          reconfirm: false,
           unsubscribed: true,
         },
       ],
@@ -565,6 +597,17 @@ describe("runDispatch", () => {
     const summary = await runDispatch(deps, OPTIONS);
     expect(summary).toMatchObject({ sent: 1, reminders: 1 });
     expect(unfold(rawOf(deps))).toContain("?choice=3Dattending");
+  });
+
+  it("asks someone who must reconfirm to confirm the new time (#255)", async () => {
+    const { deps } = setup({
+      jobs: [{ ...job(1, undefined, "t-1"), kind: "reminder" }],
+      reserve: [{ kind: "ok", calendar: null, reconfirm: true }],
+    });
+    await runDispatch(deps, OPTIONS);
+    const raw = unfold(rawOf(deps)).replace(/=\r\n/g, "");
+    expect(raw).toContain("The time changed. Please confirm");
+    expect(raw).not.toContain("know if you're coming");
   });
 
   it("tells Going people when and where, without answer buttons", async () => {

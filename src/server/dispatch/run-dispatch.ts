@@ -298,7 +298,7 @@ function calendarOnly(job: ClaimedJob): ClaimedJob {
 /** Renders one job's email by kind (the `.ics`, when any, is attached separately). */
 async function renderJob(
   job: ClaimedJob,
-  { calendar: decision }: Reservation,
+  { calendar: decision, reconfirm }: Reservation,
   common: MeetingInviteEmailProps,
 ): Promise<{ subject: string; html: string; text: string }> {
   switch (job.kind) {
@@ -328,6 +328,7 @@ async function renderJob(
       return renderMeetingReminderEmail({
         ...common,
         audience: job.payload.audience,
+        reconfirm,
       });
   }
 }
