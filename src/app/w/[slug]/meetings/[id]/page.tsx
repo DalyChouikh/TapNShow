@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useMeeting } from "@/hooks/use-meetings";
 import { useMeetingResults } from "@/hooks/use-results";
 import { useWorkspace } from "@/hooks/use-workspace";
+import { useExportSheetLink } from "@/hooks/use-sheet";
 import { canCheckIn } from "@/lib/responses/check-in";
 import { isLive } from "@/lib/responses/live-window";
 import type { Meeting } from "@/shared/api/meetings";
@@ -54,7 +55,11 @@ function useView(id: string): [View, (view: View) => void] {
 /** Export of every answer (the hook needs the loaded meeting). */
 function MeetingExport({ slug, meeting }: { slug: string; meeting: Meeting }) {
   const exportAnswers = useExportAnswers(slug, meeting);
-  return <ExportMenu onExport={exportAnswers} />;
+  const sheet = useExportSheetLink(slug, {
+    startsAt: meeting.startsAt,
+    timezone: meeting.timezone,
+  });
+  return <ExportMenu onExport={exportAnswers} sheet={sheet} />;
 }
 
 /**

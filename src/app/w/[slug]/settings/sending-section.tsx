@@ -10,24 +10,31 @@ import { ConfirmDialog } from "@/components/forms/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sticker } from "@/components/ui/sticker";
+import { goTo } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 import {
   useDisconnectGmail,
   useSetSender,
   useWorkspaceSender,
 } from "@/hooks/use-sender";
-import type { WorkspaceDetails } from "@/shared/api/workspaces";
-import { GoogleConnectResult } from "./google-connect-result";
-import { SettingsSection } from "./settings-section";
 import {
   GOOGLE_RESULT_PARAMS,
   googleConnectHref,
 } from "@/shared/api/google-connect";
+import type { WorkspaceDetails } from "@/shared/api/workspaces";
+import { GoogleConnectResult } from "./google-connect-result";
+import { SettingsSection } from "./settings-section";
 
 type Pending =
   | { kind: "use"; id: string; email: string }
   | { kind: "replace" }
-  | { kind: "disconnect"; id: string; email: string; usedBy: string[] }
+  | {
+      kind: "disconnect";
+      id: string;
+      email: string;
+      usedBy: string[];
+      sheets: string[];
+    }
   | null;
 
 /** Settings > Sending (spec §7.15): the workspace's sender Gmail. Only the Owner changes it. */
@@ -156,6 +163,7 @@ export function SendingSection({
               id: mine.id,
               email: mine.email,
               usedBy: mine.usedBy,
+              sheets: mine.sheets,
             })
           }
         >
@@ -186,9 +194,7 @@ export function SendingSection({
         title={t("replaceTitle", { workspace: workspace.name })}
         description={t("replaceBody")}
         confirmLabel={t("replaceAction")}
-        onConfirm={() => {
-          window.location.href = connectHref;
-        }}
+        onConfirm={() => goTo(connectHref)}
       />
       <ConfirmDialog
         open={pending?.kind === "disconnect"}
@@ -200,7 +206,16 @@ export function SendingSection({
         }
         description={
           pending?.kind === "disconnect"
-            ? t("disconnectBody", { workspaces: pending.usedBy.join(", ") })
+            ? [
+                t("disconnectBody", { workspaces: pending.usedBy.join(", ") }),
+                ...(pending.sheets.length > 0
+                  ? [
+                      t("disconnectSheets", {
+                        workspaces: pending.sheets.join(", "),
+                      }),
+                    ]
+                  : []),
+              ].join(" ")
             : ""
         }
         confirmLabel={t("disconnectAction")}

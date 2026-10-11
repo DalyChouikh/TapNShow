@@ -376,9 +376,50 @@
         "failed": "Connecting Gmail failed. Try again.",
         "rate_limited": "Too many tries. Wait a few minutes, then connect again.",
         "sheet_wrong_account": "This sheet is in another Google account's Drive. Pick that account, or create a new sheet."
-      }
+      },
+      "disconnectSheets": "The Google Sheet of {workspaces} keeps updating."
     },
     "sheets": {
+      "title": "Google Sheets",
+      "offBody": "Keep a live copy of every answer in a Google Sheet, one tab per year. Share it with your committee from Google Sheets.",
+      "connect": "Connect Google Sheets",
+      "tipGroup": "Tip: use your group's own Google account (for example the club's), so the sheet stays with the group.",
+      "connectTitle": "Create a Google Sheet for {workspace}?",
+      "connectBody": "It will hold the name, email, answers, reasons and comments of everyone you invite. Anyone you share it with can see all of it.",
+      "connectNote": "Google will ask which account to use. The sheet is saved in that account's Drive.",
+      "continue": "Continue to Google",
+      "creating": "Creating your Google Sheet…",
+      "fileName": "{workspace} · TapNShow",
+      "where": "In {account}'s Drive · turned on by {name} on {date}",
+      "upToDate": "Up to date",
+      "updating": "Updating…",
+      "updatedAgo": "Updated {when}",
+      "neverUpdated": "Not filled in yet",
+      "open": "Open the Google Sheet",
+      "copy": "Copy link",
+      "copied": "Link copied",
+      "copyFailed": "Couldn't copy the link.",
+      "shareTip": "To share it, open it and use Share in Google Sheets. Changes made in the sheet are replaced by TapNShow.",
+      "turnOff": "Turn off the Google Sheet",
+      "turnOffTitle": "Turn off the Google Sheet?",
+      "turnOffBody": "The sheet stops updating. It stays in {account}'s Drive.",
+      "turnedOff": "Google Sheet turned off",
+      "paused": "Paused",
+      "pausedLine": {
+        "trashed": "The Google Sheet was moved to the trash. Restore it from Google Drive, then tap Try again. Or create a new one.",
+        "deleted": "The Google Sheet was deleted.",
+        "access_lost": "TapNShow can no longer update the Google Sheet.",
+        "full": "The Google Sheet is full."
+      },
+      "tryAgain": "Try again",
+      "reconnect": "Reconnect Google",
+      "recreate": "Create a new sheet",
+      "recreateTitle": "Create a new Google Sheet?",
+      "recreateBody": "The old sheet stops updating. People you shared it with keep the old one.",
+      "viewerOn": "Answers are copied to a Google Sheet. Updated {when}.",
+      "viewerOff": "{owner}, the Owner, can turn on a Google Sheet copy of the answers.",
+      "viewerAccess": "If Google says you need access, ask {owner}, the Owner, to share it with you.",
+      "viewerPaused": "The Google Sheet is paused.",
       "connected": "Google Sheet connected. It fills in within a minute.",
       "error": {
         "unavailable": "Connecting Google isn't available right now.",
@@ -413,7 +454,6 @@
     "importMembers": "Import your members",
     "connectGmail": "Connect Gmail to send invites",
     "connectSheets": "Sync responses to Google Sheets",
-    "soon": "Coming soon",
     "viewerTitle": "You're a Viewer in {workspace}",
     "viewerBody": "You'll see meetings, answers and reasons here once organizers start sending invites.",
     "importMembersAction": "Import",
@@ -428,7 +468,11 @@
     "connect": "Connect Gmail",
     "nextMeeting": {
       "title": "Next meeting"
-    }
+    },
+    "connectSheetsAction": "Connect",
+    "attentionSheet": "The Google Sheet stopped updating.",
+    "ownerConnectsSheets": "{owner} connects Google Sheets",
+    "attentionSheetAction": "Open Settings"
   },
   "Invites": {
     "title": "Invites",
@@ -1187,7 +1231,9 @@
       "present": "Present",
       "late": "Late",
       "absent": "Absent"
-    }
+    },
+    "openSheet": "Open the Google Sheet",
+    "sheetPaused": "The Google Sheet is paused"
   },
   "Sheet": {
     "fileName": "{workspace} · TapNShow",

@@ -8,13 +8,18 @@ import { Card } from "@/components/ui/card";
 import { Sticker } from "@/components/ui/sticker";
 import { useHasDrafts } from "@/hooks/use-meetings";
 import { useWorkspaceSender } from "@/hooks/use-sender";
-import type { WorkspaceDetails } from "@/shared/api/workspaces";
+import { useWorkspaceSheet } from "@/hooks/use-sheet";
 import { googleConnectHref } from "@/shared/api/google-connect";
+import type { WorkspaceDetails } from "@/shared/api/workspaces";
 
-/** Home "needs attention" (spec §7.2, §7.15): a broken sender, or drafts waiting for a sender. */
+/**
+ * Home "needs attention" (spec §7.2, §7.15, §7.17): a broken sender, drafts waiting for a sender,
+ * and, for the Owner, a Google Sheet that stopped updating.
+ */
 export function NeedsAttention({ workspace }: { workspace: WorkspaceDetails }) {
   const t = useTranslations("WorkspaceHome");
   const sender = useWorkspaceSender(workspace.slug);
+  const sheet = useWorkspaceSheet(workspace.slug);
   const isOwner = workspace.myRole === "owner";
   const hasDrafts = useHasDrafts(
     workspace.slug,
@@ -25,7 +30,9 @@ export function NeedsAttention({ workspace }: { workspace: WorkspaceDetails }) {
   }
   const broken = sender.data.sender?.status === "broken";
   const draftWaiting = isOwner && !sender.data.sender && hasDrafts;
-  if (!broken && !draftWaiting) {
+  const gmail = broken || draftWaiting;
+  const sheetPaused = isOwner && sheet.data?.state === "paused";
+  if (!gmail && !sheetPaused) {
     return null;
   }
   return (
@@ -39,21 +46,38 @@ export function NeedsAttention({ workspace }: { workspace: WorkspaceDetails }) {
         </Sticker>
         <h2 className="font-display text-xl">{t("attentionTitle")}</h2>
       </div>
-      <p className="font-bold">
-        {broken ? t("attentionBroken") : t("attentionDraft")}
-      </p>
-      {isOwner ? (
-        <Button asChild tone="primary">
-          <a href={googleConnectHref(workspace.slug, "sending")}>
-            {broken ? t("reconnect") : t("connect")}
-          </a>
-        </Button>
-      ) : (
-        <p>{t("attentionAskOwner", { owner: sender.data.ownerName })}</p>
-      )}
-      <Link className="sr-only" href={`/w/${workspace.slug}/settings#sending`}>
-        {t("connectGmail")}
-      </Link>
+      {gmail ? (
+        <>
+          <p className="font-bold">
+            {broken ? t("attentionBroken") : t("attentionDraft")}
+          </p>
+          {isOwner ? (
+            <Button asChild tone="primary">
+              <a href={googleConnectHref(workspace.slug, "sending")}>
+                {broken ? t("reconnect") : t("connect")}
+              </a>
+            </Button>
+          ) : (
+            <p>{t("attentionAskOwner", { owner: sender.data.ownerName })}</p>
+          )}
+          <Link
+            className="sr-only"
+            href={`/w/${workspace.slug}/settings#sending`}
+          >
+            {t("connectGmail")}
+          </Link>
+        </>
+      ) : null}
+      {sheetPaused ? (
+        <>
+          <p className="font-bold">{t("attentionSheet")}</p>
+          <Button asChild tone="primary">
+            <Link href={`/w/${workspace.slug}/settings#sheets`}>
+              {t("attentionSheetAction")}
+            </Link>
+          </Button>
+        </>
+      ) : null}
     </Card>
   );
 }
