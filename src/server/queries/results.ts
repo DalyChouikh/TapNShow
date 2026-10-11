@@ -127,6 +127,7 @@ export async function getMeetingResults(
       resumes_at: z.string().nullable(),
       sender_state: z.enum(["ok", "missing", "broken"]),
       checked_in: count,
+      check_in_total: count,
       nudge: z.object({
         last_at: z.string().nullable(),
         last_count: z.number().int().nullable(),
@@ -153,6 +154,7 @@ export async function getMeetingResults(
       resumesAt: db.resumes_at,
       senderState: db.sender_state,
       checkedIn: db.checked_in,
+      checkInTotal: db.check_in_total,
       nudge: {
         lastAt: db.nudge.last_at,
         lastCount: db.nudge.last_count,

@@ -208,13 +208,13 @@ isOneToOne: false
                   ]
                 },"meeting_invitees": {
                   Row: {
-                    "calendar_requested_at": string | null,"calendar_sequence": number,"calendar_state": Database["public"]['Enums']["calendar_state"],"contact_id": string,"email_error": string | null,"email_status": Database["public"]['Enums']["invitee_email_status"],"id": string,"invited_at": string,"meeting_id": string,"sent_at": string | null,"token_hash": string | null,"workspace_id": string
+                    "calendar_requested_at": string | null,"calendar_sequence": number,"calendar_state": Database["public"]['Enums']["calendar_state"],"contact_id": string,"details_told_at": string | null,"email_error": string | null,"email_status": Database["public"]['Enums']["invitee_email_status"],"id": string,"invited_at": string,"meeting_id": string,"sent_at": string | null,"token_hash": string | null,"workspace_id": string
                   }
                   Insert: {
-                    "calendar_requested_at"?: string | null,"calendar_sequence"?: number,"calendar_state"?: Database["public"]['Enums']["calendar_state"],"contact_id": string,"email_error"?: string | null,"email_status"?: Database["public"]['Enums']["invitee_email_status"],"id"?: string,"invited_at"?: string,"meeting_id": string,"sent_at"?: string | null,"token_hash"?: string | null,"workspace_id": string
+                    "calendar_requested_at"?: string | null,"calendar_sequence"?: number,"calendar_state"?: Database["public"]['Enums']["calendar_state"],"contact_id": string,"details_told_at"?: string | null,"email_error"?: string | null,"email_status"?: Database["public"]['Enums']["invitee_email_status"],"id"?: string,"invited_at"?: string,"meeting_id": string,"sent_at"?: string | null,"token_hash"?: string | null,"workspace_id": string
                   }
                   Update: {
-                    "calendar_requested_at"?: string | null,"calendar_sequence"?: number,"calendar_state"?: Database["public"]['Enums']["calendar_state"],"contact_id"?: string,"email_error"?: string | null,"email_status"?: Database["public"]['Enums']["invitee_email_status"],"id"?: string,"invited_at"?: string,"meeting_id"?: string,"sent_at"?: string | null,"token_hash"?: string | null,"workspace_id"?: string
+                    "calendar_requested_at"?: string | null,"calendar_sequence"?: number,"calendar_state"?: Database["public"]['Enums']["calendar_state"],"contact_id"?: string,"details_told_at"?: string | null,"email_error"?: string | null,"email_status"?: Database["public"]['Enums']["invitee_email_status"],"id"?: string,"invited_at"?: string,"meeting_id"?: string,"sent_at"?: string | null,"token_hash"?: string | null,"workspace_id"?: string
                   }
                   Relationships: [
                     {

@@ -65,7 +65,7 @@ export function CheckInList({
   return (
     <Card as="section" className="flex flex-col gap-3">
       <p className="font-bold">
-        {t("count", { done: results.checkedIn, total: results.emails.total })}
+        {t("count", { done: results.checkedIn, total: results.checkInTotal })}
       </p>
       <Input
         id="check-in-search"

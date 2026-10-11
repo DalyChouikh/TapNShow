@@ -155,6 +155,8 @@ export const editResultSchema = z.object({
   emails: z.number().int(),
   calendarOnly: z.number().int(),
   reconfirm: z.boolean(),
+  /** Reminders this edit moves into the past, so they won't be sent (#255). */
+  remindersSkipped: z.array(z.enum(["pending", "going"])).default([]),
 });
 /** An edit's preview or result. */
 export type EditResult = z.infer<typeof editResultSchema>;

@@ -739,7 +739,8 @@ describe("delete_cancelled_meeting", () => {
       .update({ status: "paused" })
       .eq("meeting_id", meeting)
       .eq("kind", "cancel");
-    await expectAppError(remove(), "cancel_emails_pending");
+    // Waiting for Gmail before the start (#255: said "waiting", not "going out").
+    await expectAppError(remove(), "cancel_emails_waiting");
     await adminClient()
       .from("meetings")
       .update({ starts_at: new Date(Date.now() - 60_000).toISOString() })

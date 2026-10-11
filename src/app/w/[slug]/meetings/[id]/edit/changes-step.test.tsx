@@ -114,6 +114,18 @@ describe("ChangesStep", () => {
     expect(screen.queryByText(/calendar/)).toBeNull();
   });
 
+  it("says a reminder the edit moves into the past won't be sent (#255)", async () => {
+    setup({ previews: [{ ...moved, remindersSkipped: ["going"] }] });
+    expect(
+      await screen.findByText(
+        "The reminder for people who are going would be in the past, so it won't be sent.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/haven't answered would be in the past/),
+    ).toBeNull();
+  });
+
   it("asks before saving and emailing, then saves for real", async () => {
     const { bodies } = setup();
     await userEvent.click(

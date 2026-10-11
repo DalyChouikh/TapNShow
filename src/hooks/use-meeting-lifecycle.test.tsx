@@ -18,6 +18,7 @@ const result = {
   emails: 0,
   calendarOnly: 1,
   reconfirm: false,
+  remindersSkipped: [],
 };
 
 function setup() {

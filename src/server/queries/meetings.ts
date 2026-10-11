@@ -439,6 +439,7 @@ export async function editSentMeeting(
       emails: z.number().int(),
       calendar_only: z.number().int(),
       reconfirm: z.boolean(),
+      reminders_skipped: z.array(z.enum(["pending", "going"])),
     })
     .parse(data);
   return {
@@ -448,6 +449,7 @@ export async function editSentMeeting(
       emails: db.emails,
       calendarOnly: db.calendar_only,
       reconfirm: db.reconfirm,
+      remindersSkipped: db.reminders_skipped,
     },
     error: null,
   };

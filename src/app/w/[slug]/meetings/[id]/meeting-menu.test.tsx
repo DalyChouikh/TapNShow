@@ -24,9 +24,13 @@ const scheduled: Meeting = {
   status: "scheduled",
   startsAt: future,
 };
-const results = (reachable: number) => ({
+const results = (
+  reachable: number,
+  senderState: "ok" | "missing" | "broken" = "ok",
+) => ({
   ...resultsFixture,
   answers: { ...resultsFixture.answers, reachable },
+  senderState,
 });
 
 function setup(
@@ -35,6 +39,7 @@ function setup(
     reachable = 28,
     workspace = workspaceFixture,
     deleteResponse = () => new Response(JSON.stringify({ ok: true })),
+    senderState = "ok" as "ok" | "missing" | "broken",
   } = {},
 ) {
   const fetchMock = routeFetch({
@@ -43,14 +48,14 @@ function setup(
     [`DELETE ${meetingPath}`]: deleteResponse,
     [`POST ${meetingPath}/duplicate`]: json({ id: COPY }, 201),
     [`GET ${meetingPath}`]: json(meeting),
-    [`GET ${meetingPath}/results`]: json(results(reachable)),
+    [`GET ${meetingPath}/results`]: json(results(reachable, senderState)),
     [`GET ${base}/meetings`]: json([]),
   });
   renderWithProviders(
     <MeetingMenu
       slug="robotics-cd34"
       meeting={meeting}
-      results={results(reachable)}
+      results={results(reachable, senderState)}
     />,
     { toaster: true },
   );
@@ -134,6 +139,28 @@ describe("MeetingMenu", () => {
     expect(calls(fetchMock, "POST")).toHaveLength(1);
   });
 
+  it("says the cancellation emails wait while Gmail isn't connected (#255)", async () => {
+    setup(scheduled, { senderState: "missing" });
+    await open();
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: "Cancel meeting" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByText(
+        "Everyone invited gets a cancellation email once Gmail is connected again, and it is removed from calendars. This can't be undone.",
+      ),
+    ).toBeInTheDocument();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Cancel meeting" }),
+    );
+    expect(
+      await screen.findByText(
+        "Meeting cancelled. The cancellation emails will go out once Gmail is connected again.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("says so plainly when nobody is emailed", async () => {
     setup(scheduled, { reachable: 0 });
     await open();
@@ -148,6 +175,31 @@ describe("MeetingMenu", () => {
       within(dialog).getByRole("button", { name: "Cancel meeting" }),
     );
     expect(await screen.findByText("Meeting cancelled.")).toBeInTheDocument();
+  });
+
+  it("says Delete waits for Gmail when the cancellation emails can't go out yet (#255)", async () => {
+    setup(
+      { ...scheduled, status: "cancelled" },
+      {
+        senderState: "missing",
+        deleteResponse: () =>
+          new Response(
+            JSON.stringify({ error: { code: "cancel_emails_waiting" } }),
+            { status: 409 },
+          ),
+      },
+    );
+    await open();
+    await userEvent.click(screen.getByRole("menuitem", { name: "Delete" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Delete" }),
+    );
+    expect(
+      await within(dialog).findByText(
+        "The cancellation emails are waiting for Gmail. Reconnect Gmail, then delete the meeting once they've gone out.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("deletes a cancelled meeting for good, or says the emails are still going out", async () => {

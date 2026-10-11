@@ -225,7 +225,8 @@
     "invalid_choice": "That answer isn't available for this meeting.",
     "delay_required": "Pick how late you'll be.",
     "reason_required": "Please add a reason.",
-    "sheet_wrong_account": "This sheet is in another Google account's Drive. Pick that account, or create a new sheet."
+    "sheet_wrong_account": "This sheet is in another Google account's Drive. Pick that account, or create a new sheet.",
+    "cancel_emails_waiting": "The cancellation emails are waiting for Gmail. Reconnect Gmail, then delete the meeting once they've gone out."
   },
   "Auth": {
     "title": "Sign in to {appName}",
@@ -903,6 +904,10 @@
       "emails": "{count, plural, =0 {Nobody is emailed.} one {Emails # person.} other {Emails # people.}}",
       "calendarNote": "{count, plural, one {# person who added it to their calendar gets a short note.} other {# people who added it to their calendar get a short note.}}",
       "reconfirm": "Everyone will be asked to confirm again.",
+      "reminderSkipped": {
+        "pending": "The reminder for people who haven't answered would be in the past, so it won't be sent.",
+        "going": "The reminder for people who are going would be in the past, so it won't be sent."
+      },
       "senderWaiting": "Emails will wait until Gmail is reconnected.",
       "notify": "Email everyone about this change",
       "settings": "Your settings",
@@ -1000,7 +1005,9 @@
       "body": "Everyone invited gets a cancellation email, and it is removed from calendars. This can't be undone.",
       "confirm": "Cancel meeting",
       "done": "{count, plural, one {Meeting cancelled. # cancellation email is going out.} other {Meeting cancelled. # cancellation emails are going out.}}",
-      "doneNobody": "Meeting cancelled."
+      "doneNobody": "Meeting cancelled.",
+      "bodyWaiting": "Everyone invited gets a cancellation email once Gmail is connected again, and it is removed from calendars. This can't be undone.",
+      "doneWaiting": "Meeting cancelled. The cancellation emails will go out once Gmail is connected again."
     },
     "delete": {
       "title": "Delete this meeting for good?",
