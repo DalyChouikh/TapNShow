@@ -15,7 +15,7 @@ vi.mock("@/config/public-env", () => ({
 const redirect = vi.hoisted(() => ({ toLogin: vi.fn<() => void>() }));
 vi.mock("@/lib/auth-redirect", () => ({ redirectToLogin: redirect.toLogin }));
 
-const { remindersState, turnOffReminders, turnOnReminders } =
+const { checkInReminders, remindersState, turnOffReminders, turnOnReminders } =
   await import("./client");
 
 const ENDPOINT = "https://fcm.googleapis.com/fcm/send/abc";
@@ -106,6 +106,7 @@ beforeEach(() => {
   env.key = `B${"A".repeat(86)}`;
 });
 afterEach(() => {
+  localStorage.clear();
   vi.unstubAllGlobals();
   Reflect.deleteProperty(window, "PushManager");
 });
@@ -221,6 +222,56 @@ describe("turnOffReminders", () => {
     device();
     const fetchMock = stubFetch();
     await turnOffReminders();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("checkInReminders (spec §8: a device that checks in is not idle)", () => {
+  const HOUR_MS = 3_600_000;
+  const start = new Date("2026-10-14T08:00:00Z");
+  const later = (hours: number) => new Date(start.getTime() + hours * HOUR_MS);
+
+  it("re-sends this device's subscription at most once a day", async () => {
+    device({ permission: "granted", subscription: fakeSubscription() });
+    const fetchMock = stubFetch();
+    await checkInReminders(start);
+    await checkInReminders(later(1));
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("/api/me/push-subscriptions");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(String(init.body))).toEqual({
+      endpoint: ENDPOINT,
+      keys: { p256dh: `B${"A".repeat(86)}`, auth: "A".repeat(22) },
+    });
+    await checkInReminders(later(25));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("sends nothing while reminders are off on this device", async () => {
+    device({ permission: "granted" });
+    const fetchMock = stubFetch();
+    await checkInReminders(start);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("tries again at the next visit after a failure, and never sends anyone to sign-in", async () => {
+    device({ permission: "granted", subscription: fakeSubscription() });
+    stubFetch(401);
+    await checkInReminders(start);
+    expect(redirect.toLogin).not.toHaveBeenCalled();
+    const fetchMock = stubFetch();
+    await checkInReminders(later(1));
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("counts turning on as a check-in", async () => {
+    const { fresh } = device();
+    stubFetch();
+    await turnOnReminders(start);
+    device({ permission: "granted", subscription: fresh });
+    const fetchMock = stubFetch();
+    await checkInReminders(later(1));
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });

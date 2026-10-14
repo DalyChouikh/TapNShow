@@ -33,7 +33,7 @@ export function useReminders() {
     };
   }, []);
   const on = useMutation({
-    mutationFn: turnOnReminders,
+    mutationFn: () => turnOnReminders(),
     onSuccess: setState,
     onError: (error) => toast.error(tErrors(errorCodeOf(error))),
   });

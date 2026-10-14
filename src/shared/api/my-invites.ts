@@ -55,11 +55,14 @@ export type MyInvite = z.infer<typeof myInviteSchema>;
 
 /**
  * `GET /api/me/invites`: one page, how many upcoming invites need an answer, and `asOf`, the
- * server's time when the page was made (shown when the page is read offline).
+ * server's time when the page was made (shown when the page is read offline). `saved` is never
+ * sent by the server: the service worker adds it when it answers from this device's copy
+ * (`markSavedCopy`), so the page knows the list may be out of date even on a weak connection.
  */
 export const myInvitesPageSchema = pageSchema(myInviteSchema).extend({
   needsCount: z.number().int(),
   asOf: z.string(),
+  saved: z.literal(true).optional(),
 });
 /** One `/invites` page. */
 export type MyInvitesPage = z.infer<typeof myInvitesPageSchema>;

@@ -124,6 +124,29 @@ describe("push subscriptions (spec §6, §11 Push privacy)", () => {
     }
   });
 
+  it("evicts the device seen least recently, so a device that checks in again stays", async () => {
+    const user = await createTestUser();
+    const restore = overrideLimit("push_devices_per_user_max", 2);
+    try {
+      const first = await subscribe(user);
+      const second = await subscribe(user);
+      runLocalSql(
+        `update public.push_subscriptions set created_at = now() - interval '2 days', last_seen_at = now() - interval '2 days' where user_id = '${user.id}'`,
+      );
+      await subscribe(user, first);
+      await subscribe(user);
+      const { data } = await adminClient()
+        .from("push_subscriptions")
+        .select("endpoint")
+        .eq("user_id", user.id);
+      const endpoints = data?.map((row) => row.endpoint);
+      expect(endpoints).toContain(first.endpoint);
+      expect(endpoints).not.toContain(second.endpoint);
+    } finally {
+      restore();
+    }
+  });
+
   it("refuses a non-https endpoint, removes only the caller's own endpoint, and is rate limited", async () => {
     const user = await createTestUser();
     const other = await createTestUser();
@@ -310,14 +333,11 @@ describe("push_claim and results (spec §8 Push worker)", () => {
     const member = await createTestUser();
     const club = await createWorkspaceAs(organizer);
     await subscribe(member);
-    const invite = await seedInviteFor(
-      club.id,
-      await seedContact(club.id, member.email),
-      {
-        starts_at: hoursFromNow(24),
-        ...options.meeting,
-      },
-    );
+    const contact = await seedContact(club.id, member.email);
+    const invite = await seedInviteFor(club.id, contact, {
+      starts_at: hoursFromNow(24),
+      ...options.meeting,
+    });
     await finish(
       await processingJob(
         club.id,
@@ -328,7 +348,7 @@ describe("push_claim and results (spec §8 Push worker)", () => {
       ),
       "sent",
     );
-    return { club, invite, member };
+    return { club, contact, invite, member };
   }
   const claim = async (run = crypto.randomUUID(), limit = 50) => ({
     run,
@@ -374,6 +394,41 @@ describe("push_claim and results (spec §8 Push worker)", () => {
     expect(result.items.map((item) => item.invitee_id).sort()).toEqual(
       [cancelNotice.invite.inviteeId, fresh.invite.inviteeId].sort(),
     );
+  });
+
+  it("drops an invite already answered, and anything for a person who unsubscribed since", async () => {
+    const answered = await queued();
+    await seedAnswer(
+      answered.club.id,
+      answered.invite.meetingId,
+      answered.invite.inviteeId,
+      { status: "attending" },
+    );
+    const unsubscribed = await queued({ kind: "cancel" });
+    await adminClient()
+      .from("meetings")
+      .update({ status: "cancelled" })
+      .eq("id", unsubscribed.invite.meetingId);
+    await adminClient()
+      .from("contacts")
+      .update({
+        unsubscribed_at: new Date().toISOString(),
+        unsubscribed_via: "link",
+      })
+      .eq("id", unsubscribed.contact);
+    const update = await queued({ kind: "update" });
+    await seedAnswer(
+      update.club.id,
+      update.invite.meetingId,
+      update.invite.inviteeId,
+      { status: "attending" },
+    );
+
+    const result = await claim();
+    expect(result.dropped).toBe(2);
+    expect(result.items.map((item) => item.invitee_id)).toEqual([
+      update.invite.inviteeId,
+    ]);
   });
 
   it("never gives one delivery to two concurrent runs", async () => {
@@ -504,7 +559,7 @@ describe("push_claim and results (spec §8 Push worker)", () => {
   it("housekeeping removes idle devices and old deliveries", async () => {
     const a = await queued();
     runLocalSql(
-      `update public.push_subscriptions set created_at = now() - interval '91 days', last_success_at = null where user_id = '${a.member.id}'`,
+      `update public.push_subscriptions set created_at = now() - interval '91 days', last_seen_at = now() - interval '91 days', last_success_at = null where user_id = '${a.member.id}'`,
     );
     runLocalSql(
       "update public.push_deliveries set created_at = now() - interval '2 days'",
@@ -521,6 +576,31 @@ describe("push_claim and results (spec §8 Push worker)", () => {
     expect(
       (await adminClient().from("push_deliveries").select("id")).data,
     ).toEqual([]);
+  });
+
+  it("housekeeping keeps a quiet device that checked in recently", async () => {
+    const a = await queued();
+    runLocalSql(
+      `update public.push_subscriptions set created_at = now() - interval '200 days', last_seen_at = now() - interval '200 days', last_success_at = null where user_id = '${a.member.id}'`,
+    );
+    const { data: row } = await adminClient()
+      .from("push_subscriptions")
+      .select("endpoint, p256dh, auth")
+      .eq("user_id", a.member.id)
+      .single();
+    if (!row) {
+      throw new Error("no subscription");
+    }
+    await subscribe(a.member, row);
+    runLocalSql("select private.housekeeping()");
+    expect(
+      (
+        await adminClient()
+          .from("push_subscriptions")
+          .select("id")
+          .eq("user_id", a.member.id)
+      ).data,
+    ).toHaveLength(1);
   });
 
   it("claims through the run_after index", async () => {

@@ -1,21 +1,30 @@
 "use client";
 
 import { WifiSlash } from "@phosphor-icons/react";
-import { format } from "date-fns";
-import { useTranslations } from "next-intl";
+import { format, isSameDay } from "date-fns";
+import { useNow, useTranslations } from "next-intl";
 import { Sticker } from "@/components/ui/sticker";
 import { useOnline } from "@/hooks/use-online";
 
 /**
- * Offline on `/invites` (spec §7.4): says when the shown list was made, by the server's clock
- * (`asOf`), in this device's time, so an old copy never looks fresh.
+ * Offline on `/invites` (spec §7.4), or shown this device's saved copy on a weak connection
+ * (`saved`): says when the shown list was made, by the server's clock (`asOf`), in this device's
+ * time and with the day when it isn't today, so an old copy never looks fresh.
  */
-export function OfflineBanner({ asOf }: { asOf: string | null }) {
+export function OfflineBanner({
+  asOf,
+  saved,
+}: {
+  asOf: string | null;
+  saved: boolean;
+}) {
   const t = useTranslations("Offline");
   const online = useOnline();
-  if (online || !asOf) {
+  const now = useNow();
+  if ((online && !saved) || !asOf) {
     return null;
   }
+  const made = new Date(asOf);
   return (
     <p
       role="status"
@@ -24,7 +33,9 @@ export function OfflineBanner({ asOf }: { asOf: string | null }) {
       <Sticker tone="surface" size="sm">
         <WifiSlash weight="bold" />
       </Sticker>
-      {t("banner", { time: format(new Date(asOf), "HH:mm") })}
+      {t("banner", {
+        time: format(made, isSameDay(made, now) ? "HH:mm" : "EEE d MMM, HH:mm"),
+      })}
     </p>
   );
 }
