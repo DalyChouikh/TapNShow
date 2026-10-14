@@ -90,6 +90,15 @@ export function MeetingWhenWhere({
   );
 }
 
+/** The personal links of a meeting email (built by the dispatcher from the invitee's token). */
+export type MeetingEmailLinks = {
+  respond: string;
+  unsubscribe: string;
+  report: string;
+  /** Where to see all of the member's invites (`/invites`, M8). */
+  invites: string;
+};
+
 /**
  * "Sent from … with TapNShow", "Unsubscribe from <Workspace>", "Not my group" (spec §7.16). Someone
  * who already unsubscribed gets no unsubscribe link.
@@ -102,13 +111,24 @@ export function MeetingFooter({
 }: {
   workspaceName: string;
   senderEmail: string;
-  links: { unsubscribe: string; report: string };
+  links: Pick<MeetingEmailLinks, "unsubscribe" | "report" | "invites">;
   unsubscribed?: boolean;
 }) {
   const tr = getEmailTranslator();
   return (
     <>
-      {tr("meetingInvite.sentFrom", { email: senderEmail, appName: APP_NAME })}{" "}
+      {tr("meetingInvite.seeAll")}{" "}
+      <Link
+        href={links.invites}
+        style={{ color: t.muted, textDecoration: "underline" }}
+      >
+        {links.invites}
+      </Link>
+      <br />
+      {tr("meetingInvite.sentFrom", {
+        email: senderEmail,
+        appName: APP_NAME,
+      })}{" "}
       {unsubscribed ? null : (
         <>
           <Link

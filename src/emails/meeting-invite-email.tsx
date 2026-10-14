@@ -10,6 +10,7 @@ import {
   MeetingFooter,
   MeetingWhenWhere,
   upcomingDeadline,
+  type MeetingEmailLinks,
 } from "./meeting-blocks";
 import { emailTheme as t } from "./theme";
 import { getEmailTranslator } from "./translator";
@@ -32,7 +33,7 @@ export type MeetingInviteEmailProps = {
     responseMode: ResponseMode;
     responseDeadline: string | null;
   };
-  links: { respond: string; unsubscribe: string; report: string };
+  links: MeetingEmailLinks;
   /** The send time (tests); the deadline line shows only while the deadline is ahead of it. */
   now?: Date;
   /**

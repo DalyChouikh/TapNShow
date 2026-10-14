@@ -535,4 +535,37 @@ describe("AnswerView", () => {
       expect(screen.queryByText(/The time changed/)).toBeNull();
     });
   });
+
+  it("signed out: offers to sign in once an answer is saved, not before (spec §7.4)", async () => {
+    renderWith("choice=attending", { viewer: "signed_out" });
+    await screen.findByRole("button", { name: "Confirm: I'm going" });
+    expect(screen.queryByRole("link", { name: "Sign in" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Confirm: I'm going" }));
+    expect(await screen.findByText("Your answer: Going")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
+      "href",
+      "/login?next=%2Finvites",
+    );
+  });
+
+  it("the invite's own account: Back to my invites instead of Not you?", async () => {
+    renderWith("", { viewer: "owner" });
+    expect(
+      await screen.findByRole("link", { name: "Back to my invites" }),
+    ).toHaveAttribute("href", "/invites");
+    expect(screen.queryByText(/Not you\?/)).toBeNull();
+  });
+
+  it("someone else signed in: no sign-in card, and Not you? as before", async () => {
+    renderWith("choice=attending", { viewer: "other" });
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Confirm: I'm going" }),
+    );
+    expect(await screen.findByText("Your answer: Going")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Sign in" })).toBeNull();
+    expect(
+      screen.queryByRole("link", { name: "Back to my invites" }),
+    ).toBeNull();
+    expect(screen.getByText(/Not you\?/)).toBeInTheDocument();
+  });
 });

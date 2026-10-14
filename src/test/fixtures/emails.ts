@@ -22,6 +22,7 @@ export const meetingEmailProps = {
     respond: "https://app.test/r/TOKEN",
     unsubscribe: "https://app.test/u/TOKEN",
     report: "https://app.test/report/TOKEN",
+    invites: "https://app.test/invites",
   },
   now: new Date("2026-10-08T10:00:00Z"),
 } satisfies MeetingInviteEmailProps;

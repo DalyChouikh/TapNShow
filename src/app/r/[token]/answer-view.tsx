@@ -17,7 +17,9 @@ import type { TokenInfo } from "@/shared/api/tokens";
 import { AnnouncementCalendar } from "./announcement-calendar";
 import { AnswerSummary } from "./answer-summary";
 import { ChoiceCards } from "./choice-cards";
+import { BackToInvites } from "./back-to-invites";
 import { NotYou } from "./not-you";
+import { SignInCard } from "./sign-in-card";
 import { ReconfirmBanner } from "./reconfirm-banner";
 
 function initials(name: string): string {
@@ -174,18 +176,21 @@ export function AnswerView() {
             onChange={() => setEditing(true)}
           />
         ) : answer && !editing && !emailOverride ? (
-          <AnswerSummary
-            token={token}
-            workspaceName={data.workspaceName}
-            unsubscribed={data.unsubscribed}
-            answer={answer}
-            meeting={meeting}
-            celebrate={justSaved}
-            onChange={() => {
-              setEditing(true);
-              setJustSaved(false);
-            }}
-          />
+          <div className="flex flex-col gap-4">
+            <AnswerSummary
+              token={token}
+              workspaceName={data.workspaceName}
+              unsubscribed={data.unsubscribed}
+              answer={answer}
+              meeting={meeting}
+              celebrate={justSaved}
+              onChange={() => {
+                setEditing(true);
+                setJustSaved(false);
+              }}
+            />
+            {data.viewer === "signed_out" ? <SignInCard /> : null}
+          </div>
         ) : (
           <ChoiceCards
             info={data}
@@ -201,7 +206,11 @@ export function AnswerView() {
         )}
       </StaggerItem>
       <StaggerItem className="flex flex-col gap-1 border-t-2 border-dashed border-outline pt-3">
-        <NotYou fullName={data.fullName} workspaceName={data.workspaceName} />
+        {data.viewer === "owner" ? (
+          <BackToInvites />
+        ) : (
+          <NotYou fullName={data.fullName} workspaceName={data.workspaceName} />
+        )}
         {answers.responseMode === "announcement" ? null : (
           <p className="text-sm text-muted-ink">
             {t("visibility", { workspace: data.workspaceName })}

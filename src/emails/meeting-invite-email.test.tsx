@@ -26,6 +26,7 @@ const base: MeetingInviteEmailProps = {
     respond: "https://tapnshow.vercel.app/r/TOKEN",
     unsubscribe: "https://tapnshow.vercel.app/u/TOKEN",
     report: "https://tapnshow.vercel.app/report/TOKEN",
+    invites: "https://tapnshow.vercel.app/invites",
   },
   now: new Date("2026-10-08T10:00:00.000Z"),
 };
