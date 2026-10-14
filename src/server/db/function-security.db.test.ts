@@ -22,6 +22,7 @@ const PRIVATE_FUNCTIONS_FOR_AUTHENTICATED = [
   "create_invite",
   "create_meeting",
   "create_workspace",
+  "delete_account",
   "delete_cancelled_meeting",
   "delete_workspace",
   "disconnect_google_connection",

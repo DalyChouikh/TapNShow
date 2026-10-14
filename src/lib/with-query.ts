@@ -20,15 +20,16 @@ export function withQuery(path: string, key: string, value: string): string {
   return safeNextPath(`${url.pathname}${url.search}${url.hash}`) ?? "/";
 }
 
+/** The sections of a workspace's Settings page (each one's `id` and `#hash`). */
+export type SettingsSectionId =
+  "general" | "meeting-defaults" | "people" | "sending" | "sheets" | "danger";
+
 /**
- * Where a Google connect flow returns by default (Settings > Sending or Settings > Sheets). Only a
- * real slug is used: the value can come from a query string, and `../..//host` must never become a
- * redirect target.
+ * A link to one Settings section (where a Google connect flow returns, Owner alerts, checklists).
+ * Only a real slug is used: the value can come from a query string, and `../..//host` must never
+ * become a redirect target.
  */
-export function settingsPath(
-  slug: string,
-  section: "sending" | "sheets",
-): string {
+export function settingsPath(slug: string, section: SettingsSectionId): string {
   return slug.length <= SLUG_MAX && SLUG.test(slug)
     ? `/w/${slug}/settings#${section}`
     : "/welcome";

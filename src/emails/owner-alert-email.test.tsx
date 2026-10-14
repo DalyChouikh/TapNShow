@@ -22,6 +22,20 @@ describe("renderOwnerAlertEmail", () => {
     expect(email.html).not.toMatch(EMOJI);
   });
 
+  it("says sending stopped because the sender's account was deleted", async () => {
+    const email = await renderOwnerAlertEmail({
+      kind: "senderRemoved",
+      workspaceName: "GDG ISSAT",
+      settingsUrl: SENDING,
+    });
+    expect(email.subject).toBe("Gmail sending for GDG ISSAT stopped");
+    expect(email.text).toContain("deleted their TapNShow account");
+    expect(email.text).toContain("Connect Gmail");
+    expect(email.html).toContain(`href="${SENDING}"`);
+    expect(email.html).not.toMatch(/token|scope|API/i);
+    expect(email.html).not.toMatch(EMOJI);
+  });
+
   it("says the Google Sheet stopped updating, with the reason in plain words", async () => {
     const email = await renderOwnerAlertEmail({
       kind: "sheetPaused",

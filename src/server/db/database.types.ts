@@ -598,6 +598,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"delete_account":
+{ Args: { "p_confirm": string }; Returns: Json
+                           },
 "delete_cancelled_meeting":
 { Args: { "p_meeting": string }; Returns: undefined
                            },

@@ -11,6 +11,7 @@ import { useWorkspaceSender } from "@/hooks/use-sender";
 import { useWorkspaceSheet } from "@/hooks/use-sheet";
 import { googleConnectHref } from "@/shared/api/google-connect";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
+import { settingsPath } from "@/lib/with-query";
 
 /**
  * Home "needs attention" (spec §7.2, §7.15, §7.17): a broken sender, drafts waiting for a sender,
@@ -62,7 +63,7 @@ export function NeedsAttention({ workspace }: { workspace: WorkspaceDetails }) {
           )}
           <Link
             className="sr-only"
-            href={`/w/${workspace.slug}/settings#sending`}
+            href={settingsPath(workspace.slug, "sending")}
           >
             {t("connectGmail")}
           </Link>
@@ -72,7 +73,7 @@ export function NeedsAttention({ workspace }: { workspace: WorkspaceDetails }) {
         <>
           <p className="font-bold">{t("attentionSheet")}</p>
           <Button asChild tone="primary">
-            <Link href={`/w/${workspace.slug}/settings#sheets`}>
+            <Link href={settingsPath(workspace.slug, "sheets")}>
               {t("attentionSheetAction")}
             </Link>
           </Button>

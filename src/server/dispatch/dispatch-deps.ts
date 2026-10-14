@@ -4,7 +4,6 @@ import { getServerEnv } from "@/config/env";
 import { GMAIL_SEND_TIMEOUT_MS } from "@/config/gmail";
 import { publicEnv } from "@/config/public-env";
 import { requireSecret } from "@/config/secrets";
-import { renderOwnerAlertEmail } from "@/emails/owner-alert-email";
 import { deriveInviteeToken } from "@/server/crypto/invitee-token";
 import { createSystemMailer } from "@/server/email/system-mailer";
 import { sendGmailMessage } from "@/server/gmail/gmail-client";
@@ -12,6 +11,7 @@ import { googleTokenDeps } from "@/server/google/token-deps";
 import { createDispatchStore } from "@/server/queries/dispatch";
 import { createSupabaseAdminClient } from "@/server/supabase/admin-client";
 import type { DispatchDeps } from "./run-dispatch";
+import { sendOwnerAlert } from "@/server/email/owner-alert";
 
 /**
  * Real dependencies for `runDispatch`.
@@ -37,12 +37,11 @@ export function createDispatchDeps(): DispatchDeps {
     sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
     alertBroken: async (alert) => {
       for (const target of alert) {
-        const content = await renderOwnerAlertEmail({
+        await sendOwnerAlert(mailer, appUrl, target.email, {
           kind: "senderBroken",
           workspaceName: target.workspaceName,
-          settingsUrl: `${appUrl}/w/${target.workspaceSlug}/settings#sending`,
+          workspaceSlug: target.workspaceSlug,
         });
-        await mailer.send({ to: target.email, ...content });
       }
     },
     newRunId: () => randomUUID(),

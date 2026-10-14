@@ -7,7 +7,11 @@ import { getEmailTranslator } from "./translator";
 
 /** What an alert to a workspace Owner needs (sent by the platform sender, spec §8). */
 export type OwnerAlertEmailProps =
-  | { kind: "senderBroken"; workspaceName: string; settingsUrl: string }
+  | {
+      kind: "senderBroken" | "senderRemoved";
+      workspaceName: string;
+      settingsUrl: string;
+    }
   | {
       kind: "sheetPaused";
       reason: SheetPauseReason;
@@ -24,33 +28,28 @@ type AlertCopy = {
   fallback: string;
 };
 
-/** The words of one alert, from `Email.senderBroken` or `Email.sheetPaused`. */
+/** The words of one alert, from `Email.<kind>` (a paused sheet's body depends on the reason). */
 function alertCopy(props: OwnerAlertEmailProps): AlertCopy {
   const tr = getEmailTranslator();
   const values = { workspace: props.workspaceName, appName: APP_NAME };
-  if (props.kind === "senderBroken") {
-    return {
-      subject: tr("senderBroken.subject", values),
-      preview: tr("senderBroken.preview", values),
-      heading: tr("senderBroken.heading", values),
-      body: tr("senderBroken.body", values),
-      button: tr("senderBroken.button"),
-      fallback: tr("senderBroken.fallback"),
-    };
-  }
+  const { kind } = props;
   return {
-    subject: tr("sheetPaused.subject", values),
-    preview: tr("sheetPaused.preview", values),
-    heading: tr("sheetPaused.heading", values),
-    body: tr(`sheetPaused.body.${props.reason}`, values),
-    button: tr("sheetPaused.button"),
-    fallback: tr("sheetPaused.fallback"),
+    subject: tr(`${kind}.subject`, values),
+    preview: tr(`${kind}.preview`, values),
+    heading: tr(`${kind}.heading`, values),
+    body:
+      props.kind === "sheetPaused"
+        ? tr(`sheetPaused.body.${props.reason}`, values)
+        : tr(`${props.kind}.body`, values),
+    button: tr(`${kind}.button`),
+    fallback: tr(`${kind}.fallback`),
   };
 }
 
 /**
  * Tells an Owner that something of their workspace needs them (spec §8): its Gmail needs
- * reconnecting, or its Google Sheet stopped updating. Sent by the platform sender.
+ * reconnecting, its sending stopped because the account was removed, or its Google Sheet stopped
+ * updating. Sent by the platform sender.
  */
 export function OwnerAlertEmail({
   copy,
