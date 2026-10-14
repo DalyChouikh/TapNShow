@@ -16,6 +16,7 @@ import { Sticker } from "@/components/ui/sticker";
 import { useWorkspaceSender } from "@/hooks/use-sender";
 import { useWorkspaceSheet } from "@/hooks/use-sheet";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
+import { Pill } from "@/components/ui/pill";
 
 type StepKey =
   "inviteCommittee" | "importMembers" | "connectGmail" | "connectSheets";
@@ -144,11 +145,7 @@ function ConnectStatus({
 }) {
   const t = useTranslations("WorkspaceHome");
   if (done) {
-    return (
-      <span className="rounded-full border-2 border-outline bg-fill-success px-2 text-xs font-bold text-on-fill">
-        {t("done")}
-      </span>
-    );
+    return <Pill tone="success">{t("done")}</Pill>;
   }
   if (!isOwner) {
     return ownerText ? (

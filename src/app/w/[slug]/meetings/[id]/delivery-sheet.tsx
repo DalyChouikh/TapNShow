@@ -9,15 +9,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useMeetingPeople } from "@/hooks/use-results";
-import { cn } from "@/lib/utils";
 import type { PersonRow } from "@/shared/api/responses";
+import { Pill } from "@/components/ui/pill";
+import type { FillTone } from "@/design/tokens";
 
-const PILL: Record<PersonRow["emailStatus"], string> = {
-  sent: "bg-fill-success",
-  queued: "bg-fill-neutral",
-  skipped: "bg-fill-neutral",
-  failed: "bg-fill-danger",
-  unknown: "bg-fill-warning",
+const STATUS_TONE: Record<PersonRow["emailStatus"], FillTone> = {
+  sent: "success",
+  queued: "neutral",
+  skipped: "neutral",
+  failed: "danger",
+  unknown: "warning",
 };
 
 const KNOWN_REASONS = [
@@ -73,14 +74,9 @@ export function DeliverySheet({
                   </span>
                 ) : null}
               </div>
-              <span
-                className={cn(
-                  "shrink-0 rounded-full border-2 border-outline px-2 text-xs font-bold text-on-fill",
-                  PILL[person.emailStatus],
-                )}
-              >
+              <Pill tone={STATUS_TONE[person.emailStatus]} className="shrink-0">
                 {t(`status.${person.emailStatus}`)}
-              </span>
+              </Pill>
             </li>
           ))}
         </ul>

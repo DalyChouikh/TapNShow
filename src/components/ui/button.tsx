@@ -2,6 +2,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { Slot } from "radix-ui";
 import type { ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
+import { FILL_CLASS } from "./fill";
 
 /**
  * Pressable Neobrutalist button: thick outline, hard shadow that collapses on press,
@@ -13,12 +14,7 @@ export const buttonVariants = cva(
     variants: {
       tone: {
         surface: "bg-surface text-ink",
-        primary: "bg-fill-primary",
-        success: "bg-fill-success",
-        warning: "bg-fill-warning",
-        danger: "bg-fill-danger",
-        info: "bg-fill-info",
-        neutral: "bg-fill-neutral",
+        ...FILL_CLASS,
       },
       size: {
         md: "min-h-11 text-sm",

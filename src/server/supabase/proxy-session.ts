@@ -7,8 +7,8 @@ import type { Database } from "@/server/db/database.types";
 
 /** Pages that need a session. API routes check sessions themselves (401). */
 export function requiresSession(pathname: string): boolean {
-  return (
-    pathname === "/welcome" || pathname === "/w" || pathname.startsWith("/w/")
+  return ["/welcome", "/w", "/invites", "/account"].some(
+    (root) => pathname === root || pathname.startsWith(`${root}/`),
   );
 }
 

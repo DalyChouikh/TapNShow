@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import type { Contact } from "@/shared/api/roster";
+import { Pill } from "@/components/ui/pill";
 
 /**
  * "Unsubscribed" / "Reported: not my group" next to a person's name. There is no control to clear
@@ -17,8 +18,8 @@ export function ContactMark({
     return null;
   }
   return (
-    <span className="w-fit rounded-full border-2 border-outline bg-fill-neutral px-2 text-xs font-bold text-on-fill">
+    <Pill tone="neutral" className="w-fit">
       {contact.reported ? t("markReported") : t("markUnsubscribed")}
-    </span>
+    </Pill>
   );
 }

@@ -18,11 +18,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ShowMore } from "@/components/ui/show-more";
 import { invitesQueryKey, useInvitesPage } from "@/hooks/use-invites";
 import { apiRequest, errorCodeOf } from "@/lib/api-client";
-import { cn } from "@/lib/utils";
 import { okSchema } from "@/shared/api/common";
 import { inviteDeliveredSchema, type Invite } from "@/shared/api/invites";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
 import { InviteDialog } from "./invite-dialog";
+import { Pill } from "@/components/ui/pill";
 
 /** Settings > People > Invites (Owner/Admin only). */
 export function InvitesPanel({ workspace }: { workspace: WorkspaceDetails }) {
@@ -104,16 +104,9 @@ export function InvitesPanel({ workspace }: { workspace: WorkspaceDetails }) {
                 </p>
               </div>
               <RoleBadge role={invite.role} />
-              <span
-                className={cn(
-                  "rounded-full border-2 border-outline px-2 text-xs font-bold text-on-fill",
-                  invite.status === "pending"
-                    ? "bg-fill-success"
-                    : "bg-fill-neutral",
-                )}
-              >
+              <Pill tone={invite.status === "pending" ? "success" : "neutral"}>
                 {t(invite.status)}
-              </span>
+              </Pill>
               <DropdownMenu>
                 <DropdownMenuTrigger
                   aria-label={t("actionsFor", { email: invite.email })}

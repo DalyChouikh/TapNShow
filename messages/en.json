@@ -293,7 +293,9 @@
     },
     "switcherLabel": "Switch workspace",
     "createWorkspace": "Create workspace",
+    "yourWorkspace": "Your workspaces",
     "userMenuLabel": "Account",
+    "myInvites": "My invites",
     "yourName": "Your name",
     "signOut": "Sign out",
     "notFoundTitle": "Workspace not found",
@@ -539,6 +541,48 @@
     "notFound": "This invite link isn't valid. Check that you copied all of it.",
     "alreadyMember": "You're already in {workspace}.",
     "open": "Open workspace"
+  },
+  "MyInvites": {
+    "title": "My invites",
+    "tabs": {
+      "label": "Invites",
+      "upcoming": "Upcoming",
+      "past": "Past"
+    },
+    "chips": {
+      "label": "Show",
+      "all": "All",
+      "needs": "Needs your answer"
+    },
+    "groups": {
+      "thisWeek": "This week",
+      "nextWeek": "Next week",
+      "later": "Later"
+    },
+    "pill": {
+      "notAnswered": "Not answered",
+      "answerBy": "Please answer by {when}",
+      "timeChanged": "Time changed",
+      "timeChangedHint": "You said {answer, select, attending {Going} late {Late} absent {Can't come} other {Not going}}. Still going?",
+      "answer": "{status, select, attending {Going} late {Late by {minutes} min} absent {Can't come} other {Not going}}",
+      "cancelled": "Cancelled",
+      "noAnswerNeeded": "No answer needed",
+      "said": "{status, select, attending {Said going} late {Said late by {minutes} min} absent {Said can't come} other {Said not going}}",
+      "noAnswer": "No answer",
+      "was": "{actual, select, present {Was present} late {{minutes, plural, =0 {Was late} other {Was late by # min}}} other {Was absent}}"
+    },
+    "yourReason": "Your reason: {reason}",
+    "caughtUp": "You're all caught up",
+    "caughtUpBody": "Every upcoming invite has your answer.",
+    "emptyTitle": "No invites yet",
+    "emptyBody": "When a group invites you at {email}, the meeting shows up here too.",
+    "otherAddress": "Invited at another address? Sign in with that one.",
+    "organizing": "Organizing meetings yourself?",
+    "createWorkspace": "Create a workspace",
+    "noPast": "No past invites yet.",
+    "opening": "Opening your invite…",
+    "notAvailable": "This invite isn't available any more.",
+    "backToInvites": "Back to my invites"
   },
   "Lists": {
     "title": "Lists",

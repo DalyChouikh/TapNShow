@@ -18,7 +18,6 @@ import {
 import { errorCodeOf } from "@/lib/api-client";
 import { goTo } from "@/lib/navigation";
 import { sheetUrl } from "@/lib/sheets/url";
-import { cn } from "@/lib/utils";
 import {
   GOOGLE_RESULT_PARAMS,
   googleConnectHref,
@@ -27,6 +26,7 @@ import { SHEET_RETRYABLE_REASONS, type SheetStatus } from "@/shared/api/sheets";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
 import { GoogleConnectResult } from "./google-connect-result";
 import { SettingsSection } from "./settings-section";
+import { Pill } from "@/components/ui/pill";
 
 type Pending = "connect" | "recreate" | "turnOff" | null;
 
@@ -158,22 +158,21 @@ export function SheetsSection({
               </p>
             ) : null}
             <p className="text-sm">
-              <span
-                className={cn(
-                  "rounded-full border-2 border-outline px-2 text-xs font-bold text-on-fill",
+              <Pill
+                tone={
                   status.state === "paused"
-                    ? "bg-fill-warning"
+                    ? "warning"
                     : status.behind
-                      ? "bg-fill-info"
-                      : "bg-fill-success",
-                )}
+                      ? "info"
+                      : "success"
+                }
               >
                 {status.state === "paused"
                   ? t("paused")
                   : status.behind
                     ? t("updating")
                     : t("upToDate")}
-              </span>{" "}
+              </Pill>{" "}
               {status.state === "paused" ? null : updated}
             </p>
           </div>

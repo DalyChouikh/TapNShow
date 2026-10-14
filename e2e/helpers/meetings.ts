@@ -4,21 +4,17 @@ import { sentMessages } from "./fake-google";
 import { expectNoHorizontalScroll } from "./layout";
 import { seedRoster } from "./seed";
 import { E2E_DISPATCH_SECRET, seedSender } from "./seed-sender";
-import { signInWithCode, uniqueEmail } from "./sign-in";
+import { signUpWithWorkspace } from "./sign-in";
 
 /** Signs up an Owner named "Meetings Owner" and creates a workspace; returns its slug. */
 export async function createWorkspace(
   page: Page,
   name: string,
 ): Promise<string> {
-  await signInWithCode(page, uniqueEmail("e2e-meetings"), {
-    startPath: "/login",
-    name: "Meetings Owner",
+  return signUpWithWorkspace(page, name, {
+    prefix: "e2e-meetings",
+    ownerName: "Meetings Owner",
   });
-  await page.getByLabel("Workspace name").fill(name);
-  await page.getByRole("button", { name: "Create workspace" }).click();
-  await expect(page).toHaveURL(/\/w\/[a-z0-9-]+-[a-z0-9]{4}$/);
-  return new URL(page.url()).pathname.split("/")[2];
 }
 
 /** Picks the day `days` from today in the Details step's calendar (moving a month on when needed). */

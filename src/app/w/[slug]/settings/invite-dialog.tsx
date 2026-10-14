@@ -21,7 +21,6 @@ import { RadioCard, RadioGroup } from "@/components/ui/radio-group";
 import { INVITE_BATCH_MAX } from "@/config/invites";
 import { invitesQueryKey } from "@/hooks/use-invites";
 import { ApiClientError, apiRequest, errorCodeOf } from "@/lib/api-client";
-import { cn } from "@/lib/utils";
 import {
   createInviteBodySchema,
   inviteBatchResponseSchema,
@@ -29,6 +28,8 @@ import {
   type InviteResult,
 } from "@/shared/api/invites";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
+import { Pill } from "@/components/ui/pill";
+import type { FillTone } from "@/design/tokens";
 
 type Values = z.input<typeof createInviteBodySchema>;
 
@@ -41,13 +42,13 @@ const STATUS_KEY = {
   error: "statusError",
 } as const;
 
-const STATUS_FILL: Record<InviteResult["status"], string> = {
-  sent: "bg-fill-success",
-  link: "bg-fill-success",
-  already_member: "bg-fill-neutral",
-  email_limit: "bg-fill-warning",
-  email_failed: "bg-fill-warning",
-  error: "bg-fill-danger",
+const STATUS_TONE: Record<InviteResult["status"], FillTone> = {
+  sent: "success",
+  link: "success",
+  already_member: "neutral",
+  email_limit: "warning",
+  email_failed: "warning",
+  error: "danger",
 };
 
 /**
@@ -176,14 +177,12 @@ export function InviteDialog({
                 >
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-bold">{result.email}</p>
-                    <span
-                      className={cn(
-                        "inline-flex rounded-full border-2 border-outline px-2 text-xs font-bold text-on-fill",
-                        STATUS_FILL[result.status],
-                      )}
+                    <Pill
+                      tone={STATUS_TONE[result.status]}
+                      className="inline-flex"
                     >
                       {t(STATUS_KEY[result.status])}
-                    </span>
+                    </Pill>
                   </div>
                   {result.inviteId && result.status !== "sent" ? (
                     <Button

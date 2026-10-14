@@ -1,18 +1,16 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { latestEmailText } from "./helpers/mailpit";
-import { signInWithCode, uniqueEmail } from "./helpers/sign-in";
+import {
+  signInWithCode,
+  signUpWithWorkspace,
+  uniqueEmail,
+} from "./helpers/sign-in";
 import { openSettingsSection } from "./helpers/settings";
 
 const INVITE_LINK = /(http:\/\/localhost:3000\/invite\/[A-Za-z0-9_-]{43})/;
 
 async function ownerWithWorkspace(page: Page, name: string): Promise<void> {
-  await signInWithCode(page, uniqueEmail("e2e-owner"), {
-    startPath: "/login",
-    name: "Invite Owner",
-  });
-  await page.getByLabel("Workspace name").fill(name);
-  await page.getByRole("button", { name: "Create workspace" }).click();
-  await expect(page).toHaveURL(/\/w\/[a-z0-9-]+-[a-z0-9]{4}$/);
+  await signUpWithWorkspace(page, name, { ownerName: "Invite Owner" });
   await page
     .getByRole("navigation", { name: "Workspace" })
     .getByRole("link", { name: "Settings" })

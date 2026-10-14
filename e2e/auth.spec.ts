@@ -18,16 +18,16 @@ test("signs in with an emailed code and keeps next", async ({ page }) => {
   await expect(page).toHaveURL(/\/w\/some-club-ab12$/);
 });
 
-test("skips the name step on the next sign-in and offers to create a workspace", async ({
+test("skips the name step on the next sign-in and lands a member on My invites", async ({
   page,
   context,
 }) => {
   const email = uniqueEmail("e2e-again");
   await signInWithCode(page, email, { startPath: "/login", name: "Again" });
-  await expect(page).toHaveURL(/\/w\/new$/);
+  await expect(page).toHaveURL(/\/invites$/);
   await context.clearCookies();
   await signInWithCode(page, email, { startPath: "/login" });
-  await expect(page).toHaveURL(/\/w\/new$/);
+  await expect(page).toHaveURL(/\/invites$/);
 });
 
 test("rejects a wrong code", async ({ page }) => {

@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sticker } from "@/components/ui/sticker";
 import { goTo } from "@/lib/navigation";
-import { cn } from "@/lib/utils";
 import {
   useDisconnectGmail,
   useSetSender,
@@ -24,6 +23,7 @@ import {
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
 import { GoogleConnectResult } from "./google-connect-result";
 import { SettingsSection } from "./settings-section";
+import { Pill } from "@/components/ui/pill";
 
 type Pending =
   | { kind: "use"; id: string; email: string }
@@ -95,16 +95,9 @@ export function SendingSection({
             })}
           </p>
           <p className="text-sm">
-            <span
-              className={cn(
-                "rounded-full border-2 border-outline px-2 text-xs font-bold text-on-fill",
-                current.status === "active"
-                  ? "bg-fill-success"
-                  : "bg-fill-danger",
-              )}
-            >
+            <Pill tone={current.status === "active" ? "success" : "danger"}>
               {current.status === "active" ? t("active") : t("broken")}
-            </span>{" "}
+            </Pill>{" "}
             {t("usage", {
               sent: current.sentLast24h,
               limit: current.dailyLimit,

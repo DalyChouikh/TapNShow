@@ -2,19 +2,11 @@
 
 import { motion } from "motion/react";
 import { useState } from "react";
+import { FILL_CLASS } from "@/components/ui/fill";
 import { CONFETTI_PIECES, springs } from "@/design/motion";
 import { useIsClient } from "@/lib/use-is-client";
 import { cn } from "@/lib/utils";
 import { usePrefersReducedMotion } from "./use-prefers-reduced-motion";
-
-const CONFETTI_FILL = {
-  primary: "bg-fill-primary",
-  success: "bg-fill-success",
-  warning: "bg-fill-warning",
-  danger: "bg-fill-danger",
-  info: "bg-fill-info",
-  neutral: "bg-fill-neutral",
-} as const;
 
 /**
  * The "CONFIRMED" moment: a stamp slams in, the card shakes, confetti bursts.
@@ -63,7 +55,7 @@ export function ConfirmStamp({
               aria-hidden
               className={cn(
                 "absolute h-3.5 w-2.5 rounded-sm border-2 border-outline motion-reduce:hidden",
-                CONFETTI_FILL[piece.tone],
+                FILL_CLASS[piece.tone],
               )}
               initial={{ x: 0, y: 0, rotate: 0, opacity: 1 }}
               animate={{

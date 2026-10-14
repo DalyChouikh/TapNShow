@@ -2,20 +2,16 @@ import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { expectNoHorizontalScroll } from "./helpers/layout";
 import { seedMember, seedRoster } from "./helpers/seed";
-import { signInWithCode, uniqueEmail } from "./helpers/sign-in";
+import { signInWithCode, signUpWithWorkspace } from "./helpers/sign-in";
 
 const LONG_NAME = "Mohamed Ali Ben Abdallah El Kefi";
 const LONG_EMAIL = "mohamedali.benabdallah.elkefi@etudiant-issatso.u-sousse.tn";
 
 async function createWorkspace(page: Page, name: string): Promise<string> {
-  await signInWithCode(page, uniqueEmail("e2e-roster"), {
-    startPath: "/login",
-    name: "Roster Owner",
+  return signUpWithWorkspace(page, name, {
+    prefix: "e2e-roster",
+    ownerName: "Roster Owner",
   });
-  await page.getByLabel("Workspace name").fill(name);
-  await page.getByRole("button", { name: "Create workspace" }).click();
-  await expect(page).toHaveURL(/\/w\/[a-z0-9-]+-[a-z0-9]{4}$/);
-  return new URL(page.url()).pathname.split("/")[2];
 }
 
 test("the roster lists, searches and filters people without sideways scrolling", async ({
