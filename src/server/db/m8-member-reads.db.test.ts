@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { z } from "zod";
 import {
   adminClient,
+  anonClient,
   createTestUser,
   expectAppError,
   type TestUser,
@@ -121,6 +122,20 @@ describe("matching invites to accounts (spec §6 Identity rules)", () => {
     expect(
       (await invitesOf(mixed)).items.map((item) => item.invitee_id),
     ).toEqual([invite.inviteeId]);
+  });
+
+  it("lets no one claim an address by signing up with a password (confirm email is on)", async () => {
+    const victim = `victim-${crypto.randomUUID()}@example.test`;
+    const contact = await seedContact(clubA.id, victim);
+    await seedInviteFor(clubA.id, contact, { starts_at: hoursFromNow(5) });
+    const client = anonClient();
+    const { data, error } = await client.auth.signUp({
+      email: victim,
+      password: crypto.randomUUID(),
+    });
+    expect(error).toBeNull();
+    expect(data.session).toBeNull();
+    expect(data.user?.email_confirmed_at ?? null).toBeNull();
   });
 
   it("matches nothing while the account's email is not confirmed", async () => {
