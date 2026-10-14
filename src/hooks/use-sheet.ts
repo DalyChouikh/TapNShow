@@ -14,6 +14,7 @@ import { apiRequest } from "@/lib/api-client";
 import { sheetUrl, tabForMeeting } from "@/lib/sheets/url";
 import { okSchema } from "@/shared/api/common";
 import { sheetStatusSchema } from "@/shared/api/sheets";
+import { settingsPath } from "@/lib/with-query";
 
 /** Query key of a workspace's Google Sheet status. */
 export const sheetQueryKey = (slug: string) => ["sheet", slug] as const;
@@ -123,7 +124,7 @@ export function useExportSheetLink(
   return link.paused && isOwner
     ? {
         ...link,
-        settingsHref: `/w/${encodeURIComponent(slug)}/settings#sheets`,
+        settingsHref: settingsPath(slug, "sheets"),
       }
     : link;
 }

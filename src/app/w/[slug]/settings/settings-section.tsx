@@ -5,6 +5,7 @@ import { Collapsible } from "radix-ui";
 import { type ReactNode, useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import type { SettingsSectionId } from "@/lib/with-query";
 
 const pointsAt = (id: string) =>
   typeof window !== "undefined" && window.location.hash === `#${id}`;
@@ -22,7 +23,7 @@ export function SettingsSection({
   className,
   children,
 }: {
-  id: string;
+  id: SettingsSectionId;
   title: string;
   icon?: ReactNode;
   defaultOpen?: boolean;

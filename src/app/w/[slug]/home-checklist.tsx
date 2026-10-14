@@ -17,6 +17,7 @@ import { useWorkspaceSender } from "@/hooks/use-sender";
 import { useWorkspaceSheet } from "@/hooks/use-sheet";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
 import { Pill } from "@/components/ui/pill";
+import { settingsPath } from "@/lib/with-query";
 
 type StepKey =
   "inviteCommittee" | "importMembers" | "connectGmail" | "connectSheets";
@@ -35,7 +36,7 @@ const STEPS: ReadonlyArray<{
   {
     key: "inviteCommittee",
     icon: UserPlus,
-    href: (slug) => `/w/${slug}/settings#people`,
+    href: (slug) => settingsPath(slug, "people"),
     actionKey: "inviteCommitteeAction",
   },
   {
@@ -47,14 +48,14 @@ const STEPS: ReadonlyArray<{
   {
     key: "connectGmail",
     icon: EnvelopeSimple,
-    href: (slug) => `/w/${slug}/settings#sending`,
+    href: (slug) => settingsPath(slug, "sending"),
     actionKey: "connectGmailAction",
   },
   {
     key: "connectSheets",
     icon: Table,
     // Settings, not Google: the privacy text is always read before connecting.
-    href: (slug) => `/w/${slug}/settings#sheets`,
+    href: (slug) => settingsPath(slug, "sheets"),
     actionKey: "connectSheetsAction",
   },
 ];
