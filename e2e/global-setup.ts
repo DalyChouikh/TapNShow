@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { z } from "zod";
 import { startFakeGoogle } from "./helpers/fake-google";
+import { removeFakePushCertificate, startFakePush } from "./helpers/fake-push";
 
 /** Code requests one local e2e run may make from the shared "unknown" IP. */
 const E2E_OTP_REQUESTS_PER_HOUR = 1000;
@@ -57,9 +58,13 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
     setAppLimit("calendar_confirm_delay_seconds", 1);
     // Fake Google (token, revoke, Gmail, Drive, Sheets): no e2e call reaches Google.
     const fakeGoogle = await startFakeGoogle();
+    // Fake push service (HTTPS, like every real one): no e2e push reaches a browser vendor.
+    const fakePush = await startFakePush();
     return async () => {
       restore();
       await new Promise<void>((resolve) => fakeGoogle.close(() => resolve()));
+      await new Promise<void>((resolve) => fakePush.close(() => resolve()));
+      removeFakePushCertificate();
     };
   } catch (error) {
     // A crash here (e.g. the fake Google port is taken) must not leave the raised limits behind.

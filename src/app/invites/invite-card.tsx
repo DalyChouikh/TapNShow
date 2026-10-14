@@ -3,6 +3,7 @@
 import { CaretRight } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { useId } from "react";
 import { initialsFor } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { Pill } from "@/components/ui/pill";
@@ -29,6 +30,7 @@ export function InviteCard({
   const t = useTranslations("MyInvites");
   const tOffline = useTranslations("Offline");
   const pills = describeInvite(invite, tab);
+  const id = useId();
   const opens = tab === "upcoming" && !disabled;
   const body = (
     <Card
@@ -45,15 +47,17 @@ export function InviteCard({
           </span>
         </Sticker>
         <div className="min-w-0 flex-1">
-          <h3 className="truncate font-bold">{invite.title}</h3>
-          <p className="text-sm break-words text-muted-ink">
+          <h3 id={`${id}-title`} className="truncate font-bold">
+            {invite.title}
+          </h3>
+          <p id={`${id}-when`} className="text-sm break-words text-muted-ink">
             {invite.workspaceName} ·{" "}
             {formatDeadline(invite.startsAt, invite.timezone)}
           </p>
         </div>
         {opens ? <CaretRight weight="bold" aria-hidden /> : null}
       </div>
-      <div className="flex flex-wrap items-center gap-2">
+      <div id={`${id}-status`} className="flex flex-wrap items-center gap-2">
         {pills.map((pill) => (
           <Pill key={pill.key} tone={pill.tone}>
             {t(`pill.${pill.key}`, pill.values)}
@@ -80,6 +84,10 @@ export function InviteCard({
   return opens ? (
     <Link
       href={`/invites/${invite.inviteeId}`}
+      // A link around a card isn't named by the card's content in every browser: name it after the
+      // meeting and its group and time, and describe it with the status.
+      aria-labelledby={`${id}-title ${id}-when`}
+      aria-describedby={`${id}-status`}
       className="block rounded-card focus-visible:outline-offset-4"
     >
       {body}

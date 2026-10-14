@@ -1,12 +1,21 @@
 import { defineConfig, devices } from "@playwright/test";
 import { FAKE_GOOGLE_URL } from "./e2e/helpers/fake-google";
 import {
+  ensureFakePushCertificate,
+  FAKE_PUSH_CERT,
+} from "./e2e/helpers/fake-push";
+import { E2E_VAPID } from "./e2e/helpers/push";
+import {
   E2E_DISPATCH_SECRET,
   E2E_INVITE_SECRET,
   E2E_TOKEN_KEY,
 } from "./e2e/helpers/seed-sender";
 
 const PORT = 3000;
+
+// The app must trust the fake push service's certificate from the moment it starts (Node reads
+// NODE_EXTRA_CA_CERTS once), so it exists before the web server does.
+ensureFakePushCertificate();
 
 export default defineConfig({
   testDir: "./e2e",
@@ -42,6 +51,12 @@ export default defineConfig({
       GOOGLE_TOKEN_ENCRYPTION_KEY: E2E_TOKEN_KEY,
       INVITE_TOKEN_SECRET: E2E_INVITE_SECRET,
       DISPATCH_SECRET: E2E_DISPATCH_SECRET,
+      // Phone notifications go to the HTTPS fake push service (e2e/helpers/fake-push.ts), signed with
+      // test-only VAPID keys; the app trusts only that throwaway certificate (TLS checks stay on).
+      NEXT_PUBLIC_VAPID_PUBLIC_KEY: E2E_VAPID.publicKey,
+      VAPID_PRIVATE_KEY: E2E_VAPID.privateKey,
+      VAPID_SUBJECT: E2E_VAPID.subject,
+      NODE_EXTRA_CA_CERTS: FAKE_PUSH_CERT,
     },
   },
 });
