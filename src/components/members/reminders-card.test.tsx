@@ -2,6 +2,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEVICE_KEYS } from "@/config/members";
+import type { DeviceKind } from "@/lib/device/kind";
 import type { RemindersState } from "@/lib/push/client";
 import { expectNothingShown, renderWithProviders } from "@/test/render";
 import { RemindersCard } from "./reminders-card";
@@ -22,11 +23,16 @@ vi.mock("@/hooks/use-reminders", () => ({
     justTurnedOn: hooks.justTurnedOn,
   }),
 }));
+const kind = vi.hoisted(() => ({ device: "phone" as DeviceKind }));
+vi.mock("@/lib/device/kind", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/device/kind")>()),
+  useDeviceKind: () => kind.device,
+}));
 vi.mock("@/hooks/use-install-prompt", () => ({
   useInstallPrompt: () => ({
     canInstall: hooks.canInstall,
     install: hooks.install,
-    needsIphoneGuide: hooks.state === "needs_install",
+    needsHomeScreenGuide: hooks.state === "needs_install",
     standalone: false,
   }),
 }));
@@ -35,6 +41,7 @@ const DAY = 86_400_000;
 
 beforeEach(() => {
   vi.clearAllMocks();
+  kind.device = "phone";
   window.localStorage.clear();
   hooks.state = "off";
   hooks.justTurnedOn = false;
@@ -81,6 +88,7 @@ describe("RemindersCard (spec §7.4)", () => {
 
   it("walks an iPhone through the Home Screen steps", async () => {
     hooks.state = "needs_install";
+    kind.device = "iphone";
     const user = userEvent.setup();
     renderWithProviders(<RemindersCard />);
     expect(screen.getByText("Get reminders on this iPhone")).toBeVisible();
@@ -91,6 +99,25 @@ describe("RemindersCard (spec §7.4)", () => {
     expect(
       screen.getByText("Tap Share at the bottom of Safari."),
     ).toBeVisible();
+  });
+
+  it("names the device it is on: a computer, an iPad (Share at the top)", async () => {
+    kind.device = "computer";
+    const { unmount } = renderWithProviders(<RemindersCard />);
+    expect(screen.getByText("Get reminders on this computer")).toBeVisible();
+    unmount();
+    hooks.state = "needs_install";
+    kind.device = "ipad";
+    const user = userEvent.setup();
+    renderWithProviders(<RemindersCard />);
+    expect(screen.getByText("Get reminders on this iPad")).toBeVisible();
+    expect(
+      screen.getByText(
+        "On iPad, reminders work once TapNShow is on your Home Screen.",
+      ),
+    ).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Show me how" }));
+    expect(screen.getByText("Tap Share at the top of Safari.")).toBeVisible();
   });
 
   it("explains a block, and Hide hides it", async () => {

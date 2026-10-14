@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { focusOrOpen, notificationFromPush } from "./sw-handlers";
+import {
+  focusOrOpen,
+  forgetWhenSignedOut,
+  notificationFromPush,
+} from "./sw-handlers";
 
 const fallback = {
   title: "TapNShow",
@@ -73,5 +77,18 @@ describe("focusOrOpen", () => {
     expect(openWindow).toHaveBeenCalledWith(
       "/invites/6a1f2b3c-4d5e-4f60-8a71-b2c3d4e5f6aa",
     );
+  });
+});
+
+describe("forgetWhenSignedOut", () => {
+  it("drops the saved invites when the server says the session is gone, and only then", async () => {
+    const forget = vi.fn<() => Promise<void>>(async () => undefined);
+    const plugin = forgetWhenSignedOut(forget);
+    const ok = new Response("{}", { status: 200 });
+    expect(await plugin.fetchDidSucceed({ response: ok })).toBe(ok);
+    expect(forget).not.toHaveBeenCalled();
+    const gone = new Response("{}", { status: 401 });
+    expect(await plugin.fetchDidSucceed({ response: gone })).toBe(gone);
+    expect(forget).toHaveBeenCalledOnce();
   });
 });

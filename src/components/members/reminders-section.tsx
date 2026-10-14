@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { useInstallPrompt } from "@/hooks/use-install-prompt";
 import { useReminders } from "@/hooks/use-reminders";
+import { useDeviceKind } from "@/lib/device/kind";
 import { IphoneInstallSheet } from "./iphone-install-sheet";
 
 /**
@@ -18,6 +19,7 @@ export function RemindersSection() {
   const { state, turnOn, turnOff, pending } = useReminders();
   const { canInstall, install } = useInstallPrompt();
   const [guide, setGuide] = useState(false);
+  const device = useDeviceKind();
   if (state === null || state === "unavailable") {
     return null;
   }
@@ -27,14 +29,14 @@ export function RemindersSection() {
       : state === "unsupported"
         ? t("unsupported")
         : state === "needs_install"
-          ? t("cardBodyIphone")
+          ? t("homeScreenBody", { device })
           : null;
   return (
     <Card as="section" className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
           <h2 className="font-bold" id="reminders-title">
-            {t("sectionTitle")}
+            {t("sectionTitle", { thisDevice: t("thisDevice", { device }) })}
           </h2>
           <p className="text-sm">{t("sectionBody")}</p>
         </div>
@@ -54,7 +56,11 @@ export function RemindersSection() {
           <Button onClick={() => void install()}>{t("install")}</Button>
         ) : null}
       </div>
-      <IphoneInstallSheet open={guide} onOpenChange={setGuide} />
+      <IphoneInstallSheet
+        open={guide}
+        onOpenChange={setGuide}
+        device={device}
+      />
     </Card>
   );
 }

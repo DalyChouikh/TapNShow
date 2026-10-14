@@ -11,16 +11,20 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Sticker } from "@/components/ui/sticker";
+import type { DeviceKind } from "@/lib/device/kind";
 
 const STEPS = ["step1", "step2", "step3"] as const;
 
-/** The three Home Screen steps an iPhone needs before it can show reminders (spec §7.4). */
+/** The three Home Screen steps an iPhone or iPad needs before it can show reminders (spec §7.4). */
 export function IphoneInstallSheet({
   open,
   onOpenChange,
+  device,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** iPad Safari has Share at the top, iPhone at the bottom. */
+  device: DeviceKind;
 }) {
   const t = useTranslations("Reminders");
   return (
@@ -39,7 +43,7 @@ export function IphoneInstallSheet({
                   <span className="text-xs font-bold">{index + 1}</span>
                 )}
               </Sticker>
-              <span>{t(step)}</span>
+              <span>{t(step, { device })}</span>
             </li>
           ))}
         </ol>

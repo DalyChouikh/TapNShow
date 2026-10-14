@@ -1,6 +1,7 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { DeviceKind } from "@/lib/device/kind";
 import type { RemindersState } from "@/lib/push/client";
 import { expectNothingShown, renderWithProviders } from "@/test/render";
 import { RemindersSection } from "./reminders-section";
@@ -20,17 +21,23 @@ vi.mock("@/hooks/use-reminders", () => ({
     justTurnedOn: false,
   }),
 }));
+const kind = vi.hoisted(() => ({ device: "phone" as DeviceKind }));
+vi.mock("@/lib/device/kind", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/device/kind")>()),
+  useDeviceKind: () => kind.device,
+}));
 vi.mock("@/hooks/use-install-prompt", () => ({
   useInstallPrompt: () => ({
     canInstall: hooks.canInstall,
     install: vi.fn(),
-    needsIphoneGuide: hooks.state === "needs_install",
+    needsHomeScreenGuide: hooks.state === "needs_install",
     standalone: false,
   }),
 }));
 
 beforeEach(() => {
   vi.clearAllMocks();
+  kind.device = "phone";
   hooks.state = "off";
   hooks.canInstall = false;
 });
@@ -52,6 +59,14 @@ describe("RemindersSection (spec §7.4, /account)", () => {
     expect(toggle).toBeChecked();
     await user.click(toggle);
     expect(hooks.turnOff).toHaveBeenCalledOnce();
+  });
+
+  it("is named for the device it is on", () => {
+    kind.device = "computer";
+    renderWithProviders(<RemindersSection />);
+    expect(
+      screen.getByRole("switch", { name: "Reminders on this computer" }),
+    ).toBeVisible();
   });
 
   it("is off and explains why when the phone can't take reminders yet", async () => {

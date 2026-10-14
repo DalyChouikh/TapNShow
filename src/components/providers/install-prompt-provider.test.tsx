@@ -66,14 +66,14 @@ describe("useInstallPrompt", () => {
     expect(
       renderHook(() => useInstallPrompt(), { wrapper }).result.current,
     ).toMatchObject({
-      needsIphoneGuide: true,
+      needsHomeScreenGuide: true,
       standalone: false,
     });
     device({ userAgent: iphone, standalone: true });
     expect(
       renderHook(() => useInstallPrompt(), { wrapper }).result.current,
     ).toMatchObject({
-      needsIphoneGuide: false,
+      needsHomeScreenGuide: false,
       standalone: true,
     });
   });

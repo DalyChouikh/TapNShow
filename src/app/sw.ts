@@ -14,7 +14,11 @@ import {
   SW_CACHES,
   SW_NETWORK_TIMEOUT_SECONDS,
 } from "@/config/offline";
-import { focusOrOpen, notificationFromPush } from "@/lib/push/sw-handlers";
+import {
+  focusOrOpen,
+  forgetWhenSignedOut,
+  notificationFromPush,
+} from "@/lib/push/sw-handlers";
 import messages from "../../messages/en.json";
 
 declare global {
@@ -57,6 +61,9 @@ const serwist = new Serwist({
           new ExpirationPlugin({
             maxEntries: 20,
             maxAgeSeconds: OFFLINE_INVITES_MAX_AGE_SECONDS,
+          }),
+          forgetWhenSignedOut(async () => {
+            await caches.delete(SW_CACHES.invites);
           }),
         ],
       }),

@@ -8,7 +8,8 @@ import {
   useMemo,
   useState,
 } from "react";
-import { isIphone, isStandalone } from "@/lib/push/client";
+import { deviceKind, needsHomeScreen } from "@/lib/device/kind";
+import { isStandalone } from "@/lib/push/client";
 import { useIsClient } from "@/lib/use-is-client";
 
 /** Chrome's `beforeinstallprompt` (not in lib.dom). */
@@ -23,8 +24,8 @@ export type InstallPrompt = {
   canInstall: boolean;
   /** Shows the browser's install dialog; the offer is used up either way. */
   install: () => Promise<void>;
-  /** iPhone Safari, not installed: reminders need the Home Screen steps. */
-  needsIphoneGuide: boolean;
+  /** iPhone or iPad Safari, not installed: reminders need the Home Screen steps. */
+  needsHomeScreenGuide: boolean;
   /** Opened as the installed app. */
   standalone: boolean;
 };
@@ -33,7 +34,7 @@ export type InstallPrompt = {
 export const InstallPromptContext = createContext<InstallPrompt>({
   canInstall: false,
   install: async () => undefined,
-  needsIphoneGuide: false,
+  needsHomeScreenGuide: false,
   standalone: false,
 });
 
@@ -67,7 +68,8 @@ export function InstallPromptProvider({ children }: { children: ReactNode }) {
     () => ({
       canInstall: offer !== null,
       install,
-      needsIphoneGuide: isClient && isIphone() && !standalone,
+      needsHomeScreenGuide:
+        isClient && needsHomeScreen(deviceKind()) && !standalone,
       standalone,
     }),
     [offer, install, isClient, standalone],

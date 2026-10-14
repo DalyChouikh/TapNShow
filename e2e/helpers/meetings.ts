@@ -155,3 +155,26 @@ export async function sendMeetingThroughUi(
   ).toBeVisible({ timeout: 30_000 });
   return new URL(page.url()).pathname;
 }
+
+/**
+ * Marks a person at the door (Check-in tab open) and waits until the saved mark shows. A click that
+ * lands before the page is interactive is retried; a pressed chip is never clicked again (that
+ * would clear the mark).
+ */
+export async function markAtDoor(
+  page: Page,
+  fullName: string,
+  actual: "Present" | "Late" | "Absent",
+): Promise<void> {
+  const chip = page
+    .getByRole("group", { name: `Check-in for ${fullName}` })
+    .getByRole("button", { name: actual });
+  await expect(async () => {
+    if ((await chip.getAttribute("aria-pressed")) !== "true") {
+      await chip.click();
+    }
+    await expect(chip).toHaveAttribute("aria-pressed", "true", {
+      timeout: 2_000,
+    });
+  }).toPass({ timeout: 15_000 });
+}

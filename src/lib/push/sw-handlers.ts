@@ -74,3 +74,22 @@ export async function focusOrOpen(
   }
   await clients.openWindow(url);
 }
+
+/**
+ * A worker plugin for the saved invites: when the server says the session is gone (401), the saved
+ * copy goes too, so a signed-out phone stops showing that person's invites offline.
+ */
+export function forgetWhenSignedOut(forget: () => Promise<void>) {
+  return {
+    fetchDidSucceed: async ({
+      response,
+    }: {
+      response: Response;
+    }): Promise<Response> => {
+      if (response.status === 401) {
+        await forget();
+      }
+      return response;
+    },
+  };
+}

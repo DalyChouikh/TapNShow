@@ -2,6 +2,7 @@ import { publicEnv } from "@/config/public-env";
 import { apiRequest } from "@/lib/api-client";
 import { okSchema } from "@/shared/api/common";
 import { pushSubscriptionBodySchema } from "@/shared/api/push";
+import { deviceKind, needsHomeScreen } from "@/lib/device/kind";
 import { base64UrlToBytes } from "./base64url";
 
 /** Where this device stands with reminders (spec §7.4). */
@@ -13,14 +14,6 @@ const SUBSCRIPTIONS = "/api/me/push-subscriptions";
 /** Reminders exist on this deployment (the public key is set; previews without keys hide them). */
 export function remindersAvailable(): boolean {
   return Boolean(publicEnv.NEXT_PUBLIC_VAPID_PUBLIC_KEY);
-}
-
-/** An iPhone or iPad (iPadOS reports a Mac with touch). */
-export function isIphone(): boolean {
-  return (
-    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.userAgent.includes("Macintosh") && navigator.maxTouchPoints > 1)
-  );
 }
 
 /** Opened from the Home Screen / as an installed app. */
@@ -39,7 +32,7 @@ export async function remindersState(): Promise<RemindersState> {
   if (!remindersAvailable()) {
     return "unavailable";
   }
-  if (isIphone() && !isStandalone()) {
+  if (needsHomeScreen(deviceKind()) && !isStandalone()) {
     return "needs_install";
   }
   if (

@@ -5,6 +5,7 @@ import { latestEmailText } from "./helpers/mailpit";
 import {
   answerLinkFrom,
   createWorkspace,
+  markAtDoor,
   messagesFor,
   runWorkers,
   sendMeetingThroughUi,
@@ -213,10 +214,7 @@ test("the Owner connects a Google Sheet that follows answers and check-ins, paus
   );
   await page.goto(meetingPath);
   await page.getByRole("radio", { name: "Check-in" }).click();
-  await page
-    .getByRole("group", { name: `Check-in for ${people[0].fullName}` })
-    .getByRole("button", { name: "Present" })
-    .click();
+  await markAtDoor(page, people[0].fullName, "Present");
   await syncUntil(
     request,
     workspaceId,

@@ -14,7 +14,10 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sticker } from "@/components/ui/sticker";
 import { ME_QUERY_KEY, useMe } from "@/hooks/use-me";
+import { DEVICE_KEYS } from "@/config/members";
 import { apiRequest } from "@/lib/api-client";
+import { clearDeviceData } from "@/lib/device/clear";
+import { readDeviceValue, writeDeviceValue } from "@/lib/device/storage";
 import { resolvePostSignInPath } from "@/lib/post-sign-in";
 import { safeNextPath } from "@/lib/safe-next-path";
 import { okSchema } from "@/shared/api/common";
@@ -44,9 +47,24 @@ export function WelcomeFlow() {
 
   const ready = me.data?.profile.displayName ? me.data : null;
   useEffect(() => {
-    if (ready) {
-      router.replace(resolvePostSignInPath(ready, next));
+    if (!ready) {
+      return;
     }
+    let live = true;
+    void (async () => {
+      // Another person used this device: their saved invites, preferences and reminders go
+      // before this person sees anything (spec §11 Push privacy). The same person keeps theirs.
+      if (readDeviceValue(DEVICE_KEYS.owner, z.string()) !== ready.userId) {
+        await clearDeviceData();
+        writeDeviceValue(DEVICE_KEYS.owner, ready.userId);
+      }
+      if (live) {
+        router.replace(resolvePostSignInPath(ready, next));
+      }
+    })();
+    return () => {
+      live = false;
+    };
   }, [ready, next, router]);
 
   if (!me.data || ready) {

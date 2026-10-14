@@ -10,6 +10,7 @@ import { Sticker } from "@/components/ui/sticker";
 import { DEVICE_KEYS, REMINDERS_NOT_NOW_DAYS } from "@/config/members";
 import { useInstallPrompt } from "@/hooks/use-install-prompt";
 import { useReminders } from "@/hooks/use-reminders";
+import { useDeviceKind } from "@/lib/device/kind";
 import { readDeviceValue, writeDeviceValue } from "@/lib/device/storage";
 import { useIsClient } from "@/lib/use-is-client";
 import { IphoneInstallSheet } from "./iphone-install-sheet";
@@ -28,6 +29,8 @@ export function RemindersCard() {
   const { canInstall, install } = useInstallPrompt();
   const isClient = useIsClient();
   const now = useNow();
+  const device = useDeviceKind();
+  const thisDevice = t("thisDevice", { device });
   const [dismissed, setDismissed] = useState(false);
   const [guide, setGuide] = useState(false);
   if (state === "on" && justTurnedOn) {
@@ -36,7 +39,7 @@ export function RemindersCard() {
         <Sticker tone="success" size="sm">
           <Check weight="bold" />
         </Sticker>
-        {t("on")}
+        {t("on", { thisDevice })}
       </p>
     );
   }
@@ -74,17 +77,13 @@ export function RemindersCard() {
         </Sticker>
         <div className="flex min-w-0 flex-col gap-1">
           <h2 className="font-bold">
-            {blocked
-              ? t("blockedTitle")
-              : iphone
-                ? t("cardTitleIphone")
-                : t("cardTitle")}
+            {blocked ? t("blockedTitle") : t("cardTitle", { thisDevice })}
           </h2>
           <p className="text-sm">
             {blocked
               ? t("blockedBody")
               : iphone
-                ? t("cardBodyIphone")
+                ? t("homeScreenBody", { device })
                 : t("cardBody")}
           </p>
         </div>
@@ -105,7 +104,11 @@ export function RemindersCard() {
         ) : null}
         <Button onClick={hide}>{blocked ? t("hide") : t("notNow")}</Button>
       </div>
-      <IphoneInstallSheet open={guide} onOpenChange={setGuide} />
+      <IphoneInstallSheet
+        open={guide}
+        onOpenChange={setGuide}
+        device={device}
+      />
     </Card>
   );
 }

@@ -1,8 +1,15 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { DEVICE_KEYS } from "@/config/members";
 import { renderWithProviders } from "@/test/render";
 import { WelcomeFlow } from "./welcome-flow";
+
+const device = vi.hoisted(() => ({
+  steps: [] as string[],
+  clear: vi.fn<() => Promise<void>>(),
+}));
+vi.mock("@/lib/device/clear", () => ({ clearDeviceData: device.clear }));
 
 const replace = vi.fn();
 const search = { value: "" };
@@ -29,6 +36,9 @@ afterEach(() => {
   vi.unstubAllGlobals();
   replace.mockReset();
   search.value = "";
+  window.localStorage.clear();
+  device.steps = [];
+  device.clear.mockReset();
 });
 
 describe("WelcomeFlow", () => {
@@ -67,5 +77,38 @@ describe("WelcomeFlow", () => {
     );
     renderWithProviders(<WelcomeFlow />);
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/w/club-ab12"));
+  });
+
+  it("wipes what another person left on this device before going on (spec §11 Push privacy)", async () => {
+    window.localStorage.setItem(DEVICE_KEYS.owner, "someone-else");
+    device.clear.mockImplementation(async () => {
+      device.steps.push("clear");
+      window.localStorage.removeItem(DEVICE_KEYS.owner);
+    });
+    replace.mockImplementation(() => device.steps.push("go"));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify(me("Sami")))),
+    );
+    renderWithProviders(<WelcomeFlow />);
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/w/club-ab12"));
+    expect(device.steps).toEqual(["clear", "go"]);
+    expect(window.localStorage.getItem(DEVICE_KEYS.owner)).toBe(
+      "3c9e2a71-8f4b-4d2e-9a6c-1b5d7e0f2a34",
+    );
+  });
+
+  it("keeps the same person's data (and reminders) when they sign in again", async () => {
+    window.localStorage.setItem(
+      DEVICE_KEYS.owner,
+      "3c9e2a71-8f4b-4d2e-9a6c-1b5d7e0f2a34",
+    );
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify(me("Sami")))),
+    );
+    renderWithProviders(<WelcomeFlow />);
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/w/club-ab12"));
+    expect(device.clear).not.toHaveBeenCalled();
   });
 });
