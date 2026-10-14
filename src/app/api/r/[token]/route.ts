@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import { apiError, fromDatabaseError } from "@/server/http/errors";
 import { loadTokenContext } from "@/server/http/token-context";
+import { tokenViewer } from "@/server/http/token-viewer";
 import { lookupToken } from "@/server/queries/tokens";
 
-/** What a personal link shows: workspace, masked email, flags, meeting basics (spec §11). */
+/**
+ * What a personal link shows: workspace, masked email, flags, meeting basics (spec §11), and who is
+ * looking (`viewer`, M8).
+ */
 export async function GET(
   request: Request,
   ctx: RouteContext<"/api/r/[token]">,
@@ -17,5 +21,11 @@ export async function GET(
   if (error) {
     return fromDatabaseError(error);
   }
-  return data ? NextResponse.json(data) : apiError("not_found");
+  if (!data) {
+    return apiError("not_found");
+  }
+  return NextResponse.json({
+    ...data,
+    viewer: await tokenViewer(request, context.client, context.tokenHash),
+  });
 }

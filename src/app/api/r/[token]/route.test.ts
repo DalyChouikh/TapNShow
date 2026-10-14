@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   submit: vi.fn(),
   calendar: vi.fn(),
   unsubscribe: vi.fn(),
+  viewer: vi.fn(),
 }));
 vi.mock("@/server/http/token-context", () => ({
   loadTokenContext: async () => ({
@@ -13,6 +14,7 @@ vi.mock("@/server/http/token-context", () => ({
     tokenHash: "h".repeat(64),
   }),
 }));
+vi.mock("@/server/http/token-viewer", () => ({ tokenViewer: mocks.viewer }));
 vi.mock("@/server/queries/tokens", () => ({
   lookupToken: mocks.lookup,
   submitAnswer: mocks.submit,
@@ -38,7 +40,10 @@ const info = {
   },
 };
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.viewer.mockResolvedValue("signed_out");
+});
 
 describe("GET /api/r/[token]", () => {
   it("returns only the public info, and 404 for an unknown token", async () => {
@@ -48,12 +53,25 @@ describe("GET /api/r/[token]", () => {
       new Request("http://localhost:3000/api/r/x"),
       ctx,
     );
-    expect(await response.json()).toEqual(info);
+    expect(await response.json()).toEqual({ ...info, viewer: "signed_out" });
     expect(mocks.lookup).toHaveBeenCalledWith({}, "h".repeat(64));
     mocks.lookup.mockResolvedValueOnce({ data: null, error: null });
     expect(
       (await GET(new Request("http://localhost:3000/api/r/x"), ctx)).status,
     ).toBe(404);
+    expect(mocks.viewer).toHaveBeenCalledOnce();
+  });
+
+  it("says who is looking, from the request's session (M8)", async () => {
+    mocks.lookup.mockResolvedValueOnce({ data: info, error: null });
+    mocks.viewer.mockResolvedValueOnce("owner");
+    const { GET } = await import("./route");
+    const request = new Request("http://localhost:3000/api/r/x", {
+      headers: { cookie: "sb-x-auth-token=1" },
+    });
+    const response = await GET(request, ctx);
+    expect(await response.json()).toMatchObject({ viewer: "owner" });
+    expect(mocks.viewer).toHaveBeenCalledWith(request, {}, "h".repeat(64));
   });
 
   it("never writes, even when opened from an answer button (Review Focus 1)", async () => {

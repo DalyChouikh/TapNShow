@@ -30,4 +30,5 @@ export const tokenInfoFixture: TokenInfo = {
     responseDeadline: null,
   },
   answer: null,
+  viewer: "signed_out",
 };

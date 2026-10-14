@@ -27,6 +27,7 @@ import type {
   DispatchStore,
   Reservation,
 } from "@/server/queries/dispatch";
+import { answerPagePath } from "@/shared/api/tokens";
 
 /** Everything the dispatcher touches, injected so tests run without Google or a database. */
 export type DispatchDeps = {
@@ -382,7 +383,7 @@ async function sendJob(
   const decision = reservation.calendar;
   const token = deps.tokenFor(job.inviteeId);
   const links = {
-    respond: `${deps.appUrl}/r/${token}`,
+    respond: `${deps.appUrl}${answerPagePath(token)}`,
     unsubscribe: `${deps.appUrl}/u/${token}`,
     report: `${deps.appUrl}/report/${token}`,
   };
