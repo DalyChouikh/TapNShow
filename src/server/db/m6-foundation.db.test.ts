@@ -6,7 +6,7 @@ import {
   expectAppError,
   type TestUser,
 } from "@/test/db/clients";
-import { seedMeeting } from "@/test/db/meetings";
+import { hoursFromNow, seedMeeting } from "@/test/db/meetings";
 import { seedContacts } from "@/test/db/roster";
 import { seedConnection, setSender } from "@/test/db/sender";
 import { queryLocalSql } from "@/test/db/sql";
@@ -19,9 +19,6 @@ import {
 let owner: TestUser;
 let workspace: TestWorkspace;
 let contact: string;
-
-const hoursFromNow = (hours: number) =>
-  new Date(Date.now() + hours * 3600_000).toISOString();
 
 async function sendTo(meeting: string, contactIds: string[]) {
   const audience = await owner.client.rpc("set_meeting_audience", {

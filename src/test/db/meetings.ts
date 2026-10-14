@@ -1,5 +1,9 @@
 import { adminClient } from "./clients";
 
+/** ISO instant `hours` from now (negative = in the past). */
+export const hoursFromNow = (hours: number): string =>
+  new Date(Date.now() + hours * 3_600_000).toISOString();
+
 /** Inserts a meeting directly (service role). Defaults: a draft tomorrow at 18:00 UTC, attendance mode. */
 export async function seedMeeting(
   workspaceId: string,

@@ -8,7 +8,7 @@ import {
   type TestUser,
 } from "@/test/db/clients";
 import { seedInvitee } from "@/test/db/invitees";
-import { seedMeeting } from "@/test/db/meetings";
+import { hoursFromNow, seedMeeting } from "@/test/db/meetings";
 import { parkAllJobs, serviceRpc, timersOf } from "@/test/db/outbox";
 import { seedContacts } from "@/test/db/roster";
 import { seedConnection, setSender } from "@/test/db/sender";
@@ -69,8 +69,6 @@ const jobRowSchema = z.object({
   invitee_id: z.uuid().nullable(),
 });
 
-const hoursFromNow = (hours: number) =>
-  new Date(Date.now() + hours * 3600_000).toISOString();
 const ago = (ms: number) => new Date(Date.now() - ms).toISOString();
 
 async function answer(
