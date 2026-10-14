@@ -21,3 +21,17 @@ export const tokenPageHeaders: HeaderRule[] = [
   source,
   headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
 }));
+
+/**
+ * The service worker (spec §10 PWA): never cached, so an update reaches phones at once, and allowed
+ * to control the whole app although it is served from `/serwist/`.
+ */
+export const serviceWorkerHeaders: HeaderRule[] = [
+  {
+    source: "/serwist/:path*",
+    headers: [
+      { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+      { key: "Service-Worker-Allowed", value: "/" },
+    ],
+  },
+];

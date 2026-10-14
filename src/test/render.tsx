@@ -1,4 +1,5 @@
-import { render, type RenderResult } from "@testing-library/react";
+import { render, type RenderResult, screen } from "@testing-library/react";
+import { expect } from "vitest";
 import { NextIntlClientProvider } from "next-intl";
 import type { ReactElement } from "react";
 import messages from "../../messages/en.json";
@@ -28,4 +29,14 @@ export function renderWithProviders(
       </ThemeProvider>
     </NextIntlClientProvider>,
   );
+}
+
+/**
+ * Asserts a component rendered nothing a person could see or use. The providers add their own
+ * markup (the theme script), so an empty container is no test.
+ */
+export function expectNothingShown(): void {
+  for (const role of ["heading", "button", "switch", "status"] as const) {
+    expect(screen.queryByRole(role)).toBeNull();
+  }
 }

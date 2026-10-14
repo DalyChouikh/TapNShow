@@ -29,6 +29,8 @@ test("the workspace shell: header, bottom bar, Home, placeholders, not found", a
     page.getByRole("heading", { name: "Welcome to Shell Club" }),
   ).toBeVisible();
 
+  // The page's <title> lands just after a client navigation: check once it has.
+  await expect(page).toHaveTitle(/\S/);
   const axe = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
     .analyze();

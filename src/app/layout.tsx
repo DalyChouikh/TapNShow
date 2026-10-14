@@ -1,12 +1,15 @@
-import type { Metadata } from "next";
+import { SerwistProvider } from "@serwist/turbopack/react";
+import type { Metadata, Viewport } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale } from "next-intl/server";
 import { MotionProvider } from "@/components/motion/motion-provider";
+import { InstallPromptProvider } from "@/components/providers/install-prompt-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { APP_DESCRIPTION, APP_NAME } from "@/config/app";
 import { publicEnv } from "@/config/public-env";
+import { palette } from "@/design/tokens";
 import { archivoBlack, spaceGrotesk } from "./fonts";
 import "./globals.css";
 
@@ -16,9 +19,17 @@ export const metadata: Metadata = {
   verification: publicEnv.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
     ? { google: publicEnv.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION }
     : undefined,
+  icons: {
+    icon: "/icons/favicon-32.png",
+    apple: "/icons/apple-touch-icon.png",
+  },
+  appleWebApp: { capable: true, title: APP_NAME, statusBarStyle: "default" },
 };
 
-/** Root layout: fonts, theme (no-flash), motion, and i18n providers. */
+/** The browser bar and the installed app's frame take the app background (spec §10 PWA). */
+export const viewport: Viewport = { themeColor: palette.light.background };
+
+/** Root layout: fonts, theme (no-flash), motion, i18n, the install offer and the service worker. */
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const locale = await getLocale();
   return (
@@ -31,7 +42,20 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <NextIntlClientProvider>
           <ThemeProvider>
             <QueryProvider>
-              <MotionProvider>{children}</MotionProvider>
+              <InstallPromptProvider>
+                {/* The service worker runs in production builds only (e2e uses one too). It
+                    caches nothing on its own while browsing and never reloads the page when the
+                    connection returns (a half-typed answer must survive). */}
+                <SerwistProvider
+                  swUrl="/serwist/sw.js"
+                  disable={process.env.NODE_ENV !== "production"}
+                  cacheOnNavigation={false}
+                  reloadOnOnline={false}
+                  options={{ scope: "/" }}
+                >
+                  <MotionProvider>{children}</MotionProvider>
+                </SerwistProvider>
+              </InstallPromptProvider>
               <Toaster />
             </QueryProvider>
           </ThemeProvider>

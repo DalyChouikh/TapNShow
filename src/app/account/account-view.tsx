@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { DisplayNameForm } from "@/components/forms/display-name-form";
+import { RemindersSection } from "@/components/members/reminders-section";
 import { ExportMenu } from "@/components/forms/export-menu";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -9,7 +10,7 @@ import { useMe } from "@/hooks/use-me";
 import { DeleteAccountCard } from "./delete-account-card";
 import { useDownloadMyAnswers } from "./use-download-my-answers";
 
-/** `/account` (spec §7.4): your name, your answers (download), delete my account. */
+/** `/account` (spec §7.4): your name, reminders on this phone, your answers (download), delete my account. */
 export function AccountView() {
   const t = useTranslations("Account");
   const me = useMe();
@@ -31,6 +32,7 @@ export function AccountView() {
           <Skeleton className="h-24 w-full" />
         )}
       </Card>
+      <RemindersSection />
       <Card as="section" className="flex flex-col gap-3">
         <h2 className="font-bold">{t("answersTitle")}</h2>
         <p>{t("answersBody")}</p>

@@ -9,6 +9,9 @@ import { myInviteFixture, myInvitesPage } from "@/test/fixtures/my-invites";
 import { renderWithProviders } from "@/test/render";
 import { InvitesView } from "./invites-view";
 
+const net = vi.hoisted(() => ({ online: true }));
+vi.mock("@/hooks/use-online", () => ({ useOnline: () => net.online }));
+
 // Wednesday 14 Oct 2026, 12:00 UTC.
 const NOW = new Date("2026-10-14T12:00:00.000Z");
 const invite = (
@@ -36,6 +39,7 @@ function serve(routes: Record<string, FetchRoute>) {
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"], now: NOW });
   window.localStorage.clear();
+  net.online = true;
 });
 afterEach(() => {
   vi.useRealTimers();
@@ -110,5 +114,46 @@ describe("InvitesView", () => {
     await user.click(screen.getByRole("radio", { name: "Past" }));
     expect(await screen.findByText("No past invites yet.")).toBeVisible();
     expect(screen.queryByRole("group", { name: "Show" })).toBeNull();
+  });
+
+  it("offline: says how old the list is, and cards can't be opened", async () => {
+    net.online = false;
+    serve({ [PAGE]: json(myInvitesPage([thisWeek])) });
+    renderWithProviders(<InvitesView />);
+    expect(await screen.findByText("Friday sync")).toBeVisible();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "You're offline. Showing your invites from",
+    );
+    expect(screen.queryByRole("link", { name: /Friday sync/ })).toBeNull();
+    expect(screen.getByText("Connect to answer")).toBeVisible();
+  });
+
+  it("offline with nothing saved: asks to connect", async () => {
+    net.online = false;
+    serve({
+      [PAGE]: async () => Promise.reject(new TypeError("Failed to fetch")),
+    });
+    renderWithProviders(<InvitesView />);
+    expect(
+      await screen.findByText("Connect to see your invites."),
+    ).toBeVisible();
+  });
+
+  it("offline with an empty saved list: the usual empty state, not 'connect'", async () => {
+    net.online = false;
+    serve({
+      "GET /api/me": async () =>
+        Promise.reject(new TypeError("Failed to fetch")),
+      [PAGE]: json(myInvitesPage([])),
+    });
+    renderWithProviders(<InvitesView />);
+    expect(await screen.findByText("No invites yet")).toBeVisible();
+    expect(screen.queryByText("Connect to see your invites.")).toBeNull();
+    // Offline, the profile (and its address) isn't saved: the sentence goes without it.
+    expect(
+      screen.getByText(
+        "When a group invites you, the meeting shows up here too.",
+      ),
+    ).toBeVisible();
   });
 });
