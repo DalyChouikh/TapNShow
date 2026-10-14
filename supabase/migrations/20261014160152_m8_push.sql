@@ -66,8 +66,8 @@ insert into private.push_service_hosts (host, include_subdomains) values
   ('notify.windows.com', true);
 
 -- Whether an endpoint is https on a listed push service. The authority must be a listed host (or a
--- subdomain where allowed), with no user info; a port is accepted only when a row names it
--- (local fakes). Matching is exact, so "fcm.googleapis.com.evil.example" never passes.
+-- subdomain where allowed) made of plain host characters; a port is accepted only when a row names
+-- it (local fakes). Matching is exact, so "fcm.googleapis.com.evil.example" never passes.
 create function private.push_endpoint_allowed(p_endpoint text)
 returns boolean
 language sql
@@ -80,7 +80,9 @@ as $$
   )
   select exists (
     select 1 from authority a, private.push_service_hosts h
-    where a.value is not null and pg_catalog.strpos(a.value, '@') = 0
+    -- Plain host characters only: no user info, "\", "%", spaces or non-ASCII, which URL parsers
+    -- (Node's WHATWG one sends the push) read differently, so both sides always see this host.
+    where a.value ~ '^[a-z0-9.-]+(:[0-9]{1,5})?$'
       and (a.value = h.host
         or (h.include_subdomains and a.value !~ ':' and pg_catalog.right(a.value, pg_catalog.length(h.host) + 1) = '.' || h.host))
   )

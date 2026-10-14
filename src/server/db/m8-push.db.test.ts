@@ -206,6 +206,12 @@ describe("push subscriptions (spec §6, §11 Push privacy)", () => {
       "https://fcm.googleapis.com:8443/fcm/send/abc",
       "https://169.254.169.254/latest/meta-data",
       "https://notify.windows.com.evil.example.test/x",
+      // Hosts other URL parsers read differently: Node treats "\\" as "/" in https URLs, so the
+      // first would reach evil.example.test while looking like an Apple subdomain here.
+      "https://evil.example.test\\.push.apple.com/x",
+      "https://evil.example.test%2f.push.apple.com/x",
+      "https://evil.example.test\t.push.apple.com/x",
+      "https://evil。push.apple.com/x",
     ]) {
       await expectAppError(tryEndpoint(endpoint), "invalid_input");
     }
