@@ -5,7 +5,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
 import { Avatar } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -15,11 +14,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { apiRequest } from "@/lib/api-client";
+import { clearDeviceData } from "@/lib/device/clear";
 import { okSchema } from "@/shared/api/common";
 import type { MeResponse } from "@/shared/api/me";
-import { ProfileDialog } from "./profile-dialog";
 
-/** Account menu: my invites, edit name, sign out (clears every cached query, then goes to sign-in). */
+/**
+ * Account menu: My invites, Account, Sign out. Signing out clears this device first, then every
+ * cached query, then goes to sign-in.
+ */
 export function UserMenu({
   me,
   onSignedOut,
@@ -28,51 +30,51 @@ export function UserMenu({
   onSignedOut?: () => void;
 }) {
   const t = useTranslations("Shell");
-  const [profileOpen, setProfileOpen] = useState(false);
   const router = useRouter();
   const queryClient = useQueryClient();
   const signOut = useMutation({
-    mutationFn: () =>
-      apiRequest("/api/auth/signout", { method: "POST", schema: okSchema }),
+    mutationFn: async () => {
+      // This device forgets the person first: a shared phone must not show their invites.
+      await clearDeviceData();
+      return apiRequest("/api/auth/signout", {
+        method: "POST",
+        schema: okSchema,
+      });
+    },
     onSuccess: () => {
       queryClient.clear();
       (onSignedOut ?? (() => router.replace("/login")))();
     },
   });
   return (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          aria-label={t("userMenuLabel")}
-          className="rounded-full"
-        >
-          <Avatar name={me.profile.displayName} email={me.profile.email} />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuLabel className="truncate">
-            {me.profile.displayName ?? me.profile.email}
-          </DropdownMenuLabel>
-          <DropdownMenuItem asChild>
-            <Link href="/invites">
-              <EnvelopeSimple weight="bold" aria-hidden />
-              {t("myInvites")}
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setProfileOpen(true)}>
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        aria-label={t("userMenuLabel")}
+        className="rounded-full"
+      >
+        <Avatar name={me.profile.displayName} email={me.profile.email} />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel className="truncate">
+          {me.profile.displayName ?? me.profile.email}
+        </DropdownMenuLabel>
+        <DropdownMenuItem asChild>
+          <Link href="/invites">
+            <EnvelopeSimple weight="bold" aria-hidden />
+            {t("myInvites")}
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/account">
             <UserCircle weight="bold" aria-hidden />
-            {t("yourName")}
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => signOut.mutate()}>
-            <SignOut weight="bold" aria-hidden />
-            {t("signOut")}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <ProfileDialog
-        open={profileOpen}
-        onOpenChange={setProfileOpen}
-        currentName={me.profile.displayName}
-      />
-    </>
+            {t("account")}
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => signOut.mutate()}>
+          <SignOut weight="bold" aria-hidden />
+          {t("signOut")}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

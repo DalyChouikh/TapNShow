@@ -11,6 +11,7 @@ import { listNamesByContact, meetingAnswerRows } from "@/lib/export/rows";
 import { saveExport } from "@/lib/export/save";
 import { formatDeadline, formatMeetingWhen } from "@/lib/meetings/format";
 import type { Meeting } from "@/shared/api/meetings";
+import { exportHeaders } from "@/lib/export/words";
 
 /**
  * The meeting page's export (spec §7.7): every invitee with their answer, built on the device as
@@ -51,10 +52,7 @@ export function useExportAnswers(slug: string, meeting: Meeting) {
             context,
             at: formatDeadline(now.toISOString(), meeting.timezone),
           }),
-          columns: ANSWER_COLUMNS.map((column) => ({
-            header: words.column(column.key),
-            width: column.width,
-          })),
+          columns: exportHeaders(words, ANSWER_COLUMNS),
           rows,
         },
       ],

@@ -1,5 +1,6 @@
 "use client";
 
+import { Copy } from "@phosphor-icons/react";
 import { useTranslations } from "next-intl";
 import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
@@ -12,14 +13,20 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import { copyText } from "@/lib/clipboard";
 
-/** Destructive confirmation by typing the workspace name (spec §7.11). Case-sensitive, trimmed. */
+/**
+ * Destructive confirmation by typing a word (the workspace name, or "confirm" for an account; spec
+ * §7.11, §7.4). Case-sensitive, trimmed; the word has a copy button (owner, 2026-10-14).
+ */
 export function ConfirmNameDialog({
   open,
   onOpenChange,
   title,
   body,
   name,
+  inputLabel,
   confirmLabel,
   onConfirm,
   pending = false,
@@ -32,6 +39,8 @@ export function ConfirmNameDialog({
   title: string;
   body: string;
   name: string;
+  /** The field's label (default: "Type <name> to confirm"). */
+  inputLabel?: string;
   confirmLabel: string;
   onConfirm: (typedName: string) => void;
   pending?: boolean;
@@ -56,10 +65,28 @@ export function ConfirmNameDialog({
           <DialogDescription>{body}</DialogDescription>
         </DialogHeader>
         {children}
+        <div className="flex items-center gap-2">
+          <span className="min-w-0 rounded-lg border-2 border-outline bg-background px-2 font-mono font-bold break-all">
+            {name}
+          </span>
+          <Button
+            className="size-11 shrink-0 justify-center px-0"
+            aria-label={tCommon("copyWord", { word: name })}
+            onClick={async () => {
+              if (await copyText(name)) {
+                toast(tCommon("copied"));
+              } else {
+                toast.error(tCommon("copyFailed"));
+              }
+            }}
+          >
+            <Copy weight="bold" aria-hidden />
+          </Button>
+        </div>
         <Input
           id="confirm-name"
           autoComplete="off"
-          label={t("typeName", { workspace: name })}
+          label={inputLabel ?? t("typeName", { workspace: name })}
           value={typed}
           onChange={(event) => setTyped(event.target.value)}
           error={error}

@@ -53,6 +53,10 @@ describe("DangerZone", () => {
       <DangerZone workspace={workspaceFixture} myId={ownerId} />,
     );
     await user.click(screen.getByRole("button", { name: "Delete workspace" }));
+    // The workspace name has a copy button too (owner, 2026-10-14).
+    expect(
+      screen.getByRole("button", { name: "Copy Robotics Club" }),
+    ).toBeVisible();
     await user.type(
       screen.getByLabelText("Type Robotics Club to confirm"),
       "Robotics Club",

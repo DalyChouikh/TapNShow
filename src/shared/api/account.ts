@@ -7,3 +7,12 @@ export const ACCOUNT_DELETE_WORD = "confirm";
 export const deleteAccountBodySchema = z.object({
   confirm: z.literal(ACCOUNT_DELETE_WORD),
 });
+
+/** `GET /api/me/account`: what `/account` and its delete dialog say. Twin: `private.my_account`. */
+export const accountSummarySchema = z.object({
+  owned: z.array(z.object({ name: z.string(), slug: z.string() })),
+  workspaces: z.number().int(),
+  answersWithText: z.number().int(),
+});
+/** What `/account` shows about the signed-in person. */
+export type AccountSummary = z.infer<typeof accountSummarySchema>;

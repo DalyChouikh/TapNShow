@@ -2,8 +2,9 @@ import { createTranslator } from "next-intl";
 import type { Locale } from "@/config/i18n";
 import type { AnswerLabels } from "@/lib/responses/describe-answer";
 import type messages from "../../../messages/en.json";
-import type { ExportColumnKey } from "./columns";
+import type { ExportColumn, ExportColumnKey } from "./columns";
 import type { ExportText } from "./rows";
+import type { ExportSheet } from "./save";
 
 /** The app's message catalogue type (every locale has the same shape). */
 export type AppMessages = typeof messages;
@@ -60,4 +61,16 @@ export function exportWords(
     column: (key) => t(`columns.${key}`),
     t,
   };
+}
+
+/** A sheet's header row from its columns: each column's word, minimum width and header tone. */
+export function exportHeaders(
+  words: ExportWords,
+  columns: ReadonlyArray<ExportColumn>,
+): ExportSheet["columns"] {
+  return columns.map((column) => ({
+    header: words.column(column.key),
+    width: column.width,
+    tone: column.tone,
+  }));
 }

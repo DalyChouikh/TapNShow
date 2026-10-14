@@ -52,4 +52,12 @@ describe("LoginScreen with Google", () => {
       "Google sign-in isn't available here. Use an email code.",
     );
   });
+
+  it("says the account was deleted after Delete my account", () => {
+    state.search = "deleted=1";
+    renderWithProviders(<LoginScreen />);
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Your account was deleted.",
+    );
+  });
 });

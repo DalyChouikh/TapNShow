@@ -7,6 +7,7 @@ import {
   releasedSchema,
 } from "@/server/google/release";
 import type { DbError } from "./roster";
+import type { AccountSummary } from "@/shared/api/account";
 
 type Client = SupabaseClient<Database>;
 
@@ -59,6 +60,31 @@ export async function deleteAccountData(
         workspaceName: alert.workspace_name,
         workspaceSlug: alert.workspace_slug,
       })),
+    },
+    error: null,
+  };
+}
+
+const dbSummarySchema = z.object({
+  owned: z.array(z.object({ name: z.string(), slug: z.string() })),
+  workspaces: z.number().int(),
+  answers_with_text: z.number().int(),
+});
+
+/** `my_account()`: owned workspaces, how many workspaces, how many answers have words. */
+export async function getMyAccount(
+  client: Client,
+): Promise<{ data: AccountSummary | null; error: DbError | null }> {
+  const { data, error } = await client.rpc("my_account");
+  if (error) {
+    return { data: null, error };
+  }
+  const db = dbSummarySchema.parse(data);
+  return {
+    data: {
+      owned: db.owned,
+      workspaces: db.workspaces,
+      answersWithText: db.answers_with_text,
     },
     error: null,
   };

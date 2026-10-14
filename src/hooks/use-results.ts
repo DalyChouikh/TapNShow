@@ -1,13 +1,10 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import type { z } from "zod";
 import { PROGRESS_POLL_MS } from "@/config/meetings";
-import { PAGE_SIZE_MAX } from "@/config/pagination";
 import { RESULTS_POLL_MS } from "@/config/responses";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { apiRequest } from "@/lib/api-client";
-import type { Page } from "@/shared/api/pagination";
 import {
   type AttendanceDetailRow,
   attendanceDetailsPageSchema,
@@ -19,6 +16,7 @@ import {
   type PeriodRange,
   type PersonRow,
 } from "@/shared/api/responses";
+import { fetchAllPages } from "@/lib/api/fetch-all-pages";
 
 const workspaceBase = (slug: string) =>
   `/api/workspaces/${encodeURIComponent(slug)}`;
@@ -112,35 +110,12 @@ export function useAttendance(slug: string, range: PeriodRange) {
   });
 }
 
-/** Every row of a paged endpoint, following `nextCursor` (exports only). */
-async function fetchAll<T>(
-  path: string,
-  params: Record<string, string>,
-  schema: z.ZodType<Page<T>>,
-): Promise<T[]> {
-  const rows: T[] = [];
-  let cursor: string | null = null;
-  do {
-    const query = new URLSearchParams({
-      ...params,
-      limit: String(PAGE_SIZE_MAX),
-      ...(cursor ? { cursor } : {}),
-    });
-    const page: Page<T> = await apiRequest(`${path}?${query.toString()}`, {
-      schema,
-    });
-    rows.push(...page.items);
-    cursor = page.nextCursor;
-  } while (cursor);
-  return rows;
-}
-
 /** All per-person, per-meeting rows of a period (Attendance export). */
 export function fetchAllAttendanceDetails(
   slug: string,
   range: PeriodRange,
 ): Promise<AttendanceDetailRow[]> {
-  return fetchAll(
+  return fetchAllPages(
     `${workspaceBase(slug)}/attendance/details`,
     periodParams(range),
     attendanceDetailsPageSchema,
@@ -152,7 +127,7 @@ export function fetchAllMeetingPeople(
   slug: string,
   id: string,
 ): Promise<PersonRow[]> {
-  return fetchAll(
+  return fetchAllPages(
     `${meetingBase(slug, id)}/people`,
     { filter: "all" },
     peoplePageSchema,

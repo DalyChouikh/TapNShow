@@ -7,13 +7,6 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ME_QUERY_KEY } from "@/hooks/use-me";
 import { apiRequest } from "@/lib/api-client";
@@ -23,43 +16,11 @@ import { displayNameSchema } from "@/shared/api/me";
 const schema = z.object({ displayName: displayNameSchema });
 type Values = z.input<typeof schema>;
 
-/** Edit your display name (shown to organizers and teammates). */
-export function ProfileDialog({
-  open,
-  onOpenChange,
-  currentName,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  currentName: string | null;
-}) {
-  const t = useTranslations("Profile");
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t("title")}</DialogTitle>
-        </DialogHeader>
-        <ProfileForm
-          initialName={currentName ?? ""}
-          onDone={() => onOpenChange(false)}
-        />
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 /**
- * Mounted each time the dialog opens: the name it starts from is read once, so a background
- * refetch of the profile never overwrites what the user is typing.
+ * Edit your display name (shown to organizers and teammates). The name it starts from is read
+ * once, so a background refetch of the profile never overwrites what the person is typing.
  */
-function ProfileForm({
-  initialName,
-  onDone,
-}: {
-  initialName: string;
-  onDone: () => void;
-}) {
+export function DisplayNameForm({ initialName }: { initialName: string }) {
   const t = useTranslations("Profile");
   const tCommon = useTranslations("Common");
   const tWelcome = useTranslations("Welcome");
@@ -78,7 +39,6 @@ function ProfileForm({
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ME_QUERY_KEY });
       toast(t("saved"));
-      onDone();
     },
   });
   return (
@@ -98,12 +58,14 @@ function ProfileForm({
         }
         {...form.register("displayName")}
       />
-      <DialogFooter>
-        <Button onClick={onDone}>{tCommon("cancel")}</Button>
-        <Button type="submit" tone="primary" disabled={save.isPending}>
-          {tCommon("save")}
-        </Button>
-      </DialogFooter>
+      <Button
+        type="submit"
+        tone="primary"
+        className="self-start"
+        disabled={save.isPending}
+      >
+        {tCommon("save")}
+      </Button>
     </form>
   );
 }
