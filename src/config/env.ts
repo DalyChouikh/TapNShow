@@ -29,6 +29,13 @@ const serverEnvSchema = z
     GOOGLE_TOKEN_ENCRYPTION_KEY: z.string().min(1).optional(),
     INVITE_TOKEN_SECRET: z.string().min(32).optional(),
     DISPATCH_SECRET: z.string().min(32).optional(),
+    /** Web Push signing key (VAPID, RFC 8292; spec §11 Secrets). Set with VAPID_SUBJECT. */
+    VAPID_PRIVATE_KEY: z.string().min(40).optional(),
+    /** Who push services contact about our pushes: mailto: or https: (RFC 8292). */
+    VAPID_SUBJECT: z
+      .string()
+      .regex(/^(mailto:|https:)/)
+      .optional(),
     GMAIL_API_BASE_URL: z.url().default("https://gmail.googleapis.com"),
     /** Google's consent screen for connects (spec §9); e2e points it at the fake. */
     GOOGLE_OAUTH_AUTHORIZE_URL: z.url().default(GOOGLE_AUTHORIZATION_ENDPOINT),
@@ -46,6 +53,7 @@ const serverEnvSchema = z
     const pairs: ReadonlyArray<[keyof typeof env, keyof typeof env]> = [
       ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
       ["SMTP_USER", "SMTP_PASS"],
+      ["VAPID_PRIVATE_KEY", "VAPID_SUBJECT"],
     ];
     for (const [first, second] of pairs) {
       if (Boolean(env[first]) !== Boolean(env[second])) {

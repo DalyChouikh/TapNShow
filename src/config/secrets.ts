@@ -7,7 +7,8 @@ export type SecretName =
   | "INVITE_TOKEN_SECRET"
   | "DISPATCH_SECRET"
   | "GOOGLE_CLIENT_ID"
-  | "GOOGLE_CLIENT_SECRET";
+  | "GOOGLE_CLIENT_SECRET"
+  | "VAPID_PRIVATE_KEY";
 
 /**
  * Returns a secret the caller cannot work without.

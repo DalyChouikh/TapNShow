@@ -236,7 +236,8 @@
     "reason_required": "Please add a reason.",
     "sheet_wrong_account": "This sheet is in another Google account's Drive. Pick that account, or create a new sheet.",
     "cancel_emails_waiting": "The cancellation emails are waiting for Gmail. Reconnect Gmail, then delete the meeting once they've gone out.",
-    "owns_workspaces": "You own a workspace. Give it to an Admin or delete it first."
+    "owns_workspaces": "You own a workspace. Give it to an Admin or delete it first.",
+    "reminders_unavailable": "Reminders aren't available right now."
   },
   "Auth": {
     "title": "Sign in to {appName}",
@@ -615,6 +616,17 @@
       "typeWord": "Type {word} to delete",
       "deleted": "Your account was deleted."
     }
+  },
+  "Notifications": {
+    "invite": "New invite: {when}. Are you coming?",
+    "inviteAnnouncement": "New meeting: {when}.",
+    "timeChanged": "The time changed to {when}. Still going?",
+    "changed": "Details changed: {when}{place, select, none {} other {, {place}}}.",
+    "cancelled": "This meeting was cancelled.",
+    "pleaseAnswer": "Please answer: {when}.",
+    "startsSoon": "Starts at {time}{place, select, none {} other {, {place}}}.",
+    "fallbackTitle": "TapNShow",
+    "fallbackBody": "You have an update from TapNShow."
   },
   "Lists": {
     "title": "Lists",

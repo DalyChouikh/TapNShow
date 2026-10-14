@@ -56,6 +56,7 @@ export const API_ERROR_CODES = [
   "sheet_wrong_account",
   "cancel_emails_waiting",
   "owns_workspaces",
+  "reminders_unavailable",
 ] as const;
 
 /** An API error code. */
@@ -117,6 +118,7 @@ export const API_ERROR_STATUS: Record<ApiErrorCode, number> = {
   sheet_wrong_account: 409,
   cancel_emails_waiting: 409,
   owns_workspaces: 409,
+  reminders_unavailable: 503,
 };
 
 /** Body of every non-2xx API response. */

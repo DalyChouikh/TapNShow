@@ -74,6 +74,29 @@ describe("parseServerEnv", () => {
     ).toBeUndefined();
   });
 
+  it("requires the VAPID key and subject together, the subject as mailto: or https:", () => {
+    const key = "k".repeat(43);
+    expect(() =>
+      parseServerEnv({ ...supabase, ...smtp, VAPID_PRIVATE_KEY: key }),
+    ).toThrow(/VAPID_SUBJECT/);
+    expect(() =>
+      parseServerEnv({
+        ...supabase,
+        ...smtp,
+        VAPID_PRIVATE_KEY: key,
+        VAPID_SUBJECT: "admin@example.test",
+      }),
+    ).toThrow(/VAPID_SUBJECT/);
+    expect(
+      parseServerEnv({
+        ...supabase,
+        ...smtp,
+        VAPID_PRIVATE_KEY: key,
+        VAPID_SUBJECT: "mailto:admin@example.test",
+      }).VAPID_SUBJECT,
+    ).toBe("mailto:admin@example.test");
+  });
+
   it("requires SMTP user and password together", () => {
     expect(() =>
       parseServerEnv({
