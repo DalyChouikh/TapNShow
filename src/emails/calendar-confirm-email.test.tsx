@@ -23,6 +23,7 @@ const PROPS = {
     respond: "https://app.test/r/TOKEN",
     unsubscribe: "https://app.test/u/TOKEN",
     report: "https://app.test/report/TOKEN",
+    invites: "https://app.test/invites",
   },
 };
 

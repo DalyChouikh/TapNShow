@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { publicEnv } from "@/config/public-env";
 import { renderMeetingInviteEmail } from "@/emails/meeting-invite-email";
 import { fromDatabaseError } from "@/server/http/errors";
 import { loadMeetingContext } from "@/server/http/meeting-context";
@@ -52,7 +53,13 @@ export async function GET(
       responseMode: meeting.responseMode,
       responseDeadline: meeting.responseDeadline,
     },
-    links: { respond: INERT, unsubscribe: INERT, report: INERT },
+    links: {
+      respond: INERT,
+      unsubscribe: INERT,
+      report: INERT,
+      // Not personal: the same address for everyone, so the preview shows the real one.
+      invites: `${publicEnv.NEXT_PUBLIC_APP_URL}/invites`,
+    },
   });
   return NextResponse.json({
     subject: email.subject,

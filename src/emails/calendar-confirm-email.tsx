@@ -8,6 +8,7 @@ import {
   MeetingFooter,
   MeetingWhenWhere,
   type MeetingEmailMeeting,
+  type MeetingEmailLinks,
 } from "./meeting-blocks";
 import { getEmailTranslator } from "./translator";
 
@@ -18,7 +19,7 @@ export type CalendarConfirmEmailProps = {
   recipientName: string;
   senderEmail: string;
   meeting: MeetingEmailMeeting & { title: string; responseMode: ResponseMode };
-  links: { respond: string; unsubscribe: string; report: string };
+  links: MeetingEmailLinks;
 };
 
 /** The email around the calendar invitation; the `.ics` itself is attached by the MIME builder. */

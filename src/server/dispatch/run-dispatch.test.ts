@@ -171,6 +171,14 @@ describe("runDispatch", () => {
     );
   });
 
+  it("links every meeting email to the member's invites page (spec §7.4)", async () => {
+    const { deps } = setup({ jobs: [job(1)] });
+    await runDispatch(deps, OPTIONS);
+    // Quoted-printable: soft line breaks removed, "=" shown as "=3D".
+    const body = rawOf(deps).replace(/=\r\n/g, "");
+    expect(body).toContain('href=3D"https://tapnshow.vercel.app/invites"');
+  });
+
   it("joins an existing thread on this connection", async () => {
     const { deps, store } = setup({ jobs: [job(1, undefined, "t-old")] });
     await runDispatch(deps, OPTIONS);

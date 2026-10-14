@@ -386,6 +386,7 @@ async function sendJob(
     respond: `${deps.appUrl}${answerPagePath(token)}`,
     unsubscribe: `${deps.appUrl}/u/${token}`,
     report: `${deps.appUrl}/report/${token}`,
+    invites: `${deps.appUrl}/invites`,
   };
   const common: CommonEmailProps = {
     workspaceName: job.workspaceName,

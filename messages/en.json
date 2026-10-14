@@ -74,6 +74,7 @@
       "fallback": "If the button doesn't work, copy this link:"
     },
     "meetingInvite": {
+      "seeAll": "See all your invites in one place:",
       "preview": "{workspace} invites you: {date}, {time}",
       "invitedBy": "{workspace} invites you",
       "greeting": "Hi {name},",
@@ -1262,7 +1263,11 @@
     "reconfirmAgain": "Please confirm your answer again.",
     "reconfirmYouSaid": "You said: {answer}.",
     "reconfirmYes": "Yes, still {answer}",
-    "reconfirmChange": "Change my answer"
+    "reconfirmChange": "Change my answer",
+    "signInTitle": "Get reminders on {thisDevice}",
+    "signInBody": "Sign in with the email this invite came to, to see all your invites in one place.",
+    "signIn": "Sign in",
+    "backToInvites": "Back to my invites"
   },
   "Pagination": {
     "more": "Show more",
