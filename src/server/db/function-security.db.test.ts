@@ -46,6 +46,8 @@ const PRIVATE_FUNCTIONS_FOR_AUTHENTICATED = [
   "my_invite",
   "my_invites",
   "nudge_meeting",
+  "push_subscribe",
+  "push_unsubscribe",
   "remove_member",
   "renew_invite",
   "retry_sheet",

@@ -306,6 +306,44 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"push_deliveries": {
+                  Row: {
+                    "attempts": number,"audience": string | null,"created_at": string,"id": string,"invitee_id": string,"job_id": string,"kind": Database["public"]['Enums']["push_kind"],"locked_until": string | null,"run_after": string,"run_id": string | null,"subscription_id": string
+                  }
+                  Insert: {
+                    "attempts"?: number,"audience"?: string | null,"created_at"?: string,"id"?: string,"invitee_id": string,"job_id": string,"kind": Database["public"]['Enums']["push_kind"],"locked_until"?: string | null,"run_after"?: string,"run_id"?: string | null,"subscription_id": string
+                  }
+                  Update: {
+                    "attempts"?: number,"audience"?: string | null,"created_at"?: string,"id"?: string,"invitee_id"?: string,"job_id"?: string,"kind"?: Database["public"]['Enums']["push_kind"],"locked_until"?: string | null,"run_after"?: string,"run_id"?: string | null,"subscription_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "push_deliveries_invitee_id_fkey"
+      columns: ["invitee_id"]
+isOneToOne: false
+      referencedRelation: "meeting_invitees"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "push_deliveries_subscription_id_fkey"
+      columns: ["subscription_id"]
+isOneToOne: false
+      referencedRelation: "push_subscriptions"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"push_subscriptions": {
+                  Row: {
+                    "auth": string,"created_at": string,"endpoint": string,"id": string,"last_success_at": string | null,"p256dh": string,"user_id": string
+                  }
+                  Insert: {
+                    "auth": string,"created_at"?: string,"endpoint": string,"id"?: string,"last_success_at"?: string | null,"p256dh": string,"user_id": string
+                  }
+                  Update: {
+                    "auth"?: string,"created_at"?: string,"endpoint"?: string,"id"?: string,"last_success_at"?: string | null,"p256dh"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"response_history": {
                   Row: {
                     "after_deadline": boolean,"changed_at": string,"comment": string,"delay_minutes": number | null,"id": number,"invitee_id": string,"meeting_id": string,"reason": string,"response_id": string,"status": Database["public"]['Enums']["response_status"],"workspace_id": string
@@ -707,6 +745,27 @@ isOneToOne: false
 "nudge_meeting":
 { Args: { "p_meeting": string }; Returns: Json
                            },
+"push_claim":
+{ Args: { "p_lease_seconds": number,"p_limit": number,"p_run": string }; Returns: Json
+                           },
+"push_done":
+{ Args: { "p_delivery": string,"p_run": string }; Returns: boolean
+                           },
+"push_drop":
+{ Args: { "p_delivery": string,"p_run": string }; Returns: undefined
+                           },
+"push_gone":
+{ Args: { "p_delivery": string,"p_run": string }; Returns: undefined
+                           },
+"push_retry":
+{ Args: { "p_after_seconds": number,"p_delivery": string,"p_run": string }; Returns: boolean
+                           },
+"push_subscribe":
+{ Args: { "p_auth": string,"p_endpoint": string,"p_p256dh": string }; Returns: undefined
+                           },
+"push_unsubscribe":
+{ Args: { "p_endpoint": string }; Returns: undefined
+                           },
 "remove_member":
 { Args: { "p_user": string,"p_workspace": string }; Returns: undefined
                            },
@@ -802,7 +861,7 @@ isOneToOne: false
                            }
           }
           Enums: {
-            "attendance_actual": "present"|"late"|"absent","audience_mode": "include"|"exclude","calendar_state": "none"|"added","connection_status": "active"|"broken","invitee_email_status": "queued"|"sent"|"skipped"|"failed"|"unknown","job_kind": "invite"|"calendar_confirm"|"update"|"cancel"|"reminder","job_status": "pending"|"processing"|"done"|"failed"|"paused","location_mode": "in_person"|"online"|"hybrid","meeting_change_kind": "edit"|"cancel","meeting_status": "draft"|"scheduled"|"cancelled","response_mode": "announcement"|"rsvp"|"attendance","response_status": "attending"|"late"|"absent"|"not_attending","sheet_pause_reason": "trashed"|"deleted"|"access_lost"|"full"|"drive_full","sheet_status": "active"|"paused","unsubscribe_via": "link"|"report","workspace_role": "owner"|"admin"|"viewer"
+            "attendance_actual": "present"|"late"|"absent","audience_mode": "include"|"exclude","calendar_state": "none"|"added","connection_status": "active"|"broken","invitee_email_status": "queued"|"sent"|"skipped"|"failed"|"unknown","job_kind": "invite"|"calendar_confirm"|"update"|"cancel"|"reminder","job_status": "pending"|"processing"|"done"|"failed"|"paused","location_mode": "in_person"|"online"|"hybrid","meeting_change_kind": "edit"|"cancel","meeting_status": "draft"|"scheduled"|"cancelled","push_kind": "invite"|"update"|"cancel"|"reminder","response_mode": "announcement"|"rsvp"|"attendance","response_status": "attending"|"late"|"absent"|"not_attending","sheet_pause_reason": "trashed"|"deleted"|"access_lost"|"full"|"drive_full","sheet_status": "active"|"paused","unsubscribe_via": "link"|"report","workspace_role": "owner"|"admin"|"viewer"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -918,7 +977,7 @@ export type CompositeTypes<
 export const Constants = {
   "public": {
           Enums: {
-            "attendance_actual": ["present", "late", "absent"],"audience_mode": ["include", "exclude"],"calendar_state": ["none", "added"],"connection_status": ["active", "broken"],"invitee_email_status": ["queued", "sent", "skipped", "failed", "unknown"],"job_kind": ["invite", "calendar_confirm", "update", "cancel", "reminder"],"job_status": ["pending", "processing", "done", "failed", "paused"],"location_mode": ["in_person", "online", "hybrid"],"meeting_change_kind": ["edit", "cancel"],"meeting_status": ["draft", "scheduled", "cancelled"],"response_mode": ["announcement", "rsvp", "attendance"],"response_status": ["attending", "late", "absent", "not_attending"],"sheet_pause_reason": ["trashed", "deleted", "access_lost", "full", "drive_full"],"sheet_status": ["active", "paused"],"unsubscribe_via": ["link", "report"],"workspace_role": ["owner", "admin", "viewer"]
+            "attendance_actual": ["present", "late", "absent"],"audience_mode": ["include", "exclude"],"calendar_state": ["none", "added"],"connection_status": ["active", "broken"],"invitee_email_status": ["queued", "sent", "skipped", "failed", "unknown"],"job_kind": ["invite", "calendar_confirm", "update", "cancel", "reminder"],"job_status": ["pending", "processing", "done", "failed", "paused"],"location_mode": ["in_person", "online", "hybrid"],"meeting_change_kind": ["edit", "cancel"],"meeting_status": ["draft", "scheduled", "cancelled"],"push_kind": ["invite", "update", "cancel", "reminder"],"response_mode": ["announcement", "rsvp", "attendance"],"response_status": ["attending", "late", "absent", "not_attending"],"sheet_pause_reason": ["trashed", "deleted", "access_lost", "full", "drive_full"],"sheet_status": ["active", "paused"],"unsubscribe_via": ["link", "report"],"workspace_role": ["owner", "admin", "viewer"]
           }
         }
 } as const

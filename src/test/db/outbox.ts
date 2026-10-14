@@ -15,14 +15,16 @@ export async function serviceRpc(
 }
 
 /**
- * Parks every due or running job and frees every sender lease. `dispatch_claim` is global (oldest
- * due sender first), so a test that claims must not see jobs other test files left behind.
+ * Parks every due or running job, frees every sender lease and drops every push delivery.
+ * `dispatch_claim`, `push_claim` and `workers_due` are global, so a test that claims or wakes must
+ * not see work other test files left behind.
  */
 export function parkAllJobs(): void {
   runLocalSql(
     "update public.outbox_jobs set status = 'done' where status in ('pending', 'processing', 'paused')",
   );
   runLocalSql("delete from public.sender_leases");
+  runLocalSql("delete from public.push_deliveries");
 }
 
 /** Sets a numeric limit for one test and returns a function restoring the original value. */
