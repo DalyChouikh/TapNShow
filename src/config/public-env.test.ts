@@ -58,4 +58,16 @@ describe("parsePublicEnv", () => {
     });
     expect(env.NEXT_PUBLIC_GMAIL_CONNECT_ENABLED).toBe(false);
   });
+
+  it("accepts a VAPID public key (65-byte point, base64url) and refuses anything else", () => {
+    const base = { NEXT_PUBLIC_APP_URL: "http://localhost:3000" };
+    const key = `B${"A".repeat(86)}`;
+    expect(
+      parsePublicEnv({ ...base, NEXT_PUBLIC_VAPID_PUBLIC_KEY: key })
+        .NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+    ).toBe(key);
+    expect(() =>
+      parsePublicEnv({ ...base, NEXT_PUBLIC_VAPID_PUBLIC_KEY: "short" }),
+    ).toThrow(/NEXT_PUBLIC_VAPID_PUBLIC_KEY/);
+  });
 });

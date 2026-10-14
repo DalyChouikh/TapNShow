@@ -8,6 +8,11 @@ const publicEnvSchema = z.object({
   NEXT_PUBLIC_GOOGLE_SIGN_IN_ENABLED: z.stringbool().default(false),
   /** Gates every Google connection (Gmail sending and, since M7, Google Sheets); the name predates M7. */
   NEXT_PUBLIC_GMAIL_CONNECT_ENABLED: z.stringbool().default(false),
+  /** Web Push public key (VAPID, a 65-byte P-256 point in base64url); reminders need it (spec §8). */
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{86,88}$/)
+    .optional(),
   NEXT_PUBLIC_VERCEL_ENV: z
     .enum(["production", "preview", "development"])
     .optional(),
@@ -42,4 +47,5 @@ export const publicEnv: PublicEnv = parsePublicEnv({
   NEXT_PUBLIC_GMAIL_CONNECT_ENABLED:
     process.env.NEXT_PUBLIC_GMAIL_CONNECT_ENABLED,
   NEXT_PUBLIC_VERCEL_ENV: process.env.NEXT_PUBLIC_VERCEL_ENV,
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
 });

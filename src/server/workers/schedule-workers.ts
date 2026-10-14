@@ -6,10 +6,15 @@ import {
   DISPATCH_LEASE_SECONDS,
   DISPATCH_PACE_MS,
 } from "@/config/meetings";
+import { getServerEnv } from "@/config/env";
+import { publicEnv } from "@/config/public-env";
+import * as push from "@/config/push";
 import * as sheets from "@/config/sheets";
 import { logger } from "@/lib/logger";
 import { createDispatchDeps } from "@/server/dispatch/dispatch-deps";
 import { runDispatch } from "@/server/dispatch/run-dispatch";
+import { createPushDeps, pushConfigured } from "@/server/push/push-deps";
+import { runPush } from "@/server/push/run-push";
 import { createSheetsDeps } from "@/server/sheets/sheets-deps";
 import { runSheetSync } from "@/server/sheets/run-sheets";
 
@@ -33,21 +38,52 @@ export const WORKER_OPTIONS = {
     cellsMax: sheets.SHEET_CELLS_MAX,
     formatVersion: sheets.SHEET_FORMAT_VERSION,
   },
+  push: {
+    budgetMs: push.PUSH_BUDGET_MS,
+    minLeftMs: push.PUSH_MIN_LEFT_MS,
+    concurrency: push.PUSH_CONCURRENCY,
+    leaseSeconds: push.PUSH_LEASE_SECONDS,
+    idlePollMs: push.PUSH_IDLE_POLL_MS,
+  },
 } as const;
 
 /**
  * Starts the named workers after the response is sent (Next `after()`), side by side, each with its
- * own budget; one failing never stops the other. Failures are logged, never thrown into the request.
+ * own budget; one failing, even while being built, never stops another. "emails" brings the push
+ * lane with it when reminders are configured: pushes follow emails (spec §8), so the lane keeps
+ * looking while the email run lasts. Failures are logged, never thrown into the request.
  */
 export function scheduleWorkers(
   which: ReadonlyArray<Worker> = ["emails", "sheets"],
 ): void {
   after(async () => {
-    const runs = which.map((worker) =>
-      worker === "emails"
-        ? runDispatch(createDispatchDeps(), WORKER_OPTIONS.emails)
-        : runSheetSync(createSheetsDeps(), WORKER_OPTIONS.sheets),
-    );
+    const runs: Promise<object>[] = [];
+    if (which.includes("emails")) {
+      let emailsRunning = true;
+      runs.push(
+        Promise.resolve()
+          .then(() => runDispatch(createDispatchDeps(), WORKER_OPTIONS.emails))
+          .finally(() => {
+            emailsRunning = false;
+          }),
+      );
+      if (pushConfigured(getServerEnv(), publicEnv)) {
+        runs.push(
+          Promise.resolve().then(() =>
+            runPush(createPushDeps(), WORKER_OPTIONS.push, {
+              running: () => emailsRunning,
+            }),
+          ),
+        );
+      }
+    }
+    if (which.includes("sheets")) {
+      runs.push(
+        Promise.resolve().then(() =>
+          runSheetSync(createSheetsDeps(), WORKER_OPTIONS.sheets),
+        ),
+      );
+    }
     for (const result of await Promise.allSettled(runs)) {
       if (result.status === "rejected") {
         logger.error({ err: result.reason }, "worker run failed");
