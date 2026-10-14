@@ -1,7 +1,8 @@
 "use client";
 
-import { SignOut, UserCircle } from "@phosphor-icons/react";
+import { EnvelopeSimple, SignOut, UserCircle } from "@phosphor-icons/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -18,7 +19,7 @@ import { okSchema } from "@/shared/api/common";
 import type { MeResponse } from "@/shared/api/me";
 import { ProfileDialog } from "./profile-dialog";
 
-/** Account menu: edit name, sign out (clears every cached query, then goes to sign-in). */
+/** Account menu: my invites, edit name, sign out (clears every cached query, then goes to sign-in). */
 export function UserMenu({
   me,
   onSignedOut,
@@ -51,6 +52,12 @@ export function UserMenu({
           <DropdownMenuLabel className="truncate">
             {me.profile.displayName ?? me.profile.email}
           </DropdownMenuLabel>
+          <DropdownMenuItem asChild>
+            <Link href="/invites">
+              <EnvelopeSimple weight="bold" aria-hidden />
+              {t("myInvites")}
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => setProfileOpen(true)}>
             <UserCircle weight="bold" aria-hidden />
             {t("yourName")}

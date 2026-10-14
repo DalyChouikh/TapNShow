@@ -6,15 +6,9 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useAnswerLabels } from "@/hooks/use-answer-labels";
 import { describeAnswer } from "@/lib/responses/describe-answer";
-import { cn } from "@/lib/utils";
-import type { AnswerStatus, PersonRow } from "@/shared/api/responses";
-
-const PILL: Record<AnswerStatus, string> = {
-  attending: "bg-fill-success",
-  late: "bg-fill-warning",
-  absent: "bg-fill-danger",
-  not_attending: "bg-fill-danger",
-};
+import type { PersonRow } from "@/shared/api/responses";
+import { Pill } from "@/components/ui/pill";
+import { ANSWER_TONE } from "@/lib/responses/tones";
 
 /** "Fri 9 Oct, 14:05" in the meeting's zone. */
 export function answeredAt(iso: string, timezone: string): string {
@@ -48,14 +42,9 @@ export function AnswerPill({ person }: { person: PersonRow }) {
   if (person.answer) {
     return (
       <span className="inline-flex flex-wrap items-center gap-1">
-        <span
-          className={cn(
-            "inline-block rounded-full border-2 border-outline px-2 text-xs font-bold text-on-fill",
-            PILL[person.answer.status],
-          )}
-        >
+        <Pill tone={ANSWER_TONE[person.answer.status]} className="inline-block">
           {describeAnswer(labels, person.answer)}
-        </span>
+        </Pill>
         {person.answer.needsReconfirmation ? (
           <span className="text-xs font-bold">{t("toReconfirmPill")}</span>
         ) : null}

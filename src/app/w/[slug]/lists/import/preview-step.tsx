@@ -5,13 +5,14 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { FillTone } from "@/design/tokens";
 import { cn } from "@/lib/utils";
-import { LIST_FILL } from "@/components/forms/list-tag";
+import { FILL_CLASS } from "@/components/ui/fill";
 import type {
   ImportOutcome,
   ImportResult,
   ImportRowResult,
   Roster,
 } from "@/shared/api/roster";
+import { Pill } from "@/components/ui/pill";
 
 type Tile = ImportOutcome | "merged";
 const TILES: readonly Tile[] = [
@@ -98,7 +99,7 @@ export function PreviewStep({
             onClick={() => setTile(tile === key ? null : key)}
             className={cn(
               "flex flex-col items-start rounded-control border-[length:var(--tn-border-width)] border-outline px-3 py-2 text-left text-sm font-bold text-on-fill shadow-brutal-sm aria-pressed:translate-y-0.5 aria-pressed:shadow-none",
-              LIST_FILL[TONE[key]],
+              FILL_CLASS[TONE[key]],
               key === "invalid" && "col-span-2",
             )}
           >
@@ -120,12 +121,9 @@ export function PreviewStep({
         <p className="flex flex-wrap items-center gap-1 text-sm">
           <span className="font-bold">{t("newLists")}</span>
           {result.newLists.map((name) => (
-            <span
-              key={name}
-              className="rounded-full border-2 border-outline bg-fill-success px-2 text-xs font-bold text-on-fill"
-            >
+            <Pill key={name} tone="success">
               {name}
-            </span>
+            </Pill>
           ))}
         </p>
       ) : null}
@@ -172,7 +170,7 @@ export function PreviewStep({
                   <span
                     className={cn(
                       "rounded-md border-2 border-outline px-1 text-xs font-bold text-on-fill",
-                      LIST_FILL[TONE[row.outcome]],
+                      FILL_CLASS[TONE[row.outcome]],
                     )}
                   >
                     {t(`tags.${row.outcome}`)}

@@ -1,6 +1,7 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { FILL_CLASS } from "./fill";
 
 /** Sticker background tones: any pastel fill, or the plain surface. */
 const stickerVariants = cva(
@@ -9,12 +10,7 @@ const stickerVariants = cva(
     variants: {
       tone: {
         surface: "bg-surface text-ink",
-        primary: "bg-fill-primary",
-        success: "bg-fill-success",
-        warning: "bg-fill-warning",
-        danger: "bg-fill-danger",
-        info: "bg-fill-info",
-        neutral: "bg-fill-neutral",
+        ...FILL_CLASS,
       },
       size: {
         sm: "size-7 [&_svg]:size-4",

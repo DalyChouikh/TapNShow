@@ -1,17 +1,15 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { signInWithCode, uniqueEmail } from "./helpers/sign-in";
+import { signUpWithWorkspace } from "./helpers/sign-in";
 
 test("the workspace shell: header, bottom bar, Home, placeholders, not found", async ({
   page,
 }) => {
-  await signInWithCode(page, uniqueEmail("e2e-shell"), {
-    startPath: "/login",
-    name: "Shell Owner",
+  const slug = await signUpWithWorkspace(page, "Shell Club", {
+    prefix: "e2e-shell",
+    ownerName: "Shell Owner",
   });
-  await page.getByLabel("Workspace name").fill("Shell Club");
-  await page.getByRole("button", { name: "Create workspace" }).click();
-  await expect(page).toHaveURL(/\/w\/shell-club-[a-z0-9]{4}$/);
+  expect(slug).toMatch(/^shell-club-[a-z0-9]{4}$/);
 
   const switcher = page.getByRole("button", { name: "Switch workspace" });
   await expect(switcher).toContainText("Shell Club");

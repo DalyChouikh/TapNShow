@@ -23,7 +23,7 @@ import { displayNameSchema } from "@/shared/api/me";
 const nameFormSchema = z.object({ displayName: displayNameSchema });
 type NameForm = z.input<typeof nameFormSchema>;
 
-/** After sign-in: ask for a name once (spec §7.1), then go to `next`, the last workspace, or `/w/new`. */
+/** After sign-in: ask for a name once (spec §7.1), then go to `next`, the last workspace, or `/invites`. */
 export function WelcomeFlow() {
   const t = useTranslations("Welcome");
   const tCommon = useTranslations("Common");

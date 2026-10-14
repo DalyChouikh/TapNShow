@@ -12,13 +12,21 @@ import {
 /** Query key prefix of every `/invites` list (invalidated after answering or deleting). */
 export const MY_INVITES_QUERY_KEY = ["my-invites"] as const;
 
-/** One `/invites` tab as a growing list, with the Needs-your-answer count and the server time. */
-export function useMyInvites(tab: MyInvitesTab, filter: MyInvitesFilter) {
+/**
+ * One `/invites` tab as a growing list, with the Needs-your-answer count and the server time.
+ * `enabled: false` waits (e.g. until the device's saved chip is known).
+ */
+export function useMyInvites(
+  tab: MyInvitesTab,
+  filter: MyInvitesFilter,
+  options: { enabled?: boolean } = {},
+) {
   const list = usePagedList({
     queryKey: MY_INVITES_QUERY_KEY,
     path: "/api/me/invites",
     params: { tab, filter },
     schema: myInvitesPageSchema,
+    enabled: options.enabled,
   });
   const first = list.query.data?.pages[0];
   return {

@@ -48,4 +48,13 @@ describe("UserMenu", () => {
       }),
     );
   });
+
+  it("opens the member home from My invites", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<UserMenu me={meFixture} />);
+    await user.click(screen.getByRole("button", { name: "Account" }));
+    expect(
+      screen.getByRole("menuitem", { name: "My invites" }),
+    ).toHaveAttribute("href", "/invites");
+  });
 });

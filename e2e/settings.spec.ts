@@ -1,17 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
 import { seedMember } from "./helpers/seed";
-import { signInWithCode, uniqueEmail } from "./helpers/sign-in";
+import { signUpWithWorkspace } from "./helpers/sign-in";
 import { openSettingsSection } from "./helpers/settings";
 
 async function createWorkspace(page: Page, name: string): Promise<string> {
-  await signInWithCode(page, uniqueEmail("e2e-settings"), {
-    startPath: "/login",
-    name: "Settings Owner",
+  return signUpWithWorkspace(page, name, {
+    prefix: "e2e-settings",
+    ownerName: "Settings Owner",
   });
-  await page.getByLabel("Workspace name").fill(name);
-  await page.getByRole("button", { name: "Create workspace" }).click();
-  await expect(page).toHaveURL(/\/w\/[a-z0-9-]+-[a-z0-9]{4}$/);
-  return new URL(page.url()).pathname.split("/")[2];
 }
 
 test("the Owner renames, changes the timezone, then deletes the workspace", async ({
@@ -36,7 +32,7 @@ test("the Owner renames, changes the timezone, then deletes the workspace", asyn
   await page.getByRole("button", { name: "Delete workspace" }).click();
   await page.getByLabel("Type Renamed Club to confirm").fill("Renamed Club");
   await page.getByRole("button", { name: "Confirm" }).click();
-  await expect(page).toHaveURL(/\/w\/new$/);
+  await expect(page).toHaveURL(/\/invites$/);
   await page.goto(`/w/${slug}`);
   await expect(
     page.getByRole("heading", { name: "Workspace not found" }),

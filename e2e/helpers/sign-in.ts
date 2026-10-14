@@ -29,3 +29,27 @@ export async function signInWithCode(
   }
   await expect(page).not.toHaveURL(/\/login/);
 }
+
+/** From `/invites`, where an account without a workspace lands (spec §7.4), opens the new-workspace form. */
+export async function openNewWorkspace(page: Page): Promise<void> {
+  await expect(page).toHaveURL(/\/invites$/);
+  await page.getByRole("link", { name: "Create a workspace" }).click();
+  await expect(page).toHaveURL(/\/w\/new$/);
+}
+
+/** Signs up a new organizer and creates a workspace through `/invites`. Returns its slug. */
+export async function signUpWithWorkspace(
+  page: Page,
+  workspaceName: string,
+  options: { prefix?: string; ownerName?: string } = {},
+): Promise<string> {
+  await signInWithCode(page, uniqueEmail(options.prefix ?? "e2e-owner"), {
+    startPath: "/login",
+    name: options.ownerName ?? "Owner",
+  });
+  await openNewWorkspace(page);
+  await page.getByLabel("Workspace name").fill(workspaceName);
+  await page.getByRole("button", { name: "Create workspace" }).click();
+  await expect(page).toHaveURL(/\/w\/[a-z0-9-]+-[a-z0-9]{4}$/);
+  return new URL(page.url()).pathname.split("/")[2];
+}

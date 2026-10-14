@@ -1,6 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { latestEmailText } from "./helpers/mailpit";
-import { signInWithCode, uniqueEmail } from "./helpers/sign-in";
+import {
+  signInWithCode,
+  signUpWithWorkspace,
+  uniqueEmail,
+} from "./helpers/sign-in";
 
 test("M2 story: sign in, create a workspace, invite a Viewer who accepts", async ({
   page,
@@ -8,14 +12,11 @@ test("M2 story: sign in, create a workspace, invite a Viewer who accepts", async
   context,
 }) => {
   const viewerEmail = uniqueEmail("story-viewer");
-  await signInWithCode(page, uniqueEmail("story-owner"), {
-    startPath: "/login",
-    name: "Story Owner",
+  const slug = await signUpWithWorkspace(page, "Launch Club", {
+    prefix: "story-owner",
+    ownerName: "Story Owner",
   });
-  await page.getByLabel("Workspace name").fill("Launch Club");
-  await page.getByRole("button", { name: "Create workspace" }).click();
-  await expect(page).toHaveURL(/\/w\/launch-club-[a-z0-9]{4}$/);
-  const slug = new URL(page.url()).pathname.split("/")[2];
+  expect(slug).toMatch(/^launch-club-[a-z0-9]{4}$/);
 
   await page.getByRole("link", { name: "Invite" }).click();
   await expect(page).toHaveURL(new RegExp(`/w/${slug}/settings#people$`));
