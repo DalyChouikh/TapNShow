@@ -27,6 +27,7 @@ export function InviteCard({
   disabled?: boolean;
 }) {
   const t = useTranslations("MyInvites");
+  const tOffline = useTranslations("Offline");
   const pills = describeInvite(invite, tab);
   const opens = tab === "upcoming" && !disabled;
   const body = (
@@ -64,6 +65,11 @@ export function InviteCard({
           </span>
         ) : null}
       </div>
+      {tab === "upcoming" && disabled && invite.status === "scheduled" ? (
+        <p className="text-sm font-bold text-muted-ink">
+          {tOffline("connectToAnswer")}
+        </p>
+      ) : null}
       {tab === "past" && invite.answer?.reason ? (
         <p className="text-sm break-words text-muted-ink">
           {t("yourReason", { reason: invite.answer.reason })}

@@ -25,6 +25,8 @@ export function usePagedList<
   limit?: number;
   refetchInterval?: number | false;
   enabled?: boolean;
+  /** "offlineFirst" lets a request reach the service worker's cache while offline (`/invites`). */
+  networkMode?: "online" | "offlineFirst";
 }) {
   const params = options.params ?? {};
   const limit = options.limit ?? PAGE_SIZE_DEFAULT;
@@ -44,6 +46,7 @@ export function usePagedList<
     refetchInterval: options.refetchInterval ?? false,
     refetchIntervalInBackground: false,
     enabled: options.enabled ?? true,
+    networkMode: options.networkMode ?? "online",
   });
   return {
     query,

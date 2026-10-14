@@ -13,9 +13,12 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { ShowMore } from "@/components/ui/show-more";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sticker } from "@/components/ui/sticker";
+import { OfflineBanner } from "@/components/members/offline-banner";
+import { RemindersCard } from "@/components/members/reminders-card";
 import { DEVICE_KEYS } from "@/config/members";
 import { useMe } from "@/hooks/use-me";
 import { useMyInvites } from "@/hooks/use-my-invites";
+import { useOnline } from "@/hooks/use-online";
 import { readDeviceValue, writeDeviceValue } from "@/lib/device/storage";
 import { type WeekGroup, weekGroup } from "@/lib/my-invites/group";
 import { useIsClient } from "@/lib/use-is-client";
@@ -40,7 +43,9 @@ function byWeek(items: MyInvite[], now: Date) {
 /** `/invites` (spec §7.4): Upcoming in date order with All / Needs your answer, and Past. */
 export function InvitesView() {
   const t = useTranslations("MyInvites");
+  const tOffline = useTranslations("Offline");
   const me = useMe();
+  const online = useOnline();
   const isClient = useIsClient();
   const [tab, setTab] = useState<MyInvitesTab>("upcoming");
   // The chip picked in this visit, else the one remembered on this device (read only on the
@@ -62,6 +67,8 @@ export function InvitesView() {
   return (
     <section className="flex flex-col gap-4">
       <h1 className="font-display text-3xl">{t("title")}</h1>
+      <RemindersCard />
+      <OfflineBanner asOf={list.asOf} />
       <SegmentedControl
         label={t("tabs.label")}
         value={tab}
@@ -97,7 +104,9 @@ export function InvitesView() {
           </Chip>
         </div>
       ) : null}
-      {list.query.isPending ? (
+      {!online && !list.query.data ? (
+        <p className="text-muted-ink">{tOffline("connectToSee")}</p>
+      ) : list.query.isPending ? (
         <div className="flex flex-col gap-3">
           <Skeleton className="h-24 w-full" />
           <Skeleton className="h-24 w-full" />
@@ -106,7 +115,7 @@ export function InvitesView() {
         <EmptyState
           tab={tab}
           filter={chosen}
-          email={me.data?.profile.email ?? ""}
+          email={me.data?.profile.email ?? null}
         />
       ) : tab === "upcoming" ? (
         byWeek(list.items, new Date()).map((section) => (
@@ -115,14 +124,24 @@ export function InvitesView() {
               {t(`groups.${section.group}`)}
             </h2>
             {section.items.map((invite) => (
-              <InviteCard key={invite.inviteeId} invite={invite} tab={tab} />
+              <InviteCard
+                key={invite.inviteeId}
+                invite={invite}
+                tab={tab}
+                disabled={!online}
+              />
             ))}
           </div>
         ))
       ) : (
         <div className="flex flex-col gap-3">
           {list.items.map((invite) => (
-            <InviteCard key={invite.inviteeId} invite={invite} tab={tab} />
+            <InviteCard
+              key={invite.inviteeId}
+              invite={invite}
+              tab={tab}
+              disabled={!online}
+            />
           ))}
         </div>
       )}
@@ -142,7 +161,8 @@ function EmptyState({
 }: {
   tab: MyInvitesTab;
   filter: MyInvitesFilter;
-  email: string;
+  /** The signed-in address; null while unknown (offline the profile isn't saved). */
+  email: string | null;
 }) {
   const t = useTranslations("MyInvites");
   if (filter === "needs") {
@@ -169,7 +189,9 @@ function EmptyState({
         </Sticker>
         <div className="flex min-w-0 flex-col gap-1">
           <h2 className="font-bold">{t("emptyTitle")}</h2>
-          <p className="break-words">{t("emptyBody", { email })}</p>
+          <p className="break-words">
+            {email ? t("emptyBody", { email }) : t("emptyBodyNoEmail")}
+          </p>
           <p className="text-sm text-muted-ink">{t("otherAddress")}</p>
         </div>
       </Card>

@@ -36,4 +36,15 @@ describe("MemberShell", () => {
     expect(await screen.findByText("page")).toBeVisible();
     expect(screen.queryByRole("link", { name: "Your workspaces" })).toBeNull();
   });
+
+  it("shows the page without waiting for the profile (offline, the profile isn't saved)", async () => {
+    routeFetch({
+      "GET /api/me": async () =>
+        Promise.reject(new TypeError("Failed to fetch")),
+    });
+    renderWithProviders(<MemberShell>page</MemberShell>);
+    expect(screen.getByText("page")).toBeVisible();
+    expect(screen.getByRole("link", { name: "TapNShow" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Account" })).toBeNull();
+  });
 });

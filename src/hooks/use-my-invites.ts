@@ -27,6 +27,8 @@ export function useMyInvites(
     params: { tab, filter },
     schema: myInvitesPageSchema,
     enabled: options.enabled,
+    // Offline, the request still goes out so the service worker can answer from its copy.
+    networkMode: "offlineFirst",
   });
   const first = list.query.data?.pages[0];
   return {

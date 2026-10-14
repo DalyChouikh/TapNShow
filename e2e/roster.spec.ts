@@ -209,6 +209,10 @@ test.describe("wide screens", () => {
       .getByRole("textbox", { name: "Full name of Youssef Trabelsi" })
       .fill("Youssef T.");
     await page.keyboard.press("Enter");
+    // Saved (the cell shows the new name) before reloading, so the reload can't race the save.
+    await expect(
+      page.getByRole("button", { name: "Full name of Youssef T." }),
+    ).toBeVisible();
     await page.reload();
     await expect(
       page.getByRole("button", { name: "Full name of Youssef T." }),

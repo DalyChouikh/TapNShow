@@ -48,5 +48,6 @@ describe("InviteCard", () => {
       <InviteCard invite={myInviteFixture} tab="upcoming" disabled />,
     );
     expect(screen.queryByRole("link")).toBeNull();
+    expect(screen.getByText("Connect to answer")).toBeVisible();
   });
 });

@@ -4,6 +4,7 @@ import {
   answerLinkFrom,
   createWorkspace,
   dispatchAndRead,
+  markAtDoor,
   messagesFor,
   sendMeetingThroughUi,
 } from "./helpers/meetings";
@@ -194,10 +195,7 @@ test("the committee checks people in; History and exports show what happened", a
   await signInWithCode(door, doorUser.email, { startPath: "/login" });
   await door.goto(`/w/${slug}/meetings/${meetingId}`);
   await door.getByRole("radio", { name: "Check-in" }).click();
-  await door
-    .getByRole("group", { name: `Check-in for ${going}` })
-    .getByRole("button", { name: "Absent" })
-    .click();
+  await markAtDoor(door, going, "Absent");
   await expect(door.getByText("1 of 2 checked in")).toBeVisible();
   await door
     .getByRole("button", { name: "Mark the rest as they said" })

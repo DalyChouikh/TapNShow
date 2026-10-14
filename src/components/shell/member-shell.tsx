@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { APP_NAME } from "@/config/app";
 import { useMe } from "@/hooks/use-me";
 import { homeWorkspaceSlug } from "@/lib/post-sign-in";
@@ -17,15 +16,7 @@ import { UserMenu } from "./user-menu";
 export function MemberShell({ children }: { children: ReactNode }) {
   const t = useTranslations("Shell");
   const me = useMe();
-  if (!me.data) {
-    return (
-      <main className="mx-auto flex max-w-md flex-col gap-4 p-4">
-        <Skeleton className="h-14 w-full" />
-        <Skeleton className="h-48 w-full" />
-      </main>
-    );
-  }
-  const slug = homeWorkspaceSlug(me.data);
+  const slug = me.data ? homeWorkspaceSlug(me.data) : null;
   return (
     <div className="min-h-dvh pb-12">
       <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b-[length:var(--tn-border-width)] border-outline bg-background px-4 py-3">
@@ -38,7 +29,7 @@ export function MemberShell({ children }: { children: ReactNode }) {
               <Link href={`/w/${slug}`}>{t("yourWorkspace")}</Link>
             </Button>
           ) : null}
-          <UserMenu me={me.data} />
+          {me.data ? <UserMenu me={me.data} /> : null}
         </div>
       </header>
       <main className="mx-auto max-w-md p-4">{children}</main>

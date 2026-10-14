@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { tokenPageHeaders } from "./security-headers";
+import { serviceWorkerHeaders, tokenPageHeaders } from "./security-headers";
 
 describe("tokenPageHeaders", () => {
   it("sends no referrer from pages whose URL carries a token", () => {
@@ -18,5 +18,22 @@ describe("tokenPageHeaders", () => {
         value: "no-referrer",
       });
     }
+  });
+});
+
+describe("serviceWorkerHeaders (spec §10 PWA)", () => {
+  it("serves the worker uncached and lets it control the whole app from /serwist/", () => {
+    expect(serviceWorkerHeaders).toEqual([
+      {
+        source: "/serwist/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
+          },
+          { key: "Service-Worker-Allowed", value: "/" },
+        ],
+      },
+    ]);
   });
 });
