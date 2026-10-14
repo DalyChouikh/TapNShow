@@ -12,9 +12,13 @@ describe("InviteCard", () => {
     expect(screen.getByText("Not answered")).toBeVisible();
   });
 
-  it("opens the invite from Upcoming", () => {
+  it("opens the invite from Upcoming, named after the meeting, its group and time", () => {
     renderWithProviders(<InviteCard invite={myInviteFixture} tab="upcoming" />);
-    expect(screen.getByRole("link")).toHaveAttribute(
+    const link = screen.getByRole("link", {
+      name: "Weekly sync GDG ISSAT · Sun 18 Oct, 18:00",
+    });
+    expect(link).toHaveAccessibleDescription("Not answered");
+    expect(link).toHaveAttribute(
       "href",
       `/invites/${myInviteFixture.inviteeId}`,
     );
