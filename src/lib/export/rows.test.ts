@@ -7,6 +7,7 @@ import {
   attendanceSummaryRows,
   listNamesByContact,
   meetingAnswerRows,
+  memberAnswerRows,
   type ExportText,
 } from "./rows";
 import { exportWords } from "./words";
@@ -244,5 +245,82 @@ describe("listNamesByContact", () => {
     });
     expect(names.get("c1")).toEqual(["Design", "Core team"]);
     expect(names.get("c2")).toEqual([]);
+  });
+
+  it("member rows: group, meeting, date, answer, words, check-in (spec §7.4)", () => {
+    const answered = {
+      inviteeId: "6a1f2b3c-4d5e-4f60-8a71-b2c3d4e5f6aa",
+      workspaceName: "GDG ISSAT",
+      title: "Kickoff",
+      startsAt: "2026-10-11T17:00:00.000Z",
+      timezone: "Africa/Tunis",
+      responseMode: "attendance" as const,
+      status: "scheduled" as const,
+      answer: {
+        status: "late" as const,
+        delayMinutes: 10,
+        reason: "Bus",
+        comment: "",
+        afterDeadline: true,
+        updatedAt: "2026-10-10T08:30:00.000Z",
+      },
+      mark: { actual: "late" as const, lateMinutes: 15 },
+    };
+    const rows = memberAnswerRows(
+      [
+        answered,
+        { ...answered, title: "Silent", answer: null, mark: null },
+        {
+          ...answered,
+          title: "News",
+          responseMode: "announcement",
+          answer: null,
+          mark: null,
+        },
+      ],
+      labels,
+      text,
+    );
+    expect(rows).toEqual([
+      [
+        "GDG ISSAT",
+        "Kickoff",
+        "2026-10-11 18:00",
+        { text: "Late by 10 min", tone: "warning" },
+        10,
+        "Bus",
+        "",
+        "2026-10-10 09:30",
+        "Yes",
+        { text: "was:late", tone: "warning" },
+        15,
+      ],
+      [
+        "GDG ISSAT",
+        "Silent",
+        "2026-10-11 18:00",
+        { text: "No reply", tone: "neutral" },
+        null,
+        "",
+        "",
+        "",
+        "",
+        "",
+        null,
+      ],
+      [
+        "GDG ISSAT",
+        "News",
+        "2026-10-11 18:00",
+        "",
+        null,
+        "",
+        "",
+        "",
+        "",
+        "",
+        null,
+      ],
+    ]);
   });
 });

@@ -23,10 +23,12 @@ import { inviteDeliveredSchema, type Invite } from "@/shared/api/invites";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
 import { InviteDialog } from "./invite-dialog";
 import { Pill } from "@/components/ui/pill";
+import { copyText } from "@/lib/clipboard";
 
 /** Settings > People > Invites (Owner/Admin only). */
 export function InvitesPanel({ workspace }: { workspace: WorkspaceDetails }) {
   const t = useTranslations("Invites");
+  const tCommon = useTranslations("Common");
   const tErrors = useTranslations("ApiErrors");
   const queryClient = useQueryClient();
   const canManage = workspace.myRole !== "viewer";
@@ -49,8 +51,11 @@ export function InvitesPanel({ workspace }: { workspace: WorkspaceDetails }) {
     onSuccess: async (result, { invite }) => {
       await refresh();
       if (result.delivery === "link") {
-        await navigator.clipboard.writeText(result.link);
-        toast(t("copied", { email: invite.email }));
+        if (await copyText(result.link)) {
+          toast(t("copied", { email: invite.email }));
+        } else {
+          toast.error(tCommon("copyLinkFailed"));
+        }
       } else {
         toast(t("sent", { email: invite.email }));
       }

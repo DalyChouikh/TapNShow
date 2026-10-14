@@ -35,9 +35,12 @@ export type ExportSheetLink = {
 export function ExportMenu({
   onExport,
   sheet,
+  label,
 }: {
   onExport: (format: ExportFormat) => Promise<void>;
   sheet?: ExportSheetLink;
+  /** The trigger's words (default "Export"). */
+  label?: string;
 }) {
   const t = useTranslations("Export");
   const [busy, setBusy] = useState(false);
@@ -55,7 +58,7 @@ export function ExportMenu({
       <DropdownMenuTrigger asChild disabled={busy}>
         <Button disabled={busy} aria-busy={busy}>
           <DownloadSimple weight="bold" aria-hidden />
-          {busy ? t("preparing") : t("button")}
+          {busy ? t("preparing") : (label ?? t("button"))}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">

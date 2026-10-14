@@ -264,7 +264,11 @@
     "save": "Save",
     "cancel": "Cancel",
     "continue": "Continue",
-    "close": "Close"
+    "close": "Close",
+    "copyWord": "Copy {word}",
+    "copied": "Copied",
+    "copyFailed": "Couldn't copy. Type it instead.",
+    "copyLinkFailed": "Couldn't copy the link."
   },
   "Welcome": {
     "title": "What should we call you?",
@@ -305,14 +309,13 @@
     "yourWorkspace": "Your workspaces",
     "userMenuLabel": "Account",
     "myInvites": "My invites",
-    "yourName": "Your name",
+    "account": "Account",
     "signOut": "Sign out",
     "notFoundTitle": "Workspace not found",
     "notFoundBody": "It doesn't exist or you're not a member.",
     "backHome": "Go to my workspaces"
   },
   "Profile": {
-    "title": "Your name",
     "nameLabel": "Name",
     "saved": "Name saved."
   },
@@ -411,7 +414,6 @@
       "open": "Open the Google Sheet",
       "copy": "Copy link",
       "copied": "Link copied",
-      "copyFailed": "Couldn't copy the link.",
       "shareTip": "To share it, open it and use Share in Google Sheets. Changes made in the sheet are replaced by TapNShow.",
       "turnOff": "Turn off the Google Sheet",
       "turnOffTitle": "Turn off the Google Sheet?",
@@ -592,6 +594,27 @@
     "opening": "Opening your invite…",
     "notAvailable": "This invite isn't available any more.",
     "backToInvites": "Back to my invites"
+  },
+  "Account": {
+    "title": "Account",
+    "name": "Your name",
+    "signedInAs": "Signed in as {email}. Invites sent to this address show up in My invites.",
+    "answersTitle": "Your answers",
+    "answersBody": "Every meeting you were invited to, what you answered, and any check-in organizers recorded.",
+    "download": "Download my answers",
+    "downloadHint": "CSV or Excel, like the organizers' export.",
+    "delete": {
+      "title": "Delete my account",
+      "body": "Erases your reasons and comments. Groups keep whether you came, without your account.",
+      "button": "Delete my account",
+      "owned": "You own these workspaces. Give each one to an Admin, or delete it, first:",
+      "transfer": "Transfer ownership",
+      "deleteWorkspace": "Delete workspace",
+      "dialogTitle": "Delete your account?",
+      "dialogBody": "Your reasons and comments on {answers, plural, one {# answer} other {# answers}} are erased, and you leave {workspaces, plural, =0 {no workspace} one {# workspace} other {# workspaces}}. Groups keep whether you came. This can't be undone.",
+      "typeWord": "Type {word} to delete",
+      "deleted": "Your account was deleted."
+    }
   },
   "Lists": {
     "title": "Lists",
@@ -1269,6 +1292,7 @@
     "customPeriod": "{from} – {to}",
     "yes": "Yes",
     "columns": {
+      "group": "Group",
       "name": "Name",
       "email": "Email",
       "lists": "Lists",
@@ -1296,7 +1320,8 @@
       "absent": "Absent"
     },
     "openSheet": "Open the Google Sheet",
-    "sheetPaused": "The Google Sheet is paused"
+    "sheetPaused": "The Google Sheet is paused",
+    "myAnswers": "My answers"
   },
   "Sheet": {
     "fileName": "{workspace} · TapNShow",

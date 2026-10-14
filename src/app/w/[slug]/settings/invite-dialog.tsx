@@ -30,6 +30,7 @@ import {
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
 import { Pill } from "@/components/ui/pill";
 import type { FillTone } from "@/design/tokens";
+import { copyText } from "@/lib/clipboard";
 
 type Values = z.input<typeof createInviteBodySchema>;
 
@@ -66,6 +67,7 @@ export function InviteDialog({
   workspace: WorkspaceDetails;
 }) {
   const t = useTranslations("Invites");
+  const tCommon = useTranslations("Common");
   const tErrors = useTranslations("ApiErrors");
   const queryClient = useQueryClient();
   const [results, setResults] = useState<InviteResult[] | null>(null);
@@ -101,8 +103,11 @@ export function InviteDialog({
     onSuccess: async (response, result) => {
       await refresh();
       if (response.delivery === "link") {
-        await navigator.clipboard.writeText(response.link);
-        toast(t("copied", { email: result.email }));
+        if (await copyText(response.link)) {
+          toast(t("copied", { email: result.email }));
+        } else {
+          toast.error(tCommon("copyLinkFailed"));
+        }
         setResults(
           (rows) =>
             rows?.map((row) =>
@@ -126,19 +131,24 @@ export function InviteDialog({
   }
 
   const copy = async (result: InviteResult) => {
-    if (result.link) {
-      await navigator.clipboard.writeText(result.link);
+    if (!result.link) {
+      linkFor.mutate(result);
+    } else if (await copyText(result.link)) {
       toast(t("copied", { email: result.email }));
     } else {
-      linkFor.mutate(result);
+      toast.error(tCommon("copyLinkFailed"));
     }
   };
   const links = results?.filter((row) => row.link) ?? [];
   const copyAll = async () => {
-    await navigator.clipboard.writeText(
+    const copied = await copyText(
       links.map((row) => `${row.email}: ${row.link}`).join("\n"),
     );
-    toast(t("copiedAll", { count: links.length }));
+    if (copied) {
+      toast(t("copiedAll", { count: links.length }));
+    } else {
+      toast.error(tCommon("copyLinkFailed"));
+    }
   };
 
   const emailsError = (() => {

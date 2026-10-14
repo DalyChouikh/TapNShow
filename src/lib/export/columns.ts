@@ -49,3 +49,21 @@ export const DETAIL_COLUMNS: ReadonlyArray<ExportColumn> = [
   { key: "date", width: 18 },
   ...ANSWER_COLUMNS,
 ];
+
+/** Columns about other people or about sending, left out of a member's own download. */
+const NOT_FOR_MEMBERS: ReadonlySet<ExportColumnKey> = new Set([
+  "name",
+  "email",
+  "lists",
+  "emailStatus",
+  "checkedInBy",
+]);
+
+/**
+ * Download my answers (`memberAnswerRows`, spec §7.4): the group, then the detail columns about
+ * the person's own answer and check-in, in the same order and widths.
+ */
+export const MEMBER_ANSWER_COLUMNS: ReadonlyArray<ExportColumn> = [
+  { key: "group", width: 24 },
+  ...DETAIL_COLUMNS.filter((column) => !NOT_FOR_MEMBERS.has(column.key)),
+];

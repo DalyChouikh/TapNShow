@@ -17,6 +17,7 @@ import { saveExport } from "@/lib/export/save";
 import { formatDeadline } from "@/lib/meetings/format";
 import type { PeriodRange } from "@/shared/api/responses";
 import type { Roster } from "@/shared/api/roster";
+import { exportHeaders } from "@/lib/export/words";
 
 /** One Attendance row as shown (the view's filter and order). */
 export type AttendanceExportRow = Parameters<
@@ -39,11 +40,7 @@ export function useExportAttendance(
   const { t } = words;
   const { slug } = workspace;
   const header = (columns: ReadonlyArray<ExportColumn>) =>
-    columns.map((column) => ({
-      header: words.column(column.key),
-      width: column.width,
-      tone: column.tone,
-    }));
+    exportHeaders(words, columns);
   return async (
     format: ExportFormat,
     shown: AttendanceExportRow[],

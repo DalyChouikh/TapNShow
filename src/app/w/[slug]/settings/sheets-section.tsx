@@ -27,6 +27,7 @@ import type { WorkspaceDetails } from "@/shared/api/workspaces";
 import { GoogleConnectResult } from "./google-connect-result";
 import { SettingsSection } from "./settings-section";
 import { Pill } from "@/components/ui/pill";
+import { copyText } from "@/lib/clipboard";
 
 type Pending = "connect" | "recreate" | "turnOff" | null;
 
@@ -52,6 +53,7 @@ export function SheetsSection({
   defaultOpen?: boolean;
 }) {
   const t = useTranslations("Settings.sheets");
+  const tCommon = useTranslations("Common");
   const tErrors = useTranslations("ApiErrors");
   const formatter = useFormatter();
   const now = useNow({ updateInterval: NOW_TICK_MS });
@@ -75,11 +77,10 @@ export function SheetsSection({
     : null;
   const updated = when ? t("updatedAgo", { when }) : t("neverUpdated");
   const copy = async (link: string) => {
-    try {
-      await navigator.clipboard.writeText(link);
+    if (await copyText(link)) {
       toast.success(t("copied"));
-    } catch {
-      toast.error(t("copyFailed"));
+    } else {
+      toast.error(tCommon("copyLinkFailed"));
     }
   };
   const failed = (error: Error) => toast.error(tErrors(errorCodeOf(error)));

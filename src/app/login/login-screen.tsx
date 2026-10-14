@@ -30,6 +30,7 @@ export function LoginScreen() {
   const t = useTranslations("Auth");
   const tErrors = useTranslations("ApiErrors");
   const router = useRouter();
+  const tAccount = useTranslations("Account.delete");
   const searchParams = useSearchParams();
   const next = safeNextPath(searchParams.get("next"));
   const errorParam = searchParams.get("error");
@@ -93,6 +94,11 @@ export function LoginScreen() {
   if (!email) {
     return (
       <div className="flex flex-col gap-4">
+        {searchParams.get("deleted") === "1" ? (
+          <Card role="status" className="font-bold">
+            {tAccount("deleted")}
+          </Card>
+        ) : null}
         {errorParam === "google_failed" ||
         errorParam === "google_unavailable" ? (
           <p

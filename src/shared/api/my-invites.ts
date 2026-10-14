@@ -74,3 +74,32 @@ export const myInviteLinkSchema = z.object({
         TOKEN_PATTERN.test(path.slice(ANSWER_PAGE_PREFIX.length)),
     ),
 });
+
+/** One row of Download my answers. Twin: `private.my_answers`. */
+export const myAnswerSchema = z.object({
+  inviteeId: z.uuid(),
+  workspaceName: z.string(),
+  title: z.string(),
+  startsAt: z.string(),
+  timezone: z.string(),
+  responseMode: responseModeSchema,
+  status: meetingStatusSchema,
+  answer: z
+    .object({
+      status: answerStatusSchema,
+      delayMinutes: z.number().int().nullable(),
+      reason: z.string(),
+      comment: z.string(),
+      afterDeadline: z.boolean(),
+      updatedAt: z.string(),
+    })
+    .nullable(),
+  mark: myInviteSchema.shape.mark,
+});
+/** One row of Download my answers. */
+export type MyAnswer = z.infer<typeof myAnswerSchema>;
+
+/** `GET /api/me/answers`: one page of Download my answers, newest first. */
+export const myAnswersPageSchema = pageSchema(myAnswerSchema);
+/** One page of Download my answers. */
+export type MyAnswersPage = z.infer<typeof myAnswersPageSchema>;
