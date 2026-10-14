@@ -5,6 +5,7 @@ import { getLocale } from "next-intl/server";
 import { MotionProvider } from "@/components/motion/motion-provider";
 import { InstallPromptProvider } from "@/components/providers/install-prompt-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { RemindersCheckIn } from "@/components/providers/reminders-check-in";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { APP_DESCRIPTION, APP_NAME } from "@/config/app";
@@ -29,7 +30,7 @@ export const metadata: Metadata = {
 /** The browser bar and the installed app's frame take the app background (spec §10 PWA). */
 export const viewport: Viewport = { themeColor: palette.light.background };
 
-/** Root layout: fonts, theme (no-flash), motion, i18n, the install offer and the service worker. */
+/** Root layout: fonts, theme (no-flash), motion, i18n, the install offer, the service worker and the reminders check-in. */
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const locale = await getLocale();
   return (
@@ -54,6 +55,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                   options={{ scope: "/" }}
                 >
                   <MotionProvider>{children}</MotionProvider>
+                  <RemindersCheckIn />
                 </SerwistProvider>
               </InstallPromptProvider>
               <Toaster />

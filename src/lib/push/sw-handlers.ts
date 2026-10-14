@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { pushSubscriptionBodySchema } from "@/shared/api/push";
 
 const payloadSchema = z.object({
   title: z.string().min(1).max(300),
@@ -39,8 +40,9 @@ export function notificationFromPush(
       };
 }
 
-/** A window the worker controls (the part of `WindowClient` a tap needs). */
+/** An open TapNShow window (the part of `WindowClient` a tap needs). */
 type WindowLike = {
+  url: string;
   navigate?: (url: string) => Promise<object | null>;
   focus?: () => Promise<object>;
 };
@@ -57,7 +59,14 @@ export type ClientsLike = {
   openWindow: (url: string) => Promise<object | null>;
 };
 
-/** On a tap: reuse an open TapNShow window (navigate and focus it), else open one. */
+const onInvitesPage = (window: WindowLike) =>
+  /^\/invites(\/|$)/.test(new URL(window.url).pathname);
+
+/**
+ * On a tap: reuse a window already showing invites (navigate and focus it), else open one. Other
+ * pages are never taken over (an organizer may be editing there), and a window the worker can't
+ * move (it doesn't control it) gets a new window instead, so a tap always opens the invite.
+ */
 export async function focusOrOpen(
   clients: ClientsLike,
   url: string,
@@ -66,13 +75,97 @@ export async function focusOrOpen(
     type: "window",
     includeUncontrolled: true,
   });
-  const window = open.find((client) => client.navigate && client.focus);
+  const window = open.find(onInvitesPage);
   if (window?.navigate && window.focus) {
-    await window.navigate(url);
-    await window.focus();
-    return;
+    try {
+      await window.navigate(url);
+      await window.focus();
+      return;
+    } catch {
+      // Not this worker's window: open a new one below.
+    }
   }
   await clients.openWindow(url);
+}
+
+/** A subscription as the worker sees it (structural, like `ClientsLike`). */
+type SubscriptionLike = { toJSON: () => object };
+
+/** The part of a `pushsubscriptionchange` event a re-subscribe needs. */
+type SubscriptionChange = {
+  oldSubscription: {
+    options: { applicationServerKey: ArrayBuffer | null };
+  } | null;
+  newSubscription: SubscriptionLike | null;
+};
+
+/**
+ * The browser replaced this device's subscription (spec §8): subscribe again with the same key
+ * when it made no new one, and tell the server, so reminders keep arriving. The old endpoint is
+ * forgotten when its push service answers "gone". Signed out, the server refuses and nothing
+ * changes; the page's daily check-in (`checkInReminders`) covers browsers that never fire this.
+ */
+export async function resubscribe(
+  change: SubscriptionChange,
+  pushManager: {
+    subscribe: (
+      options: PushSubscriptionOptionsInit,
+    ) => Promise<SubscriptionLike>;
+  },
+  send: (url: string, init: RequestInit) => Promise<Response>,
+): Promise<void> {
+  const key = change.oldSubscription?.options.applicationServerKey ?? null;
+  const subscription =
+    change.newSubscription ??
+    (key
+      ? await pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: key,
+        })
+      : null);
+  const body = pushSubscriptionBodySchema.safeParse(subscription?.toJSON());
+  if (!body.success) {
+    return;
+  }
+  await send("/api/me/push-subscriptions", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body.data),
+  });
+}
+
+/**
+ * A worker plugin for the saved invites: a list answered from this device's copy says so
+ * (`saved: true`, see `myInvitesPageSchema`), so `/invites` shows its age and "Connect to answer"
+ * even when the browser believes it is online. Anything that isn't a JSON object passes untouched.
+ */
+export function markSavedCopy() {
+  return {
+    cachedResponseWillBeUsed: async ({
+      cachedResponse,
+    }: {
+      cachedResponse?: Response;
+    }): Promise<Response | null> => {
+      if (!cachedResponse) {
+        return null;
+      }
+      const body = z.looseObject({}).safeParse(
+        await cachedResponse
+          .clone()
+          .json()
+          .catch(() => null),
+      );
+      if (!body.success) {
+        return cachedResponse;
+      }
+      return new Response(JSON.stringify({ ...body.data, saved: true }), {
+        status: cachedResponse.status,
+        statusText: cachedResponse.statusText,
+        headers: cachedResponse.headers,
+      });
+    },
+  };
 }
 
 /**

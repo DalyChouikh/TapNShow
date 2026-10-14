@@ -13,8 +13,9 @@ import {
 export const MY_INVITES_QUERY_KEY = ["my-invites"] as const;
 
 /**
- * One `/invites` tab as a growing list, with the Needs-your-answer count and the server time.
- * `enabled: false` waits (e.g. until the device's saved chip is known).
+ * One `/invites` tab as a growing list, with the Needs-your-answer count, the server time and
+ * whether any page came from this device's saved copy. `enabled: false` waits (e.g. until the
+ * device's saved chip is known).
  */
 export function useMyInvites(
   tab: MyInvitesTab,
@@ -35,6 +36,7 @@ export function useMyInvites(
     ...list,
     needsCount: first?.needsCount ?? 0,
     asOf: first?.asOf ?? null,
+    saved: list.query.data?.pages.some((page) => page.saved) ?? false,
   };
 }
 

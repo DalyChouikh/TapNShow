@@ -25,7 +25,22 @@ describe("useMyInvites", () => {
     await waitFor(() => expect(result.current.items).toEqual([invite]));
     expect(result.current.needsCount).toBe(3);
     expect(result.current.asOf).toBe("2026-10-14T10:00:00.000Z");
+    expect(result.current.saved).toBe(false);
     expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("knows when a page came from this device's saved copy", async () => {
+    routeFetch({
+      "GET /api/me/invites?tab=upcoming&filter=all&limit=50": json({
+        ...myInvitesPage([invite]),
+        saved: true,
+      }),
+    });
+    const { result } = renderHook(() => useMyInvites("upcoming", "all"), {
+      wrapper,
+    });
+    await waitFor(() => expect(result.current.items).toEqual([invite]));
+    expect(result.current.saved).toBe(true);
   });
 
   it("has no count and no time before the first page arrives", () => {

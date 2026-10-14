@@ -128,6 +128,16 @@ describe("InvitesView", () => {
     expect(screen.getByText("Connect to answer")).toBeVisible();
   });
 
+  it("a saved copy on a weak connection: says how old it is, and cards can't be opened", async () => {
+    serve({ [PAGE]: json({ ...myInvitesPage([thisWeek]), saved: true }) });
+    renderWithProviders(<InvitesView />);
+    expect(await screen.findByText("Friday sync")).toBeVisible();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Showing your invites from",
+    );
+    expect(screen.queryByRole("link", { name: /Friday sync/ })).toBeNull();
+  });
+
   it("offline with nothing saved: asks to connect", async () => {
     net.online = false;
     serve({

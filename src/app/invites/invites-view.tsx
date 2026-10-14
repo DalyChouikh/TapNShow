@@ -59,6 +59,8 @@ export function InvitesView() {
     "all";
   const chosen = tab === "upcoming" ? filter : "all";
   const list = useMyInvites(tab, chosen, { enabled: isClient });
+  // Offline, or shown the saved copy because the network didn't answer: no answering.
+  const answerable = online && !list.saved;
   const choose = (next: MyInvitesFilter) => {
     setPicked(next);
     writeDeviceValue(DEVICE_KEYS.invitesFilter, next);
@@ -68,7 +70,7 @@ export function InvitesView() {
     <section className="flex flex-col gap-4">
       <h1 className="font-display text-3xl">{t("title")}</h1>
       <RemindersCard />
-      <OfflineBanner asOf={list.asOf} />
+      <OfflineBanner asOf={list.asOf} saved={list.saved} />
       <SegmentedControl
         label={t("tabs.label")}
         value={tab}
@@ -128,7 +130,7 @@ export function InvitesView() {
                 key={invite.inviteeId}
                 invite={invite}
                 tab={tab}
-                disabled={!online}
+                disabled={!answerable}
               />
             ))}
           </div>
@@ -140,7 +142,7 @@ export function InvitesView() {
               key={invite.inviteeId}
               invite={invite}
               tab={tab}
-              disabled={!online}
+              disabled={!answerable}
             />
           ))}
         </div>

@@ -1,8 +1,11 @@
+import { z } from "zod";
+import { DEVICE_KEYS, REMINDERS_CHECK_IN_HOURS } from "@/config/members";
 import { publicEnv } from "@/config/public-env";
 import { apiRequest } from "@/lib/api-client";
+import { deviceKind, needsHomeScreen } from "@/lib/device/kind";
+import { readDeviceValue, writeDeviceValue } from "@/lib/device/storage";
 import { okSchema } from "@/shared/api/common";
 import { pushSubscriptionBodySchema } from "@/shared/api/push";
-import { deviceKind, needsHomeScreen } from "@/lib/device/kind";
 import { base64UrlToBytes } from "./base64url";
 
 /** Where this device stands with reminders (spec §7.4). */
@@ -10,6 +13,7 @@ export type RemindersState =
   "unavailable" | "unsupported" | "needs_install" | "blocked" | "off" | "on";
 
 const SUBSCRIPTIONS = "/api/me/push-subscriptions";
+const HOUR_MS = 3_600_000;
 
 /** Reminders exist on this deployment (the public key is set; previews without keys hide them). */
 export function remindersAvailable(): boolean {
@@ -50,8 +54,53 @@ export async function remindersState(): Promise<RemindersState> {
     : "off";
 }
 
+/** Tells the server about this device's subscription and remembers when (a check-in). */
+async function saveSubscription(
+  subscription: PushSubscription,
+  now: Date,
+  onUnauthenticated?: () => void,
+): Promise<void> {
+  await apiRequest(SUBSCRIPTIONS, {
+    method: "POST",
+    body: pushSubscriptionBodySchema.parse(subscription.toJSON()),
+    schema: okSchema,
+    onUnauthenticated,
+  });
+  writeDeviceValue(DEVICE_KEYS.remindersCheckedInAt, now.toISOString());
+}
+
+/**
+ * Re-sends this device's subscription at most every `REMINDERS_CHECK_IN_HOURS` while reminders are
+ * on (spec §8): the server forgets devices with no sign of life, and a browser may replace its
+ * subscription without telling the page. Best effort: a failure is tried again at the next visit,
+ * and a gone session never sends anyone to sign-in.
+ */
+export async function checkInReminders(now: Date): Promise<void> {
+  const last = readDeviceValue(
+    DEVICE_KEYS.remindersCheckedInAt,
+    z.iso.datetime(),
+  );
+  if (
+    last !== null &&
+    now.getTime() - Date.parse(last) < REMINDERS_CHECK_IN_HOURS * HOUR_MS
+  ) {
+    return;
+  }
+  try {
+    const subscription =
+      (await remindersState()) === "on" ? await currentSubscription() : null;
+    if (subscription) {
+      await saveSubscription(subscription, now, () => undefined);
+    }
+  } catch {
+    // Offline, rate limited or signed out: the next visit tries again.
+  }
+}
+
 /** Asks the browser, subscribes this device and tells the server; undone if the server refuses. */
-export async function turnOnReminders(): Promise<RemindersState> {
+export async function turnOnReminders(
+  now: Date = new Date(),
+): Promise<RemindersState> {
   const permission = await Notification.requestPermission();
   if (permission !== "granted") {
     return permission === "denied" ? "blocked" : "off";
@@ -64,11 +113,7 @@ export async function turnOnReminders(): Promise<RemindersState> {
     ),
   });
   try {
-    await apiRequest(SUBSCRIPTIONS, {
-      method: "POST",
-      body: pushSubscriptionBodySchema.parse(subscription.toJSON()),
-      schema: okSchema,
-    });
+    await saveSubscription(subscription, now);
   } catch (error) {
     await subscription.unsubscribe();
     throw error;

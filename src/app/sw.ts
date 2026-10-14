@@ -17,7 +17,9 @@ import {
 import {
   focusOrOpen,
   forgetWhenSignedOut,
+  markSavedCopy,
   notificationFromPush,
+  resubscribe,
 } from "@/lib/push/sw-handlers";
 import messages from "../../messages/en.json";
 
@@ -65,6 +67,8 @@ const serwist = new Serwist({
           forgetWhenSignedOut(async () => {
             await caches.delete(SW_CACHES.invites);
           }),
+          // After the expiration check, so only a copy still in date is marked and shown.
+          markSavedCopy(),
         ],
       }),
     },
@@ -106,6 +110,14 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const data: { url?: string } = event.notification.data ?? {};
   event.waitUntil(focusOrOpen(self.clients, data.url ?? "/invites"));
+});
+
+self.addEventListener("pushsubscriptionchange", (event) => {
+  event.waitUntil(
+    resubscribe(event, self.registration.pushManager, (url, init) =>
+      fetch(url, init),
+    ).catch(() => undefined),
+  );
 });
 
 serwist.addEventListeners();
