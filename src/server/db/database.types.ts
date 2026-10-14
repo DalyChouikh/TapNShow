@@ -63,13 +63,13 @@ isOneToOne: false
                   ]
                 },"contacts": {
                   Row: {
-                    "created_at": string,"email": string,"full_name": string,"id": string,"is_adhoc": boolean,"unsubscribed_at": string | null,"unsubscribed_via": Database["public"]['Enums']["unsubscribe_via"] | null,"updated_at": string,"user_id": string | null,"workspace_id": string
+                    "created_at": string,"email": string,"full_name": string,"id": string,"is_adhoc": boolean,"unsubscribed_at": string | null,"unsubscribed_via": Database["public"]['Enums']["unsubscribe_via"] | null,"updated_at": string,"workspace_id": string
                   }
                   Insert: {
-                    "created_at"?: string,"email": string,"full_name": string,"id"?: string,"is_adhoc"?: boolean,"unsubscribed_at"?: string | null,"unsubscribed_via"?: Database["public"]['Enums']["unsubscribe_via"] | null,"updated_at"?: string,"user_id"?: string | null,"workspace_id": string
+                    "created_at"?: string,"email": string,"full_name": string,"id"?: string,"is_adhoc"?: boolean,"unsubscribed_at"?: string | null,"unsubscribed_via"?: Database["public"]['Enums']["unsubscribe_via"] | null,"updated_at"?: string,"workspace_id": string
                   }
                   Update: {
-                    "created_at"?: string,"email"?: string,"full_name"?: string,"id"?: string,"is_adhoc"?: boolean,"unsubscribed_at"?: string | null,"unsubscribed_via"?: Database["public"]['Enums']["unsubscribe_via"] | null,"updated_at"?: string,"user_id"?: string | null,"workspace_id"?: string
+                    "created_at"?: string,"email"?: string,"full_name"?: string,"id"?: string,"is_adhoc"?: boolean,"unsubscribed_at"?: string | null,"unsubscribed_via"?: Database["public"]['Enums']["unsubscribe_via"] | null,"updated_at"?: string,"workspace_id"?: string
                   }
                   Relationships: [
                     {
@@ -689,6 +689,18 @@ isOneToOne: false
 "members_page":
 { Args: { "p_after_id"?: string,"p_after_name"?: string,"p_after_role"?: Database["public"]['Enums']["workspace_role"],"p_limit"?: number,"p_role"?: Database["public"]['Enums']["workspace_role"],"p_workspace": string }; Returns: Json
                            },
+"my_account":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"my_answers":
+{ Args: { "p_after_invitee": string,"p_after_starts": string,"p_limit": number }; Returns: Json
+                           },
+"my_invite":
+{ Args: { "p_invitee": string }; Returns: string
+                           },
+"my_invites":
+{ Args: { "p_after_invitee": string,"p_after_starts": string,"p_filter": string,"p_limit": number,"p_tab": string }; Returns: Json
+                           },
 "nudge_meeting":
 { Args: { "p_meeting": string }; Returns: Json
                            },
@@ -766,6 +778,9 @@ isOneToOne: false
                            },
 "token_unsubscribe":
 { Args: { "p_token_hash": string,"p_via": Database["public"]['Enums']["unsubscribe_via"] }; Returns: boolean
+                           },
+"token_viewer":
+{ Args: { "p_token_hash": string,"p_user": string }; Returns: string
                            },
 "transfer_ownership":
 { Args: { "p_confirm_name": string,"p_new_owner": string,"p_workspace": string }; Returns: undefined
