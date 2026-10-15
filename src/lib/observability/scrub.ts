@@ -157,3 +157,15 @@ export function scrubDeep<T>(
     ]),
   ) as T;
 }
+
+/**
+ * A page URL as analytics may see it (spec §5): token segments become their route pattern
+ * (`/r/[token]`), and the query string and fragment are dropped (a `next=` can carry a token).
+ */
+export function routePatternUrl(url: string): string {
+  const withoutQuery = url.split(/[?#]/, 1)[0] ?? url;
+  return withoutQuery.replace(
+    TOKEN_LINK,
+    (_match, segment: string) => `/${segment.toLowerCase()}/[token]`,
+  );
+}
