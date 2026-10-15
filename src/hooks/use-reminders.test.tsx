@@ -20,6 +20,8 @@ vi.mock("@/lib/push/client", () => ({
   turnOffReminders: push.off,
 }));
 vi.mock("sonner", () => ({ toast: { error: push.toastError } }));
+const ME = "6a1f2b3c-4d5e-4f60-8a71-b2c3d4e5f6aa";
+vi.mock("@/hooks/use-me", () => ({ useMe: () => ({ data: { userId: ME } }) }));
 
 const wrapper = ({ children }: { children: ReactNode }) => (
   <NextIntlClientProvider locale="en" messages={messages}>
@@ -27,7 +29,10 @@ const wrapper = ({ children }: { children: ReactNode }) => (
   </NextIntlClientProvider>
 );
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  window.localStorage.clear();
+});
 
 describe("useReminders", () => {
   it("reads this device's state, then follows Turn on and Turn off", async () => {
@@ -40,6 +45,8 @@ describe("useReminders", () => {
     act(() => result.current.turnOn());
     await waitFor(() => expect(result.current.state).toBe("on"));
     expect(result.current.justTurnedOn).toBe(true);
+    // A device used before M8 had no owner mark: turning on claims it for this person.
+    expect(window.localStorage.getItem("tn.device.owner")).toBe(ME);
     act(() => result.current.turnOff());
     await waitFor(() => expect(result.current.state).toBe("off"));
   });

@@ -32,8 +32,6 @@ vi.mock("@/hooks/use-install-prompt", () => ({
   useInstallPrompt: () => ({
     canInstall: hooks.canInstall,
     install: hooks.install,
-    needsHomeScreenGuide: hooks.state === "needs_install",
-    standalone: false,
   }),
 }));
 

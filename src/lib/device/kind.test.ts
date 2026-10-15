@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { deviceKind } from "./kind";
+import { deviceKind, needsHomeScreenSteps } from "./kind";
 
 const UA = {
   iphone:
@@ -29,7 +29,10 @@ function on(userAgent: string, maxTouchPoints = 0) {
   });
 }
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 describe("deviceKind", () => {
   it.each([
@@ -47,5 +50,30 @@ describe("deviceKind", () => {
   ] as const)("%s (touch %i) is %s", (userAgent, touch, kind) => {
     on(userAgent, touch);
     expect(deviceKind()).toBe(kind);
+  });
+});
+
+describe("needsHomeScreenSteps", () => {
+  const standalone = (matches: boolean) =>
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn(() => ({ matches })),
+    );
+
+  it("is true on an iPhone or iPad in the browser, false once opened from the Home Screen", () => {
+    on(UA.iphone, 5);
+    standalone(false);
+    expect(needsHomeScreenSteps()).toBe(true);
+    standalone(true);
+    expect(needsHomeScreenSteps()).toBe(false);
+    on(UA.ipadDesktopMode, 5);
+    standalone(false);
+    expect(needsHomeScreenSteps()).toBe(true);
+  });
+
+  it("is false everywhere else", () => {
+    on(UA.androidPhone, 5);
+    standalone(false);
+    expect(needsHomeScreenSteps()).toBe(false);
   });
 });

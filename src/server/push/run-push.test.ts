@@ -41,14 +41,20 @@ function item(over: Partial<PushItem> = {}): PushItem {
   };
 }
 
-/** A store that hands out the given batches, then empty claims. */
+/**
+ * A store that hands out the given batches, at most `limit` items per claim like `push_claim`
+ * (the rest of a batch comes with the next claim), then empty claims.
+ */
 function fakeStore(batches: PushItem[][]) {
-  const queue = [...batches];
+  const queue = batches.map((batch) => [...batch]);
   const store = {
-    claim: vi.fn<PushStore["claim"]>(async () => ({
-      dropped: 0,
-      items: queue.shift() ?? [],
-    })),
+    claim: vi.fn<PushStore["claim"]>(async (_run, limit) => {
+      const items = queue[0]?.splice(0, limit) ?? [];
+      if (queue[0]?.length === 0) {
+        queue.shift();
+      }
+      return { dropped: 0, unreadable: 0, items };
+    }),
     done: vi.fn<PushStore["done"]>(async () => true),
     retry: vi.fn<PushStore["retry"]>(async () => true),
     drop: vi.fn<PushStore["drop"]>(async () => undefined),
@@ -62,7 +68,7 @@ function deps(
   send: PushSend,
   clock = { t: 0 },
 ) {
-  const reportBug = vi.fn<(status: number) => void>();
+  const reportBug = vi.fn<(message: string) => void>();
   const sleep = vi.fn<(ms: number) => Promise<void>>(async (ms) => {
     clock.t += ms;
   });
@@ -120,7 +126,7 @@ describe("runPush (spec §8 Push worker)", () => {
     expect(store.gone).toHaveBeenCalledWith(gone.id, "run-1");
     expect(store.retry).toHaveBeenCalledWith(busy.id, "run-1", 30);
     expect(store.drop).toHaveBeenCalledWith(bad.id, "run-1");
-    expect(reportBug).toHaveBeenCalledWith(400);
+    expect(reportBug).toHaveBeenCalledWith("Web Push 400");
   });
 
   it("never has more than `concurrency` requests in flight", async () => {
@@ -140,6 +146,40 @@ describe("runPush (spec §8 Push worker)", () => {
     await runPush(value, OPTIONS);
     expect(most).toBe(3);
     expect(store.claim).toHaveBeenCalledWith("run-1", 3, 120);
+  });
+
+  it("starts the next delivery as soon as one finishes, so a slow device never holds up the rest", async () => {
+    const slow = item();
+    const store = fakeStore([[slow, item(), item(), item(), item()]]);
+    const events: string[] = [];
+    const { value } = deps(store, async (target) => {
+      events.push(
+        `start ${target.endpoint === slow.endpoint ? "slow" : "fast"}`,
+      );
+      await new Promise((resolve) =>
+        setTimeout(resolve, target.endpoint === slow.endpoint ? 40 : 2),
+      );
+      if (target.endpoint === slow.endpoint) {
+        events.push("slow done");
+      }
+      return { status: 201, retryAfter: null };
+    });
+    const summary = await runPush(value, OPTIONS);
+    expect(summary.sent).toBe(5);
+    expect(events.indexOf("slow done")).toBe(events.length - 1);
+  });
+
+  it("drops and reports deliveries it couldn't read, and sends the rest", async () => {
+    const store = fakeStore([[item()]]);
+    store.claim.mockImplementationOnce(async () => ({
+      dropped: 0,
+      unreadable: 2,
+      items: [item()],
+    }));
+    const { value, reportBug } = deps(store, answering());
+    const summary = await runPush(value, OPTIONS);
+    expect(summary).toMatchObject({ sent: 2, dropped: 2 });
+    expect(reportBug).toHaveBeenCalledWith("Unreadable push deliveries: 2");
   });
 
   it("starts no batch once less than minLeftMs of the budget is left", async () => {
@@ -177,9 +217,29 @@ describe("runPush (spec §8 Push worker)", () => {
 
   it("counts what the claim dropped as stale", async () => {
     const store = fakeStore([]);
-    store.claim.mockResolvedValueOnce({ dropped: 4, items: [] });
+    store.claim.mockResolvedValueOnce({ dropped: 4, unreadable: 0, items: [] });
     const { value } = deps(store, answering());
     expect((await runPush(value, OPTIONS)).stale).toBe(4);
+  });
+
+  it("stops on a failed result write without leaving a send's failure unhandled", async () => {
+    const store = fakeStore([[item(), item()]]);
+    store.done
+      .mockRejectedValueOnce(new Error("push_done failed: 08006"))
+      .mockImplementationOnce(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        throw new Error("push_done failed: 08006");
+      });
+    const unhandled = vi.fn<(reason: Error) => void>();
+    process.on("unhandledRejection", unhandled);
+    try {
+      const { value } = deps(store, answering());
+      await expect(runPush(value, OPTIONS)).rejects.toThrow("push_done failed");
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(unhandled).not.toHaveBeenCalled();
+    } finally {
+      process.off("unhandledRejection", unhandled);
+    }
   });
 
   it("stops and rethrows when the database fails", async () => {

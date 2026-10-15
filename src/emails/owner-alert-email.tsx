@@ -8,7 +8,7 @@ import { getEmailTranslator } from "./translator";
 /** What an alert to a workspace Owner needs (sent by the platform sender, spec §8). */
 export type OwnerAlertEmailProps =
   | {
-      kind: "senderBroken" | "senderRemoved";
+      kind: "senderBroken" | "senderRemoved" | "senderAndSheetRemoved";
       workspaceName: string;
       settingsUrl: string;
     }
@@ -48,8 +48,8 @@ function alertCopy(props: OwnerAlertEmailProps): AlertCopy {
 
 /**
  * Tells an Owner that something of their workspace needs them (spec §8): its Gmail needs
- * reconnecting, its sending stopped because the account was removed, or its Google Sheet stopped
- * updating. Sent by the platform sender.
+ * reconnecting, its sending (and maybe its Google Sheet) stopped because the account was removed,
+ * or its Google Sheet stopped updating. Sent by the platform sender.
  */
 export function OwnerAlertEmail({
   copy,

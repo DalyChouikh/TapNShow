@@ -40,7 +40,7 @@ export function createPushDeps(env: ServerEnv = getServerEnv()): PushDeps {
       },
       PUSH_REQUEST_TIMEOUT_MS,
     ),
-    reportBug: (status) => Sentry.captureMessage(`Web Push ${status}`, "error"),
+    reportBug: (message) => Sentry.captureMessage(message, "error"),
     now: () => Date.now(),
     sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
     newRunId: () => randomUUID(),

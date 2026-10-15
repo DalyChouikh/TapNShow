@@ -47,6 +47,31 @@ describe("afterAccountDeleted", () => {
     });
   });
 
+  it("sends one email naming both when the account sent for the workspace and held its sheet", async () => {
+    const send = vi.fn<(to: string, alert: OwnerAlertInput) => Promise<void>>(
+      async () => undefined,
+    );
+    await afterAccountDeleted(
+      {
+        released: [],
+        alerts: [
+          {
+            kind: "both",
+            email: "o1@example.test",
+            workspaceName: "A",
+            workspaceSlug: "a-1",
+          },
+        ],
+      },
+      { revoke: async () => undefined, send },
+    );
+    expect(send).toHaveBeenCalledExactlyOnceWith("o1@example.test", {
+      kind: "senderAndSheetRemoved",
+      workspaceName: "A",
+      workspaceSlug: "a-1",
+    });
+  });
+
   it("still emails the Owners when revoking fails", async () => {
     const send = vi.fn<(to: string, alert: OwnerAlertInput) => Promise<void>>(
       async () => undefined,
