@@ -53,6 +53,14 @@ describe("LoginScreen with Google", () => {
     );
   });
 
+  it("says to wait when there were too many attempts", () => {
+    state.search = "error=rate_limited";
+    renderWithProviders(<LoginScreen />);
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Too many attempts. Wait a bit and try again.",
+    );
+  });
+
   it("says the account was deleted after Delete my account", () => {
     state.search = "deleted=1";
     renderWithProviders(<LoginScreen />);

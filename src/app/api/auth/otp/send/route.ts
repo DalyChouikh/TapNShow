@@ -1,12 +1,8 @@
 import type { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { apiError, ok } from "@/server/http/errors";
-import {
-  clientIp,
-  parseJsonBody,
-  rejectCrossOrigin,
-} from "@/server/http/request";
-import { allowOtpRequest } from "@/server/rate-limit/ip-rate-limit";
+import { parseJsonBody, rejectCrossOrigin } from "@/server/http/request";
+import { checkIpLimit } from "@/server/rate-limit/ip-rate-limit";
 import { createSupabaseServerClient } from "@/server/supabase/server-client";
 import { otpSendBodySchema } from "@/shared/api/auth";
 
@@ -20,13 +16,9 @@ export async function POST(request: Request): Promise<NextResponse> {
   if (!body.ok) {
     return body.response;
   }
-  try {
-    if (!(await allowOtpRequest(clientIp(request)))) {
-      return apiError("rate_limited");
-    }
-  } catch (error) {
-    logger.error({ err: error }, "otp ip rate limit failed");
-    return apiError("internal");
+  const verdict = await checkIpLimit("otp_send", request);
+  if (verdict !== "allowed") {
+    return apiError(verdict === "limited" ? "rate_limited" : "internal");
   }
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signInWithOtp({

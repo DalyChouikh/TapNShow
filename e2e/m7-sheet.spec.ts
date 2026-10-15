@@ -61,6 +61,10 @@ async function syncUntil(
     .toBe(true);
 }
 
+// A long story that waits on the sheet worker several times (25 to 30 s on a laptop): the default
+// 30 s budget left no room, as for the other worker stories.
+test.describe.configure({ timeout: 180_000 });
+
 test("the Owner connects a Google Sheet that follows answers and check-ins, pauses in the trash and stays when turned off", async ({
   page,
   browser,

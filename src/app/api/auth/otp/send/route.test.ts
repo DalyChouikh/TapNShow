@@ -1,13 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  allowOtpRequest: vi.fn(async (): Promise<boolean> => true),
+  checkIpLimit: vi.fn(
+    async (): Promise<"allowed" | "limited" | "failed"> => "allowed",
+  ),
   signInWithOtp: vi.fn(async () => ({
     error: null as { status?: number; message: string } | null,
   })),
 }));
 vi.mock("@/server/rate-limit/ip-rate-limit", () => ({
-  allowOtpRequest: mocks.allowOtpRequest,
+  checkIpLimit: mocks.checkIpLimit,
 }));
 vi.mock("@/server/supabase/server-client", () => ({
   createSupabaseServerClient: async () => ({
@@ -42,12 +44,12 @@ describe("POST /api/auth/otp/send", () => {
       (await POST(post({ email: "a@example.test" }, "https://evil.example")))
         .status,
     ).toBe(403);
-    expect(mocks.allowOtpRequest).not.toHaveBeenCalled();
+    expect(mocks.checkIpLimit).not.toHaveBeenCalled();
   });
 
   it("answers 429 when the IP is over its limit or Supabase rate-limits", async () => {
     const { POST } = await import("./route");
-    mocks.allowOtpRequest.mockResolvedValueOnce(false);
+    mocks.checkIpLimit.mockResolvedValueOnce("limited");
     expect((await POST(post({ email: "a@example.test" }))).status).toBe(429);
     mocks.signInWithOtp.mockResolvedValueOnce({
       error: { status: 429, message: "over_email_send_rate_limit" },
