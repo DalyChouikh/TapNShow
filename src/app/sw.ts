@@ -11,6 +11,7 @@ import {
 import {
   OFFLINE_INVITES_MAX_AGE_SECONDS,
   OFFLINE_PAGES,
+  OFFLINE_PAGES_MAX_ENTRIES,
   SW_CACHES,
   SW_NETWORK_TIMEOUT_SECONDS,
 } from "@/config/offline";
@@ -49,6 +50,9 @@ const serwist = new Serwist({
       handler: new NetworkFirst({
         cacheName: SW_CACHES.pages,
         networkTimeoutSeconds: SW_NETWORK_TIMEOUT_SECONDS,
+        plugins: [
+          new ExpirationPlugin({ maxEntries: OFFLINE_PAGES_MAX_ENTRIES }),
+        ],
       }),
     },
     {

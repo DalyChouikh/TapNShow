@@ -2,7 +2,7 @@ import { z } from "zod";
 import { DEVICE_KEYS, REMINDERS_CHECK_IN_HOURS } from "@/config/members";
 import { publicEnv } from "@/config/public-env";
 import { apiRequest } from "@/lib/api-client";
-import { deviceKind, needsHomeScreen } from "@/lib/device/kind";
+import { needsHomeScreenSteps } from "@/lib/device/kind";
 import { readDeviceValue, writeDeviceValue } from "@/lib/device/storage";
 import { okSchema } from "@/shared/api/common";
 import { pushSubscriptionBodySchema } from "@/shared/api/push";
@@ -20,12 +20,6 @@ export function remindersAvailable(): boolean {
   return Boolean(publicEnv.NEXT_PUBLIC_VAPID_PUBLIC_KEY);
 }
 
-/** Opened from the Home Screen / as an installed app. */
-export function isStandalone(): boolean {
-  const legacy = navigator.standalone === true;
-  return window.matchMedia("(display-mode: standalone)").matches || legacy;
-}
-
 async function currentSubscription(): Promise<PushSubscription | null> {
   const registration = await navigator.serviceWorker.getRegistration();
   return (await registration?.pushManager.getSubscription()) ?? null;
@@ -36,7 +30,7 @@ export async function remindersState(): Promise<RemindersState> {
   if (!remindersAvailable()) {
     return "unavailable";
   }
-  if (needsHomeScreen(deviceKind()) && !isStandalone()) {
+  if (needsHomeScreenSteps()) {
     return "needs_install";
   }
   if (

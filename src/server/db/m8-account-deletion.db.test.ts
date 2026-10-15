@@ -12,7 +12,7 @@ const resultSchema = z.object({
   released: z.array(z.object({ google_sub: z.string(), user_id: z.uuid() })),
   alerts: z.array(
     z.object({
-      kind: z.enum(["sender", "sheet"]),
+      kind: z.enum(["sender", "sheet", "both"]),
       email: z.string(),
       workspace_name: z.string(),
       workspace_slug: z.string(),
@@ -180,6 +180,61 @@ describe("delete_account (spec §11 Account deletion)", () => {
       .select("*", { count: "exact", head: true })
       .eq("user_id", colleague.id);
     expect(count).toBe(1);
+  });
+
+  it("tells an Owner once when one account both sent for the workspace and held its sheet", async () => {
+    const owner = await createTestUser();
+    const admin = await createTestUser();
+    const club = await createWorkspaceAs(owner, "Both Club");
+    await addMember(club.id, admin.id, "admin");
+    const google = await seedConnection(admin.id, {
+      scopes: [
+        "https://www.googleapis.com/auth/gmail.send",
+        "https://www.googleapis.com/auth/drive.file",
+      ],
+    });
+    await setSender(club.id, google.id);
+    await seedSheet(club.id, google.id, {
+      googleSub: google.sub,
+      spreadsheetId: "fake-file-000904",
+    });
+
+    const result = await deleteAs(admin);
+
+    expect(result.alerts).toEqual([
+      {
+        kind: "both",
+        email: owner.email,
+        workspace_name: "Both Club",
+        workspace_slug: club.slug,
+      },
+    ]);
+  });
+
+  it("still tells an Owner about sending when the sheet alert went out today", async () => {
+    const owner = await createTestUser();
+    const admin = await createTestUser();
+    const club = await createWorkspaceAs(owner, "Sent Club");
+    await addMember(club.id, admin.id, "admin");
+    const google = await seedConnection(admin.id, {
+      scopes: [
+        "https://www.googleapis.com/auth/gmail.send",
+        "https://www.googleapis.com/auth/drive.file",
+      ],
+    });
+    await setSender(club.id, google.id);
+    await seedSheet(club.id, google.id, {
+      googleSub: google.sub,
+      spreadsheetId: "fake-file-000905",
+    });
+    await adminClient()
+      .from("sheet_syncs")
+      .update({ alerted_at: new Date(Date.now() - 3_600_000).toISOString() })
+      .eq("workspace_id", club.id);
+
+    const result = await deleteAs(admin);
+
+    expect(result.alerts.map((alert) => alert.kind)).toEqual(["sender"]);
   });
 
   it("doesn't email an Owner twice in a day about the same sheet", async () => {

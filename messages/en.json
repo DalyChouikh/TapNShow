@@ -168,6 +168,14 @@
       "button": "Connect Gmail",
       "fallback": "If the button doesn't work, copy this link:"
     },
+    "senderAndSheetRemoved": {
+      "subject": "Gmail sending and the Google Sheet of {workspace} stopped",
+      "preview": "Meeting emails for {workspace} are paused and its Google Sheet stopped updating.",
+      "heading": "Connect Google again for {workspace}",
+      "body": "The person whose Google account sent {workspace}'s meeting emails and held its Google Sheet deleted their {appName} account. Queued emails are paused and nothing is lost; answers still arrive in {appName}. Connect a Gmail account to send again, then reconnect the Google Sheet in Settings.",
+      "button": "Open Settings",
+      "fallback": "If the button doesn't work, copy this link:"
+    },
     "sheetPaused": {
       "subject": "The Google Sheet of {workspace} stopped updating",
       "preview": "Answers still arrive in {appName}; the Google Sheet waits for you.",

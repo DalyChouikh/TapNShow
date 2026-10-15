@@ -205,6 +205,26 @@ describe("push subscriptions (spec §6, §11 Push privacy)", () => {
     }
   });
 
+  it("rate limits turning reminders off, per person", async () => {
+    const user = await createTestUser();
+    const restore = overrideLimit("push_unsubscribes_per_user_per_hour", 1);
+    try {
+      const sub = await subscribe(user);
+      const first = await user.client.rpc("push_unsubscribe", {
+        p_endpoint: sub.endpoint,
+      } as never);
+      expect(first.error).toBeNull();
+      await expectAppError(
+        user.client.rpc("push_unsubscribe", {
+          p_endpoint: sub.endpoint,
+        } as never),
+        "rate_limited",
+      );
+    } finally {
+      restore();
+    }
+  });
+
   it("accepts only the browsers' push services, so nobody can make the server call another site", async () => {
     const user = await createTestUser();
     const keys = fakeSubscription();
@@ -280,6 +300,28 @@ describe("enqueue in dispatch_finish (spec §8: no email, no push)", () => {
     expect(
       rows.map((row) => `${row.kind}:${row.audience ?? ""}`).sort(),
     ).toEqual(["invite:", "invite:", "reminder:going", "reminder:going"]);
+  });
+
+  it("maps each email kind to its notification and skips kinds that have none", async () => {
+    const organizer = await createTestUser();
+    const member = await createTestUser();
+    const club = await createWorkspaceAs(organizer);
+    await subscribe(member);
+    const invite = await seedInviteFor(
+      club.id,
+      await seedContact(club.id, member.email),
+      { starts_at: hoursFromNow(24) },
+    );
+    const jobId = await processingJob(
+      club.id,
+      invite.meetingId,
+      invite.inviteeId,
+      "calendar_confirm",
+    );
+    runLocalSql(
+      `select private.push_enqueue('${jobId}', '${invite.inviteeId}', 'calendar_confirm', null)`,
+    );
+    expect(await deliveriesFor(invite.inviteeId)).toHaveLength(0);
   });
 
   it("enqueues nothing for an unsubscribed person, nor twice for one job", async () => {

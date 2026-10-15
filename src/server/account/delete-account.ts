@@ -28,20 +28,20 @@ function realDeps(): AfterDeletionDeps {
   };
 }
 
-/** The Owner email for one effect of a deletion: sending stopped, or the sheet lost its access. */
+/** The one Owner email of a deletion: sending stopped, the sheet lost its access, or both. */
 function alertFor(alert: OwnerAlert): OwnerAlertInput {
-  return alert.kind === "sender"
-    ? {
-        kind: "senderRemoved",
-        workspaceName: alert.workspaceName,
-        workspaceSlug: alert.workspaceSlug,
-      }
-    : {
-        kind: "sheetPaused",
-        reason: "access_lost",
-        workspaceName: alert.workspaceName,
-        workspaceSlug: alert.workspaceSlug,
-      };
+  const workspace = {
+    workspaceName: alert.workspaceName,
+    workspaceSlug: alert.workspaceSlug,
+  };
+  switch (alert.kind) {
+    case "sender":
+      return { kind: "senderRemoved", ...workspace };
+    case "both":
+      return { kind: "senderAndSheetRemoved", ...workspace };
+    case "sheet":
+      return { kind: "sheetPaused", reason: "access_lost", ...workspace };
+  }
 }
 
 /**

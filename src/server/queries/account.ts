@@ -11,9 +11,12 @@ import type { AccountSummary } from "@/shared/api/account";
 
 type Client = SupabaseClient<Database>;
 
-/** An Owner to email after an account deletion paused something of their workspace. */
+/**
+ * An Owner to email after an account deletion paused something of their workspace: its sending,
+ * its sheet, or both (one email per workspace, spec §11).
+ */
 export type OwnerAlert = {
-  kind: "sender" | "sheet";
+  kind: "sender" | "sheet" | "both";
   email: string;
   workspaceName: string;
   workspaceSlug: string;
@@ -29,7 +32,7 @@ const dbSchema = z.object({
   released: z.array(releasedSchema),
   alerts: z.array(
     z.object({
-      kind: z.enum(["sender", "sheet"]),
+      kind: z.enum(["sender", "sheet", "both"]),
       email: z.string(),
       workspace_name: z.string(),
       workspace_slug: z.string(),
