@@ -97,8 +97,8 @@ describe("profiles", () => {
 describe("create_workspace", () => {
   it("makes the caller the Owner and remembers the workspace", async () => {
     const owner = await createTestUser();
-    const workspace = await createWorkspaceAs(owner, "  GDG Club  ");
-    expect(workspace.name).toBe("GDG Club");
+    const workspace = await createWorkspaceAs(owner, "  Robotics Club  ");
+    expect(workspace.name).toBe("Robotics Club");
     const roles = await owner.client
       .from("workspace_roles")
       .select("role")

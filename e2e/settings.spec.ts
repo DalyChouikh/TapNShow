@@ -1,4 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
+import { type Page } from "@playwright/test";
+import { expect, test } from "./helpers/test";
 import { seedMember } from "./helpers/seed";
 import { signUpWithWorkspace } from "./helpers/sign-in";
 import { openSettingsSection } from "./helpers/settings";
@@ -10,33 +11,40 @@ async function createWorkspace(page: Page, name: string): Promise<string> {
   });
 }
 
-test("the Owner renames, changes the timezone, then deletes the workspace", async ({
-  page,
-}) => {
-  const slug = await createWorkspace(page, "Rename Club");
-  await page
-    .getByRole("navigation", { name: "Workspace" })
-    .getByRole("link", { name: "Settings" })
-    .click();
-  const name = page.getByLabel("Workspace name");
-  await name.fill("Renamed Club");
-  await page.getByRole("combobox", { name: "Timezone" }).click();
-  await page.getByPlaceholder("Search timezones").fill("Paris");
-  await page.getByRole("option", { name: "Europe/Paris" }).click();
-  await page.getByRole("button", { name: "Save changes" }).click();
-  await expect(
-    page.getByRole("button", { name: "Switch workspace" }),
-  ).toContainText("Renamed Club");
+test.describe(() => {
+  // Open pages of the deleted workspace get 403 and 404 answers, which the browser logs.
+  test.use({
+    allowConsole: /status of (403 \(Forbidden\)|404 \(Not Found\))/,
+  });
 
-  await openSettingsSection(page, "Danger zone");
-  await page.getByRole("button", { name: "Delete workspace" }).click();
-  await page.getByLabel("Type Renamed Club to confirm").fill("Renamed Club");
-  await page.getByRole("button", { name: "Confirm" }).click();
-  await expect(page).toHaveURL(/\/invites$/);
-  await page.goto(`/w/${slug}`);
-  await expect(
-    page.getByRole("heading", { name: "Workspace not found" }),
-  ).toBeVisible();
+  test("the Owner renames, changes the timezone, then deletes the workspace", async ({
+    page,
+  }) => {
+    const slug = await createWorkspace(page, "Rename Club");
+    await page
+      .getByRole("navigation", { name: "Workspace" })
+      .getByRole("link", { name: "Settings" })
+      .click();
+    const name = page.getByLabel("Workspace name");
+    await name.fill("Renamed Club");
+    await page.getByRole("combobox", { name: "Timezone" }).click();
+    await page.getByPlaceholder("Search timezones").fill("Paris");
+    await page.getByRole("option", { name: "Europe/Paris" }).click();
+    await page.getByRole("button", { name: "Save changes" }).click();
+    await expect(
+      page.getByRole("button", { name: "Switch workspace" }),
+    ).toContainText("Renamed Club");
+
+    await openSettingsSection(page, "Danger zone");
+    await page.getByRole("button", { name: "Delete workspace" }).click();
+    await page.getByLabel("Type Renamed Club to confirm").fill("Renamed Club");
+    await page.getByRole("button", { name: "Confirm" }).click();
+    await expect(page).toHaveURL(/\/invites$/);
+    await page.goto(`/w/${slug}`);
+    await expect(
+      page.getByRole("heading", { name: "Workspace not found" }),
+    ).toBeVisible();
+  });
 });
 
 test("the Owner promotes a Viewer and transfers ownership to an Admin", async ({

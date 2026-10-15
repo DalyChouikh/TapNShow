@@ -2,18 +2,18 @@ import { describe, expect, it } from "vitest";
 import { renderOwnerAlertEmail } from "./owner-alert-email";
 
 const EMOJI = /\p{Extended_Pictographic}/u;
-const SENDING = "https://tapnshow.vercel.app/w/gdg-ab12/settings#sending";
-const SHEETS = "https://tapnshow.vercel.app/w/gdg-ab12/settings#sheets";
+const SENDING = "https://tapnshow.vercel.app/w/robotics-ab12/settings#sending";
+const SHEETS = "https://tapnshow.vercel.app/w/robotics-ab12/settings#sheets";
 
 describe("renderOwnerAlertEmail", () => {
   it("keeps the sender-broken wording and links Sending settings", async () => {
     const email = await renderOwnerAlertEmail({
       kind: "senderBroken",
-      workspaceName: "GDG ISSAT",
+      workspaceName: "Robotics Club",
       settingsUrl: SENDING,
     });
     expect(email.subject).toBe(
-      "Gmail sending for GDG ISSAT needs reconnecting",
+      "Gmail sending for Robotics Club needs reconnecting",
     );
     expect(email.text).toContain("Reconnect Gmail");
     expect(email.text).toContain("nothing is lost");
@@ -25,10 +25,10 @@ describe("renderOwnerAlertEmail", () => {
   it("says sending stopped because the sender's account was deleted", async () => {
     const email = await renderOwnerAlertEmail({
       kind: "senderRemoved",
-      workspaceName: "GDG ISSAT",
+      workspaceName: "Robotics Club",
       settingsUrl: SENDING,
     });
-    expect(email.subject).toBe("Gmail sending for GDG ISSAT stopped");
+    expect(email.subject).toBe("Gmail sending for Robotics Club stopped");
     expect(email.text).toContain("deleted their TapNShow account");
     expect(email.text).toContain("Connect Gmail");
     expect(email.html).toContain(`href="${SENDING}"`);
@@ -39,11 +39,11 @@ describe("renderOwnerAlertEmail", () => {
   it("names both when the deleted account sent the emails and held the Google Sheet", async () => {
     const email = await renderOwnerAlertEmail({
       kind: "senderAndSheetRemoved",
-      workspaceName: "GDG ISSAT",
+      workspaceName: "Robotics Club",
       settingsUrl: SENDING,
     });
     expect(email.subject).toBe(
-      "Gmail sending and the Google Sheet of GDG ISSAT stopped",
+      "Gmail sending and the Google Sheet of Robotics Club stopped",
     );
     expect(email.text).toContain("deleted their TapNShow account");
     expect(email.text).toContain("Connect a Gmail account");
@@ -57,11 +57,11 @@ describe("renderOwnerAlertEmail", () => {
     const email = await renderOwnerAlertEmail({
       kind: "sheetPaused",
       reason: "trashed",
-      workspaceName: "GDG ISSAT",
+      workspaceName: "Robotics Club",
       settingsUrl: SHEETS,
     });
     expect(email.subject).toBe(
-      "The Google Sheet of GDG ISSAT stopped updating",
+      "The Google Sheet of Robotics Club stopped updating",
     );
     expect(email.text).toContain("moved to the trash");
     expect(email.text).toContain("Open Settings");
@@ -76,7 +76,7 @@ describe("renderOwnerAlertEmail", () => {
       const email = await renderOwnerAlertEmail({
         kind: "sheetPaused",
         reason,
-        workspaceName: "GDG ISSAT",
+        workspaceName: "Robotics Club",
         settingsUrl: SHEETS,
       });
       expect(email.text).toMatch(/Google Sheet/);

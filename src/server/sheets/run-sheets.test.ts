@@ -35,8 +35,8 @@ const NOW = Date.parse("2026-10-12T10:00:00.000Z");
 
 const claimOf = (over: Partial<SheetClaim> = {}): SheetClaim => ({
   workspaceId: "w1",
-  workspaceName: "GDG ISSAT",
-  workspaceSlug: "gdg",
+  workspaceName: "Robotics Club",
+  workspaceSlug: "robotics",
   timezone: "Africa/Tunis",
   locale: "en",
   spreadsheetId: "file-1",
@@ -69,8 +69,8 @@ function fakeStore(
   let claimed = false;
   const alert = (reason: SheetPausedAlert["reason"]): SheetPausedAlert => ({
     email: "owner@example.test",
-    workspaceName: "GDG ISSAT",
-    workspaceSlug: "gdg",
+    workspaceName: "Robotics Club",
+    workspaceSlug: "robotics",
     reason,
   });
   const store = {

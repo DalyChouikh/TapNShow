@@ -19,7 +19,7 @@ const [tab] = planYearTabs(
   { maxRows: 10, currentYear: 2026, words },
 );
 const content = tabContent(tab, {
-  workspaceName: "GDG",
+  workspaceName: "Robotics Club",
   updatedAt: new Date("2026-10-12T21:15:00Z"),
   timezone: "Africa/Tunis",
   words,

@@ -7,7 +7,7 @@ import { toXlsxBlob, xlsxSheet } from "./xlsx";
 const summary: ExportSheet = {
   name: "Summary",
   title: "Attendance · Summary",
-  subtitle: "GDG ISSAT · All time · Exported Sat 10 Oct, 19:30",
+  subtitle: "Robotics Club · All time · Exported Sat 10 Oct, 19:30",
   columns: [
     { header: "Name", width: 24 },
     { header: "Going", width: 8, tone: "success" },
@@ -25,7 +25,7 @@ describe("toXlsxBlob", () => {
       {
         name: "Details",
         title: "Attendance · Details",
-        subtitle: "GDG ISSAT",
+        subtitle: "Robotics Club",
         columns: [{ header: "Answer", width: 24 }],
         rows: [[{ text: "Going", tone: "success" }]],
       },
@@ -35,7 +35,7 @@ describe("toXlsxBlob", () => {
     const [title, subtitle, , header, first, second] = sheets[0].data;
     expect(title[0]).toBe("Attendance · Summary");
     expect(subtitle[0]).toBe(
-      "GDG ISSAT · All time · Exported Sat 10 Oct, 19:30",
+      "Robotics Club · All time · Exported Sat 10 Oct, 19:30",
     );
     expect(header).toEqual(["Name", "Going"]);
     expect(first).toEqual(["Amira B.", 3]);

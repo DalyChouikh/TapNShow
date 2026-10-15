@@ -31,7 +31,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `bun run build && bun run start -p ${PORT}`,
+    // A copy of the build output for `scripts/check-build-log.ts` (pipefail keeps the exit status).
+    command: `bash -o pipefail -c "bun run build 2>&1 | tee .e2e-build.log" && bun run start -p ${PORT}`,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 240_000,
@@ -44,6 +45,8 @@ export default defineConfig({
       GOOGLE_OAUTH_AUTHORIZE_URL: `${FAKE_GOOGLE_URL}/o/oauth2/v2/auth`,
       GOOGLE_OAUTH_TOKEN_URL: `${FAKE_GOOGLE_URL}/token`,
       GOOGLE_OAUTH_REVOKE_URL: `${FAKE_GOOGLE_URL}/revoke`,
+      // No error reports from test runs (as in CI): a developer's .env.local holds a real DSN.
+      NEXT_PUBLIC_SENTRY_DSN: "",
       // Connecting Google is off unless switched on (never rely on a developer's .env.local).
       NEXT_PUBLIC_GMAIL_CONNECT_ENABLED: "true",
       GOOGLE_CLIENT_ID: "e2e-client",

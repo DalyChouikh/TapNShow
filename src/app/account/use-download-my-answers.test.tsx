@@ -26,7 +26,7 @@ vi.mock("@/lib/export/save", () => ({ saveExport: mocks.saveExport }));
 
 const row: MyAnswer = {
   inviteeId: "6a1f2b3c-4d5e-4f60-8a71-b2c3d4e5f6aa",
-  workspaceName: "GDG ISSAT",
+  workspaceName: "Robotics Club",
   title: "Kickoff",
   startsAt: "2026-10-11T17:00:00.000Z",
   timezone: "Africa/Tunis",
@@ -76,7 +76,7 @@ describe("useDownloadMyAnswers", () => {
       "Was late by (min)",
     ]);
     expect(sheets[0].rows[0].slice(0, 4)).toEqual([
-      "GDG ISSAT",
+      "Robotics Club",
       "Kickoff",
       "2026-10-11 18:00",
       { text: "No reply", tone: "neutral" },

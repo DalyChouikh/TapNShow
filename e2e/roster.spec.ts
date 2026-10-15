@@ -1,11 +1,13 @@
 import path from "node:path";
-import { expect, test, type Page } from "@playwright/test";
+import { type Page } from "@playwright/test";
+import { expect, test } from "./helpers/test";
 import { expectNoHorizontalScroll } from "./helpers/layout";
 import { seedMember, seedRoster } from "./helpers/seed";
 import { signInWithCode, signUpWithWorkspace } from "./helpers/sign-in";
 
 const LONG_NAME = "Mohamed Ali Ben Abdallah El Kefi";
-const LONG_EMAIL = "mohamedali.benabdallah.elkefi@etudiant-issatso.u-sousse.tn";
+const LONG_EMAIL =
+  "mohamedali.benabdallah.elkefi@students.riverside-university.example";
 
 async function createWorkspace(page: Page, name: string): Promise<string> {
   return signUpWithWorkspace(page, name, {

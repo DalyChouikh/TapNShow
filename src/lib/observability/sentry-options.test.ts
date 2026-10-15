@@ -1,8 +1,4 @@
-import type {
-  ErrorEvent,
-  StreamedSpanJSON,
-  TransactionEvent,
-} from "@sentry/core";
+import type { ErrorEvent, StreamedSpanJSON } from "@sentry/core";
 import { describe, expect, it } from "vitest";
 import { buildSentryOptions } from "./sentry-options";
 
@@ -85,25 +81,11 @@ describe("buildSentryOptions privacy scrubbing", () => {
     expect(scrubbed?.contexts?.nextjs?.router_path).toBe("/r/[token]");
   });
 
-  it("scrubs transaction events (traces)", () => {
-    const event = {
-      type: "transaction",
-      transaction: `GET /r/${TOKEN}`,
-      request: { url: `https://x.app/r/${TOKEN}`, headers: { cookie: "c=1" } },
-      spans: [
-        {
-          span_id: "1",
-          trace_id: "2",
-          start_timestamp: 0,
-          status: "ok",
-          description: `GET https://x.app/r/${TOKEN}`,
-          data: { "url.full": `https://x.app/r/${TOKEN}` },
-        },
-      ],
-    } as TransactionEvent;
-    const serialized = JSON.stringify(options.beforeSendTransaction(event));
-    expect(serialized).not.toContain(TOKEN);
-    expect(serialized).not.toContain("c=1");
+  it("streams traces, so spans are the one scrubbed trace path", () => {
+    // Sentry 11 ignores beforeSendTransaction while streaming spans, and warns in the browser
+    // console when it is set; spans go through beforeSendSpan (tested below).
+    expect(options.traceLifecycle).toBe("stream");
+    expect("beforeSendTransaction" in options).toBe(false);
   });
 
   it("scrubs breadcrumbs as they are recorded", () => {

@@ -8,14 +8,14 @@ describe("InviteCard", () => {
   it("shows the meeting, its group and time, and what is left to do", () => {
     renderWithProviders(<InviteCard invite={myInviteFixture} tab="upcoming" />);
     expect(screen.getByRole("heading", { name: "Weekly sync" })).toBeVisible();
-    expect(screen.getByText("GDG ISSAT · Sun 18 Oct, 18:00")).toBeVisible();
+    expect(screen.getByText("Robotics Club · Sun 18 Oct, 18:00")).toBeVisible();
     expect(screen.getByText("Not answered")).toBeVisible();
   });
 
   it("opens the invite from Upcoming, named after the meeting, its group and time", () => {
     renderWithProviders(<InviteCard invite={myInviteFixture} tab="upcoming" />);
     const link = screen.getByRole("link", {
-      name: "Weekly sync GDG ISSAT · Sun 18 Oct, 18:00",
+      name: "Weekly sync Robotics Club · Sun 18 Oct, 18:00",
     });
     expect(link).toHaveAccessibleDescription("Not answered");
     expect(link).toHaveAttribute(

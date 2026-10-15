@@ -85,7 +85,7 @@ describe("createGoogleSheetsClient", () => {
       fetchImpl,
     });
     const result = await client.createFile("tok", {
-      name: "GDG · TapNShow",
+      name: "Robotics Club · TapNShow",
       workspaceId: "w1",
       createKey: "k1",
     });
@@ -93,7 +93,7 @@ describe("createGoogleSheetsClient", () => {
     const [url, init] = fetchImpl.mock.calls[0];
     expect(url).toBe("https://d/drive/v3/files?fields=id");
     expect(JSON.parse(String(init.body))).toEqual({
-      name: "GDG · TapNShow",
+      name: "Robotics Club · TapNShow",
       mimeType: "application/vnd.google-apps.spreadsheet",
       appProperties: { tapnshow_workspace: "w1", tapnshow_create_key: "k1" },
     });

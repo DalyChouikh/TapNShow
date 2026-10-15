@@ -1,11 +1,11 @@
 import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
-import tsconfigPaths from "vite-tsconfig-paths";
 import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
-  plugins: [tsconfigPaths(), react()],
+  plugins: [react()],
   resolve: {
+    tsconfigPaths: true,
     alias: {
       // `server-only` throws outside React Server bundles; tests import server modules directly.
       "server-only": fileURLToPath(
@@ -30,6 +30,7 @@ export default defineConfig({
       SMTP_HOST: "localhost",
       SMTP_PORT: "1025",
       SMTP_FROM: "no-reply@example.test",
+      LOG_LEVEL: "silent",
     },
   },
 });

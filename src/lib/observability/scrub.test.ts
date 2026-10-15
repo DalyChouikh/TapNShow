@@ -13,8 +13,8 @@ describe("scrubUrl", () => {
   });
 
   it("leaves other URLs untouched", () => {
-    expect(scrubUrl("https://tapnshow.vercel.app/w/gdg/meetings")).toBe(
-      "https://tapnshow.vercel.app/w/gdg/meetings",
+    expect(scrubUrl("https://tapnshow.vercel.app/w/robotics/meetings")).toBe(
+      "https://tapnshow.vercel.app/w/robotics/meetings",
     );
   });
 

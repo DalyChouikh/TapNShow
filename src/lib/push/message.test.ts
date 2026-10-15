@@ -11,7 +11,7 @@ const item: PushItem = {
   endpoint: "https://push.example.test/x",
   p256dh: "k",
   auth: "a",
-  workspaceName: "GDG ISSAT",
+  workspaceName: "Robotics Club",
   locale: "en",
   title: "Weekly sync",
   startsAt: "2026-10-18T17:00:00.000Z",
@@ -29,7 +29,7 @@ const words = pushWords("en");
 describe("pushMessage (spec §7.4)", () => {
   it("titles with the workspace and meeting, opens the invite, and tags by event", () => {
     expect(pushMessage(item, words)).toEqual({
-      title: "GDG ISSAT · Weekly sync",
+      title: "Robotics Club · Weekly sync",
       body: "New invite: Sun 18 Oct, 18:00. Are you coming?",
       url: "/invites/6a1f2b3c-4d5e-4f60-8a71-b2c3d4e5f6aa",
       tag: "invite:6a1f2b3c-4d5e-4f60-8a71-b2c3d4e5f6aa",

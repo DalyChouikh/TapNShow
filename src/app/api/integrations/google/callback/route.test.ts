@@ -31,7 +31,7 @@ vi.mock("@/config/env", () => ({
     GOOGLE_CLIENT_ID: "cid",
     GOOGLE_CLIENT_SECRET: "sec",
     GOOGLE_TOKEN_ENCRYPTION_KEY: KEY.toString("base64"),
-    LOG_LEVEL: "info",
+    LOG_LEVEL: "silent",
   }),
 }));
 vi.mock("@/server/google/google-oauth", async (importOriginal) => ({

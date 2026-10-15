@@ -1,10 +1,9 @@
 import { fileURLToPath } from "node:url";
-import tsconfigPaths from "vite-tsconfig-paths";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-  plugins: [tsconfigPaths()],
   resolve: {
+    tsconfigPaths: true,
     alias: {
       // Query modules import `server-only`, which throws outside React Server bundles.
       "server-only": fileURLToPath(

@@ -28,7 +28,7 @@ function build(rows: Parameters<typeof planYearTabs>[1]) {
   return {
     tab,
     content: tabContent(tab, {
-      workspaceName: "GDG ISSAT",
+      workspaceName: "Robotics Club",
       updatedAt: new Date("2026-10-12T21:15:00.000Z"),
       timezone: "Africa/Tunis",
       words,
@@ -41,7 +41,7 @@ describe("tabContent", () => {
     const { content } = build([
       sheetRow({ id: "m1", startsAt: "2026-10-15T17:00:00Z" }),
     ]);
-    expect(content.band).toBe("GDG ISSAT · Responses 2026");
+    expect(content.band).toBe("Robotics Club · Responses 2026");
     expect(content.subtitle).toBe(
       "Updated Mon 12 Oct, 22:15 · Changes made here are replaced by TapNShow",
     );
@@ -119,7 +119,7 @@ describe("tabContent", () => {
     const rows = [sheetRow({ id: "m1", startsAt: "2026-10-15T17:00:00Z" })];
     const first = build(rows);
     const later = tabContent(first.tab, {
-      workspaceName: "GDG ISSAT",
+      workspaceName: "Robotics Club",
       updatedAt: new Date("2026-10-13T08:00:00Z"),
       timezone: "Africa/Tunis",
       words,

@@ -12,7 +12,7 @@ function dbItem(n: number, over: Record<string, string | number | null> = {}) {
     endpoint: "https://fcm.googleapis.com/fcm/send/x",
     p256dh: "k",
     auth: "a",
-    workspace_name: "GDG ISSAT",
+    workspace_name: "Robotics Club",
     locale: "en",
     title: "Weekly sync",
     starts_at: "2026-10-18T17:00:00+00:00",

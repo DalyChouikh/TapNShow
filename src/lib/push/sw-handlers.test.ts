@@ -16,7 +16,7 @@ describe("notificationFromPush (spec §8: always show one)", () => {
   it("shows what the server built, with its tag, the app badge and the url to open", () => {
     const shown = notificationFromPush(
       JSON.stringify({
-        title: "GDG ISSAT · Weekly sync",
+        title: "Robotics Club · Weekly sync",
         body: "New invite",
         url: "/invites/6a1f2b3c-4d5e-4f60-8a71-b2c3d4e5f6aa",
         tag: "invite:6a1f2b3c-4d5e-4f60-8a71-b2c3d4e5f6aa",
@@ -24,7 +24,7 @@ describe("notificationFromPush (spec §8: always show one)", () => {
       fallback,
     );
     expect(shown).toEqual({
-      title: "GDG ISSAT · Weekly sync",
+      title: "Robotics Club · Weekly sync",
       options: {
         body: "New invite",
         tag: "invite:6a1f2b3c-4d5e-4f60-8a71-b2c3d4e5f6aa",

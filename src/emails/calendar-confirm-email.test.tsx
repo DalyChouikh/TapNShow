@@ -3,7 +3,7 @@ import { renderCalendarConfirmEmail } from "./calendar-confirm-email";
 
 const PROPS = {
   action: "request" as const,
-  workspaceName: "GDG ISSAT",
+  workspaceName: "Robotics Club",
   recipientName: "Amira",
   senderEmail: "club@gmail.com",
   meeting: {

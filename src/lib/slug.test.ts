@@ -5,7 +5,7 @@ const fixedBytes = () => new Uint8Array([0, 1, 2, 3]);
 
 describe("slugBase", () => {
   it.each([
-    ["GDG on Campus ISSAT Sousse", "gdg-on-campus-issat-sousse"],
+    ["Riverside Volunteers of Sousse", "riverside-volunteers-of-sousse"],
     ["Club Électronique", "club-electronique"],
     ["  Débat & Co.  ", "debat-co"],
     ["نادي البرمجة", "workspace"],

@@ -36,6 +36,12 @@ describe("parseServerEnv", () => {
     ).toThrow(/LOG_LEVEL/);
   });
 
+  it("accepts silent (tests)", () => {
+    expect(
+      parseServerEnv({ ...supabase, ...smtp, LOG_LEVEL: "silent" }).LOG_LEVEL,
+    ).toBe("silent");
+  });
+
   it("requires the Supabase keys and names the missing one", () => {
     expect(() =>
       parseServerEnv({ ...supabase, ...smtp, SUPABASE_SECRET_KEY: undefined }),

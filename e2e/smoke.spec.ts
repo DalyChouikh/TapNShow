@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./helpers/test";
 
 test("home page renders the product name without horizontal scroll", async ({
   page,

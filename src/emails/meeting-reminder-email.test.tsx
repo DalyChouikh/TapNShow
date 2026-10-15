@@ -31,7 +31,9 @@ describe("meeting reminder email", () => {
       now: new Date("2026-10-09T13:00:00Z"),
       meeting: withDeadline,
     });
-    expect(email.text).toContain("Please let GDG ISSAT know if you're coming.");
+    expect(email.text).toContain(
+      "Please let Robotics Club know if you're coming.",
+    );
     expect(email.text).not.toContain("Please answer by");
   });
 

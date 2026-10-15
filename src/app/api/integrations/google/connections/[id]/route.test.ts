@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/config/env", () => ({
   getServerEnv: () => ({
     GOOGLE_TOKEN_ENCRYPTION_KEY: KEY.toString("base64"),
-    LOG_LEVEL: "info",
+    LOG_LEVEL: "silent",
   }),
 }));
 vi.mock("@/server/supabase/server-client", () => ({
