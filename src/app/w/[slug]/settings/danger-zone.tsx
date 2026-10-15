@@ -30,6 +30,7 @@ import { apiRequest, errorCodeOf } from "@/lib/api-client";
 import { okSchema } from "@/shared/api/common";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
 import { SettingsSection } from "./settings-section";
+import { SectionIcon } from "./section-icon";
 
 type Open = "leave" | "transfer" | "delete" | null;
 
@@ -104,7 +105,12 @@ export function DangerZone({
   });
 
   return (
-    <SettingsSection id="danger" title={t("title")} defaultOpen={defaultOpen}>
+    <SettingsSection
+      id="danger"
+      title={t("title")}
+      icon={<SectionIcon section="danger" />}
+      defaultOpen={defaultOpen}
+    >
       {workspace.myRole === "owner" ? (
         <>
           <Button tone="warning" onClick={() => setOpen("transfer")}>

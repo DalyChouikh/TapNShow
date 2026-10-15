@@ -1,23 +1,15 @@
 "use client";
 
-import { DesktopIcon, MoonIcon, SunIcon } from "@phosphor-icons/react";
 import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 import { useIsClient } from "@/lib/use-is-client";
 import { cn } from "@/lib/utils";
-
-const ORDER = ["system", "light", "dark"] as const;
-type Mode = (typeof ORDER)[number];
-
-const ICONS: Record<Mode, typeof SunIcon> = {
-  system: DesktopIcon,
-  light: SunIcon,
-  dark: MoonIcon,
-};
-
-function isMode(value: string | undefined): value is Mode {
-  return ORDER.some((mode) => mode === value);
-}
+import {
+  isThemeMode,
+  THEME_ICONS,
+  THEME_MODES,
+  type ThemeMode,
+} from "./theme-modes";
 
 /** Cycles the color theme: system -> light -> dark. */
 export function ThemeToggle({ className }: { className?: string }) {
@@ -25,9 +17,10 @@ export function ThemeToggle({ className }: { className?: string }) {
   const { theme, setTheme } = useTheme();
   const mounted = useIsClient();
 
-  const current: Mode = mounted && isMode(theme) ? theme : "system";
-  const next = ORDER[(ORDER.indexOf(current) + 1) % ORDER.length];
-  const Icon = ICONS[current];
+  const current: ThemeMode = mounted && isThemeMode(theme) ? theme : "system";
+  const next =
+    THEME_MODES[(THEME_MODES.indexOf(current) + 1) % THEME_MODES.length];
+  const Icon = THEME_ICONS[current];
 
   return (
     <button

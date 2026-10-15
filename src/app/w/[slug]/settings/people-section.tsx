@@ -30,6 +30,7 @@ import { okSchema } from "@/shared/api/common";
 import type { Member } from "@/shared/api/members";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
 import { SettingsSection } from "./settings-section";
+import { SectionIcon } from "./section-icon";
 
 /** Settings > People: members, role badges, allowed row actions. Task 12 adds invites as `children`. */
 export function PeopleSection({
@@ -103,7 +104,12 @@ export function PeopleSection({
       : t(action);
 
   return (
-    <SettingsSection id="people" title={t("title")} defaultOpen={defaultOpen}>
+    <SettingsSection
+      id="people"
+      title={t("title")}
+      icon={<SectionIcon section="people" />}
+      defaultOpen={defaultOpen}
+    >
       {!members.query.isPending ? (
         <ul className="flex flex-col gap-3">
           {members.items.map((member) => {

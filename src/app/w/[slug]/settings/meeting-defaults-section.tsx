@@ -36,6 +36,7 @@ import {
 } from "@/shared/api/meeting-settings";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
 import { SettingsSection } from "./settings-section";
+import { SectionIcon } from "./section-icon";
 
 /** Settings > Meeting defaults (spec §7.2): each change saves at once; Viewers read only. */
 export function MeetingDefaultsSection({
@@ -83,6 +84,7 @@ export function MeetingDefaultsSection({
       <SettingsSection
         id="meeting-defaults"
         title={t("title")}
+        icon={<SectionIcon section="defaults" />}
         defaultOpen={defaultOpen}
         className="gap-2"
       >
@@ -110,6 +112,7 @@ export function MeetingDefaultsSection({
     <SettingsSection
       id="meeting-defaults"
       title={t("title")}
+      icon={<SectionIcon section="defaults" />}
       defaultOpen={defaultOpen}
     >
       <p className="text-sm text-muted-ink">{t("help")}</p>

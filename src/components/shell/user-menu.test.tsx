@@ -71,4 +71,11 @@ describe("UserMenu", () => {
       screen.getByRole("menuitem", { name: "My invites" }),
     ).toHaveAttribute("href", "/invites");
   });
+
+  it("has the theme choice between Account and Sign out", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<UserMenu me={meFixture} />);
+    await user.click(screen.getByRole("button", { name: "Account" }));
+    expect(screen.getAllByRole("menuitemradio")).toHaveLength(3);
+  });
 });
