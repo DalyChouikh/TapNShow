@@ -3,6 +3,12 @@ import pino, { type DestinationStream, type LogFn, type Logger } from "pino";
 import { APP_NAME } from "@/config/app";
 import { getServerEnv, type ServerEnv } from "@/config/env";
 import { scrubDeep, scrubText } from "@/lib/observability/scrub";
+import {
+  type LogRecord,
+  sentryLogSink,
+} from "@/lib/observability/sentry-log-sink";
+
+export type { LogRecord };
 
 /** Log levels accepted by the logger (mirrors `LOG_LEVEL`). */
 export type LogLevel = ServerEnv["LOG_LEVEL"];
@@ -13,15 +19,28 @@ const DROPPED_LINE = `${JSON.stringify({ level: 50, msg: "log line dropped: scru
 /**
  * Final safety net: re-scrubs every finished JSON line structurally (parse → walk →
  * serialize) before it reaches the destination. Catches fields pino adds outside the
- * log formatter, such as child-logger bindings.
+ * log formatter, such as child-logger bindings. Only the scrubbed line is forwarded.
  */
-function scrubbingStream(target: DestinationStream): DestinationStream {
+function scrubbingStream(
+  target: DestinationStream,
+  forward?: (record: LogRecord) => void,
+): DestinationStream {
   return {
     write(line: string) {
+      let record: LogRecord;
       try {
-        target.write(`${JSON.stringify(scrubDeep(JSON.parse(line)))}\n`);
+        record = scrubDeep(JSON.parse(line) as LogRecord);
+        target.write(`${JSON.stringify(record)}\n`);
       } catch {
         target.write(DROPPED_LINE);
+        return;
+      }
+      if (forward) {
+        try {
+          forward(record);
+        } catch {
+          // The sink failing never loses the stdout line.
+        }
       }
     },
   };
@@ -36,10 +55,12 @@ function scrubbingStream(target: DestinationStream): DestinationStream {
  * a log object fails, the object is replaced instead of being written raw (fail closed).
  * @param options.level - minimum level to write
  * @param options.destination - optional stream (tests); defaults to stdout
+ * @param options.forward - receives each finished line after scrubbing (Sentry Logs in production)
  */
 export function createLogger(options: {
   level: LogLevel;
   destination?: DestinationStream;
+  forward?: (record: LogRecord) => void;
 }): Logger {
   return pino(
     {
@@ -72,11 +93,15 @@ export function createLogger(options: {
         },
       },
     },
-    scrubbingStream(options.destination ?? pino.destination(1)),
+    scrubbingStream(
+      options.destination ?? pino.destination(1),
+      options.forward,
+    ),
   );
 }
 
-/** Application-wide server logger. Use instead of `console.*`. */
+/** Application-wide server logger. Use instead of `console.*`. Lines also go to Sentry Logs. */
 export const logger: Logger = createLogger({
   level: getServerEnv().LOG_LEVEL,
+  forward: sentryLogSink,
 });

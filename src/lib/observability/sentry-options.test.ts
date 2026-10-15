@@ -88,6 +88,19 @@ describe("buildSentryOptions privacy scrubbing", () => {
     expect("beforeSendTransaction" in options).toBe(false);
   });
 
+  it("scrubs logs before they leave and drops one it cannot scrub", () => {
+    const options = buildSentryOptions({
+      dsn: "https://k@o1.ingest.de.sentry.io/2",
+      environment: "test",
+    });
+    const log = options.beforeSendLog({
+      level: "info",
+      message: "opened /r/secretToken123",
+      attributes: { url: "/invite/abcSecret" },
+    });
+    expect(JSON.stringify(log)).not.toMatch(/secretToken123|abcSecret/);
+  });
+
   it("scrubs breadcrumbs as they are recorded", () => {
     const crumb = options.beforeBreadcrumb({
       category: "navigation",

@@ -1,4 +1,9 @@
-import type { Breadcrumb, ErrorEvent, StreamedSpanJSON } from "@sentry/core";
+import type {
+  Breadcrumb,
+  ErrorEvent,
+  Log,
+  StreamedSpanJSON,
+} from "@sentry/core";
 import { REDACTED, scrubDeep, scrubHeaders } from "./scrub";
 
 /** Sample rate for performance traces (free tier friendly). */
@@ -15,6 +20,7 @@ export type SentryOptions = {
   sendDefaultPii: false;
   beforeSend: (event: ErrorEvent) => ErrorEvent | null;
   beforeBreadcrumb: (breadcrumb: Breadcrumb) => Breadcrumb | null;
+  beforeSendLog: (log: Log) => Log | null;
   beforeSendSpan: (span: StreamedSpanJSON) => StreamedSpanJSON;
 };
 
@@ -65,7 +71,7 @@ function failClosed<T>(sanitize: (input: T) => T): (input: T) => T | null {
 
 /**
  * Builds Sentry options shared by server and client init.
- * Disabled when no DSN is configured (local dev, CI). Every outgoing error, trace and
+ * Disabled when no DSN is configured (local dev, CI). Every outgoing error, trace, log and
  * breadcrumb is sanitized before it leaves the process.
  */
 export function buildSentryOptions(input: {
@@ -81,6 +87,7 @@ export function buildSentryOptions(input: {
     sendDefaultPii: false,
     beforeSend: failClosed(sanitizeEvent),
     beforeBreadcrumb: failClosed(scrubDeep<Breadcrumb>),
+    beforeSendLog: failClosed(scrubDeep<Log>),
     beforeSendSpan: sanitizeSpan,
   };
 }
