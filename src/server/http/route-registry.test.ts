@@ -55,6 +55,26 @@ describe("route registry (spec §10)", () => {
     }
   });
 
+  it("says how every GET bounds what it returns, and only GETs", () => {
+    for (const [key, methods] of Object.entries(ROUTES)) {
+      for (const [method, entry] of Object.entries(methods)) {
+        if (method === "GET") {
+          expect(entry?.list, `GET ${key}`).toBeDefined();
+        } else {
+          expect(entry?.list, `${method} ${key}`).toBeUndefined();
+        }
+      }
+    }
+  });
+
+  it("pages every paged GET with readPageParams", () => {
+    for (const { key, source } of files) {
+      if (ROUTES[key]?.GET?.list?.kind === "paged") {
+        expect(source, key).toContain("readPageParams(");
+      }
+    }
+  });
+
   it("finds each route-level limit in its route's source", () => {
     for (const { key, source } of files) {
       for (const entry of Object.values(ROUTES[key] ?? {})) {

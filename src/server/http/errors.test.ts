@@ -11,6 +11,17 @@ describe("fromDatabaseError", () => {
     expect(await response.json()).toEqual({ error: { code: "name_mismatch" } });
   });
 
+  it("answers 409 when a person holds the most workspace seats allowed (M9)", async () => {
+    const response = fromDatabaseError({
+      code: "P0001",
+      message: "tn:workspace_seats_limit_reached",
+    });
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: { code: "workspace_seats_limit_reached" },
+    });
+  });
+
   it("maps Postgres classes without leaking messages", async () => {
     expect(
       fromDatabaseError({
