@@ -3,12 +3,22 @@ import { withSentryConfig } from "@sentry/nextjs/config";
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 import {
+  noIndexHeaders,
+  serviceWorkerCsp,
   serviceWorkerHeaders,
+  staticSecurityHeaders,
   tokenPageHeaders,
 } from "./src/config/security-headers";
 
 const nextConfig: NextConfig = {
-  headers: async () => [...tokenPageHeaders, ...serviceWorkerHeaders],
+  // Later rules win for the same header: the token pages' no-referrer overrides the default.
+  headers: async () => [
+    ...staticSecurityHeaders,
+    ...noIndexHeaders,
+    ...tokenPageHeaders,
+    ...serviceWorkerHeaders,
+    serviceWorkerCsp,
+  ],
 };
 const withNextIntl = createNextIntlPlugin();
 
@@ -22,6 +32,9 @@ export default withSentryConfig(withSerwist(withNextIntl(nextConfig)), {
   // local builds, forks) it has nothing to do, so it skips the maps and reports nothing.
   silent: !sentryAuthToken,
   sourcemaps: { disable: !sentryAuthToken },
+  // Browser events go through our own origin (connect-src 'self'; spec §5). A fixed path: the
+  // proxy matcher excludes it.
+  tunnelRoute: "/monitoring",
   widenClientFileUpload: true,
   telemetry: false,
 });

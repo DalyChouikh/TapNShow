@@ -1,3 +1,5 @@
+// First: Zod must be jitless before any module below parses at import time.
+import "@/lib/zod-jitless";
 import * as Sentry from "@sentry/nextjs";
 import { publicEnv } from "@/config/public-env";
 import { buildSentryOptions } from "@/lib/observability/sentry-options";
