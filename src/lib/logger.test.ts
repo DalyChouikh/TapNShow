@@ -1,6 +1,6 @@
 import type { DestinationStream } from "pino";
 import { describe, expect, it } from "vitest";
-import { createLogger } from "./logger";
+import { createLogger, type LogRecord } from "./logger";
 
 function memoryStream(): { stream: DestinationStream; lines: string[] } {
   const lines: string[] = [];
@@ -158,5 +158,35 @@ describe("createLogger", () => {
     ]) {
       expect(all).not.toContain(secret);
     }
+  });
+
+  it("forwards each line to the sink only after scrubbing it", () => {
+    const lines: string[] = [];
+    const forwarded: LogRecord[] = [];
+    const log = createLogger({
+      level: "info",
+      destination: { write: (line: string) => lines.push(line) },
+      forward: (record) => forwarded.push(record),
+    });
+    log.info(
+      { link: "https://tapnshow.vercel.app/r/abcDEF123secret" },
+      "opened /u/zzzSecret",
+    );
+    expect(JSON.stringify(forwarded)).not.toMatch(/abcDEF123secret|zzzSecret/);
+    expect(forwarded[0]?.msg).toBe("opened /u/[REDACTED]");
+    expect(lines).toHaveLength(1);
+  });
+
+  it("keeps writing when the sink throws", () => {
+    const lines: string[] = [];
+    const log = createLogger({
+      level: "info",
+      destination: { write: (line: string) => lines.push(line) },
+      forward: () => {
+        throw new Error("sink down");
+      },
+    });
+    log.info("still written");
+    expect(lines).toHaveLength(1);
   });
 });

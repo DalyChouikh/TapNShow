@@ -1,9 +1,8 @@
 import type { FillTone } from "@/design/tokens";
+import type { Json } from "@/lib/json";
 import type { AttendanceDetailRow } from "@/shared/api/responses";
 
-/** A JSON value, as the Sheets API takes it. */
-export type Json =
-  string | number | boolean | null | Json[] | { [key: string]: Json };
+export type { Json } from "@/lib/json";
 
 /** One request of a Sheets `batchUpdate` (`{ updateCells: … }`, `{ addSheet: … }`, …). */
 export type SheetsRequest = { [kind: string]: Json };

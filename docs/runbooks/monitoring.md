@@ -1,7 +1,45 @@
-# Monitoring runbook
+# Monitoring runbook (spec §5 Operations)
 
-What watches TapNShow in production and what to do when it speaks (spec §5 Operations). Later M9
-tasks add Sentry Logs and alert rules, the uptime monitor, Discord, keep-alive and backups.
+Sentry org `dev-daly`, region `https://de.sentry.io`. Discord server: the Owner's, with channels
+`#errors`, `#uptime`, `#platform`, `#deploys`. Every Sentry alert notifies **email and Discord**.
+
+## Sentry alert rules (Alerts → Create Alert → Issues)
+
+| Rule | When | Then |
+|---|---|---|
+| New issue | A new issue is created | Email: the Owner; Discord: `#errors` |
+| Regression | The issue changes state from resolved to unresolved | Email: the Owner; Discord: `#errors` |
+| Error spike | Number of events in an issue is more than 50 in 1 hour | Email: the Owner; Discord: `#errors` |
+
+Environment: `production` for all three (a second copy with `preview` is optional). Created
+2026-10-15 with the Sentry tools as "TapNShow: new issue / regression / error spike (production)";
+Sentry's two default rules ("high priority issues", "pull requests are ready") were left as they are.
+
+## Uptime monitor (Alerts → Create Alert → Uptime)
+
+- URL `https://tapnshow.vercel.app/api/health`, method GET, interval 1 minute, expect 200.
+- Notify: email (the Owner) and Discord `#uptime`.
+- It also keeps production active (one database read a minute through `healthcheck()`).
+- Created 2026-10-15 as "TapNShow /api/health" (3 failed checks open an uptime issue, 1 success
+  resolves it), with the alert "TapNShow: uptime (production)" for opened, reopened and resolved.
+
+## After 2026-10-17 (end of the Business trial)
+
+The free Developer plan lists "alerts via email"; third-party integrations are a Team feature.
+On 2026-10-18, open each rule (Alerts → the rule → Edit) and press **Send Test Notification**, then
+check the email and `#errors` / `#uptime`. If nothing arrives in Discord, email keeps working;
+record it in spec §15.
+
+## Logs
+
+Sentry → Explore → Logs, environment `production`. Server lines at `info` and above are sent
+(`src/lib/observability/sentry-log-sink.ts`) only after the logger's scrubbing stream, and
+`beforeSendLog` scrubs them again (spec §11).
+
+## Source maps
+
+Readable production stack traces need `SENTRY_AUTH_TOKEN` in Vercel (Production and Preview); the
+build uploads source maps with it. Without it the build skips the upload and says nothing.
 
 ## Content Security Policy (CSP)
 
