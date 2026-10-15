@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hasAuthCookie } from "./auth-cookie";
+import { hasAuthCookie, isSessionCookieName } from "./auth-cookie";
 
 const withCookie = (cookie?: string) =>
   new Request(
@@ -20,5 +20,16 @@ describe("hasAuthCookie", () => {
     expect(
       hasAuthCookie(withCookie("theme=dark; sb-abc-code-verifier=x")),
     ).toBe(false);
+  });
+});
+
+describe("isSessionCookieName", () => {
+  it.each([
+    ["sb-abc-auth-token", true],
+    ["sb-abc-auth-token.0", true],
+    ["sb-abc-auth-token-code-verifier", false],
+    ["tn_theme", false],
+  ])("%s → %s", (name, expected) => {
+    expect(isSessionCookieName(name)).toBe(expected);
   });
 });

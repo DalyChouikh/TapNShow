@@ -29,13 +29,16 @@ button { min-height: 44px; padding: 0 16px; font: inherit; font-weight: 700; cur
 }
 `;
 
-/** Last-resort error boundary; reports to Sentry and offers a retry. */
+/**
+ * Last-resort error boundary; reports to Sentry and offers a retry (`retry()`, Next 16 docs: it
+ * re-fetches, unlike `reset()`).
+ */
 export default function GlobalError({
   error,
-  reset,
+  retry,
 }: {
   error: Error & { digest?: string };
-  reset: () => void;
+  retry: () => void;
 }) {
   useEffect(() => {
     Sentry.captureException(error);
@@ -49,7 +52,7 @@ export default function GlobalError({
       <body>
         <main>
           <p>{messages.Errors.global}</p>
-          <button type="button" onClick={() => reset()}>
+          <button type="button" onClick={() => retry()}>
             {messages.Errors.retry}
           </button>
         </main>

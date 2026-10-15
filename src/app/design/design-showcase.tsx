@@ -12,6 +12,8 @@ import { useTranslations } from "next-intl";
 import { useRef, useState } from "react";
 import { ConfirmStamp } from "@/components/motion/confirm-stamp";
 import { Stagger, StaggerItem } from "@/components/motion/stagger";
+import { ErrorView } from "@/components/errors/error-view";
+import { NotFoundView } from "@/components/errors/not-found-view";
 import { ConfirmDialog } from "@/components/forms/confirm-dialog";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { Button } from "@/components/ui/button";
@@ -268,6 +270,20 @@ export function DesignShowcase() {
               onConfirm={() => setConfirming(false)}
             />
           </Card>
+        </StaggerItem>
+        <StaggerItem>
+          <section aria-label={t("errorPages")} className="flex flex-col gap-4">
+            <h2 className="font-bold">{t("errorPages")}</h2>
+            <Card className="flex flex-col gap-4">
+              <NotFoundView signedIn={false} />
+            </Card>
+            <Card className="flex flex-col gap-4">
+              <NotFoundView signedIn />
+            </Card>
+            <Card className="flex flex-col gap-4">
+              <ErrorView onRetry={() => {}} />
+            </Card>
+          </section>
         </StaggerItem>
       </Stagger>
     </main>
