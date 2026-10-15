@@ -1,12 +1,12 @@
 import type { MyInvite } from "@/shared/api/my-invites";
 
 /**
- * An unanswered Weekly sync of GDG ISSAT on Sun 18 Oct 2026, 18:00 Africa/Tunis (asks for answers,
+ * An unanswered Weekly sync of Robotics Club on Sun 18 Oct 2026, 18:00 Africa/Tunis (asks for answers,
  * no deadline).
  */
 export const myInviteFixture: MyInvite = {
   inviteeId: "6a1f2b3c-4d5e-4f60-8a71-b2c3d4e5f6aa",
-  workspaceName: "GDG ISSAT",
+  workspaceName: "Robotics Club",
   title: "Weekly sync",
   startsAt: "2026-10-18T17:00:00.000Z",
   timezone: "Africa/Tunis",

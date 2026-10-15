@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./helpers/test";
 import { latestEmailText } from "./helpers/mailpit";
 import {
   signInWithCode,
@@ -6,49 +6,54 @@ import {
   uniqueEmail,
 } from "./helpers/sign-in";
 
-test("M2 story: sign in, create a workspace, invite a Viewer who accepts", async ({
-  page,
-  browser,
-  context,
-}) => {
-  const viewerEmail = uniqueEmail("story-viewer");
-  const slug = await signUpWithWorkspace(page, "Launch Club", {
-    prefix: "story-owner",
-    ownerName: "Story Owner",
+test.describe(() => {
+  // The Viewer opens the invite signed out: the preview answers 401 (sign in first), which the browser logs.
+  test.use({ allowConsole: /status of 401 \(Unauthorized\)/ });
+
+  test("M2 story: sign in, create a workspace, invite a Viewer who accepts", async ({
+    page,
+    browser,
+    context,
+  }) => {
+    const viewerEmail = uniqueEmail("story-viewer");
+    const slug = await signUpWithWorkspace(page, "Launch Club", {
+      prefix: "story-owner",
+      ownerName: "Story Owner",
+    });
+    expect(slug).toMatch(/^launch-club-[a-z0-9]{4}$/);
+
+    await page.getByRole("link", { name: "Invite" }).click();
+    await expect(page).toHaveURL(new RegExp(`/w/${slug}/settings#people$`));
+    await page.getByRole("button", { name: "Invite someone" }).click();
+    await page.getByLabel("Email addresses").fill(viewerEmail);
+    await page.getByLabel("Email addresses").press("Enter");
+    await page.getByRole("button", { name: "Create invite" }).click();
+    await expect(page.getByText("Email sent")).toBeVisible();
+    await page.getByRole("button", { name: "Done" }).click();
+
+    const link = /(http:\/\/localhost:3000\/invite\/[A-Za-z0-9_-]{43})/.exec(
+      await latestEmailText(viewerEmail),
+    )?.[1];
+    const viewerContext = await browser.newContext();
+    const viewer = await viewerContext.newPage();
+    await viewer.goto(link!);
+    await viewer.getByRole("link", { name: "Sign in" }).click();
+    await signInWithCode(viewer, viewerEmail, { name: "Story Viewer" });
+    await viewer.getByRole("button", { name: "Accept invite" }).click();
+    await expect(viewer).toHaveURL(new RegExp(`/w/${slug}$`));
+    await expect(
+      viewer.getByRole("heading", { name: "You're a Viewer in Launch Club" }),
+    ).toBeVisible();
+    await expect(
+      viewer.getByRole("button", { name: "New meeting" }),
+    ).toHaveCount(0);
+
+    // Review Focus 5: an expired session sends the user to sign-in, keeping where they were going.
+    await context.clearCookies();
+    await page
+      .getByRole("navigation", { name: "Workspace" })
+      .getByRole("link", { name: "Home" })
+      .click();
+    await expect(page).toHaveURL(new RegExp(`/login\\?next=%2Fw%2F${slug}$`));
   });
-  expect(slug).toMatch(/^launch-club-[a-z0-9]{4}$/);
-
-  await page.getByRole("link", { name: "Invite" }).click();
-  await expect(page).toHaveURL(new RegExp(`/w/${slug}/settings#people$`));
-  await page.getByRole("button", { name: "Invite someone" }).click();
-  await page.getByLabel("Email addresses").fill(viewerEmail);
-  await page.getByLabel("Email addresses").press("Enter");
-  await page.getByRole("button", { name: "Create invite" }).click();
-  await expect(page.getByText("Email sent")).toBeVisible();
-  await page.getByRole("button", { name: "Done" }).click();
-
-  const link = /(http:\/\/localhost:3000\/invite\/[A-Za-z0-9_-]{43})/.exec(
-    await latestEmailText(viewerEmail),
-  )?.[1];
-  const viewerContext = await browser.newContext();
-  const viewer = await viewerContext.newPage();
-  await viewer.goto(link!);
-  await viewer.getByRole("link", { name: "Sign in" }).click();
-  await signInWithCode(viewer, viewerEmail, { name: "Story Viewer" });
-  await viewer.getByRole("button", { name: "Accept invite" }).click();
-  await expect(viewer).toHaveURL(new RegExp(`/w/${slug}$`));
-  await expect(
-    viewer.getByRole("heading", { name: "You're a Viewer in Launch Club" }),
-  ).toBeVisible();
-  await expect(viewer.getByRole("button", { name: "New meeting" })).toHaveCount(
-    0,
-  );
-
-  // Review Focus 5: an expired session sends the user to sign-in, keeping where they were going.
-  await context.clearCookies();
-  await page
-    .getByRole("navigation", { name: "Workspace" })
-    .getByRole("link", { name: "Home" })
-    .click();
-  await expect(page).toHaveURL(new RegExp(`/login\\?next=%2Fw%2F${slug}$`));
 });

@@ -27,7 +27,7 @@ function dbClaimRow(job: Record<string, string | object | null>) {
         attempts: 0,
         invitee_id: "10000000-0000-4000-8000-000000000001",
         workspace_id: "20000000-0000-4000-8000-000000000000",
-        workspace_name: "GDG ISSAT",
+        workspace_name: "Robotics Club",
         contact: { full_name: "Member 1", email: "m1@uni.tn" },
         meeting: {
           id: "11111111-1111-4111-8111-111111111111",

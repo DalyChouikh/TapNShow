@@ -5,11 +5,11 @@ describe("exportFileName", () => {
   it("joins slugged parts with the date", () => {
     expect(
       exportFileName(
-        ["gdg-issat", "Weekly sync: été!", "answers"],
+        ["robotics-club", "Weekly sync: été!", "answers"],
         "csv",
         new Date("2026-10-08T12:00:00Z"),
       ),
-    ).toBe("gdg-issat-weekly-sync-ete-answers-2026-10-08.csv");
+    ).toBe("robotics-club-weekly-sync-ete-answers-2026-10-08.csv");
   });
 
   it("drops empty parts", () => {

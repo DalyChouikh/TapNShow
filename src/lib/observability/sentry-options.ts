@@ -1,9 +1,4 @@
-import type {
-  Breadcrumb,
-  ErrorEvent,
-  StreamedSpanJSON,
-  TransactionEvent,
-} from "@sentry/core";
+import type { Breadcrumb, ErrorEvent, StreamedSpanJSON } from "@sentry/core";
 import { REDACTED, scrubDeep, scrubHeaders } from "./scrub";
 
 /** Sample rate for performance traces (free tier friendly). */
@@ -15,9 +10,10 @@ export type SentryOptions = {
   dsn?: string;
   environment: string;
   tracesSampleRate: number;
+  /** Traces are sent as streamed spans (Sentry 11's default, pinned): `beforeSendSpan` scrubs them. */
+  traceLifecycle: "stream";
   sendDefaultPii: false;
   beforeSend: (event: ErrorEvent) => ErrorEvent | null;
-  beforeSendTransaction: (event: TransactionEvent) => TransactionEvent | null;
   beforeBreadcrumb: (breadcrumb: Breadcrumb) => Breadcrumb | null;
   beforeSendSpan: (span: StreamedSpanJSON) => StreamedSpanJSON;
 };
@@ -27,7 +23,7 @@ export type SentryOptions = {
  * reasons), strips credential/referrer headers, then scrubs personal-link tokens from
  * every string.
  */
-function sanitizeEvent<T extends ErrorEvent | TransactionEvent>(event: T): T {
+function sanitizeEvent(event: ErrorEvent): ErrorEvent {
   const request = event.request
     ? {
         ...event.request,
@@ -42,8 +38,8 @@ function sanitizeEvent<T extends ErrorEvent | TransactionEvent>(event: T): T {
 }
 
 /**
- * Scrubs a streamed span (Sentry 11 sends spans this way by default; `beforeSendTransaction`
- * is not called). Spans cannot be dropped, so on failure a stripped placeholder is sent.
+ * Scrubs a streamed span (the only way traces leave: `traceLifecycle: "stream"`). Spans cannot
+ * be dropped, so on failure a stripped placeholder is sent.
  */
 function sanitizeSpan(span: StreamedSpanJSON): StreamedSpanJSON {
   try {
@@ -81,9 +77,9 @@ export function buildSentryOptions(input: {
     dsn: input.dsn,
     environment: input.environment,
     tracesSampleRate: TRACES_SAMPLE_RATE,
+    traceLifecycle: "stream",
     sendDefaultPii: false,
-    beforeSend: failClosed(sanitizeEvent<ErrorEvent>),
-    beforeSendTransaction: failClosed(sanitizeEvent<TransactionEvent>),
+    beforeSend: failClosed(sanitizeEvent),
     beforeBreadcrumb: failClosed(scrubDeep<Breadcrumb>),
     beforeSendSpan: sanitizeSpan,
   };

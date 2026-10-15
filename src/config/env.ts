@@ -10,7 +10,7 @@ const serverEnvSchema = z
       .enum(["development", "test", "production"])
       .default("development"),
     LOG_LEVEL: z
-      .enum(["fatal", "error", "warn", "info", "debug", "trace"])
+      .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
       .default("info"),
     NEXT_PUBLIC_SUPABASE_URL: z.url(),
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1),

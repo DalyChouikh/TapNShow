@@ -2,7 +2,7 @@ import type { MeetingInviteEmailProps } from "@/emails/meeting-invite-email";
 
 /** One member's meeting email props: Weekly sync, Fri 9 Oct 18:00 Tunis, Room B12, attendance. */
 export const meetingEmailProps = {
-  workspaceName: "GDG ISSAT",
+  workspaceName: "Robotics Club",
   recipientName: "Amira",
   senderEmail: "club@gmail.com",
   meeting: {

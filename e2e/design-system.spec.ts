@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Browser, type Page } from "@playwright/test";
+import { type Browser, type Page } from "@playwright/test";
+import { expect, test } from "./helpers/test";
 
 /**
  * Waits until entrance animations have settled so audits see the final colors. File inputs are
@@ -32,10 +33,12 @@ async function expectFirstPaint(
 ): Promise<void> {
   const context = await browser.newContext({ colorScheme: os });
   if (stored) {
-    await context.addInitScript(
-      (value) => window.localStorage.setItem("theme", value),
-      stored,
-    );
+    // Init scripts also run in the context's first about:blank page, which has no storage.
+    await context.addInitScript((value) => {
+      if (window.location.origin !== "null") {
+        window.localStorage.setItem("theme", value);
+      }
+    }, stored);
   }
   const page = await context.newPage();
   await page.goto("/design", { waitUntil: "commit" });

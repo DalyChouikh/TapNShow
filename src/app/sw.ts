@@ -84,8 +84,13 @@ const serwist = new Serwist({
       handler: new NetworkOnly(),
     },
     {
-      matcher: ({ sameOrigin, url }) =>
-        sameOrigin && url.pathname.startsWith("/_next/static/"),
+      // Fonts stay with the browser's own cache (hashed, immutable, served offline too): a font the
+      // page preloads and the worker also answers is fetched twice, and Chrome warns that the
+      // preload went unused.
+      matcher: ({ request, sameOrigin, url }) =>
+        sameOrigin &&
+        request.destination !== "font" &&
+        url.pathname.startsWith("/_next/static/"),
       handler: new CacheFirst({
         cacheName: SW_CACHES.static,
         plugins: [new ExpirationPlugin({ maxEntries: 300 })],

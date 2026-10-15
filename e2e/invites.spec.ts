@@ -1,4 +1,5 @@
-import { expect, test, type Browser, type Page } from "@playwright/test";
+import { type Browser, type Page } from "@playwright/test";
+import { expect, test } from "./helpers/test";
 import { latestEmailText } from "./helpers/mailpit";
 import {
   signInWithCode,
@@ -72,31 +73,36 @@ async function freshPage(browser: Browser): Promise<Page> {
   return context.newPage();
 }
 
-test("an emailed invite is accepted by the invited address", async ({
-  page,
-  browser,
-}) => {
-  const viewerEmail = uniqueEmail("e2e-viewer");
-  await ownerWithWorkspace(page, "Invite Club");
-  await invite(page, viewerEmail, "email");
-  const link = INVITE_LINK.exec(await latestEmailText(viewerEmail))?.[1];
-  expect(link).toBeTruthy();
+test.describe(() => {
+  // The invitee opens the link signed out: the preview answers 401 (sign in first), which the browser logs.
+  test.use({ allowConsole: /status of 401 \(Unauthorized\)/ });
 
-  const viewer = await freshPage(browser);
-  await viewer.goto(link!);
-  await expect(
-    viewer.getByRole("heading", { name: "Sign in to see your invitation" }),
-  ).toBeVisible();
-  await viewer.getByRole("link", { name: "Sign in" }).click();
-  await signInWithCode(viewer, viewerEmail, { name: "Vic Viewer" });
-  await viewer.getByRole("button", { name: "Accept invite" }).click();
-  await expect(viewer).toHaveURL(/\/w\/invite-club-[a-z0-9]{4}$/);
-  await expect(
-    viewer.getByRole("button", { name: "Switch workspace" }),
-  ).toContainText("Viewer");
-  await expect(viewer.getByRole("button", { name: "New meeting" })).toHaveCount(
-    0,
-  );
+  test("an emailed invite is accepted by the invited address", async ({
+    page,
+    browser,
+  }) => {
+    const viewerEmail = uniqueEmail("e2e-viewer");
+    await ownerWithWorkspace(page, "Invite Club");
+    await invite(page, viewerEmail, "email");
+    const link = INVITE_LINK.exec(await latestEmailText(viewerEmail))?.[1];
+    expect(link).toBeTruthy();
+
+    const viewer = await freshPage(browser);
+    await viewer.goto(link!);
+    await expect(
+      viewer.getByRole("heading", { name: "Sign in to see your invitation" }),
+    ).toBeVisible();
+    await viewer.getByRole("link", { name: "Sign in" }).click();
+    await signInWithCode(viewer, viewerEmail, { name: "Vic Viewer" });
+    await viewer.getByRole("button", { name: "Accept invite" }).click();
+    await expect(viewer).toHaveURL(/\/w\/invite-club-[a-z0-9]{4}$/);
+    await expect(
+      viewer.getByRole("button", { name: "Switch workspace" }),
+    ).toContainText("Viewer");
+    await expect(
+      viewer.getByRole("button", { name: "New meeting" }),
+    ).toHaveCount(0);
+  });
 });
 
 test("a copied link opened by another account shows the masked address", async ({

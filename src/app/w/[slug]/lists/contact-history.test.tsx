@@ -5,14 +5,19 @@ import { renderWithProviders } from "@/test/render";
 import { ContactHistory } from "./contact-history";
 
 const CONTACT = "6a1f2b3c-4d5e-4f60-8a71-b2c3d4e5f6aa";
-const MEETING = "4b7f8c2e-2f3a-4c55-9a1e-0d6f6b1c2a10";
+// One meeting id per title: the history list is keyed by meeting, like the real response.
+const MEETINGS: Record<string, string> = {
+  "Weekly sync": "4b7f8c2e-2f3a-4c55-9a1e-0d6f6b1c2a10",
+  Kickoff: "4b7f8c2e-2f3a-4c55-9a1e-0d6f6b1c2a11",
+  Retro: "4b7f8c2e-2f3a-4c55-9a1e-0d6f6b1c2a12",
+};
 const row = (
   title: string,
   answer: object | null,
   emailStatus = "sent",
   mark: object | null = null,
 ) => ({
-  meetingId: MEETING,
+  meetingId: MEETINGS[title],
   title,
   startsAt: "2026-10-02T17:00:00+00:00",
   timezone: "Africa/Tunis",

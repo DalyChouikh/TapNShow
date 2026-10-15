@@ -48,5 +48,6 @@ next-env.d.ts
 .env*.local
 playwright-report/
 test-results/
+.e2e-build.log
 supabase/.temp/
 !.env.example

@@ -9,7 +9,7 @@ describe("meeting cancellation email", () => {
     const email = await renderMeetingCancelEmail({ ...PROPS, calendar: true });
     expect(email.subject).toBe("Cancelled: Weekly sync · Fri 9 Oct, 18:00");
     expect(email.text).toContain(
-      "GDG ISSAT cancelled Weekly sync on Fri 9 Oct at 18:00.",
+      "Robotics Club cancelled Weekly sync on Fri 9 Oct at 18:00.",
     );
     expect(email.text).toContain("It's removed from your calendar.");
     expect(email.html).not.toContain("?choice=");

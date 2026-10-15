@@ -6,7 +6,7 @@ import {
 
 const EMOJI = /\p{Extended_Pictographic}/u;
 const base: MeetingInviteEmailProps = {
-  workspaceName: "GDG ISSAT",
+  workspaceName: "Robotics Club",
   recipientName: "Amira Ben Ali",
   senderEmail: "club@gmail.com",
   meeting: {
@@ -35,7 +35,7 @@ describe("renderMeetingInviteEmail", () => {
   it("has the subject, time in the meeting zone, place, agenda, three answers and the footer links", async () => {
     const email = await renderMeetingInviteEmail(base);
     expect(email.subject).toBe("Weekly sync · Fri 9 Oct, 18:00");
-    expect(email.html).toContain("GDG ISSAT invites you");
+    expect(email.html).toContain("Robotics Club invites you");
     expect(email.html).toContain("Hi Amira Ben Ali,");
     expect(email.html).toContain("Fri 9 Oct, 18:00–19:00 (Africa/Tunis)");
     expect(email.html).toContain("Room B12");

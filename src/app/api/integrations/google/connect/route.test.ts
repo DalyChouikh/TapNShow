@@ -31,7 +31,7 @@ vi.mock("@/config/env", () => ({
     GOOGLE_CLIENT_ID: "cid",
     GOOGLE_CLIENT_SECRET: "sec",
     GOOGLE_OAUTH_AUTHORIZE_URL: "https://accounts.google.com/o/oauth2/v2/auth",
-    LOG_LEVEL: "info",
+    LOG_LEVEL: "silent",
   }),
 }));
 vi.mock("@/server/supabase/server-client", () => ({

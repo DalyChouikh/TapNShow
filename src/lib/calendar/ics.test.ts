@@ -17,7 +17,7 @@ const BASE: MeetingIcsInput = {
   description: "Agenda",
   location: "Room B12",
   url: "https://meet.google.com/abc-defg-hij",
-  organizer: { name: "GDG ISSAT", email: "club@gmail.com" },
+  organizer: { name: "Robotics Club", email: "club@gmail.com" },
   attendee: { name: "Amira B.", email: "amira@uni.tn" },
 };
 
@@ -42,7 +42,7 @@ describe("buildMeetingIcs", () => {
         "DTEND:20261009T183000Z",
         "SUMMARY:Weekly sync",
         "STATUS:CONFIRMED",
-        'ORGANIZER;CN="GDG ISSAT":mailto:club@gmail.com',
+        'ORGANIZER;CN="Robotics Club":mailto:club@gmail.com',
         'ATTENDEE;CN="Amira B.";ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=FALSE:mailto:amira@uni.tn',
         "END:VEVENT",
         "END:VCALENDAR",

@@ -1,4 +1,5 @@
-import { expect, test, type APIRequestContext } from "@playwright/test";
+import { type APIRequestContext } from "@playwright/test";
+import { expect, test } from "./helpers/test";
 import { DETAIL_COLUMNS } from "../src/lib/export/columns";
 import { type FakeTab, sheetFiles, toggleTrash } from "./helpers/fake-google";
 import { latestEmailText } from "./helpers/mailpit";

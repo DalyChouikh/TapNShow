@@ -33,7 +33,7 @@ describe("guessColumns", () => {
     expect(
       guessColumns(
         parseDelimited(
-          "Nom complet,Adresse e-mail (ISSAT),Year\nA,a@example.com,2",
+          "Nom complet,Adresse e-mail (club),Year\nA,a@example.com,2",
         ),
       ).targets,
     ).toEqual(["fullName", "email", "ignore"]);

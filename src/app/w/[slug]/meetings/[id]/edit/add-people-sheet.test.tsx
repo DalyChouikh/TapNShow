@@ -43,9 +43,15 @@ describe("AddPeopleSheet", () => {
       "nour@uni.tn",
     );
     await user.click(screen.getByRole("button", { name: "Paste a list" }));
-    await user.click(
-      screen.getByRole("textbox", { name: "One person per line: name, email" }),
+    const pasteBox = screen.getByRole("textbox", {
+      name: "One person per line: name, email",
+    });
+    // The example's angle brackets are text, not a message tag.
+    expect(pasteBox).toHaveAttribute(
+      "placeholder",
+      "Nour Hamdi, nour@uni.tn\nSami Trabelsi <sami@uni.tn>",
     );
+    await user.click(pasteBox);
     await user.paste("Sami, sami@uni.tn\nLina <lina@uni.tn>");
     await user.click(screen.getByRole("button", { name: "Use these 2" }));
     await user.click(screen.getByRole("button", { name: "Add 3 people" }));

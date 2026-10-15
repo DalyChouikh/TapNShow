@@ -250,7 +250,7 @@ describe("listNamesByContact", () => {
   it("member rows: group, meeting, date, answer, words, check-in (spec §7.4)", () => {
     const answered = {
       inviteeId: "6a1f2b3c-4d5e-4f60-8a71-b2c3d4e5f6aa",
-      workspaceName: "GDG ISSAT",
+      workspaceName: "Robotics Club",
       title: "Kickoff",
       startsAt: "2026-10-11T17:00:00.000Z",
       timezone: "Africa/Tunis",
@@ -283,7 +283,7 @@ describe("listNamesByContact", () => {
     );
     expect(rows).toEqual([
       [
-        "GDG ISSAT",
+        "Robotics Club",
         "Kickoff",
         "2026-10-11 18:00",
         { text: "Late by 10 min", tone: "warning" },
@@ -296,7 +296,7 @@ describe("listNamesByContact", () => {
         15,
       ],
       [
-        "GDG ISSAT",
+        "Robotics Club",
         "Silent",
         "2026-10-11 18:00",
         { text: "No reply", tone: "neutral" },
@@ -309,7 +309,7 @@ describe("listNamesByContact", () => {
         null,
       ],
       [
-        "GDG ISSAT",
+        "Robotics Club",
         "News",
         "2026-10-11 18:00",
         "",

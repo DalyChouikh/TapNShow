@@ -18,6 +18,29 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  {
+    files: ["e2e/**/*.spec.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@playwright/test",
+              importNames: ["test", "expect"],
+              message:
+                "Import test and expect from ./helpers/test (it fails on browser console errors).",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // Playwright fixtures receive a `use` callback; it is not React's `use` hook.
+    files: ["e2e/**/*.ts"],
+    rules: { "react-hooks/rules-of-hooks": "off" },
+  },
   globalIgnores([
     ".next/**",
     "out/**",

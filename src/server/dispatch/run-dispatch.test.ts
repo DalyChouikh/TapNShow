@@ -34,7 +34,7 @@ function job(
     attempts: 1,
     inviteeId: `10000000-0000-4000-8000-00000000000${n}`,
     workspaceId: "20000000-0000-4000-8000-000000000000",
-    workspaceName: "GDG ISSAT",
+    workspaceName: "Robotics Club",
     contact: { fullName: `Member ${n}`, email: `m${n}@uni.tn` },
     meeting: {
       id: meetingId,
@@ -112,8 +112,8 @@ function setup(options: {
       alert: [
         {
           email: "owner@x.test",
-          workspaceName: "GDG ISSAT",
-          workspaceSlug: "gdg-ab12",
+          workspaceName: "Robotics Club",
+          workspaceSlug: "robotics-ab12",
         },
       ],
     })),
@@ -227,8 +227,8 @@ describe("runDispatch", () => {
     expect(deps.alertBroken).toHaveBeenCalledWith([
       {
         email: "owner@x.test",
-        workspaceName: "GDG ISSAT",
-        workspaceSlug: "gdg-ab12",
+        workspaceName: "Robotics Club",
+        workspaceSlug: "robotics-ab12",
       },
     ]);
   });

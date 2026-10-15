@@ -26,11 +26,13 @@ describe("sendOwnerAlert", () => {
     ] as const) {
       const email = await sent({
         kind,
-        workspaceName: "GDG ISSAT",
-        workspaceSlug: "gdg-ab12",
+        workspaceName: "Robotics Club",
+        workspaceSlug: "robotics-ab12",
       });
       expect(email.to).toBe("owner@example.test");
-      expect(email.html).toContain(`href="${APP}/w/gdg-ab12/settings#sending"`);
+      expect(email.html).toContain(
+        `href="${APP}/w/robotics-ab12/settings#sending"`,
+      );
     }
   });
 
@@ -38,9 +40,11 @@ describe("sendOwnerAlert", () => {
     const email = await sent({
       kind: "sheetPaused",
       reason: "access_lost",
-      workspaceName: "GDG ISSAT",
-      workspaceSlug: "gdg-ab12",
+      workspaceName: "Robotics Club",
+      workspaceSlug: "robotics-ab12",
     });
-    expect(email.html).toContain(`href="${APP}/w/gdg-ab12/settings#sheets"`);
+    expect(email.html).toContain(
+      `href="${APP}/w/robotics-ab12/settings#sheets"`,
+    );
   });
 });

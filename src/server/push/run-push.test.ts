@@ -25,7 +25,7 @@ function item(over: Partial<PushItem> = {}): PushItem {
     endpoint: `https://fcm.googleapis.com/fcm/send/${next}`,
     p256dh: "k",
     auth: "a",
-    workspaceName: "GDG ISSAT",
+    workspaceName: "Robotics Club",
     locale: "en",
     title: "Weekly sync",
     startsAt: "2026-10-18T17:00:00.000Z",

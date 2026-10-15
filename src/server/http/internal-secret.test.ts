@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/config/env", () => ({
   getServerEnv: () => ({
     DISPATCH_SECRET: mocks.secret.value,
-    LOG_LEVEL: "info",
+    LOG_LEVEL: "silent",
   }),
 }));
 

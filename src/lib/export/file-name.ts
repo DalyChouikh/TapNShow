@@ -4,7 +4,7 @@ import { slugBase, SLUG_FALLBACK_BASE } from "@/lib/slug";
 /** Longest name part before the date. */
 const NAME_MAX = 80;
 
-/** `gdg-issat-weekly-sync-answers-2026-10-08.csv`: slugged parts, empty ones dropped, then the date. */
+/** `robotics-club-weekly-sync-answers-2026-10-08.csv`: slugged parts, empty ones dropped, then the date. */
 export function exportFileName(
   parts: string[],
   extension: "csv" | "xlsx",

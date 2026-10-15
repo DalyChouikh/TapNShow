@@ -59,6 +59,9 @@ export function PreviewStep({
   const rows =
     tile === "merged" ? [] : result.rows.filter((row) => matches(tile, row));
   const count = tile === "merged" ? mergedLines.length : rows.length;
+  // React Compiler is not enabled; TanStack Virtual has no compiler-safe API, so the rule's
+  // "compilation skipped" note changes nothing here (M9 zero-warnings ruling).
+  // eslint-disable-next-line react-hooks/incompatible-library
   const virtualizer = useVirtualizer({
     count,
     getScrollElement: () => scroller,
