@@ -104,11 +104,7 @@ export function RemindersCard() {
         ) : null}
         <Button onClick={hide}>{blocked ? t("hide") : t("notNow")}</Button>
       </div>
-      <IphoneInstallSheet
-        open={guide}
-        onOpenChange={setGuide}
-        device={device}
-      />
+      <IphoneInstallSheet open={guide} onOpenChange={setGuide} />
     </Card>
   );
 }

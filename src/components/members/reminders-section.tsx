@@ -56,11 +56,7 @@ export function RemindersSection() {
           <Button onClick={() => void install()}>{t("install")}</Button>
         ) : null}
       </div>
-      <IphoneInstallSheet
-        open={guide}
-        onOpenChange={setGuide}
-        device={device}
-      />
+      <IphoneInstallSheet open={guide} onOpenChange={setGuide} />
     </Card>
   );
 }
