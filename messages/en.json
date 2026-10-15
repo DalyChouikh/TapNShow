@@ -1401,5 +1401,21 @@
     "cancelled": "{meeting} · Cancelled",
     "tabRange": "{year} · {from} – {to}",
     "tabTaken": "{title} (TapNShow)"
+  },
+  "Public": {
+    "home": "TapNShow home",
+    "signIn": "Sign in",
+    "openApp": "Open TapNShow",
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "contact": "Contact",
+    "madeBy": "Made by Mohamed Ali Chouikh",
+    "footerLabel": "TapNShow links"
+  },
+  "Legal": {
+    "updated": "Last updated {date}",
+    "inShort": "In short",
+    "onThisPage": "On this page",
+    "notLawyer": "This page was written carefully but is not a lawyer's review."
   }
 }
