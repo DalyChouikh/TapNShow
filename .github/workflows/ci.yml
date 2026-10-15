@@ -42,5 +42,11 @@ jobs:
       - run: supabase db advisors --local
       - run: bun run test:db
       - run: bunx playwright install --with-deps chromium
+      # Next's build cache (https://nextjs.org/docs/app/guides/ci-build-caching): faster e2e builds.
+      - uses: actions/cache@v6
+        with:
+          path: .next/cache
+          key: nextjs-${{ runner.os }}-${{ hashFiles('bun.lock') }}-${{ hashFiles('src/**', 'messages/**', 'public/**') }}
+          restore-keys: nextjs-${{ runner.os }}-${{ hashFiles('bun.lock') }}-
       - run: bun run test:e2e
       - run: bun scripts/check-build-log.ts .e2e-build.log

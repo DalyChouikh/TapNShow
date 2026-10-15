@@ -12,11 +12,16 @@ const nextConfig: NextConfig = {
 };
 const withNextIntl = createNextIntlPlugin();
 
+const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN;
+
 export default withSentryConfig(withSerwist(withNextIntl(nextConfig)), {
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
-  authToken: process.env.SENTRY_AUTH_TOKEN,
-  silent: !process.env.CI,
+  authToken: sentryAuthToken,
+  // Sentry's build step only uploads source maps and creates the release. Without a token (CI,
+  // local builds, forks) it has nothing to do, so it skips the maps and reports nothing.
+  silent: !sentryAuthToken,
+  sourcemaps: { disable: !sentryAuthToken },
   widenClientFileUpload: true,
   telemetry: false,
 });

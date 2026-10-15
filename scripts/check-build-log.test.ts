@@ -18,6 +18,14 @@ describe("buildWarnings", () => {
     ]);
   });
 
+  it("ignores a cold build cache: it is about the runner, not the build", () => {
+    const log = [
+      "\u001b[33m\u001b[1m⚠\u001b[22m\u001b[39m No build cache found. Please configure build caching for faster rebuilds. Read more: https://nextjs.org/docs/messages/no-cache",
+      "✓ Compiled successfully",
+    ].join("\n");
+    expect(buildWarnings(log)).toEqual([]);
+  });
+
   it("passes a clean log", () => {
     expect(
       buildWarnings("✓ Compiled successfully\n✓ Generating static pages"),
