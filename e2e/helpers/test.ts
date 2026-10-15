@@ -18,7 +18,7 @@ type Fixtures = {
 /**
  * Every e2e spec imports `test` from here (ESLint enforces it). The guard watches the test's own
  * context and every context the test opens with `browser.newContext()`, including their pages
- * opened later (popups, new tabs). CSP reports reach it as console errors (Task 5).
+ * opened later (popups, new tabs). CSP violations reach it as console errors.
  */
 export const test = base.extend<Fixtures>({
   allowConsole: [null, { option: true }],
@@ -40,15 +40,25 @@ export const test = base.extend<Fixtures>({
           problems.push(`uncaught: ${error.message} (${page.url()})`);
         });
       };
-      const watchContext = (watched: BrowserContext) => {
+      const watchContext = async (watched: BrowserContext) => {
+        // Report-only violations still fire this event; the console guard then fails the test.
+        await watched.addInitScript(() => {
+          document.addEventListener("securitypolicyviolation", (event) => {
+            // Runs in the page: the browser console is the channel this guard reads.
+            // eslint-disable-next-line no-console
+            console.error(
+              `CSP ${event.disposition}: ${event.effectiveDirective} blocked ${event.blockedURI || "inline"} at ${event.sourceFile}:${event.lineNumber}:${event.columnNumber}`,
+            );
+          });
+        });
         watched.pages().forEach(watchPage);
         watched.on("page", watchPage);
       };
-      watchContext(context);
+      await watchContext(context);
       const newContext = browser.newContext.bind(browser);
       browser.newContext = async (options) => {
         const created = await newContext(options);
-        watchContext(created);
+        await watchContext(created);
         return created;
       };
       try {

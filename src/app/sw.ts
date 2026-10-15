@@ -1,5 +1,7 @@
 /// <reference lib="esnext" />
 /// <reference lib="webworker" />
+// First: Zod must be jitless before the handlers below parse anything.
+import "@/lib/zod-jitless";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
 import {
   CacheFirst,

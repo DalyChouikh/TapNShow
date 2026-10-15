@@ -1,5 +1,6 @@
 import { SerwistProvider } from "@serwist/turbopack/react";
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale } from "next-intl/server";
 import { MotionProvider } from "@/components/motion/motion-provider";
@@ -34,6 +35,9 @@ export const viewport: Viewport = { themeColor: palette.light.background };
 /** Root layout: fonts, theme (no-flash), motion, i18n, the install offer, the service worker and the reminders check-in. */
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const locale = await getLocale();
+  // This request's CSP nonce (proxy.ts). Reading headers renders every page per request, which the
+  // nonce needs anyway (spec §11 M9).
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html
       lang={locale}
@@ -42,7 +46,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full">
         <NextIntlClientProvider>
-          <ThemeProvider>
+          <ThemeProvider nonce={nonce}>
             <QueryProvider>
               <InstallPromptProvider>
                 {/* The service worker runs in production builds only (e2e uses one too). It
