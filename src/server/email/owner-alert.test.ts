@@ -19,7 +19,11 @@ async function sent(alert: OwnerAlertInput) {
 
 describe("sendOwnerAlert", () => {
   it("links Sending settings for Gmail problems", async () => {
-    for (const kind of ["senderBroken", "senderRemoved"] as const) {
+    for (const kind of [
+      "senderBroken",
+      "senderRemoved",
+      "senderAndSheetRemoved",
+    ] as const) {
       const email = await sent({
         kind,
         workspaceName: "GDG ISSAT",

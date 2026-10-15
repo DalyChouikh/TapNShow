@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { X509Certificate } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { createServer, type Server } from "node:https";
 import { tmpdir } from "node:os";
@@ -16,14 +17,30 @@ const CERT_DIR = join(tmpdir(), "tapnshow-e2e-push");
 /** The throwaway certificate the app trusts in e2e (`NODE_EXTRA_CA_CERTS`). */
 export const FAKE_PUSH_CERT = join(CERT_DIR, "cert.pem");
 const FAKE_PUSH_KEY = join(CERT_DIR, "key.pem");
+/** A kept certificate is replaced once it has less than this left (a run takes minutes). */
+const CERT_RENEW_BEFORE_MS = 2 * 3_600_000;
+
+/** The kept certificate and key exist and stay valid for this whole run. */
+function certificateUsable(): boolean {
+  if (!existsSync(FAKE_PUSH_CERT) || !existsSync(FAKE_PUSH_KEY)) {
+    return false;
+  }
+  try {
+    const { validTo } = new X509Certificate(readFileSync(FAKE_PUSH_CERT));
+    return Date.parse(validTo) - Date.now() > CERT_RENEW_BEFORE_MS;
+  } catch {
+    return false;
+  }
+}
 
 /**
- * Creates the fake push service's self-signed certificate (valid for a day, for 127.0.0.1) if it
- * isn't there yet. Runs when the Playwright config loads, because Node reads NODE_EXTRA_CA_CERTS
- * when the app starts.
+ * Creates the fake push service's self-signed certificate (valid for a day, for 127.0.0.1) unless
+ * a usable one is kept; one left by a run that skipped teardown is replaced before it expires, so
+ * a stale certificate never shows up as a push failure. Runs when the Playwright config loads,
+ * because Node reads NODE_EXTRA_CA_CERTS when the app starts.
  */
 export function ensureFakePushCertificate(): void {
-  if (existsSync(FAKE_PUSH_CERT) && existsSync(FAKE_PUSH_KEY)) {
+  if (certificateUsable()) {
     return;
   }
   mkdirSync(CERT_DIR, { recursive: true });

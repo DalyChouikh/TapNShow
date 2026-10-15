@@ -1,7 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import type { Database } from "@/server/db/database.types";
+import type { Database, Json } from "@/server/db/database.types";
 import {
   type PushItem,
   type PushSubscriptionBody,
@@ -11,18 +11,52 @@ import type { DbError } from "./roster";
 
 type Client = SupabaseClient<Database>;
 
+/** A claimed batch: what went stale, what to send, and how many rows couldn't be read (dropped). */
+export type PushClaim = {
+  dropped: number;
+  unreadable: number;
+  items: PushItem[];
+};
+
 /** What the push lane needs from the database (injected, so tests use fakes). */
 export type PushStore = {
-  claim(
-    run: string,
-    limit: number,
-    leaseSeconds: number,
-  ): Promise<{ dropped: number; items: PushItem[] }>;
+  claim(run: string, limit: number, leaseSeconds: number): Promise<PushClaim>;
   done(id: string, run: string): Promise<boolean>;
   retry(id: string, run: string, afterSeconds: number): Promise<boolean>;
   drop(id: string, run: string): Promise<void>;
   gone(id: string, run: string): Promise<void>;
 };
+
+const claimRowsSchema = z.object({
+  dropped: z.number().int(),
+  items: z.array(z.looseObject({})),
+});
+const rowIdSchema = z.object({ id: z.uuid() });
+
+/**
+ * Reads `push_claim`'s answer one delivery at a time: a row that doesn't parse (a bug on our side)
+ * is named in `unreadable` (its id, or null when even that is unreadable) instead of failing the
+ * whole batch and spending its batch-mates' attempts.
+ */
+export function parsePushClaim(data: Json): {
+  dropped: number;
+  items: PushItem[];
+  unreadable: Array<string | null>;
+} {
+  const rows = claimRowsSchema.parse(data);
+  const items: PushItem[] = [];
+  const unreadable: Array<string | null> = [];
+  for (const row of rows.items) {
+    const parsed = pushItemSchema.safeParse(row);
+    if (parsed.success) {
+      items.push(parsed.data);
+    } else {
+      const id = rowIdSchema.safeParse(row);
+      unreadable.push(id.success ? id.data.id : null);
+    }
+  }
+  return { dropped: rows.dropped, items, unreadable };
+}
 
 /** The push store over the service-role client. Database errors throw (the run logs and stops). */
 export function createPushStore(admin: Client): PushStore {
@@ -36,19 +70,33 @@ export function createPushStore(admin: Client): PushStore {
     return result.data;
   };
   return {
-    claim: async (run, limit, leaseSeconds) =>
-      z
-        .object({ dropped: z.number().int(), items: z.array(pushItemSchema) })
-        .parse(
-          check(
-            "push_claim",
-            await admin.rpc("push_claim", {
-              p_run: run,
-              p_limit: limit,
-              p_lease_seconds: leaseSeconds,
-            }),
-          ),
+    claim: async (run, limit, leaseSeconds) => {
+      const claim = parsePushClaim(
+        check(
+          "push_claim",
+          await admin.rpc("push_claim", {
+            p_run: run,
+            p_limit: limit,
+            p_lease_seconds: leaseSeconds,
+          }),
         ),
+      );
+      // An unreadable row would fail every run it's leased to: drop it now (one with no readable
+      // id ages out through push_attempts_max instead).
+      for (const id of claim.unreadable) {
+        if (id) {
+          check(
+            "push_drop",
+            await admin.rpc("push_drop", { p_delivery: id, p_run: run }),
+          );
+        }
+      }
+      return {
+        dropped: claim.dropped,
+        unreadable: claim.unreadable.length,
+        items: claim.items,
+      };
+    },
     done: async (id, run) =>
       z
         .boolean()

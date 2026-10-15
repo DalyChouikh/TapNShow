@@ -33,9 +33,19 @@ export function deviceKind(): DeviceKind {
   return /Windows|Macintosh|X11|CrOS|Linux/.test(agent) ? "computer" : "device";
 }
 
-/** An iPhone or iPad: notifications need TapNShow on the Home Screen (iOS/iPadOS 16.4+). */
-export function needsHomeScreen(kind: DeviceKind): boolean {
-  return kind === "iphone" || kind === "ipad";
+/** Opened from the Home Screen / as an installed app. */
+export function isStandalone(): boolean {
+  const legacy = navigator.standalone === true;
+  return window.matchMedia("(display-mode: standalone)").matches || legacy;
+}
+
+/**
+ * An iPhone or iPad in the browser: notifications need TapNShow on the Home Screen first
+ * (iOS/iPadOS 16.4+). The one place this rule lives (reminders state, the iPhone guide).
+ */
+export function needsHomeScreenSteps(): boolean {
+  const kind = deviceKind();
+  return (kind === "iphone" || kind === "ipad") && !isStandalone();
 }
 
 /** `deviceKind()` for components ("device" while pre-rendering). */

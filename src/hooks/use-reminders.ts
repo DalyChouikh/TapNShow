@@ -4,7 +4,9 @@ import { useMutation } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { useMe } from "@/hooks/use-me";
 import { errorCodeOf } from "@/lib/api-client";
+import { markDeviceOwner } from "@/lib/device/owner";
 import {
   type RemindersState,
   remindersState,
@@ -14,10 +16,12 @@ import {
 
 /**
  * This device's reminders (spec §7.4): its state (null while it is read), Turn on and Turn off.
- * A failed Turn on keeps the state and says why.
+ * A failed Turn on keeps the state and says why. Turning on marks an unmarked device as this
+ * person's (`markDeviceOwner`), so their next sign-in keeps the reminders.
  */
 export function useReminders() {
   const tErrors = useTranslations("ApiErrors");
+  const me = useMe();
   const [state, setState] = useState<RemindersState | null>(null);
   useEffect(() => {
     let live = true;
@@ -34,7 +38,12 @@ export function useReminders() {
   }, []);
   const on = useMutation({
     mutationFn: () => turnOnReminders(),
-    onSuccess: setState,
+    onSuccess: (next) => {
+      if (next === "on" && me.data) {
+        markDeviceOwner(me.data.userId);
+      }
+      setState(next);
+    },
     onError: (error) => toast.error(tErrors(errorCodeOf(error))),
   });
   const off = useMutation({

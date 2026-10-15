@@ -7,7 +7,7 @@ import type { SystemEmail } from "./system-mailer";
 /** An alert to a workspace Owner, before its Settings link is known. */
 export type OwnerAlertInput =
   | {
-      kind: "senderBroken" | "senderRemoved";
+      kind: "senderBroken" | "senderRemoved" | "senderAndSheetRemoved";
       workspaceName: string;
       workspaceSlug: string;
     }
@@ -20,7 +20,8 @@ export type OwnerAlertInput =
 
 /**
  * Renders and sends one Owner alert (spec §8) with the link to the Settings section that fixes it:
- * Sending for Gmail problems, Sheets for a paused sheet. The one place these links are built.
+ * Sending for Gmail problems (and when both stopped: Gmail comes first), Sheets for a paused
+ * sheet. The one place these links are built.
  */
 export async function sendOwnerAlert(
   mailer: { send: (email: SystemEmail) => Promise<void> },

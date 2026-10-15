@@ -154,6 +154,38 @@ describe("matching invites to accounts (spec §6 Identity rules)", () => {
     );
   });
 
+  it("an invite whose email never went out is neither listed nor linkable", async () => {
+    const quiet = await createTestUser();
+    const invite = await seedInviteFor(
+      clubA.id,
+      await seedContact(clubA.id, quiet.email),
+      { starts_at: hoursFromNow(5) },
+      { sent: false },
+    );
+    expect((await invitesOf(quiet)).items).toEqual([]);
+    await expectAppError(
+      quiet.client.rpc("my_invite", { p_invitee: invite.inviteeId } as never),
+      "not_found",
+    );
+  });
+
+  it("matches only accounts whose email is unique (never a single sign-on account)", async () => {
+    const sso = await createTestUser();
+    const invite = await seedInviteFor(
+      clubA.id,
+      await seedContact(clubA.id, sso.email),
+      { starts_at: hoursFromNow(5) },
+    );
+    runLocalSql(
+      `update auth.users set is_sso_user = true where id = '${sso.id}'`,
+    );
+    expect((await invitesOf(sso)).items).toEqual([]);
+    await expectAppError(
+      sso.client.rpc("my_invite", { p_invitee: invite.inviteeId } as never),
+      "not_found",
+    );
+  });
+
   it("moves invites with the contact when an organizer corrects the email", async () => {
     const contact = await seedContact(
       clubB.id,

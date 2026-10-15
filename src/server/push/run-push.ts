@@ -17,7 +17,8 @@ import { type PushSend, pushTopic } from "./send";
 export type PushDeps = {
   store: PushStore;
   send: PushSend;
-  reportBug: (status: number) => void;
+  /** Tells Sentry about a bug on our side (a request a push service refused, an unreadable row). */
+  reportBug: (message: string) => void;
   now: () => number;
   sleep: (ms: number) => Promise<void>;
   newRunId: () => string;
@@ -42,9 +43,12 @@ export type PushSummary = {
 };
 
 /**
- * Drains due phone notifications (spec §8 Push worker): claims a batch, sends it side by side,
- * and records each result. While the email worker still runs (`emails.running()`), an empty claim
- * waits and looks again, so a push follows its email within seconds.
+ * Drains due phone notifications (spec §8 Push worker) with up to `concurrency` sends in flight:
+ * whenever one finishes, the free slots claim more, so one slow push service never holds up the
+ * rest. Each result is recorded. While the email worker still runs (`emails.running()`), an empty
+ * queue waits and looks again, so a push follows its email within seconds. No new claim starts
+ * once less than `minLeftMs` of the budget is left; sends already in flight finish (each is
+ * bounded by the request timeout).
  */
 export async function runPush(
   deps: PushDeps,
@@ -78,7 +82,7 @@ export async function runPush(
         topic: pushTopic(message.tag),
       },
     );
-    const outcome = classifyPushResult(result, item.attempts);
+    const outcome = classifyPushResult(result, item.attempts, deps.now());
     if (outcome.kind === "sent") {
       await deps.store.done(item.id, run);
       summary.sent += 1;
@@ -89,27 +93,44 @@ export async function runPush(
       await deps.store.retry(item.id, run, outcome.afterSeconds);
       summary.retried += 1;
     } else {
-      deps.reportBug(result.status ?? 0);
+      deps.reportBug(`Web Push ${result.status ?? 0}`);
       await deps.store.drop(item.id, run);
       summary.dropped += 1;
     }
   };
-  while (options.budgetMs - (deps.now() - started) >= options.minLeftMs) {
-    const claim = await deps.store.claim(
-      run,
-      options.concurrency,
-      options.leaseSeconds,
+  const inFlight = new Set<Promise<void>>();
+  const start = (item: PushItem) => {
+    const sending: Promise<void> = deliver(item).finally(() =>
+      inFlight.delete(sending),
     );
-    summary.stale += claim.dropped;
-    if (claim.items.length === 0) {
-      if (!emails.running()) {
-        break;
-      }
-      await deps.sleep(options.idlePollMs);
+    inFlight.add(sending);
+  };
+  while (options.budgetMs - (deps.now() - started) >= options.minLeftMs) {
+    const free = options.concurrency - inFlight.size;
+    if (free === 0) {
+      await Promise.race(inFlight);
       continue;
     }
-    await Promise.all(claim.items.map(deliver));
+    const claim = await deps.store.claim(run, free, options.leaseSeconds);
+    summary.stale += claim.dropped;
+    if (claim.unreadable > 0) {
+      summary.dropped += claim.unreadable;
+      deps.reportBug(`Unreadable push deliveries: ${claim.unreadable}`);
+    }
+    claim.items.forEach(start);
+    if (claim.items.length + claim.unreadable >= free) {
+      continue;
+    }
+    // The queue is empty for now: wait for a send to free a slot, or for the email worker.
+    if (inFlight.size > 0) {
+      await Promise.race(inFlight);
+    } else if (emails.running()) {
+      await deps.sleep(options.idlePollMs);
+    } else {
+      break;
+    }
   }
+  await Promise.all(inFlight);
   if (
     summary.sent +
       summary.gone +

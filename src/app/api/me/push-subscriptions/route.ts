@@ -43,8 +43,9 @@ export async function POST(request: Request): Promise<NextResponse> {
 }
 
 /**
- * Turn off reminders for this browser (the Account switch, sign-out, account deletion). Works even
- * when reminders aren't configured, so a device can always be forgotten.
+ * Turn off reminders for this browser (the Account switch, sign-out, account deletion; rate
+ * limited, the device unsubscribes itself either way). Works even when reminders aren't
+ * configured, so a device can always be forgotten.
  */
 export async function DELETE(request: Request): Promise<NextResponse> {
   const read = await readRequest(request, pushUnsubscribeBodySchema);
