@@ -701,6 +701,9 @@ isOneToOne: false
 "invites_page":
 { Args: { "p_after_created"?: string,"p_after_id"?: string,"p_limit"?: number,"p_workspace": string }; Returns: Json
                            },
+"keep_alive":
+{ Args: Record<PropertyKey, never>; Returns: string
+                           },
 "leave_workspace":
 { Args: { "p_workspace": string }; Returns: undefined
                            },
