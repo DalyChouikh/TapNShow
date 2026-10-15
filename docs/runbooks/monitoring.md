@@ -66,6 +66,8 @@ already in every browser that opens the app).
 - `notify.yml`: production deploys (Vercel's GitHub deployments) and CI failures on main → `#deploys`.
 - `keep-alive.yml`: 05:17 and 17:17 UTC; `#uptime` on failure and on Monday mornings.
   Run by hand: `gh workflow run keep-alive.yml`.
+- `backup.yml`: 03:10 UTC; `#uptime` only on failure. Run by hand: `gh workflow run backup.yml`.
+  Restoring: `docs/runbooks/restore.md`.
 
 ## Content Security Policy (CSP)
 
