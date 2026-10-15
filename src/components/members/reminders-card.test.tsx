@@ -96,12 +96,16 @@ describe("RemindersCard (spec §7.4)", () => {
     expect(
       screen.getByRole("dialog", { name: "Add TapNShow to your Home Screen" }),
     ).toBeVisible();
+    // Any iPhone browser can add to the Home Screen (iOS 16.4+): no browser named.
     expect(
-      screen.getByText("Tap Share at the bottom of Safari."),
+      screen.getByText(
+        "Tap Share in your browser. In some browsers, Share is inside the menu.",
+      ),
     ).toBeVisible();
+    expect(screen.queryByText(/Safari/)).toBeNull();
   });
 
-  it("names the device it is on: a computer, an iPad (Share at the top)", async () => {
+  it("names the device it is on: a computer, an iPad", async () => {
     kind.device = "computer";
     const { unmount } = renderWithProviders(<RemindersCard />);
     expect(screen.getByText("Get reminders on this computer")).toBeVisible();
@@ -117,7 +121,11 @@ describe("RemindersCard (spec §7.4)", () => {
       ),
     ).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Show me how" }));
-    expect(screen.getByText("Tap Share at the top of Safari.")).toBeVisible();
+    expect(
+      screen.getByText(
+        "Tap Share in your browser. In some browsers, Share is inside the menu.",
+      ),
+    ).toBeVisible();
   });
 
   it("explains a block, and Hide hides it", async () => {
