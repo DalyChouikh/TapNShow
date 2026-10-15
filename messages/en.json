@@ -655,7 +655,7 @@
     "sectionBody": "New invites, changes and reminders, as well as the emails.",
     "unsupported": "This browser can't show reminders.",
     "sheetTitle": "Add TapNShow to your Home Screen",
-    "step1": "Tap Share {device, select, ipad {at the top} other {at the bottom}} of Safari.",
+    "step1": "Tap Share in your browser. In some browsers, Share is inside the menu.",
     "step2": "Choose Add to Home Screen, then Add.",
     "step3": "Open TapNShow from your Home Screen and tap Turn on.",
     "gotIt": "Got it"
