@@ -27,6 +27,9 @@ jobs:
         env:
           DB_URL: ${{ secrets.SUPABASE_PROD_DB_URL }}
         run: |
+          # GitHub masks the secret as stored; also mask the password itself (URL-decoded), in case
+          # a tool's error message prints it in that form.
+          echo "::add-mask::$(bun -e 'process.stdout.write(decodeURIComponent(new URL(process.env.DB_URL ?? "").password))')"
           mkdir -p dump
           supabase db dump --db-url "$DB_URL" -f dump/roles.sql --role-only
           supabase db dump --db-url "$DB_URL" -f dump/schema.sql
