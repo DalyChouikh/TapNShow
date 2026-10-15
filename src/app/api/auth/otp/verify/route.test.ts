@@ -1,9 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  checkIpLimit: vi.fn(
+    async (): Promise<"allowed" | "limited" | "failed"> => "allowed",
+  ),
   verifyOtp: vi.fn(async () => ({
     error: null as { status?: number; message: string } | null,
   })),
+}));
+vi.mock("@/server/rate-limit/ip-rate-limit", () => ({
+  checkIpLimit: mocks.checkIpLimit,
 }));
 vi.mock("@/server/supabase/server-client", () => ({
   createSupabaseServerClient: async () => ({
@@ -21,6 +27,20 @@ const post = (body: object) =>
 beforeEach(() => vi.clearAllMocks());
 
 describe("POST /api/auth/otp/verify", () => {
+  it("answers 429 when the IP is over its limit, before checking the code", async () => {
+    const { POST } = await import("./route");
+    mocks.checkIpLimit.mockResolvedValueOnce("limited");
+    const response = await POST(
+      post({ email: "a@example.test", code: "12345678" }),
+    );
+    expect(response.status).toBe(429);
+    expect(mocks.checkIpLimit).toHaveBeenCalledWith(
+      "otp_verify",
+      expect.any(Request),
+    );
+    expect(mocks.verifyOtp).not.toHaveBeenCalled();
+  });
+
   it("verifies the normalized code as an email OTP", async () => {
     const { POST } = await import("./route");
     expect(

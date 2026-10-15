@@ -11,6 +11,7 @@ import {
   createGoogleAuthorization,
   encodeOAuthCookie,
 } from "@/server/auth/google-oauth";
+import { checkIpLimit } from "@/server/rate-limit/ip-rate-limit";
 
 /** Starts Google sign-in. Disabled (back to /login) where the client has no redirect URI, e.g. previews. */
 export async function GET(request: Request): Promise<NextResponse> {
@@ -19,6 +20,11 @@ export async function GET(request: Request): Promise<NextResponse> {
     return NextResponse.redirect(
       new URL("/login?error=google_unavailable", request.url),
     );
+  }
+  const verdict = await checkIpLimit("google_signin", request);
+  if (verdict !== "allowed") {
+    const error = verdict === "limited" ? "rate_limited" : "google_failed";
+    return NextResponse.redirect(new URL(`/login?error=${error}`, request.url));
   }
   const next = safeNextPath(new URL(request.url).searchParams.get("next"));
   const { url, state } = createGoogleAuthorization({

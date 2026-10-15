@@ -50,6 +50,7 @@ const PRIVATE_FUNCTIONS_FOR_AUTHENTICATED = [
   "push_unsubscribe",
   "remove_member",
   "renew_invite",
+  "require_user_limit",
   "retry_sheet",
   "revoke_invite",
   "role_of",

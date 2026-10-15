@@ -100,14 +100,15 @@ export function LoginScreen() {
           </Card>
         ) : null}
         {errorParam === "google_failed" ||
-        errorParam === "google_unavailable" ? (
+        errorParam === "google_unavailable" ||
+        errorParam === "rate_limited" ? (
           <p
             role="alert"
             className="rounded-control border-2 border-outline bg-fill-warning p-3 font-bold text-on-fill"
           >
             {errorParam === "google_failed"
               ? t("googleFailed")
-              : tErrors("google_unavailable")}
+              : tErrors(errorParam)}
           </p>
         ) : null}
         <Card key="email-step" as="section" className="flex flex-col gap-4">

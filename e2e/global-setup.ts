@@ -3,8 +3,17 @@ import { z } from "zod";
 import { startFakeGoogle } from "./helpers/fake-google";
 import { removeFakePushCertificate, startFakePush } from "./helpers/fake-push";
 
-/** Code requests one local e2e run may make from the shared "unknown" IP. */
-const E2E_OTP_REQUESTS_PER_HOUR = 1000;
+/**
+ * Per-IP limits (`private.check_ip_rate_limit`) one local e2e run shares from its single IP, each
+ * raised to this for the run: every story signs in, so a full run makes hundreds of code requests
+ * and checks.
+ */
+const E2E_IP_LIMITS = [
+  "otp_send_per_ip_per_hour",
+  "otp_verify_per_ip_per_hour",
+  "google_signin_per_ip_per_hour",
+] as const;
+const E2E_REQUESTS_PER_IP_PER_HOUR = 1000;
 
 function localSql(sql: string): string {
   return execFileSync(
@@ -38,20 +47,26 @@ function setAppLimit(name: string, value: number): void {
 }
 
 /**
- * Locally every request has the IP "unknown", so a whole e2e run shares one per-IP bucket for
- * sign-in code requests. Raise that limit for the run (and clear old counters), then restore the
- * original value so DB tests keep checking the real limit. CI starts from a fresh stack anyway.
+ * Locally every request has the IP "unknown", so a whole e2e run shares one per-IP bucket for each
+ * pre-sign-in route. Raise those limits for the run (and clear old counters), then restore the
+ * original values so DB tests keep checking the real limits. CI starts from a fresh stack anyway.
  */
 export default async function globalSetup(): Promise<() => Promise<void>> {
-  const original = appLimit("otp_send_per_ip_per_hour");
+  const originals = E2E_IP_LIMITS.map(
+    (name) => [name, appLimit(name)] as const,
+  );
   const calendarDelay = appLimit("calendar_confirm_delay_seconds");
   const restore = () => {
-    setAppLimit("otp_send_per_ip_per_hour", original);
+    for (const [name, value] of originals) {
+      setAppLimit(name, value);
+    }
     setAppLimit("calendar_confirm_delay_seconds", calendarDelay);
   };
   try {
     localSql("delete from private.rate_limit_events");
-    setAppLimit("otp_send_per_ip_per_hour", E2E_OTP_REQUESTS_PER_HOUR);
+    for (const name of E2E_IP_LIMITS) {
+      setAppLimit(name, E2E_REQUESTS_PER_IP_PER_HOUR);
+    }
     // The responses story waits for calendar emails: make them due after 1 s (the lowest value the
     // limits table allows), then the story runs the dispatcher itself, as cron would. Set once for
     // the whole run (parallel workers would race a per-file before/after).
