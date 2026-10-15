@@ -57,6 +57,7 @@ export const API_ERROR_CODES = [
   "cancel_emails_waiting",
   "owns_workspaces",
   "reminders_unavailable",
+  "workspace_seats_limit_reached",
 ] as const;
 
 /** An API error code. */
@@ -119,6 +120,7 @@ export const API_ERROR_STATUS: Record<ApiErrorCode, number> = {
   cancel_emails_waiting: 409,
   owns_workspaces: 409,
   reminders_unavailable: 503,
+  workspace_seats_limit_reached: 409,
 };
 
 /** Body of every non-2xx API response. */

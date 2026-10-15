@@ -48,6 +48,12 @@ const outer = (reason: string): LimitRule => ({ kind: "outer", reason });
 const TOKEN: LimitRule = { kind: "token" };
 const SECRET: LimitRule = { kind: "secret" };
 const SIGNED_IN_READ = outer("signed-in read: the WAF guard");
+const PAGED: ListRule = {
+  kind: "paged",
+  size: "PAGE_SIZE_DEFAULT / PAGE_SIZE_MAX (src/config/pagination.ts)",
+};
+const SINGLE: ListRule = { kind: "single" };
+const bounded = (by: string): ListRule => ({ kind: "bounded", by });
 
 /**
  * Every route file and exported method under `src/app/api/` (route-registry.test.ts fails for a
@@ -61,6 +67,7 @@ export const ROUTES: Record<
   "[...path]": {
     GET: {
       limits: [outer("unknown address: answers 404 with no database call")],
+      list: SINGLE,
     },
     POST: {
       limits: [outer("unknown address: answers 404 with no database call")],
@@ -82,10 +89,11 @@ export const ROUTES: Record<
           "refused at once without the state cookie that only the IP-limited start sets",
         ),
       ],
+      list: SINGLE,
     },
   },
   "auth/google/start": {
-    GET: { limits: [ip("google_signin")] },
+    GET: { limits: [ip("google_signin")], list: SINGLE },
   },
   "auth/otp/send": {
     POST: { limits: [ip("otp_send")] },
@@ -103,6 +111,7 @@ export const ROUTES: Record<
       limits: [
         outer("uptime probe, excluded from the WAF rule; one constant query"),
       ],
+      list: SINGLE,
     },
   },
   "integrations/google/callback": {
@@ -112,11 +121,13 @@ export const ROUTES: Record<
           "refused at once without the state cookie that only the rate-limited connect start sets",
         ),
       ],
+      list: SINGLE,
     },
   },
   "integrations/google/connect": {
     GET: {
       limits: [user("google_connect", "public.hit_google_connect_limit")],
+      list: SINGLE,
     },
   },
   "integrations/google/connections/[id]": {
@@ -136,34 +147,40 @@ export const ROUTES: Record<
     POST: { limits: [user("invite_preview", "public.invite_preview")] },
   },
   me: {
-    GET: { limits: [SIGNED_IN_READ] },
+    GET: {
+      limits: [SIGNED_IN_READ],
+      list: bounded("workspace_seats_per_user_max"),
+    },
     PATCH: { limits: [write("profile_write", "public.profiles")] },
     DELETE: { limits: [user("account_delete", "private.delete_account")] },
   },
   "me/account": {
-    GET: { limits: [SIGNED_IN_READ] },
+    GET: { limits: [SIGNED_IN_READ], list: bounded("workspaces_owned_max") },
   },
   "me/answers": {
-    GET: { limits: [user("answers_download", "private.my_answers")] },
+    GET: {
+      limits: [user("answers_download", "private.my_answers")],
+      list: PAGED,
+    },
   },
   "me/invites": {
-    GET: { limits: [SIGNED_IN_READ] },
+    GET: { limits: [SIGNED_IN_READ], list: PAGED },
   },
   "me/invites/[id]/link": {
-    GET: { limits: [user("invite_link", "private.my_invite")] },
+    GET: { limits: [user("invite_link", "private.my_invite")], list: SINGLE },
   },
   "me/push-subscriptions": {
     POST: { limits: [user("push_subscribe", "private.push_subscribe")] },
     DELETE: { limits: [user("push_unsubscribe", "private.push_unsubscribe")] },
   },
   "r/[token]": {
-    GET: { limits: [TOKEN] },
+    GET: { limits: [TOKEN], list: SINGLE },
   },
   "r/[token]/calendar": {
     POST: { limits: [TOKEN] },
   },
   "r/[token]/ics": {
-    GET: { limits: [TOKEN] },
+    GET: { limits: [TOKEN], list: SINGLE },
   },
   "r/[token]/report": {
     POST: { limits: [TOKEN] },
@@ -175,32 +192,41 @@ export const ROUTES: Record<
     POST: { limits: [TOKEN] },
   },
   "r/[token]/unsubscribe": {
-    GET: { limits: [outer("redirects to /u/<token>; no database call")] },
+    GET: {
+      limits: [outer("redirects to /u/<token>; no database call")],
+      list: SINGLE,
+    },
     POST: { limits: [TOKEN] },
   },
   workspaces: {
     POST: { limits: [user("workspace_create", "private.create_workspace")] },
   },
   "workspaces/[slug]": {
-    GET: { limits: [SIGNED_IN_READ] },
+    GET: { limits: [SIGNED_IN_READ], list: SINGLE },
     PATCH: { limits: [write("workspace_write", "public.workspaces")] },
     DELETE: { limits: [user("workspace_delete", "public.delete_workspace")] },
   },
   "workspaces/[slug]/attendance": {
-    GET: { limits: [SIGNED_IN_READ] },
+    GET: {
+      limits: [SIGNED_IN_READ],
+      list: bounded("contacts_per_workspace_max"),
+    },
   },
   "workspaces/[slug]/attendance/details": {
-    GET: { limits: [SIGNED_IN_READ] },
+    GET: { limits: [SIGNED_IN_READ], list: PAGED },
   },
   "workspaces/[slug]/contacts": {
-    GET: { limits: [SIGNED_IN_READ] },
+    GET: {
+      limits: [SIGNED_IN_READ],
+      list: bounded("contacts_per_workspace_max"),
+    },
   },
   "workspaces/[slug]/contacts/[id]": {
     PATCH: { limits: [write("contact_write", "public.contacts")] },
     DELETE: { limits: [write("contact_write", "public.contacts")] },
   },
   "workspaces/[slug]/contacts/[id]/history": {
-    GET: { limits: [SIGNED_IN_READ] },
+    GET: { limits: [SIGNED_IN_READ], list: PAGED },
   },
   "workspaces/[slug]/contacts/bulk": {
     POST: {
@@ -219,7 +245,7 @@ export const ROUTES: Record<
     },
   },
   "workspaces/[slug]/invites": {
-    GET: { limits: [SIGNED_IN_READ] },
+    GET: { limits: [SIGNED_IN_READ], list: PAGED },
     POST: { limits: [user("invite_create", "public.create_invite")] },
   },
   "workspaces/[slug]/invites/[id]": {
@@ -236,15 +262,15 @@ export const ROUTES: Record<
     DELETE: { limits: [write("list_write", "public.lists")] },
   },
   "workspaces/[slug]/meeting-defaults": {
-    GET: { limits: [SIGNED_IN_READ] },
+    GET: { limits: [SIGNED_IN_READ], list: SINGLE },
     PATCH: { limits: [write("workspace_write", "public.workspaces")] },
   },
   "workspaces/[slug]/meetings": {
-    GET: { limits: [SIGNED_IN_READ] },
+    GET: { limits: [SIGNED_IN_READ], list: PAGED },
     POST: { limits: [user("meeting_create", "private.create_meeting")] },
   },
   "workspaces/[slug]/meetings/[id]": {
-    GET: { limits: [SIGNED_IN_READ] },
+    GET: { limits: [SIGNED_IN_READ], list: SINGLE },
     PATCH: { limits: [write("meeting_write", "public.meetings")] },
     DELETE: {
       limits: [
@@ -254,7 +280,10 @@ export const ROUTES: Record<
     },
   },
   "workspaces/[slug]/meetings/[id]/audience": {
-    GET: { limits: [SIGNED_IN_READ] },
+    GET: {
+      limits: [SIGNED_IN_READ],
+      list: bounded("invitees_per_meeting_max"),
+    },
     PUT: { limits: [user("audience_set", "public.set_meeting_audience")] },
   },
   "workspaces/[slug]/meetings/[id]/cancel": {
@@ -276,22 +305,22 @@ export const ROUTES: Record<
     POST: { limits: [user("meeting_nudge", "public.nudge_meeting")] },
   },
   "workspaces/[slug]/meetings/[id]/people": {
-    GET: { limits: [SIGNED_IN_READ] },
+    GET: { limits: [SIGNED_IN_READ], list: PAGED },
     POST: {
       limits: [user("meeting_people_add", "private.add_meeting_people")],
     },
   },
   "workspaces/[slug]/meetings/[id]/preview": {
-    GET: { limits: [SIGNED_IN_READ] },
+    GET: { limits: [SIGNED_IN_READ], list: SINGLE },
   },
   "workspaces/[slug]/meetings/[id]/results": {
-    GET: { limits: [SIGNED_IN_READ] },
+    GET: { limits: [SIGNED_IN_READ], list: bounded("aggregate counts") },
   },
   "workspaces/[slug]/meetings/[id]/send": {
     POST: { limits: [user("meeting_send", "public.send_meeting")] },
   },
   "workspaces/[slug]/members": {
-    GET: { limits: [SIGNED_IN_READ] },
+    GET: { limits: [SIGNED_IN_READ], list: PAGED },
   },
   "workspaces/[slug]/members/[userId]": {
     PATCH: { limits: [user("member_change", "public.change_role")] },
@@ -303,11 +332,11 @@ export const ROUTES: Record<
     },
   },
   "workspaces/[slug]/sender": {
-    GET: { limits: [SIGNED_IN_READ] },
+    GET: { limits: [SIGNED_IN_READ], list: SINGLE },
     PUT: { limits: [user("sender_set", "public.set_workspace_sender")] },
   },
   "workspaces/[slug]/sheet": {
-    GET: { limits: [SIGNED_IN_READ] },
+    GET: { limits: [SIGNED_IN_READ], list: SINGLE },
     DELETE: { limits: [user("sheet_off", "public.turn_off_sheet")] },
   },
   "workspaces/[slug]/sheet/retry": {
