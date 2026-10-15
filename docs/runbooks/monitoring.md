@@ -41,6 +41,32 @@ Sentry → Explore → Logs, environment `production`. Server lines at `info` an
 Readable production stack traces need `SENTRY_AUTH_TOKEN` in Vercel (Production and Preview); the
 build uploads source maps with it. Without it the build skips the upload and says nothing.
 
+## Discord webhooks (one per channel)
+
+Discord → Server Settings → Integrations → Webhooks → New Webhook → pick the channel → Copy
+Webhook URL. The URL is a secret: paste it only into the commands below, never into chat or issues.
+
+| Channel | Where the URL goes |
+|---|---|
+| `#deploys` | `gh secret set DISCORD_DEPLOYS_WEBHOOK` (paste when asked) |
+| `#uptime` | `gh secret set DISCORD_UPTIME_WEBHOOK` |
+| `#platform` | Vercel `DISCORD_PLATFORM_WEBHOOK` (Production, server-only), added in Task 17 |
+| `#errors` | none: Sentry's own Discord integration |
+
+Back each one up in `.env.local` (commented OTHER SECRETS block).
+
+## GitHub variables for the keep-alive (public values)
+
+`gh variable set SUPABASE_PROD_URL`, `SUPABASE_PROD_PUBLISHABLE_KEY`, `SUPABASE_PREVIEW_URL`,
+`SUPABASE_PREVIEW_PUBLISHABLE_KEY` (the URLs and publishable keys from `.env.local`; both keys are
+already in every browser that opens the app).
+
+## Workflows
+
+- `notify.yml`: production deploys (Vercel's GitHub deployments) and CI failures on main → `#deploys`.
+- `keep-alive.yml`: 05:17 and 17:17 UTC; `#uptime` on failure and on Monday mornings.
+  Run by hand: `gh workflow run keep-alive.yml`.
+
 ## Content Security Policy (CSP)
 
 - Every page gets a fresh nonce from `src/proxy.ts`; the policy is built in

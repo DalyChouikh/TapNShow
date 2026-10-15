@@ -105,4 +105,13 @@ describe("function security (spec §11)", () => {
     );
     expect(row.allowed).toBe(false);
   });
+
+  it("lets anon execute exactly one public function: keep_alive", () => {
+    const rows = queryLocalSql(
+      `select p.proname as name from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'EXECUTE') order by 1`,
+      names,
+    );
+    expect(rows.map((row) => row.name)).toEqual(["keep_alive"]);
+  });
 });
