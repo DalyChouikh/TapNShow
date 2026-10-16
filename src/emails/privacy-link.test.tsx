@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { PRIVACY_POLICY_URL } from "@/config/legal";
 import { meetingEmailProps } from "@/test/fixtures/emails";
+import { renderAdminInviteEmail } from "./admin-invite-email";
 import { renderCalendarConfirmEmail } from "./calendar-confirm-email";
 import { renderInviteEmail } from "./invite-email";
 import { renderMeetingCancelEmail } from "./meeting-cancel-email";
@@ -34,6 +35,12 @@ const EMAILS = {
       inviterName: "Amira",
       role: "viewer",
       link: "https://tapnshow.vercel.app/invite/abc",
+      expiresInDays: 7,
+    }),
+  "admin invite": () =>
+    renderAdminInviteEmail({
+      inviterName: "Mohamed",
+      link: "https://tapnshow.vercel.app/admin/join/abc",
       expiresInDays: 7,
     }),
   "owner alert": () =>

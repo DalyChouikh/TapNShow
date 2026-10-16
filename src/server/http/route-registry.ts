@@ -82,6 +82,53 @@ export const ROUTES: Record<
       limits: [outer("unknown address: answers 404 with no database call")],
     },
   },
+  "admin/admins": {
+    GET: { limits: [SIGNED_IN_READ], list: SINGLE },
+  },
+  "admin/admins/[userId]": {
+    DELETE: { limits: [user("admin_write", "public.admin_remove")] },
+  },
+  "admin/invites": {
+    POST: { limits: [user("admin_invite", "public.admin_invite")] },
+  },
+  "admin/invites/[id]": {
+    DELETE: { limits: [user("admin_write", "public.admin_invite_revoke")] },
+  },
+  "admin/invites/[id]/renew": {
+    POST: { limits: [user("admin_invite", "public.admin_invite_renew")] },
+  },
+  "admin/invites/accept": {
+    POST: {
+      limits: [user("admin_invite_accept", "public.accept_admin_invite")],
+    },
+  },
+  "admin/invites/preview": {
+    POST: {
+      limits: [user("admin_invite_preview", "public.admin_invite_preview")],
+    },
+  },
+  "admin/log": {
+    GET: { limits: [SIGNED_IN_READ], list: PAGED },
+  },
+  "admin/overview": {
+    GET: { limits: [SIGNED_IN_READ], list: SINGLE },
+  },
+  "admin/reports": {
+    GET: { limits: [SIGNED_IN_READ], list: PAGED },
+  },
+  "admin/reports/[id]/reviewed": {
+    POST: { limits: [user("admin_write", "public.admin_mark_reviewed")] },
+  },
+  "admin/workspaces": {
+    GET: { limits: [SIGNED_IN_READ], list: PAGED },
+  },
+  "admin/workspaces/[id]": {
+    GET: { limits: [SIGNED_IN_READ], list: SINGLE },
+  },
+  "admin/workspaces/[id]/suspension": {
+    POST: { limits: [user("admin_write", "public.admin_suspend")] },
+    DELETE: { limits: [user("admin_write", "public.admin_lift")] },
+  },
   "auth/google/callback": {
     GET: {
       limits: [

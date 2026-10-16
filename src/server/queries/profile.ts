@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/server/db/database.types";
 import type { AuthedUser } from "@/server/http/require-user";
 import type { MeResponse } from "@/shared/api/me";
+import { myPlatformRole } from "./admin";
 
 type Client = SupabaseClient<Database>;
 
@@ -14,7 +15,7 @@ export async function getMe(
   client: Client,
   user: AuthedUser,
 ): Promise<MeResponse> {
-  const [profile, roles] = await Promise.all([
+  const [profile, roles, platformRole] = await Promise.all([
     client
       .from("profiles")
       .select("display_name, avatar_url, last_workspace_id")
@@ -24,6 +25,7 @@ export async function getMe(
       .from("workspace_roles")
       .select("role, workspaces (id, slug, name)")
       .eq("user_id", user.id),
+    myPlatformRole(client),
   ]);
   if (profile.error) {
     throw new Error(profile.error.message);
@@ -48,6 +50,7 @@ export async function getMe(
       workspaces.find(
         (workspace) => workspace.id === profile.data.last_workspace_id,
       )?.slug ?? null,
+    platformRole,
   };
 }
 

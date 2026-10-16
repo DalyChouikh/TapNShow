@@ -30,6 +30,7 @@ const me = (displayName: string | null) => ({
     },
   ],
   lastWorkspaceSlug: "club-ab12",
+  platformRole: null,
 });
 
 afterEach(() => {

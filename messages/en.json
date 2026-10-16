@@ -84,6 +84,14 @@
       "expiry": "The link works once and expires in {days} days. Sign in with this email address to accept.",
       "fallback": "If the button doesn't work, copy this link:"
     },
+    "adminInvite": {
+      "subject": "{inviter} invited you to help run {appName}",
+      "preview": "Help run {appName}. The invite works for {days, plural, one {# day} other {# days}}.",
+      "heading": "Help run {appName}",
+      "body": "{inviter} added you as an admin of {appName}. You'll see how the platform is doing, look at reports from people who say they never joined a group, and pause a group's emails when needed. The invite works for {days, plural, one {# day} other {# days}} and only for this address.",
+      "button": "Accept the invite",
+      "fallback": "If the button doesn't work, copy this link:"
+    },
     "meetingInvite": {
       "seeAll": "See all your invites in one place:",
       "preview": "{workspace} invites you: {date}, {time}",

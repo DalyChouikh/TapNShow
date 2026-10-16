@@ -24,6 +24,7 @@ export const meFixture: MeResponse = {
     },
   ],
   lastWorkspaceSlug: "robotics-cd34",
+  platformRole: null,
 };
 
 /** Robotics Club as seen by its Owner. */
