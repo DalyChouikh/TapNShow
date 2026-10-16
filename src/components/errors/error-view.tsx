@@ -3,6 +3,7 @@
 import { WarningCircle } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { PublicPage } from "@/components/public/public-page";
 import { Button } from "@/components/ui/button";
 import { Sticker } from "@/components/ui/sticker";
 
@@ -28,5 +29,14 @@ export function ErrorView({ onRetry }: { onRetry: () => void }) {
         </Button>
       </div>
     </>
+  );
+}
+
+/** The crashed page as `error.tsx` shows it: the view in the public card. */
+export function CrashedPage({ onRetry }: { onRetry: () => void }) {
+  return (
+    <PublicPage>
+      <ErrorView onRetry={onRetry} />
+    </PublicPage>
   );
 }
