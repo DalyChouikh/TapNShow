@@ -89,3 +89,13 @@
   text-decoration: underline;
   overflow-wrap: anywhere;
 }
+
+/* Legal pages (LegalPage): preflight removes list markers and link styling. */
+.legal-body ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+.legal-body a {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
