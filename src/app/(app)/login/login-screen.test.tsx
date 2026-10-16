@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/render";
@@ -75,5 +75,29 @@ describe("LoginScreen", () => {
     expect(
       await screen.findByRole("button", { name: /Resend code in/ }),
     ).toBeDisabled();
+  });
+
+  it("states the agreement and the age on both steps", async () => {
+    stubFetch({ status: 200, body: { ok: true } });
+    const user = userEvent.setup();
+    renderWithProviders(<LoginScreen />);
+    const expectAgreement = () => {
+      const line = screen.getByText(/By continuing you agree to the/);
+      expect(line).toHaveTextContent(
+        "By continuing you agree to the Terms and Privacy Policy and confirm you're 16 or older.",
+      );
+      expect(within(line).getByRole("link", { name: "Terms" })).toHaveAttribute(
+        "href",
+        "/terms",
+      );
+      expect(
+        within(line).getByRole("link", { name: "Privacy Policy" }),
+      ).toHaveAttribute("href", "/privacy");
+    };
+    expectAgreement();
+    await user.type(screen.getByLabelText("Email"), "ali@example.test");
+    await user.click(screen.getByRole("button", { name: "Email me a code" }));
+    await screen.findByLabelText("Digit 1 of 8");
+    expectAgreement();
   });
 });
