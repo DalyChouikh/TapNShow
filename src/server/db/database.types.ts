@@ -7,13 +7,13 @@ export type Database = {
           Tables: {
             "abuse_reports": {
                   Row: {
-                    "contact_id": string | null,"id": string,"invitee_id": string | null,"reported_at": string,"workspace_id": string
+                    "contact_id": string | null,"id": string,"invitee_id": string | null,"reported_at": string,"reviewed_at": string | null,"reviewed_by": string | null,"workspace_id": string
                   }
                   Insert: {
-                    "contact_id"?: string | null,"id"?: string,"invitee_id"?: string | null,"reported_at"?: string,"workspace_id": string
+                    "contact_id"?: string | null,"id"?: string,"invitee_id"?: string | null,"reported_at"?: string,"reviewed_at"?: string | null,"reviewed_by"?: string | null,"workspace_id": string
                   }
                   Update: {
-                    "contact_id"?: string | null,"id"?: string,"invitee_id"?: string | null,"reported_at"?: string,"workspace_id"?: string
+                    "contact_id"?: string | null,"id"?: string,"invitee_id"?: string | null,"reported_at"?: string,"reviewed_at"?: string | null,"reviewed_by"?: string | null,"workspace_id"?: string
                   }
                   Relationships: [
                     {
@@ -312,6 +312,25 @@ isOneToOne: false
                   }
                   Relationships: [
                     
+                  ]
+                },"platform_daily": {
+                  Row: {
+                    "day": string,"emails_failed": number,"emails_sent": number,"people_emailed": number,"pushes_failed": number,"pushes_sent": number,"workspace_id": string
+                  }
+                  Insert: {
+                    "day": string,"emails_failed"?: number,"emails_sent"?: number,"people_emailed"?: number,"pushes_failed"?: number,"pushes_sent"?: number,"workspace_id": string
+                  }
+                  Update: {
+                    "day"?: string,"emails_failed"?: number,"emails_sent"?: number,"people_emailed"?: number,"pushes_failed"?: number,"pushes_sent"?: number,"workspace_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "platform_daily_workspace_id_fkey"
+      columns: ["workspace_id"]
+isOneToOne: false
+      referencedRelation: "workspaces"
+      referencedColumns: ["id"]
+    }
                   ]
                 },"platform_events": {
                   Row: {
@@ -663,11 +682,29 @@ isOneToOne: false
 "admin_lift":
 { Args: { "p_workspace": string }; Returns: undefined
                            },
+"admin_log":
+{ Args: { "p_after_id": number,"p_filter": string,"p_limit": number }; Returns: Json
+                           },
+"admin_mark_reviewed":
+{ Args: { "p_report": string }; Returns: undefined
+                           },
+"admin_overview":
+{ Args: { "p_days": number }; Returns: Json
+                           },
 "admin_remove":
 { Args: { "p_user": string }; Returns: undefined
                            },
+"admin_reports":
+{ Args: { "p_after_at": string,"p_after_id": string,"p_limit": number }; Returns: Json
+                           },
 "admin_suspend":
 { Args: { "p_workspace": string }; Returns: undefined
+                           },
+"admin_workspace":
+{ Args: { "p_workspace": string }; Returns: Json
+                           },
+"admin_workspaces":
+{ Args: { "p_after_id": string,"p_after_value": string,"p_filter": string,"p_limit": number,"p_search": string,"p_sort": string }; Returns: Json
                            },
 "attendance_details":
 { Args: { "p_after_invitee"?: string,"p_after_meeting"?: string,"p_after_name"?: string,"p_after_starts"?: string,"p_from"?: string,"p_limit"?: number,"p_to"?: string,"p_workspace": string }; Returns: Json
