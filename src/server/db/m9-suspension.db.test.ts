@@ -75,6 +75,25 @@ describe("automatic suspension (spec §7.12)", () => {
     expect(openSuspensions(workspace.id)).toBe(1);
   });
 
+  it("counts people, not reports: one person reporting from three invitations counts once", async () => {
+    const { workspace } = await workspaceWithPeople(10);
+    const { data: person } = await adminClient()
+      .from("contacts")
+      .insert({
+        workspace_id: workspace.id,
+        email: `r-${crypto.randomUUID()}@example.test`,
+        full_name: "Reporter",
+      })
+      .select("id")
+      .single();
+    for (let i = 0; i < 3; i += 1)
+      seedReport(workspace.id, "0 minutes", person?.id ?? null);
+    expect(openSuspensions(workspace.id)).toBe(0);
+    seedReport(workspace.id);
+    seedReport(workspace.id);
+    expect(openSuspensions(workspace.id)).toBe(1);
+  });
+
   it("logs every report and the suspension, with counts only", async () => {
     const { workspace } = await workspaceWithPeople(10);
     for (let i = 0; i < 3; i += 1) seedReport(workspace.id);
@@ -144,6 +163,35 @@ describe("what a suspension does", () => {
       (await owner.client.rpc("nudge_meeting", { p_meeting: meetingId })).error
         ?.message,
     ).toBe("tn:sending_suspended");
+  });
+
+  it("tells nobody outside the team that a workspace is suspended", async () => {
+    const { workspace, meetingId } = await workspaceWithPeople(1);
+    const stranger = await createTestUser();
+    const viewer = await createTestUser();
+    runLocalSql(
+      `insert into public.workspace_roles (workspace_id, user_id, role) values ('${workspace.id}', '${viewer.id}', 'viewer')`,
+    );
+    const answers = async () =>
+      Promise.all(
+        [stranger, viewer].flatMap((user) => [
+          user.client.rpc("send_meeting", { p_meeting: meetingId }),
+          user.client.rpc("nudge_meeting", { p_meeting: meetingId }),
+          user.client.rpc("edit_sent_meeting", {
+            p_meeting: meetingId,
+            p_fields: { location_text: "Room C3" },
+            p_notify: true,
+            p_dry_run: false,
+          }),
+        ]),
+      ).then((results) => results.map((result) => result.error?.message));
+    const before = await answers();
+    runLocalSql(
+      `select private.open_suspension('${workspace.id}', 'platform_admin', null, '{}')`,
+    );
+    const after = await answers();
+    expect(after).toEqual(before);
+    expect(after).not.toContain("tn:sending_suspended");
   });
 
   it("refuses an edit that would email people, not one that emails no one", async () => {

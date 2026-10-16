@@ -29,9 +29,17 @@ export function seedEmailedPeople(
   `);
 }
 
-/** One "Not my group" report against the workspace, `ago` before now (as token_unsubscribe writes it). */
-export function seedReport(workspaceId: string, ago = "0 minutes"): void {
+/**
+ * One "Not my group" report against the workspace, `ago` before now (as token_unsubscribe writes
+ * it). `contactId` is the reporting person; without it the report stands for someone new.
+ */
+export function seedReport(
+  workspaceId: string,
+  ago = "0 minutes",
+  contactId: string | null = null,
+): void {
   runLocalSql(
-    `insert into public.abuse_reports (workspace_id, reported_at) values ('${workspaceId}', now() - interval '${ago}')`,
+    `insert into public.abuse_reports (workspace_id, reported_at, contact_id)
+     values ('${workspaceId}', now() - interval '${ago}', ${contactId ? `'${contactId}'` : "null"})`,
   );
 }

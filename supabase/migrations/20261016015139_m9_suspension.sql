@@ -112,7 +112,9 @@ begin
   perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext('suspension:' || new.workspace_id::text));
   select greatest(pg_catalog.now() - v_window, coalesce(max(s.lifted_at), '-infinity'::timestamptz)) into v_since
   from public.workspace_sending_suspensions s where s.workspace_id = new.workspace_id;
-  select count(*) into v_reports from public.abuse_reports r
+  -- People, not rows: one person invited to several meetings can report from each invitation.
+  -- A report whose contact was deleted since counts as its own person.
+  select count(distinct coalesce(r.contact_id::text, r.id::text)) into v_reports from public.abuse_reports r
   where r.workspace_id = new.workspace_id and r.reported_at > v_since;
   select count(distinct i.contact_id) into v_people
   from public.send_log l
@@ -162,10 +164,13 @@ security definer
 set search_path = ''
 as $$
 begin
+  -- Only the workspace's organizers learn that it is suspended; anyone else gets the send's own
+  -- refusal (not found, forbidden) from the body that follows.
   if exists (
     select 1 from public.meetings m
     join public.workspace_sending_suspensions s on s.workspace_id = m.workspace_id and s.lifted_at is null
     where m.id = p_meeting
+      and private.is_member(m.workspace_id, array['owner', 'admin']::public.workspace_role[])
   ) then
     raise exception 'tn:sending_suspended' using errcode = 'P0001';
   end if;
@@ -191,10 +196,13 @@ security definer
 set search_path = ''
 as $$
 declare
+  v_workspace uuid := (select m.workspace_id from public.meetings m where m.id = p_meeting);
   v_preview jsonb;
 begin
-  if coalesce(p_dry_run, false)
-     or not private.workspace_suspended((select m.workspace_id from public.meetings m where m.id = p_meeting)) then
+  -- As for sends: only organizers learn about the suspension; the body refuses anyone else.
+  if coalesce(p_dry_run, false) or v_workspace is null
+     or not private.is_member(v_workspace, array['owner', 'admin']::public.workspace_role[])
+     or not private.workspace_suspended(v_workspace) then
     return;
   end if;
   v_preview := private.edit_sent_meeting(p_meeting, p_fields, p_notify, true);
