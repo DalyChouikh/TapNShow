@@ -34,9 +34,52 @@ export type DeliveryInput = {
   mailer?: { send: (email: SystemEmail) => Promise<void> };
 };
 
+/** What emailing one token link produced (the link itself stays valid whatever happens). */
+export type EmailedLink =
+  | { status: "sent" }
+  | { status: "email_limit" }
+  | { status: "email_failed" }
+  | { status: "error"; error: { code?: string; message: string } };
+
 /**
- * Hands one invite token to its person: returns the link for "link" delivery, or spends email
- * budget and emails it. Budget or SMTP failures leave the invite valid (the UI offers "Copy link").
+ * Emails one token link within a sending budget: the budget is spent per attempt, failed SMTP
+ * sends included, so retries can't hammer Gmail; over the budget or on a failed send the token
+ * stays valid (the UI offers "Copy link"). The one place these rules live (workspace and admin
+ * invites).
+ */
+export async function emailTokenLink(input: {
+  to: string;
+  spendBudget: () => PromiseLike<{
+    data: boolean | null;
+    error: { code?: string; message: string } | null;
+  }>;
+  render: () => Promise<{ subject: string; html: string; text: string }>;
+  mailer?: { send: (email: SystemEmail) => Promise<void> };
+  failureLog: string;
+}): Promise<EmailedLink> {
+  const budget = await input.spendBudget();
+  if (budget.error) {
+    return { status: "error", error: budget.error };
+  }
+  if (budget.data !== true) {
+    return { status: "email_limit" };
+  }
+  try {
+    const content = await input.render();
+    await (input.mailer ?? createSystemMailer()).send({
+      to: input.to,
+      ...content,
+    });
+  } catch (error) {
+    logger.error({ err: error }, input.failureLog);
+    return { status: "email_failed" };
+  }
+  return { status: "sent" };
+}
+
+/**
+ * Hands one invite token to its person: returns the link for "link" delivery, or emails it within
+ * the workspace's budget (`emailTokenLink`).
  */
 export async function deliverInviteOutcome(
   input: DeliveryInput,
@@ -49,34 +92,23 @@ export async function deliverInviteOutcome(
   if (!invite) {
     return { status: "not_found" };
   }
-  // Budget is spent per attempt, including failed SMTP sends: retries cannot hammer Gmail.
-  const budget = await consumeInviteEmail(input.supabase, input.workspaceId);
-  if (budget.error) {
-    return { status: "error", error: budget.error };
-  }
-  if (budget.data !== true) {
-    return { status: "email_limit" };
-  }
-  try {
-    const content = await renderInviteEmail({
-      workspaceName: input.workspaceName,
-      inviterName: input.inviterName,
-      role: invite.role,
-      link,
-      expiresInDays: differenceInCalendarDays(
-        parseISO(invite.expiresAt),
-        new Date(),
-      ),
-    });
-    await (input.mailer ?? createSystemMailer()).send({
-      to: invite.email,
-      ...content,
-    });
-  } catch (error) {
-    logger.error({ err: error }, "invite email failed");
-    return { status: "email_failed" };
-  }
-  return { status: "sent" };
+  return emailTokenLink({
+    to: invite.email,
+    spendBudget: () => consumeInviteEmail(input.supabase, input.workspaceId),
+    render: () =>
+      renderInviteEmail({
+        workspaceName: input.workspaceName,
+        inviterName: input.inviterName,
+        role: invite.role,
+        link,
+        expiresInDays: differenceInCalendarDays(
+          parseISO(invite.expiresAt),
+          new Date(),
+        ),
+      }),
+    mailer: input.mailer,
+    failureLog: "invite email failed",
+  });
 }
 
 /** Single-invite response (renew): the outcome as `inviteDeliveredSchema` or an API error. */

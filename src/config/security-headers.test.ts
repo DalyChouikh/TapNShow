@@ -21,6 +21,7 @@ describe("tokenPageHeaders", () => {
       "/report/:token*",
       "/api/r/:token*",
       "/api/me/invites/:id/link",
+      "/admin/join/:token*",
     ]);
     for (const rule of tokenPageHeaders) {
       expect(rule.headers).toContainEqual({

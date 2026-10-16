@@ -1,7 +1,6 @@
-import { Button, render, Text } from "react-email";
+import { render } from "react-email";
 import { APP_NAME } from "@/config/app";
-import { EmailLayout } from "./email-layout";
-import { brutalBox, emailTheme as t } from "./theme";
+import { ActionEmail } from "./action-email";
 import { getEmailTranslator } from "./translator";
 
 /** What the invite email needs. */
@@ -26,55 +25,24 @@ export function InviteEmail({
     role === "admin" ? "invite.roleAdmin" : "invite.roleViewer",
   );
   return (
-    <EmailLayout
+    <ActionEmail
       preview={tr("invite.preview", {
         workspace: workspaceName,
         role: roleText,
         days: expiresInDays,
       })}
       heading={tr("invite.heading", { workspace: workspaceName })}
-    >
-      <Text
-        style={{ fontSize: "16px", lineHeight: "24px", margin: "0 0 20px" }}
-      >
-        {tr("invite.body", {
-          inviter: inviterName,
-          workspace: workspaceName,
-          appName: APP_NAME,
-          role: roleText,
-        })}
-      </Text>
-      <Button
-        href={link}
-        style={{
-          ...brutalBox(t.primary, t.radiusControl),
-          color: t.ink,
-          display: "inline-block",
-          fontFamily: t.fontDisplay,
-          fontSize: "16px",
-          padding: "14px 22px",
-          textDecoration: "none",
-        }}
-      >
-        {tr("invite.button")}
-      </Button>
-      <Text
-        style={{ fontSize: "15px", lineHeight: "22px", margin: "20px 0 8px" }}
-      >
-        {tr("invite.expiry", { days: expiresInDays })}
-      </Text>
-      <Text
-        style={{
-          color: t.muted,
-          fontSize: "13px",
-          lineHeight: "18px",
-          margin: 0,
-          wordBreak: "break-all",
-        }}
-      >
-        {tr("invite.fallback")} {link}
-      </Text>
-    </EmailLayout>
+      body={tr("invite.body", {
+        inviter: inviterName,
+        workspace: workspaceName,
+        appName: APP_NAME,
+        role: roleText,
+      })}
+      button={tr("invite.button")}
+      link={link}
+      note={tr("invite.expiry", { days: expiresInDays })}
+      fallback={tr("invite.fallback")}
+    />
   );
 }
 

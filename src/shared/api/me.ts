@@ -26,6 +26,8 @@ export const meResponseSchema = z.object({
     }),
   ),
   lastWorkspaceSlug: z.string().nullable(),
+  /** TapNShow's own admin area (spec §7.19): the user menu shows Admin when set. */
+  platformRole: z.enum(["owner", "admin"]).nullable(),
 });
 
 /** Signed-in user's profile and memberships. */

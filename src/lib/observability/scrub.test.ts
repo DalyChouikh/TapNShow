@@ -52,6 +52,16 @@ describe("scrubUrl", () => {
       );
       expect(scrubUrl("/w/club/lists")).toBe("/w/club/lists");
     });
+
+    it("redacts admin invite links, encoded slashes too, but not the admin area", () => {
+      expect(scrubUrl("https://tapnshow.vercel.app/admin/join/abc")).toBe(
+        "https://tapnshow.vercel.app/admin/join/[REDACTED]",
+      );
+      expect(scrubUrl("/welcome?next=%2Fadmin%2Fjoin%2Fabc")).toBe(
+        "/welcome?next=/admin/join/[REDACTED]",
+      );
+      expect(scrubUrl("/admin/workspaces")).toBe("/admin/workspaces");
+    });
   });
 });
 
@@ -72,6 +82,10 @@ describe("routePatternUrl", () => {
     [
       "https://tapnshow.vercel.app/invite/x1",
       "https://tapnshow.vercel.app/invite/[token]",
+    ],
+    [
+      "https://tapnshow.vercel.app/admin/join/x1",
+      "https://tapnshow.vercel.app/admin/join/[token]",
     ],
     [
       "https://tapnshow.vercel.app/login?next=%2Fr%2Fsecret",

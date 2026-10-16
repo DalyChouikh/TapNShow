@@ -17,6 +17,7 @@ export const tokenPageHeaders: HeaderRule[] = [
   "/report/:token*",
   "/api/r/:token*",
   "/api/me/invites/:id/link",
+  "/admin/join/:token*",
 ].map((source) => ({
   source,
   headers: [{ key: "Referrer-Policy", value: "no-referrer" }],

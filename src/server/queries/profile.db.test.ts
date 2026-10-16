@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createTestUser } from "@/test/db/clients";
+import { makePlatformAdmin } from "@/test/db/platform";
 import { addMember, createWorkspaceAs } from "@/test/db/workspaces";
 import { getMe, updateProfile } from "./profile";
 
@@ -24,6 +25,22 @@ describe("getMe", () => {
       ["Zeta Club", "owner"],
     ]);
     expect(me.lastWorkspaceSlug).toBe(zeta.slug);
+  });
+});
+
+describe("getMe platformRole", () => {
+  it("is the platform role of an admin, and null for everyone else", async () => {
+    const admin = await createTestUser();
+    const member = await createTestUser();
+    makePlatformAdmin(admin);
+    expect(
+      (await getMe(admin.client, { id: admin.id, email: admin.email }))
+        .platformRole,
+    ).toBe("admin");
+    expect(
+      (await getMe(member.client, { id: member.id, email: member.email }))
+        .platformRole,
+    ).toBeNull();
   });
 });
 

@@ -32,6 +32,7 @@ describe("/w/[slug]/settings", () => {
               },
               workspaces: [],
               lastWorkspaceSlug: null,
+              platformRole: null,
             }),
           );
         }

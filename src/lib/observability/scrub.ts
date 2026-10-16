@@ -1,10 +1,14 @@
 /**
- * `/r/<token>` personal links (also inside `/api/r/<token>`), `/u/<token>`, `/report/<token>` and
- * `/invite/<token>` links, including percent-encoded
- * slashes and any letter case. Route patterns such as `/r/[token]` are left alone.
+ * `/r/<token>` personal links (also inside `/api/r/<token>`), `/u/<token>`, `/report/<token>`,
+ * `/invite/<token>` and `/admin/join/<token>` links, including percent-encoded slashes and any
+ * letter case. Route patterns such as `/r/[token]` are left alone.
  */
 const TOKEN_LINK =
-  /(?:\/|%2f)(r|u|report|invite)(?:\/|%2f)(?!\[|%5b)[^/?#&\s"'\\]+/gi;
+  /(?:\/|%2f)(r|u|report|invite|admin(?:\/|%2f)join)(?:\/|%2f)(?!\[|%5b)[^/?#&\s"'\\]+/gi;
+
+/** The link's own segment, decoded and lower-case (`admin%2Fjoin` → `admin/join`). */
+const segmentOf = (segment: string) =>
+  segment.toLowerCase().replace(/%2f/g, "/");
 
 /** Google OAuth callback URLs (sign-in and Gmail connect) with their query string (the `code` is a one-time credential). */
 const OAUTH_CALLBACK =
@@ -59,7 +63,7 @@ export function scrubUrl(url: string): string {
   return url
     .replace(
       TOKEN_LINK,
-      (_match, segment: string) => `/${segment.toLowerCase()}/[REDACTED]`,
+      (_match, segment: string) => `/${segmentOf(segment)}/[REDACTED]`,
     )
     .replace(OAUTH_CALLBACK, (callback) =>
       callback.replace(OAUTH_SECRET_PARAM, "$1[REDACTED]"),
@@ -171,6 +175,6 @@ export function routePatternUrl(url: string): string {
   const withoutQuery = url.split(/[?#]/, 1)[0] ?? url;
   return withoutQuery.replace(
     TOKEN_LINK,
-    (_match, segment: string) => `/${segment.toLowerCase()}/[token]`,
+    (_match, segment: string) => `/${segmentOf(segment)}/[token]`,
   );
 }

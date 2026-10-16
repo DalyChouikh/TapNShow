@@ -1,8 +1,7 @@
-import { Button, render, Text } from "react-email";
+import { render } from "react-email";
 import { APP_NAME } from "@/config/app";
 import type { SheetPauseReason } from "@/shared/api/sheets";
-import { EmailLayout } from "./email-layout";
-import { brutalBox, emailTheme as t } from "./theme";
+import { ActionEmail } from "./action-email";
 import { getEmailTranslator } from "./translator";
 
 /** What an alert to a workspace Owner needs (sent by the platform sender, spec §8). */
@@ -65,38 +64,14 @@ export function OwnerAlertEmail({
   linkUrl: string;
 }) {
   return (
-    <EmailLayout preview={copy.preview} heading={copy.heading}>
-      <Text
-        style={{ fontSize: "16px", lineHeight: "24px", margin: "0 0 20px" }}
-      >
-        {copy.body}
-      </Text>
-      <Button
-        href={linkUrl}
-        style={{
-          ...brutalBox(t.primary, t.radiusControl),
-          color: t.ink,
-          display: "inline-block",
-          fontFamily: t.fontDisplay,
-          fontSize: "16px",
-          padding: "14px 22px",
-          textDecoration: "none",
-        }}
-      >
-        {copy.button}
-      </Button>
-      <Text
-        style={{
-          color: t.muted,
-          fontSize: "13px",
-          lineHeight: "18px",
-          margin: "20px 0 0",
-          wordBreak: "break-all",
-        }}
-      >
-        {copy.fallback} {linkUrl}
-      </Text>
-    </EmailLayout>
+    <ActionEmail
+      preview={copy.preview}
+      heading={copy.heading}
+      body={copy.body}
+      button={copy.button}
+      link={linkUrl}
+      fallback={copy.fallback}
+    />
   );
 }
 
