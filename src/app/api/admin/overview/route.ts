@@ -1,26 +1,26 @@
 import type { NextResponse } from "next/server";
-import { z } from "zod";
 import { adminJson, loadAdminContext } from "@/server/http/admin-context";
 import { apiError } from "@/server/http/errors";
 import { adminOverview } from "@/server/queries/admin";
-import { ADMIN_OVERVIEW_DAYS } from "@/shared/api/admin";
+import { adminOverviewQuerySchema } from "@/shared/api/admin";
 
-const daysSchema = z.coerce
-  .number()
-  .pipe(z.union(ADMIN_OVERVIEW_DAYS.map((days) => z.literal(days))))
-  .default(30);
-
-/** `GET /api/admin/overview?days=7|30|90` (spec §7.19 Overview; 30 by default). */
+/**
+ * `GET /api/admin/overview?from=&to=` (spec §7.19 Overview): one period of UTC days for the
+ * figures and the chart. The database decides what range it accepts (up to two years, ending
+ * today at the latest).
+ */
 export async function GET(request: Request): Promise<NextResponse> {
-  const days = daysSchema.safeParse(
-    new URL(request.url).searchParams.get("days") ?? undefined,
-  );
-  if (!days.success) {
+  const search = new URL(request.url).searchParams;
+  const period = adminOverviewQuerySchema.safeParse({
+    from: search.get("from") ?? undefined,
+    to: search.get("to") ?? undefined,
+  });
+  if (!period.success) {
     return apiError("invalid_input");
   }
   const context = await loadAdminContext();
   if (!context.ok) {
     return context.response;
   }
-  return adminJson(await adminOverview(context.supabase, days.data));
+  return adminJson(await adminOverview(context.supabase, period.data));
 }

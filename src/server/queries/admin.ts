@@ -8,11 +8,13 @@ import type {
   AdminInvitePreview,
   AdminLogItem,
   AdminOverview,
+  AdminPeriod,
   AdminReportRow,
   AdminWorkspace,
   AdminWorkspaceRow,
 } from "@/shared/api/admin";
 import {
+  ADMIN_SERIES_UNITS,
   adminInvitePreviewSchema,
   adminLogItemSchema,
 } from "@/shared/api/admin";
@@ -86,7 +88,10 @@ const overviewRow = z.object({
   }),
   current: figuresRow,
   previous: figuresRow,
-  weekly: z.array(z.object({ week: z.string(), meetings: z.number() })),
+  series: z.object({
+    unit: z.enum(ADMIN_SERIES_UNITS),
+    points: z.array(z.object({ start: z.string(), meetings: z.number() })),
+  }),
   health: z.object({
     queue_waiting: z.number(),
     queue_oldest: z.string().nullable(),
@@ -96,13 +101,19 @@ const overviewRow = z.object({
   }),
 });
 
-/** `admin_overview(days)`: needs attention, figures against the previous period, the chart, health. */
+/**
+ * `admin_overview(from, to)`: needs attention, the period's figures against the one before, the
+ * chart's bars, health.
+ */
 export async function adminOverview(
   client: Client,
-  days: number,
+  period: AdminPeriod,
 ): Promise<AdminResult<AdminOverview>> {
   return result(
-    await client.rpc("admin_overview", { p_days: days }),
+    await client.rpc("admin_overview", {
+      p_from: period.from,
+      p_to: period.to,
+    }),
     (data) => {
       const row = overviewRow.parse(data);
       return {
@@ -119,7 +130,7 @@ export async function adminOverview(
         },
         current: figures(row.current),
         previous: figures(row.previous),
-        weekly: row.weekly,
+        series: row.series,
         health: {
           queueWaiting: row.health.queue_waiting,
           queueOldest: row.health.queue_oldest,

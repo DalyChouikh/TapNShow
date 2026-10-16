@@ -702,7 +702,7 @@ isOneToOne: false
 { Args: { "p_report": string }; Returns: undefined
                            },
 "admin_overview":
-{ Args: { "p_days": number }; Returns: Json
+{ Args: { "p_from": string,"p_to": string }; Returns: Json
                            },
 "admin_remove":
 { Args: { "p_user": string }; Returns: undefined

@@ -17,6 +17,7 @@ import {
   myPlatformRole,
   suspendWorkspace,
 } from "./admin";
+import { utcDay } from "@/test/utc-day";
 
 /**
  * The TS side of the admin functions' JSON (src/server/queries/admin.ts) parsed against the real
@@ -46,9 +47,12 @@ describe("admin queries parse what the database answers", () => {
   });
 
   it("reads the overview, the lists, one workspace and the log", async () => {
-    const overview = await adminOverview(owner.client, 7);
+    const overview = await adminOverview(owner.client, {
+      from: utcDay(-6),
+      to: utcDay(),
+    });
     expect(overview.error).toBeNull();
-    expect(overview.data?.weekly).toHaveLength(12);
+    expect(overview.data?.series.points).toHaveLength(7);
     const list = await adminWorkspaces(owner.client, {
       q: "mapped",
       filter: "suspended",

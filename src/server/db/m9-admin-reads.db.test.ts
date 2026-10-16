@@ -7,8 +7,21 @@ import { clearPlatformAdmins, makePlatformAdmin } from "@/test/db/platform";
 import { seedEmailedPeople, seedReport } from "@/test/db/reports";
 import { queryLocalSql, runLocalScript, runLocalSql } from "@/test/db/sql";
 import { createWorkspaceAs } from "@/test/db/workspaces";
+import { utcDay } from "@/test/utc-day";
+import { ADMIN_PERIOD_MAX_DAYS } from "@/shared/api/admin";
 
 beforeEach(() => clearPlatformAdmins());
+
+/** The Overview's "7 days" (today and the 6 days before, UTC). */
+const LAST_7_DAYS = { p_from: utcDay(-6), p_to: utcDay() };
+
+type Series = {
+  current: { meetings_sent: number };
+  series: {
+    unit: "day" | "week" | "month";
+    points: Array<{ start: string; meetings: number }>;
+  };
+};
 
 async function adminAndWorkspace(name: string, people: number) {
   const admin = await createTestUser();
@@ -32,7 +45,11 @@ const ADMIN_READS: Array<
 > = [
   [
     "admin_overview",
-    (user) => user.client.rpc("admin_overview", { p_days: 30 }),
+    (user) =>
+      user.client.rpc("admin_overview", {
+        p_from: utcDay(-29),
+        p_to: utcDay(),
+      }),
   ],
   [
     "admin_workspaces",
@@ -326,7 +343,7 @@ describe("edges (Review Focus 3 and 4)", () => {
     );
     const sent = async () =>
       (
-        (await admin.client.rpc("admin_overview", { p_days: 7 })).data as {
+        (await admin.client.rpc("admin_overview", LAST_7_DAYS)).data as {
           current: { emails_sent: number };
         }
       ).current.emails_sent;
@@ -343,7 +360,7 @@ describe("edges (Review Focus 3 and 4)", () => {
     const { admin, workspace } = await adminAndWorkspace("Edge Club", 1);
     runLocalSql("select private.rollup_platform_daily()");
     const figures = async () => {
-      const data = (await admin.client.rpc("admin_overview", { p_days: 7 }))
+      const data = (await admin.client.rpc("admin_overview", LAST_7_DAYS))
         .data as {
         current: { emails_sent: number };
         previous: { emails_sent: number };
@@ -415,12 +432,90 @@ describe("rollup and overview", () => {
       people_emailed: 3,
       pushes_sent: 7,
     });
-    const { data } = await admin.client.rpc("admin_overview", { p_days: 7 });
+    const { data } = await admin.client.rpc("admin_overview", LAST_7_DAYS);
     const overview = data as {
       current: { emails_sent: number; pushes_sent: number };
-      weekly: Array<{ week: string; meetings: number }>;
+      series: { unit: string; points: Array<{ start: string }> };
     };
     expect(overview.current.emails_sent).toBeGreaterThanOrEqual(3);
-    expect(overview.weekly).toHaveLength(12);
+    expect(overview.series.points).toHaveLength(7);
+  });
+});
+
+describe("overview periods (Owner, 2026-10-16: one switch for the figures and the chart)", () => {
+  async function overview(admin: TestUser, from: string, to: string) {
+    const { data, error } = await admin.client.rpc("admin_overview", {
+      p_from: from,
+      p_to: to,
+    });
+    expect(error).toBeNull();
+    return data as Series;
+  }
+
+  it("draws days for up to a month, one bar per day", async () => {
+    const { admin } = await adminAndWorkspace("Daily Club", 1);
+    const data = await overview(admin, utcDay(-29), utcDay());
+    expect(data.series.unit).toBe("day");
+    expect(data.series.points.map((point) => point.start)).toEqual(
+      Array.from({ length: 30 }, (_, index) => utcDay(index - 29)),
+    );
+  });
+
+  it("draws weeks up to about 6 months, the first one starting on the range's first day", async () => {
+    const { admin } = await adminAndWorkspace("Weekly Club", 1);
+    const data = await overview(admin, utcDay(-89), utcDay());
+    expect(data.series.unit).toBe("week");
+    expect(data.series.points[0].start).toBe(utcDay(-89));
+    expect(data.series.points.length).toBeGreaterThanOrEqual(13);
+    expect(data.series.points.length).toBeLessThanOrEqual(14);
+  });
+
+  it("draws months beyond that", async () => {
+    const { admin } = await adminAndWorkspace("Monthly Club", 1);
+    const data = await overview(admin, utcDay(-364), utcDay());
+    expect(data.series.unit).toBe("month");
+    expect(data.series.points.length).toBeGreaterThanOrEqual(12);
+    expect(data.series.points.length).toBeLessThanOrEqual(13);
+  });
+
+  it("adds up to the meetings sent in the period, edges included", async () => {
+    const { admin, workspace } = await adminAndWorkspace("Edges Club", 1);
+    const [inside, before, now] = await Promise.all(
+      [1, 2, 3].map(() => seedMeeting(workspace.id, { status: "scheduled" })),
+    );
+    const firstDay = `('${utcDay(-89)}'::date)::timestamp at time zone 'UTC'`;
+    runLocalScript(`
+      update public.meetings set sent_at = ${firstDay} + interval '1 minute' where id = '${inside}';
+      update public.meetings set sent_at = ${firstDay} - interval '1 minute' where id = '${before}';
+      update public.meetings set sent_at = now() - interval '1 minute' where id = '${now}';`);
+    const data = await overview(admin, utcDay(-89), utcDay());
+    const total = data.series.points.reduce(
+      (sum, point) => sum + point.meetings,
+      0,
+    );
+    expect(total).toBe(data.current.meetings_sent);
+  });
+
+  it("accepts two years exactly (ADMIN_PERIOD_MAX_DAYS, its TS twin)", async () => {
+    const { admin } = await adminAndWorkspace("Long Club", 1);
+    const data = await overview(
+      admin,
+      utcDay(-(ADMIN_PERIOD_MAX_DAYS - 1)),
+      utcDay(),
+    );
+    expect(data.series.unit).toBe("month");
+  });
+
+  it.each([
+    ["the start after the end", utcDay(-1), utcDay(-2)],
+    ["more than two years", utcDay(-ADMIN_PERIOD_MAX_DAYS), utcDay()],
+    ["an end after today", utcDay(-6), utcDay(1)],
+  ])("answers invalid input for %s", async (_label, from, to) => {
+    const { admin } = await adminAndWorkspace("Range Club", 1);
+    const { error } = await admin.client.rpc("admin_overview", {
+      p_from: from,
+      p_to: to,
+    });
+    expect(error?.message).toBe("tn:invalid_input");
   });
 });

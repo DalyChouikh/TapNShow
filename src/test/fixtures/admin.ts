@@ -43,13 +43,16 @@ export const overviewFixture: AdminOverview = {
   },
   current: figuresFixture,
   previous: { ...figuresFixture, meetingsSent: 181 },
-  // Twelve Mondays from 27 Jul 2026 (the SQL's UTC week starts, without an offset).
-  weekly: Array.from({ length: 12 }, (_, index) => ({
-    week: new Date(Date.UTC(2026, 6, 27 + index * 7))
-      .toISOString()
-      .slice(0, 19),
-    meetings: index * 2,
-  })),
+  // Twelve weeks from Monday 27 Jul 2026 with 0, 2, 4, … 22 meetings (132 in all).
+  series: {
+    unit: "week",
+    points: Array.from({ length: 12 }, (_, index) => ({
+      start: new Date(Date.UTC(2026, 6, 27 + index * 7))
+        .toISOString()
+        .slice(0, 10),
+      meetings: index * 2,
+    })),
+  },
   health: {
     queueWaiting: 12,
     queueOldest: "2026-10-16T09:58:00+00:00",

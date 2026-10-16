@@ -82,7 +82,8 @@ beforeAll(async () => {
 
 /** Every admin read, as the admin pages call them. */
 const READS = () => ({
-  overview: "public.admin_overview(30)",
+  overview:
+    "public.admin_overview((now() at time zone 'UTC')::date - 29, (now() at time zone 'UTC')::date)",
   workspaces: "public.admin_workspaces(null, 'all', 'emails', null, null, 26)",
   "workspaces (search)":
     "public.admin_workspaces('plan club 1', 'reported', 'reports', null, null, 26)",
