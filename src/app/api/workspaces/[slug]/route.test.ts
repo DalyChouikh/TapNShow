@@ -86,4 +86,17 @@ describe("GET /api/workspaces/[slug]", () => {
     });
     expect(mocks.getSendingSuspension).toHaveBeenCalledWith({}, "w1");
   });
+
+  it("still answers when the paused-sending lookup fails (the banner is left out)", async () => {
+    mocks.getWorkspaceBySlug.mockResolvedValueOnce({
+      id: "w1",
+      slug: "club-ab12",
+      myRole: "admin",
+    });
+    mocks.getSendingSuspension.mockRejectedValueOnce(new Error("db down"));
+    const { GET } = await import("./route");
+    const response = await GET(get(), ctx);
+    expect(response.status).toBe(200);
+    expect((await response.json()).sendingSuspension).toBeNull();
+  });
 });

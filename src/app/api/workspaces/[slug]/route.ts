@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getServerEnv } from "@/config/env";
 import { contactHref } from "@/config/legal";
 import { revokeReleased } from "@/server/google/release";
+import { logger } from "@/lib/logger";
 import { fromDatabaseError, ok } from "@/server/http/errors";
 import { parseJsonBody, rejectCrossOrigin } from "@/server/http/request";
 import { loadWorkspaceContext } from "@/server/http/workspace-context";
@@ -30,10 +31,17 @@ export async function GET(
   if (!context.ok) {
     return context.response;
   }
+  // The paused-sending banner is extra: a failed lookup leaves it out, not the workspace.
   const suspension = await getSendingSuspension(
     context.supabase,
     context.workspace.id,
-  );
+  ).catch((error: Error) => {
+    logger.error(
+      { err: error, workspaceId: context.workspace.id },
+      "sending suspension lookup failed",
+    );
+    return null;
+  });
   const body: WorkspaceResponse = {
     ...context.workspace,
     sendingSuspension: suspension

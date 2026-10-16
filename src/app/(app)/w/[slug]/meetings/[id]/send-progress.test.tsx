@@ -73,4 +73,23 @@ describe("SendProgress", () => {
     ).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /connect/i })).toBeNull();
   });
+
+  it("shows a fully sent meeting as sent while the workspace's sending is paused", () => {
+    renderWithProviders(
+      <SendProgress
+        {...props}
+        suspended
+        results={{
+          ...resultsFixture,
+          emails: { ...resultsFixture.emails, queued: 0, sent: 2 },
+        }}
+      />,
+    );
+    expect(screen.getByText("2 invites sent")).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Sending is paused while TapNShow reviews reports about this workspace.",
+      ),
+    ).toBeNull();
+  });
 });

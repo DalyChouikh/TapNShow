@@ -24,6 +24,8 @@ export function usePagedList<
   schema: z.ZodType<P>;
   limit?: number;
   refetchInterval?: number | false;
+  /** How long a page counts as fresh (default: the app's `QUERY_STALE_TIME_MS`). */
+  staleTime?: number;
   enabled?: boolean;
   /** "offlineFirst" lets a request reach the service worker's cache while offline (`/invites`). */
   networkMode?: "online" | "offlineFirst";
@@ -44,6 +46,9 @@ export function usePagedList<
     initialPageParam: null as string | null,
     getNextPageParam: (last) => last.nextCursor,
     refetchInterval: options.refetchInterval ?? false,
+    ...(options.staleTime === undefined
+      ? {}
+      : { staleTime: options.staleTime }),
     refetchIntervalInBackground: false,
     enabled: options.enabled ?? true,
     networkMode: options.networkMode ?? "online",

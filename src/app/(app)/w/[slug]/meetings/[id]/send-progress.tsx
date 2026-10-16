@@ -27,9 +27,10 @@ export function SendProgress({
   const progress = results;
   const counts = results.emails;
   const done = counts.total - counts.queued;
-  const paused =
-    suspended || progress.paused > 0 || progress.senderState !== "ok";
-  const caption = suspended
+  // Paused for review only matters to emails still waiting; a fully sent meeting reads as sent.
+  const held = suspended && (counts.queued > 0 || progress.paused > 0);
+  const paused = held || progress.paused > 0 || progress.senderState !== "ok";
+  const caption = held
     ? t("pausedSuspended")
     : paused
       ? progress.senderState === "broken"
