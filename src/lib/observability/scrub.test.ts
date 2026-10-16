@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { scrubUrl } from "./scrub";
+import { routePatternUrl, scrubUrl } from "./scrub";
 
 describe("scrubUrl", () => {
   it("redacts personal-link tokens but keeps the query", () => {
@@ -52,5 +52,36 @@ describe("scrubUrl", () => {
       );
       expect(scrubUrl("/w/club/lists")).toBe("/w/club/lists");
     });
+  });
+});
+
+describe("routePatternUrl", () => {
+  it.each([
+    [
+      "https://tapnshow.vercel.app/r/abcDEF123?choice=going",
+      "https://tapnshow.vercel.app/r/[token]",
+    ],
+    [
+      "https://tapnshow.vercel.app/u/x1",
+      "https://tapnshow.vercel.app/u/[token]",
+    ],
+    [
+      "https://tapnshow.vercel.app/report/x1#top",
+      "https://tapnshow.vercel.app/report/[token]",
+    ],
+    [
+      "https://tapnshow.vercel.app/invite/x1",
+      "https://tapnshow.vercel.app/invite/[token]",
+    ],
+    [
+      "https://tapnshow.vercel.app/login?next=%2Fr%2Fsecret",
+      "https://tapnshow.vercel.app/login",
+    ],
+    [
+      "https://tapnshow.vercel.app/w/club-ab12/meetings",
+      "https://tapnshow.vercel.app/w/club-ab12/meetings",
+    ],
+  ])("%s → %s", (input, expected) => {
+    expect(routePatternUrl(input)).toBe(expected);
   });
 });

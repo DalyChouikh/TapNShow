@@ -5,6 +5,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale } from "next-intl/server";
 import { MotionProvider } from "@/components/motion/motion-provider";
 import { InstallPromptProvider } from "@/components/providers/install-prompt-provider";
+import { PageAnalytics } from "@/components/providers/page-analytics";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { RegisterServiceWorker } from "@/components/providers/register-service-worker";
 import { RemindersCheckIn } from "@/components/providers/reminders-check-in";
@@ -67,6 +68,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                 </SerwistProvider>
               </InstallPromptProvider>
               <Toaster />
+              <PageAnalytics />
             </QueryProvider>
           </ThemeProvider>
         </NextIntlClientProvider>
