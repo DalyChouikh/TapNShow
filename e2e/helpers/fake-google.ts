@@ -1,8 +1,13 @@
 import { createServer, type Server } from "node:http";
 import { z } from "zod";
 
-/** Port of the fake Google (token, Gmail, Drive, Sheets) used by e2e (never a real Google endpoint). */
-export const FAKE_GOOGLE_PORT = 44399;
+/**
+ * Port of the fake Google (token, Gmail, Drive, Sheets) used by e2e (never a real Google endpoint).
+ * Below 32768, outside every OS's ephemeral range (Linux 32768–60999, macOS and Windows
+ * 49152–65535): a port in it can be held by any outgoing connection when the server starts, which
+ * failed a CI run (#359).
+ */
+export const FAKE_GOOGLE_PORT = 31399;
 /** Base URL the e2e app build uses for every Google API. */
 export const FAKE_GOOGLE_URL = `http://127.0.0.1:${FAKE_GOOGLE_PORT}`;
 
