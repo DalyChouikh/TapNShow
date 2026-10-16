@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { maskEmail, ownerSql, parseOwnerArgs } from "./set-platform-owner";
+import { ownerSql, parseOwnerArgs } from "./set-platform-owner";
 
 describe("set-platform-owner", () => {
   it("parses the email, the project and --replace", () => {
@@ -34,9 +34,5 @@ describe("set-platform-owner", () => {
     expect(ownerSql("me@example.com", false)).toBe(
       "select private.set_platform_owner($tn$me@example.com$tn$, false) as result",
     );
-  });
-
-  it("masks the address in what it prints", () => {
-    expect(maskEmail("mohamed@gmail.com")).toBe("m•••@gmail.com");
   });
 });

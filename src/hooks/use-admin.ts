@@ -1,10 +1,18 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  type QueryKey,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { useEffect } from "react";
 import type { z } from "zod";
 import { ADMIN_PAGE_SIZE } from "@/config/admin";
 import { usePagedList } from "@/hooks/use-paged-list";
-import { apiRequest } from "@/lib/api-client";
+import { ME_QUERY_KEY } from "@/hooks/use-me";
+import { ApiClientError, apiRequest } from "@/lib/api-client";
 import {
   type ADMIN_LOG_FILTERS,
   type ADMIN_WORKSPACE_FILTERS,
@@ -25,10 +33,50 @@ export const ADMIN_QUERY_KEY = ["admin"] as const;
 
 const ADMIN_API = "/api/admin";
 
-/** The Overview for a 7, 30 or 90-day period. */
+function isAdminKey(key: QueryKey | undefined): boolean {
+  return key?.[0] === ADMIN_QUERY_KEY[0];
+}
+
+/**
+ * Watches every admin read and write while the admin area is open (spec §7.19, M9 Review Focus 5):
+ * the API answers 404 to anyone who is no longer an admin, so a 404 fetches `/api/me` again and
+ * the shell shows the not-found view if the role is gone. A 404 that only means one workspace was
+ * deleted changes nothing: the role is still there.
+ */
+export function useAdminAccessCheck(): void {
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    const recheck = (key: QueryKey | undefined, error: Error | null) => {
+      if (
+        isAdminKey(key) &&
+        error instanceof ApiClientError &&
+        error.status === 404
+      ) {
+        void queryClient.invalidateQueries({ queryKey: ME_QUERY_KEY });
+      }
+    };
+    const stopQueries = queryClient.getQueryCache().subscribe((event) => {
+      if (event.type === "updated" && event.action.type === "error") {
+        recheck(event.query.queryKey, event.action.error);
+      }
+    });
+    const stopMutations = queryClient.getMutationCache().subscribe((event) => {
+      if (event.type === "updated" && event.action.type === "error") {
+        recheck(event.mutation.options.mutationKey, event.action.error);
+      }
+    });
+    return () => {
+      stopQueries();
+      stopMutations();
+    };
+  }, [queryClient]);
+}
+
+/** The Overview for a 7, 30 or 90-day period (the last period stays on screen while switching). */
 export function useAdminOverview(days: number) {
   return useQuery({
     queryKey: [...ADMIN_QUERY_KEY, "overview", days],
+    placeholderData: keepPreviousData,
     queryFn: () =>
       apiRequest(`${ADMIN_API}/overview?days=${days}`, {
         schema: adminOverviewSchema,
@@ -111,6 +159,7 @@ function useAdminWrite<V, R>(
 ) {
   const queryClient = useQueryClient();
   return useMutation({
+    mutationKey: ADMIN_QUERY_KEY,
     mutationFn: (variables: V) => {
       const { path, method, body } = request(variables);
       return apiRequest(`${ADMIN_API}${path}`, { method, body, schema });

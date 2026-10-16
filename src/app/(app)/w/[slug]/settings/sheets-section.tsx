@@ -27,12 +27,10 @@ import type { WorkspaceDetails } from "@/shared/api/workspaces";
 import { GoogleConnectResult } from "./google-connect-result";
 import { SettingsSection } from "./settings-section";
 import { Pill } from "@/components/ui/pill";
+import { RELATIVE_TIME_TICK_MS } from "@/config/query";
 import { copyText } from "@/lib/clipboard";
 
 type Pending = "connect" | "recreate" | "turnOff" | null;
-
-/** "Updated 2 minutes ago" refreshes once a minute. */
-const NOW_TICK_MS = 60_000;
 
 const TONE: Record<SheetStatus["state"], "primary" | "success" | "warning"> = {
   off: "primary",
@@ -56,7 +54,7 @@ export function SheetsSection({
   const tCommon = useTranslations("Common");
   const tErrors = useTranslations("ApiErrors");
   const formatter = useFormatter();
-  const now = useNow({ updateInterval: NOW_TICK_MS });
+  const now = useNow({ updateInterval: RELATIVE_TIME_TICK_MS });
   const params = useSearchParams();
   const returning = params.get(GOOGLE_RESULT_PARAMS.purpose) === "sheets";
   // After Try again, follow the status until the sheet is up to date.

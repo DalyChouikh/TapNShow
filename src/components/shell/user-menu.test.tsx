@@ -44,6 +44,21 @@ describe("UserMenu", () => {
     );
   });
 
+  it("lists Admin before Sign out for a platform admin", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <UserMenu me={{ ...meFixture, platformRole: "admin" }} />,
+    );
+    await user.click(screen.getByRole("button", { name: "Account" }));
+    expect(
+      screen.getAllByRole("menuitem").map((item) => item.textContent),
+    ).toEqual(["My invites", "Account", "Admin", "Sign out"]);
+    expect(screen.getByRole("menuitem", { name: "Admin" })).toHaveAttribute(
+      "href",
+      "/admin",
+    );
+  });
+
   it("clears this device before signing out", async () => {
     const steps: string[] = [];
     clearMock.mockImplementationOnce(async () => {

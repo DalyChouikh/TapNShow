@@ -1,6 +1,11 @@
 "use client";
 
-import { EnvelopeSimple, SignOut, UserCircle } from "@phosphor-icons/react";
+import {
+  EnvelopeSimple,
+  ShieldStar,
+  SignOut,
+  UserCircle,
+} from "@phosphor-icons/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -21,7 +26,7 @@ import { okSchema } from "@/shared/api/common";
 import type { MeResponse } from "@/shared/api/me";
 
 /**
- * Account menu: My invites, Account, the theme choice, Sign out. Signing out clears this device first, then every
+ * Account menu: My invites, Account, Admin (platform admins only), the theme choice, Sign out. Signing out clears this device first, then every
  * cached query, then goes to sign-in.
  */
 export function UserMenu({
@@ -72,6 +77,14 @@ export function UserMenu({
             {t("account")}
           </Link>
         </DropdownMenuItem>
+        {me.platformRole ? (
+          <DropdownMenuItem asChild>
+            <Link href="/admin">
+              <ShieldStar weight="bold" aria-hidden />
+              {t("platformAdmin")}
+            </Link>
+          </DropdownMenuItem>
+        ) : null}
         <DropdownMenuSeparator />
         <ThemeMenuChoice />
         <DropdownMenuSeparator />
