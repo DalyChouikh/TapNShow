@@ -52,18 +52,31 @@ export async function ownerEmailOf(workspaceId: string): Promise<string> {
 }
 
 /**
- * Makes the account signed in on `page` a platform admin (e2e setup: the product adds admins
- * through invites).
+ * Makes the account signed in on `page` a platform admin, or the platform owner (e2e setup: the
+ * product adds admins through invites and sets the owner with `scripts/set-platform-owner.ts`).
+ * There is one owner, so making one replaces the last.
  */
-export async function makePlatformAdmin(page: Page): Promise<void> {
+export async function makePlatformAdmin(
+  page: Page,
+  role: "admin" | "owner" = "admin",
+): Promise<void> {
   const me = await page.request.get("/api/me");
   if (!me.ok()) {
     throw new Error(`/api/me answered ${me.status()}`);
   }
   const { userId } = (await me.json()) as { userId: string };
+  if (role === "owner") {
+    const cleared = await adminClient()
+      .from("platform_admins")
+      .delete()
+      .eq("role", "owner");
+    if (cleared.error) {
+      throw cleared.error;
+    }
+  }
   const { error } = await adminClient()
     .from("platform_admins")
-    .insert({ user_id: userId, role: "admin" });
+    .insert({ user_id: userId, role });
   if (error) {
     throw error;
   }

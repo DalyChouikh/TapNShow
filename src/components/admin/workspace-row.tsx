@@ -13,6 +13,7 @@ import {
 /** One workspace as a card on phones (spec §7.19), linking to its page. */
 export function WorkspaceRow({ row }: { row: AdminWorkspaceRow }) {
   const t = useTranslations("Admin.workspaces");
+  const tReports = useTranslations("Admin.reports");
   const { reportRate, delivered } = useWorkspaceRowNumbers(row);
   const counts = { people: row.contacts, meetings: row.meetings30d };
   return (
@@ -28,7 +29,7 @@ export function WorkspaceRow({ row }: { row: AdminWorkspaceRow }) {
             row.reports7d > 0 ? (
               <Pill tone="warning">
                 {reportRate === null
-                  ? t("reportsCount", { count: row.reports7d })
+                  ? tReports("count", { reports: row.reports7d })
                   : t("reports", { count: row.reports7d, rate: reportRate })}
               </Pill>
             ) : null

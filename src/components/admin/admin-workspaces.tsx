@@ -13,8 +13,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { ShowMore } from "@/components/ui/show-more";
-import { Skeleton } from "@/components/ui/skeleton";
 import { SEARCH_DEBOUNCE_MS } from "@/config/meetings";
 import { useAdminWorkspaces } from "@/hooks/use-admin";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -22,7 +20,7 @@ import {
   ADMIN_WORKSPACE_FILTERS,
   ADMIN_WORKSPACE_SORTS,
 } from "@/shared/api/admin";
-import { AdminLoadError } from "./load-error";
+import { PagedResults } from "./paged-results";
 import { WorkspaceRow } from "./workspace-row";
 import { WorkspaceTable } from "./workspace-table";
 
@@ -130,36 +128,22 @@ export function AdminWorkspacesView() {
           </SelectContent>
         </Select>
       </div>
-      {list.query.isError && list.items.length === 0 ? (
-        <AdminLoadError onRetry={() => void list.query.refetch()} />
-      ) : list.query.isPending ? (
-        <div aria-busy="true" className="flex flex-col gap-3">
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-24 w-full" />
-        </div>
-      ) : list.items.length === 0 ? (
-        <p className="py-6 text-center text-muted-ink">{t("empty")}</p>
-      ) : (
-        <>
-          <ul className="flex flex-col gap-3 lg:hidden">
-            {list.items.map((row) => (
-              <li key={row.id}>
-                <WorkspaceRow row={row} />
-              </li>
-            ))}
-          </ul>
-          <div className="hidden lg:block">
-            <WorkspaceTable rows={list.items} />
-          </div>
-          <ShowMore
-            hasMore={list.hasMore}
-            loading={list.isLoadingMore}
-            onMore={list.loadMore}
-            endLabel={t("end")}
-          />
-        </>
-      )}
+      <PagedResults list={list} empty={t("empty")} end={t("end")}>
+        {(rows) => (
+          <>
+            <ul className="flex flex-col gap-3 lg:hidden">
+              {rows.map((row) => (
+                <li key={row.id}>
+                  <WorkspaceRow row={row} />
+                </li>
+              ))}
+            </ul>
+            <div className="hidden lg:block">
+              <WorkspaceTable rows={rows} />
+            </div>
+          </>
+        )}
+      </PagedResults>
     </div>
   );
 }

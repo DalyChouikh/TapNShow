@@ -1624,7 +1624,6 @@
       "row": "{people, plural, one {# person} other {# people}} · {meetings, plural, one {# meeting} other {# meetings}} · {delivered}",
       "rowNoEmails": "{people, plural, one {# person} other {# people}} · {meetings, plural, one {# meeting} other {# meetings}}",
       "reports": "{count, plural, one {# report} other {# reports}} · {rate}",
-      "reportsCount": "{count, plural, one {# report} other {# reports}}",
       "reportsCell": "{count} · {rate}",
       "end": "That's every workspace.",
       "columns": {
@@ -1692,6 +1691,90 @@
       "historyActive": "active",
       "historyLifted": "lifted {date}",
       "historyLiftedBy": "lifted {date} by {name}"
+    },
+    "reports": {
+      "title": "Reports",
+      "rate": "{reports} of {people} people · {percent}",
+      "count": "{reports, plural, one {# report} other {# reports}}",
+      "row": "{rate} in 7 days · {when}",
+      "reviewed": "Reviewed by {name}",
+      "reviewedNoName": "Reviewed",
+      "markReviewed": "Mark reviewed",
+      "markedReviewed": "Report marked reviewed",
+      "openWorkspace": "Open workspace",
+      "empty": "No reports. Nobody has told us about a group they didn't join.",
+      "end": "That's every report."
+    },
+    "admins": {
+      "title": "Platform admins",
+      "owner": "Platform owner",
+      "ownerHint": "Set at setup · can't be removed",
+      "admin": "Admin",
+      "since": "{email} · since {date}",
+      "sinceOnly": "since {date}",
+      "you": "You",
+      "actionsFor": "Actions for {name}",
+      "remove": "Remove",
+      "removeTitle": "Remove {name} as an admin?",
+      "removeBody": "They lose access to this area at once. Their account stays.",
+      "removed": "{name} is no longer an admin",
+      "waiting": "Invites waiting",
+      "expires": "Expires {when}",
+      "copyLink": "Copy link",
+      "linkCopied": "Invite link copied",
+      "resend": "Resend",
+      "resent": "Invite sent again",
+      "revoke": "Revoke",
+      "revokeTitle": "Revoke the invite for {email}?",
+      "revokeBody": "The link stops working. You can invite them again later.",
+      "revoked": "Invite revoked",
+      "add": "Add an admin",
+      "addHelp": "They can see this dashboard, handle reports and suspend or lift sending. They can't add admins.",
+      "email": "Their email",
+      "delivery": "How to send it",
+      "byEmail": "Email it",
+      "byLink": "Copy a link",
+      "send": "Send invite",
+      "makeLink": "Make the link",
+      "sent": "Invite sent to {email}",
+      "linkLabel": "Invite link",
+      "linkReady": "Copy this link and send it to them. It works for 7 days, only for that address.",
+      "emailLimit": "TapNShow sent all its emails for today. Use Copy link on the waiting invite instead.",
+      "emailFailed": "The email didn't go out. Use Copy link on the waiting invite instead.",
+      "done": "Done"
+    },
+    "log": {
+      "title": "Admin log",
+      "filterLabel": "Show",
+      "filters": {
+        "all": "Everything",
+        "suspensions": "Suspensions",
+        "admins": "Admins"
+      },
+      "empty": "Nothing logged yet.",
+      "end": "That's the whole log.",
+      "someone": "An admin",
+      "kinds": {
+        "auto_suspended": "Sending suspended automatically · {workspace}",
+        "suspended": "{actor} suspended sending · {workspace}",
+        "lifted": "{actor} lifted the suspension · {workspace}",
+        "report": "New report · {workspace}",
+        "report_reviewed": "{actor} reviewed a report · {workspace}",
+        "admin_invited": "{actor} invited {email} as an admin",
+        "admin_joined": "{email} joined as an admin",
+        "admin_removed": "{actor} removed {email} as an admin",
+        "invite_revoked": "{actor} revoked the invite for {email}",
+        "owner_set": "The platform owner was set",
+        "platform_email_cap": "The platform email limit was reached for the day",
+        "worker_failing": "A background job failed ({lane})"
+      }
+    },
+    "join": {
+      "readyTitle": "Help run TapNShow",
+      "readyBody": "You're invited as a platform admin. You'll see how the platform is doing, look at reports and pause a group's emails when needed.",
+      "accept": "Accept the invite",
+      "already": "You're already a platform admin.",
+      "open": "Open the admin area"
     }
   }
 }
