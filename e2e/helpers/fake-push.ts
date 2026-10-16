@@ -5,8 +5,11 @@ import { createServer, type Server } from "node:https";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-/** Port of the fake push service (Web Push, RFC 8030) used by e2e. */
-export const FAKE_PUSH_PORT = 44398;
+/**
+ * Port of the fake push service (Web Push, RFC 8030) used by e2e. Below 32768, like the fake
+ * Google's: no OS hands it out to an outgoing connection (#359).
+ */
+export const FAKE_PUSH_PORT = 31398;
 /**
  * Base URL of the fake push service. HTTPS like every real push service: subscriptions must start
  * with https:// (a production rule e2e never weakens).
