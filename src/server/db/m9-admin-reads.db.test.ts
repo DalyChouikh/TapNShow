@@ -110,12 +110,35 @@ describe("admin_workspaces", () => {
     expect(owner.email).not.toBe(row?.owner_email);
   });
 
+  it.each([
+    ["newest", "not-a-time"],
+    ["reports", "2026-10-16 10:00:00+00"],
+    ["emails", "99999999999999999999"],
+  ])(
+    "answers invalid input to a %s cursor that doesn't fit the sort",
+    async (sort, value) => {
+      const admin = await createTestUser();
+      makePlatformAdmin(admin);
+      const { error } = await admin.client.rpc("admin_workspaces", {
+        p_search: sqlNullable<string>(null),
+        p_filter: "all",
+        p_sort: sort,
+        p_after_value: value,
+        p_after_id: "6f1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+        p_limit: 25,
+      });
+      expect(error?.message).toBe("tn:invalid_input");
+    },
+  );
+
   it("pages by keyset with no duplicates or gaps", async () => {
     const admin = await createTestUser();
     makePlatformAdmin(admin);
     const owner = await createTestUser();
+    // A stamp per run: the local database keeps earlier runs' workspaces.
+    const stamp = crypto.randomUUID().slice(0, 8);
     for (let i = 0; i < 5; i += 1)
-      await createWorkspaceAs(owner, `Paging ${i}`);
+      await createWorkspaceAs(owner, `Paging ${stamp} ${i}`);
     const seen: string[] = [];
     let after: { value: string | null; id: string | null } = {
       value: null,
@@ -123,7 +146,7 @@ describe("admin_workspaces", () => {
     };
     for (let page = 0; page < 10; page += 1) {
       const { data } = await admin.client.rpc("admin_workspaces", {
-        p_search: "paging",
+        p_search: `paging ${stamp}`,
         p_filter: "all",
         p_sort: "newest",
         p_after_value: sqlNullable(after.value),

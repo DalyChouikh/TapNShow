@@ -9,7 +9,7 @@ import {
 } from "@tanstack/react-query";
 import { useEffect } from "react";
 import type { z } from "zod";
-import { ADMIN_PAGE_SIZE } from "@/config/admin";
+import { ADMIN_PAGE_SIZE, ADMIN_STALE_TIME_MS } from "@/config/admin";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { ME_QUERY_KEY } from "@/hooks/use-me";
 import { ApiClientError, apiRequest } from "@/lib/api-client";
@@ -76,6 +76,7 @@ export function useAdminAccessCheck(): void {
 export function useAdminOverview(days: number) {
   return useQuery({
     queryKey: [...ADMIN_QUERY_KEY, "overview", days],
+    staleTime: ADMIN_STALE_TIME_MS,
     placeholderData: keepPreviousData,
     queryFn: () =>
       apiRequest(`${ADMIN_API}/overview?days=${days}`, {
@@ -93,6 +94,7 @@ export function useAdminWorkspaces(input: {
   const q = input.q.trim();
   return usePagedList({
     queryKey: [...ADMIN_QUERY_KEY, "workspaces"],
+    staleTime: ADMIN_STALE_TIME_MS,
     path: `${ADMIN_API}/workspaces`,
     params: {
       ...(q ? { q } : {}),
@@ -108,6 +110,7 @@ export function useAdminWorkspaces(input: {
 export function useAdminWorkspace(id: string) {
   return useQuery({
     queryKey: [...ADMIN_QUERY_KEY, "workspace", id],
+    staleTime: ADMIN_STALE_TIME_MS,
     queryFn: () =>
       apiRequest(`${ADMIN_API}/workspaces/${encodeURIComponent(id)}`, {
         schema: adminWorkspaceSchema,
@@ -119,6 +122,7 @@ export function useAdminWorkspace(id: string) {
 export function useAdminReports() {
   return usePagedList({
     queryKey: [...ADMIN_QUERY_KEY, "reports"],
+    staleTime: ADMIN_STALE_TIME_MS,
     path: `${ADMIN_API}/reports`,
     schema: adminReportsPageSchema,
     limit: ADMIN_PAGE_SIZE,
@@ -129,6 +133,7 @@ export function useAdminReports() {
 export function useAdminAdmins() {
   return useQuery({
     queryKey: [...ADMIN_QUERY_KEY, "admins"],
+    staleTime: ADMIN_STALE_TIME_MS,
     queryFn: () =>
       apiRequest(`${ADMIN_API}/admins`, { schema: adminAdminsSchema }),
   });
@@ -138,6 +143,7 @@ export function useAdminAdmins() {
 export function useAdminLog(filter: (typeof ADMIN_LOG_FILTERS)[number]) {
   return usePagedList({
     queryKey: [...ADMIN_QUERY_KEY, "log"],
+    staleTime: ADMIN_STALE_TIME_MS,
     path: `${ADMIN_API}/log`,
     params: { filter },
     schema: adminLogPageSchema,
@@ -147,7 +153,7 @@ export function useAdminLog(filter: (typeof ADMIN_LOG_FILTERS)[number]) {
 
 /**
  * One admin write: the request, then every admin read refetches (the figures, the lists and the
- * log all move with it).
+ * log all move with it), whether it went through or was refused.
  */
 function useAdminWrite<V, R>(
   request: (variables: V) => {
@@ -164,7 +170,8 @@ function useAdminWrite<V, R>(
       const { path, method, body } = request(variables);
       return apiRequest(`${ADMIN_API}${path}`, { method, body, schema });
     },
-    onSuccess: () =>
+    // Refused writes too: a conflict usually means another admin acted first.
+    onSettled: () =>
       queryClient.invalidateQueries({ queryKey: ADMIN_QUERY_KEY }),
   });
 }

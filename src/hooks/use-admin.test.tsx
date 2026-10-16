@@ -1,4 +1,10 @@
-import { act, renderHook, waitFor } from "@testing-library/react";
+import {
+  act,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { QueryProvider } from "@/components/providers/query-provider";
@@ -78,5 +84,55 @@ describe("admin hooks", () => {
     expect(
       fetchMock.mock.calls.some(([, init]) => init?.method === "POST"),
     ).toBe(true);
+  });
+
+  it("refreshes the page after a refused write too (another admin acted first)", async () => {
+    let reads = 0;
+    routeFetch({
+      [`GET /api/admin/workspaces/${ADMIN_WORKSPACE_ID}`]: () => {
+        reads += 1;
+        return json(workspaceDetailFixture({ suspended: reads > 1 }))();
+      },
+      [`POST /api/admin/workspaces/${ADMIN_WORKSPACE_ID}/suspension`]: json(
+        { error: { code: "conflict" } },
+        409,
+      ),
+    });
+    const { result } = renderHook(
+      () => ({
+        workspace: useAdminWorkspace(ADMIN_WORKSPACE_ID),
+        suspend: useSuspendWorkspace(ADMIN_WORKSPACE_ID),
+      }),
+      { wrapper },
+    );
+    await waitFor(() =>
+      expect(result.current.workspace.data?.suspended).toBe(false),
+    );
+    await act(async () => {
+      await result.current.suspend.mutateAsync().catch(() => undefined);
+    });
+    await waitFor(() =>
+      expect(result.current.workspace.data?.suspended).toBe(true),
+    );
+  });
+
+  it("reads admin data afresh each time a page opens", async () => {
+    const fetchMock = routeFetch({
+      [`GET /api/admin/workspaces/${ADMIN_WORKSPACE_ID}`]: json(
+        workspaceDetailFixture(),
+      ),
+    });
+    function Page() {
+      const workspace = useAdminWorkspace(ADMIN_WORKSPACE_ID);
+      return <p>{workspace.data?.name ?? "loading"}</p>;
+    }
+    function Area({ open }: { open: boolean }) {
+      return open ? <Page /> : null;
+    }
+    const { rerender } = render(<Area open />, { wrapper });
+    expect(await screen.findByText("Robotics Club")).toBeInTheDocument();
+    rerender(<Area open={false} />);
+    rerender(<Area open />);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
   });
 });
