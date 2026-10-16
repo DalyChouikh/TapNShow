@@ -1,11 +1,15 @@
 "use client";
 
-import { EnvelopeOpen, WarningCircle } from "@phosphor-icons/react";
+import { EnvelopeOpen } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import {
+  InviteClosedCard,
+  InviteWrongAccountCard,
+} from "@/components/invites/invite-cards";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -111,22 +115,11 @@ export function InviteAcceptance() {
   }
   if (status === "wrong_account") {
     return (
-      <Card as="section" className="flex flex-col gap-3">
-        <Sticker tone="warning">
-          <WarningCircle weight="bold" />
-        </Sticker>
-        <h1 className="font-display text-2xl">
-          {t("wrongTitle", { email: maskedEmail ?? "" })}
-        </h1>
-        <p>{t("wrongBody")}</p>
-        <Button
-          tone="primary"
-          disabled={switchAccount.isPending}
-          onClick={() => switchAccount.mutate()}
-        >
-          {t("switchAccount")}
-        </Button>
-      </Card>
+      <InviteWrongAccountCard
+        email={maskedEmail ?? ""}
+        pending={switchAccount.isPending}
+        onSwitch={() => switchAccount.mutate()}
+      />
     );
   }
   if (status === "already_member" && workspaceSlug) {
@@ -141,19 +134,9 @@ export function InviteAcceptance() {
       </Card>
     );
   }
-  const message = {
-    expired: t("expired"),
-    revoked: t("revoked"),
-    used: t("used"),
-    not_found: t("notFound"),
-    already_member: t("notFound"),
-  }[status];
   return (
-    <Card as="section" className="flex flex-col gap-3">
-      <Sticker tone="neutral">
-        <WarningCircle weight="bold" />
-      </Sticker>
-      <p className="font-bold">{message}</p>
-    </Card>
+    <InviteClosedCard
+      status={status === "already_member" ? "not_found" : status}
+    />
   );
 }

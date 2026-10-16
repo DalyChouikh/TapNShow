@@ -1,4 +1,5 @@
 import type { DiscordEvent } from "./embed";
+import { reportPercent } from "@/lib/admin/format";
 
 /** The platform event kinds, in the order of `public.platform_event_kind` (its TS twin). */
 export const PLATFORM_EVENT_KINDS = [
@@ -58,8 +59,7 @@ const DESCRIPTIONS: Partial<Record<PlatformEventKind, string>> = {
 };
 
 function rate(reports: number, people: number): string {
-  const percent = people > 0 ? Math.round((reports / people) * 1000) / 10 : 100;
-  return `${reports} of ${people} people · ${percent}%`;
+  return `${reports} of ${people} people · ${reportPercent(reports, people)}%`;
 }
 
 /** The `#platform` embed of one event (spec §5): counts, ids and workspace names only. */

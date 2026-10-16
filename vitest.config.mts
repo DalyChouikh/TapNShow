@@ -2,6 +2,9 @@ import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
 import { configDefaults, defineConfig } from "vitest/config";
 
+// Clock times in tests read the same on every machine as in CI (UTC); workers inherit it.
+process.env.TZ = "UTC";
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
