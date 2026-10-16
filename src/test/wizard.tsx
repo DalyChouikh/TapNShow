@@ -1,11 +1,11 @@
 import type { ComponentType } from "react";
-import { useEditDraft } from "@/app/w/[slug]/meetings/[id]/edit/use-edit-draft";
-import { useStepSaver } from "@/app/w/[slug]/meetings/[id]/edit/use-step-saver";
+import { useEditDraft } from "@/app/(app)/w/[slug]/meetings/[id]/edit/use-edit-draft";
+import { useStepSaver } from "@/app/(app)/w/[slug]/meetings/[id]/edit/use-step-saver";
 import type {
   WizardMode,
   WizardStep,
   WizardStepProps,
-} from "@/app/w/[slug]/meetings/[id]/edit/wizard-steps";
+} from "@/app/(app)/w/[slug]/meetings/[id]/edit/wizard-steps";
 import type { Meeting } from "@/shared/api/meetings";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
 

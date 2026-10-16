@@ -1,73 +1,47 @@
 import { describe, expect, it } from "vitest";
-import { parsePublicEnv } from "./public-env";
+import type { EnvSource } from "./env-utils";
+import { readPublicEnv } from "./public-env";
+import { parsePublicEnv } from "./public-env-schema";
 
-describe("parsePublicEnv", () => {
-  it("parses a valid environment", () => {
-    const env = parsePublicEnv({
-      NEXT_PUBLIC_APP_URL: "https://tapnshow.vercel.app",
-    });
-    expect(env.NEXT_PUBLIC_APP_URL).toBe("https://tapnshow.vercel.app");
-    expect(env.NEXT_PUBLIC_SENTRY_DSN).toBeUndefined();
-  });
+const base = { NEXT_PUBLIC_APP_URL: "https://tapnshow.vercel.app" };
 
-  it("treats empty strings as missing", () => {
-    const env = parsePublicEnv({
-      NEXT_PUBLIC_APP_URL: "http://localhost:3000",
-      NEXT_PUBLIC_SENTRY_DSN: "",
-    });
-    expect(env.NEXT_PUBLIC_SENTRY_DSN).toBeUndefined();
-  });
-
-  it("reads the Vercel environment name and rejects unknown ones", () => {
-    const base = { NEXT_PUBLIC_APP_URL: "http://localhost:3000" };
-    expect(
-      parsePublicEnv({ ...base, NEXT_PUBLIC_VERCEL_ENV: "preview" })
-        .NEXT_PUBLIC_VERCEL_ENV,
-    ).toBe("preview");
-    expect(() =>
-      parsePublicEnv({ ...base, NEXT_PUBLIC_VERCEL_ENV: "staging" }),
-    ).toThrow(/NEXT_PUBLIC_VERCEL_ENV/);
-  });
-
-  it("names the missing variable in the error", () => {
-    expect(() => parsePublicEnv({})).toThrow(/NEXT_PUBLIC_APP_URL/);
-  });
-
-  it("rejects a malformed URL", () => {
-    expect(() => parsePublicEnv({ NEXT_PUBLIC_APP_URL: "not a url" })).toThrow(
-      /NEXT_PUBLIC_APP_URL/,
-    );
-  });
-
-  it("reads the Google sign-in flag as a boolean, off by default", () => {
-    expect(
-      parsePublicEnv({ NEXT_PUBLIC_APP_URL: "http://localhost:3000" })
-        .NEXT_PUBLIC_GOOGLE_SIGN_IN_ENABLED,
-    ).toBe(false);
-    expect(
-      parsePublicEnv({
-        NEXT_PUBLIC_APP_URL: "http://localhost:3000",
+describe("readPublicEnv (twin of parsePublicEnv)", () => {
+  it.each<[string, EnvSource]>([
+    ["only the required URL", base],
+    [
+      "blank optional values",
+      { ...base, NEXT_PUBLIC_SENTRY_DSN: "", NEXT_PUBLIC_VAPID_PUBLIC_KEY: "" },
+    ],
+    [
+      "every value set",
+      {
+        ...base,
+        NEXT_PUBLIC_SENTRY_DSN: "https://k@o1.ingest.de.sentry.io/2",
+        NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: "abc",
         NEXT_PUBLIC_GOOGLE_SIGN_IN_ENABLED: "true",
-      }).NEXT_PUBLIC_GOOGLE_SIGN_IN_ENABLED,
-    ).toBe(true);
-  });
-
-  it("keeps Gmail connect off unless set", () => {
-    const env = parsePublicEnv({
-      NEXT_PUBLIC_APP_URL: "https://tapnshow.vercel.app",
-    });
-    expect(env.NEXT_PUBLIC_GMAIL_CONNECT_ENABLED).toBe(false);
-  });
-
-  it("accepts a VAPID public key (65-byte point, base64url) and refuses anything else", () => {
-    const base = { NEXT_PUBLIC_APP_URL: "http://localhost:3000" };
-    const key = `B${"A".repeat(86)}`;
-    expect(
-      parsePublicEnv({ ...base, NEXT_PUBLIC_VAPID_PUBLIC_KEY: key })
-        .NEXT_PUBLIC_VAPID_PUBLIC_KEY,
-    ).toBe(key);
-    expect(() =>
-      parsePublicEnv({ ...base, NEXT_PUBLIC_VAPID_PUBLIC_KEY: "short" }),
-    ).toThrow(/NEXT_PUBLIC_VAPID_PUBLIC_KEY/);
+        NEXT_PUBLIC_GMAIL_CONNECT_ENABLED: "1",
+        NEXT_PUBLIC_VAPID_PUBLIC_KEY: "B".repeat(87),
+        NEXT_PUBLIC_VERCEL_ENV: "preview",
+      },
+    ],
+    [
+      "switches off in words",
+      {
+        ...base,
+        NEXT_PUBLIC_GOOGLE_SIGN_IN_ENABLED: "off",
+        NEXT_PUBLIC_GMAIL_CONNECT_ENABLED: "FALSE",
+      },
+    ],
+    [
+      "switches on in other words",
+      {
+        ...base,
+        NEXT_PUBLIC_GOOGLE_SIGN_IN_ENABLED: "Yes",
+        NEXT_PUBLIC_GMAIL_CONNECT_ENABLED: "enabled",
+      },
+    ],
+    ["production", { ...base, NEXT_PUBLIC_VERCEL_ENV: "production" }],
+  ])("reads %s the way the schema does", (_name, source) => {
+    expect(readPublicEnv(source)).toEqual(parsePublicEnv(source));
   });
 });

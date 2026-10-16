@@ -1,11 +1,20 @@
 "use client";
 
-import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
 import { palette, shape } from "@/design/tokens";
-import messages from "../../messages/en.json";
+import { captureClientError } from "@/lib/observability/browser-sentry";
 
 const { light, dark } = palette;
+
+/**
+ * `Errors.global` and `Errors.retry` from `messages/en.json` (its test pins them). next-intl's
+ * provider lives in the root layout, which is gone here, and importing the catalogue would put
+ * every message into a script that loads on every page.
+ */
+const TEXT = {
+  global: "Something went wrong. Please reload the page.",
+  retry: "Try again",
+};
 
 /**
  * The root layout (and its stylesheet) is gone when this renders, so the page carries its own
@@ -41,7 +50,7 @@ export default function GlobalError({
   retry: () => void;
 }) {
   useEffect(() => {
-    Sentry.captureException(error);
+    captureClientError(error);
   }, [error]);
 
   return (
@@ -51,9 +60,9 @@ export default function GlobalError({
       </head>
       <body>
         <main>
-          <p>{messages.Errors.global}</p>
+          <p>{TEXT.global}</p>
           <button type="button" onClick={() => retry()}>
-            {messages.Errors.retry}
+            {TEXT.retry}
           </button>
         </main>
       </body>

@@ -1,7 +1,6 @@
 "use client";
 
 import { DownloadSimple } from "@phosphor-icons/react";
-import * as Sentry from "@sentry/nextjs";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -14,6 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { captureClientError } from "@/lib/observability/browser-sentry";
 
 /** A file format an export can produce. */
 export type ExportFormat = "csv" | "xlsx";
@@ -48,7 +48,7 @@ export function ExportMenu({
     setBusy(true);
     onExport(format)
       .catch((error: Error) => {
-        Sentry.captureException(error);
+        captureClientError(error);
         toast.error(t("failed"));
       })
       .finally(() => setBusy(false));

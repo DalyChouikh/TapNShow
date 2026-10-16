@@ -2,7 +2,7 @@ import { renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import messages from "../../../messages/en.json";
+import messages from "../../../../messages/en.json";
 import type { ExportSheet } from "@/lib/export/save";
 import type { MyAnswer } from "@/shared/api/my-invites";
 import { useDownloadMyAnswers } from "./use-download-my-answers";

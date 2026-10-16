@@ -1,7 +1,4 @@
 {
-  "Home": {
-    "title": "{appName}"
-  },
   "Errors": {
     "global": "Something went wrong. Please reload the page.",
     "retry": "Try again",
@@ -1417,5 +1414,90 @@
     "inShort": "In short",
     "onThisPage": "On this page",
     "notLawyer": "This page was written carefully but is not a lawyer's review."
+  },
+  "Landing": {
+    "metaTitle": "TapNShow · Know who's coming before the meeting starts",
+    "metaDescription": "Meeting invites from your group's own Gmail. Members answer in one tap, with no app and no account, and you see who's coming as it happens. Free for groups in Tunisia.",
+    "eyebrow": "Free for groups in Tunisia",
+    "title": "Know who's coming before the meeting starts.",
+    "lead": "Send invites from your group's own Gmail. Members answer in one tap, with no app and no account. You see who's going, who's running late and who can't make it, as it happens.",
+    "getStarted": "Get started",
+    "seeHow": "See how it works",
+    "preview": {
+      "label": "An invite as members see it",
+      "from": "Robotics Club invites you",
+      "title": "Weekly meetup",
+      "when": "Thursday 18:00 · Main Library, Room B12"
+    },
+    "how": {
+      "title": "How it works",
+      "steps": {
+        "connect": {
+          "title": "Connect your Gmail",
+          "body": "Invites come from your group's address, not from us."
+        },
+        "invite": {
+          "title": "Add your members once",
+          "body": "Import them from a spreadsheet or a CSV file, then pick who to invite each time."
+        },
+        "watch": {
+          "title": "Watch the answers come in",
+          "body": "Live counts, reasons for being late or away, and a check-in at the door."
+        }
+      }
+    },
+    "features": {
+      "title": "Everything a group needs",
+      "gmail": {
+        "title": "From your Gmail",
+        "body": "Members see your group's name, not an unknown sender."
+      },
+      "oneTap": {
+        "title": "One-tap answers",
+        "body": "Straight from the email, on any phone."
+      },
+      "live": {
+        "title": "Live results",
+        "body": "Going, late, can't come, no answer yet."
+      },
+      "checkIn": {
+        "title": "Door check-in",
+        "body": "Who said yes, and who actually came."
+      },
+      "reminders": {
+        "title": "Reminders",
+        "body": "By email, and on members' phones if they turn them on."
+      },
+      "sheet": {
+        "title": "Google Sheet",
+        "body": "A live copy of every answer for your committee."
+      }
+    },
+    "privacy": {
+      "title": "We send email. We never read it.",
+      "body": "TapNShow asks Google only for permission to send email and to keep the one sheet it creates. It never sees your inbox or your other files."
+    },
+    "faq": {
+      "title": "Questions",
+      "free": {
+        "q": "Is it free?",
+        "a": "Yes. Gmail's own daily sending limits apply to every group's address."
+      },
+      "account": {
+        "q": "Do members need an account?",
+        "a": "No. Members answer from the link in their email. They can make an account later to see all their invites in one place."
+      },
+      "who": {
+        "q": "Who sees the answers?",
+        "a": "Your group's organizers and the committee members you add. Members never see each other's answers."
+      },
+      "groups": {
+        "q": "Which groups is it for?",
+        "a": "Groups in Tunisia that meet regularly: student clubs, associations, volunteer teams and communities."
+      }
+    },
+    "final": {
+      "title": "Run your next meeting with TapNShow"
+    }
   }
 }

@@ -1,10 +1,32 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
+import messages from "../../messages/en.json";
 import GlobalError from "./global-error";
 
-vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn() }));
+const { captureClientError } = vi.hoisted(() => ({
+  captureClientError: vi.fn(),
+}));
+vi.mock("@/lib/observability/browser-sentry", () => ({ captureClientError }));
 
 describe("GlobalError", () => {
+  it("shows the Errors messages and reports the error", () => {
+    const error = new Error("boom");
+    render(<GlobalError error={error} retry={vi.fn()} />, {
+      container: document,
+    });
+    expect(screen.getByText(messages.Errors.global)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: messages.Errors.retry }),
+    ).toBeInTheDocument();
+    expect(captureClientError).toHaveBeenCalledExactlyOnceWith(error);
+  });
+
+  it("doesn't bundle the message catalogue (it loads on every page)", () => {
+    const source = readFileSync("src/app/global-error.tsx", "utf8");
+    expect(source).not.toMatch(/from "[^"]*messages\/en\.json"/);
+  });
+
   it("offers a retry that calls retry", () => {
     const retry = vi.fn();
     // It renders its own <html>, so it mounts on the document like Next mounts it.
