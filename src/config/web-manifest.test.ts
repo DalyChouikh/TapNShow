@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { palette } from "@/design/tokens";
 import { ICON_FILES } from "@/lib/brand/icon-files";
-import manifest from "./manifest";
+import { webManifest as manifest } from "./web-manifest";
 
 describe("web app manifest (spec §10 PWA)", () => {
   it("opens My invites as a standalone app in the app's colours", () => {

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { ROUTES, type LimitRule } from "@/server/http/route-registry";
 import { adminClient, createTestUser } from "@/test/db/clients";
 import { withLimit } from "@/test/db/limits";
-import { queryLocalSql } from "@/test/db/sql";
+import { queryLocalSql, runLocalSql } from "@/test/db/sql";
 import { createWorkspaceAs } from "@/test/db/workspaces";
 
 const flag = z.array(z.object({ ok: z.boolean() })).length(1);
@@ -169,6 +169,70 @@ describe("shared Wi-Fi (Review Focus 1)", () => {
         expect(data, `member ${member} request ${request}`).toBe(true);
       }
     }
+  });
+});
+
+describe("shared Wi-Fi sign-in after answering (final review, Owner 2026-10-16)", () => {
+  it("lets 60 members behind one IP ask for a sign-in code in an hour, not 61", async () => {
+    runLocalSql(
+      "delete from private.rate_limit_events where key like 'otp_send:%'",
+    );
+    const admin = adminClient();
+    for (let member = 0; member < 60; member += 1) {
+      const { data } = await admin.rpc("check_ip_rate_limit", {
+        p_action: "otp_send",
+        p_ip: "203.0.113.60",
+      });
+      expect(data, `member ${member}`).toBe(true);
+    }
+    const { data } = await admin.rpc("check_ip_rate_limit", {
+      p_action: "otp_send",
+      p_ip: "203.0.113.60",
+    });
+    expect(data).toBe(false);
+    runLocalSql(
+      "delete from private.rate_limit_events where key like 'otp_send:%'",
+    );
+  });
+
+  it("caps sign-in codes platform-wide per day, so the platform Gmail stays under 500", async () => {
+    const budget = queryLocalSql(
+      `select sum(value)::integer as total from private.app_limits
+       where name in ('otp_send_platform_per_day', 'invite_email_platform_per_day')`,
+      z.array(z.object({ total: z.number() })).length(1),
+    );
+    expect(budget[0].total).toBeLessThanOrEqual(460);
+    await withLimit("otp_send_platform_per_day", 2, async () => {
+      const admin = adminClient();
+      const ask = async (ip: string) =>
+        (
+          await admin.rpc("check_ip_rate_limit", {
+            p_action: "otp_send",
+            p_ip: ip,
+          })
+        ).data;
+      expect(await ask("198.51.100.21")).toBe(true);
+      expect(await ask("198.51.100.22")).toBe(true);
+      expect(await ask("198.51.100.23")).toBe(false);
+    });
+  });
+
+  it("spends no platform unit on a request its IP limit refuses", async () => {
+    await withLimit("otp_send_per_ip_per_hour", 1, () =>
+      withLimit("otp_send_platform_per_day", 2, async () => {
+        const admin = adminClient();
+        const ask = async (ip: string) =>
+          (
+            await admin.rpc("check_ip_rate_limit", {
+              p_action: "otp_send",
+              p_ip: ip,
+            })
+          ).data;
+        expect(await ask("198.51.100.31")).toBe(true);
+        expect(await ask("198.51.100.31")).toBe(false);
+        expect(await ask("198.51.100.32")).toBe(true);
+      }),
+    );
   });
 });
 

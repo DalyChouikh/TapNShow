@@ -351,6 +351,19 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"platform_rollup_state": {
+                  Row: {
+                    "id": boolean,"rolled_through": string
+                  }
+                  Insert: {
+                    "id"?: boolean,"rolled_through": string
+                  }
+                  Update: {
+                    "id"?: boolean,"rolled_through"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"profiles": {
                   Row: {
                     "avatar_url": string | null,"created_at": string,"display_name": string | null,"last_workspace_id": string | null,"locale": string,"updated_at": string,"user_id": string

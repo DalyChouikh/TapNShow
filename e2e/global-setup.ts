@@ -4,12 +4,13 @@ import { startFakeGoogle } from "./helpers/fake-google";
 import { removeFakePushCertificate, startFakePush } from "./helpers/fake-push";
 
 /**
- * Per-IP limits (`private.check_ip_rate_limit`) one local e2e run shares from its single IP, each
- * raised to this for the run: every story signs in, so a full run makes hundreds of code requests
- * and checks.
+ * Sign-in limits (`private.check_ip_rate_limit`) one local e2e run shares from its single IP and
+ * its single platform, each raised to this for the run: every story signs in, so a full run makes
+ * hundreds of code requests and checks.
  */
 const E2E_IP_LIMITS = [
   "otp_send_per_ip_per_hour",
+  "otp_send_platform_per_day",
   "otp_verify_per_ip_per_hour",
   "google_signin_per_ip_per_hour",
 ] as const;

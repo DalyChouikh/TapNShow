@@ -7,8 +7,12 @@ export const OTP_EXPIRY_SECONDS = 900;
 /** Seconds before "Resend code" unlocks; Supabase allows one code request per user per 60 s. */
 export const OTP_RESEND_SECONDS = 60;
 
-/** Auth emails per hour for the whole project (Supabase `rate_limit_email_sent`, spec §8 budget). */
-export const AUTH_EMAILS_PER_HOUR = 15;
+/**
+ * Auth emails per hour for the whole project (Supabase `rate_limit_email_sent`, spec §8 budget):
+ * 60 lets a lecture hall sign in within the hour (Owner, 2026-10-16). The daily total stays capped
+ * at `otp_send_platform_per_day` (360, `private.app_limits`), so the platform Gmail stays under 500.
+ */
+export const AUTH_EMAILS_PER_HOUR = 60;
 
 /** httpOnly cookie that carries OAuth state, PKCE verifier and nonce between start and callback. */
 export const GOOGLE_OAUTH_COOKIE = "tn_google_oauth";
