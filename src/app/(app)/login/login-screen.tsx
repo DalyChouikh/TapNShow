@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { EnvelopeSimple, Password } from "@phosphor-icons/react";
 import { useMutation } from "@tanstack/react-query";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
@@ -12,10 +13,12 @@ import { GoogleButton } from "@/components/auth/google-button";
 import { CodeInput } from "@/components/forms/code-input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { LEGAL_LINK_CLASS } from "@/components/public/legal-nav";
 import { Input } from "@/components/ui/input";
 import { Sticker } from "@/components/ui/sticker";
 import { APP_NAME } from "@/config/app";
 import { OTP_LENGTH, OTP_RESEND_SECONDS } from "@/config/auth";
+import { LEGAL_LINKS } from "@/config/legal";
 import { publicEnv } from "@/config/public-env";
 import { apiRequest, errorCodeOf } from "@/lib/api-client";
 import { safeNextPath } from "@/lib/safe-next-path";
@@ -25,7 +28,28 @@ import { okSchema } from "@/shared/api/common";
 type EmailForm = z.input<typeof otpSendBodySchema>;
 type CodeForm = { code: string };
 
-/** Email → code sign-in. The Google button is added in Task 7. */
+/** Under both steps (spec §7.18): signing in accepts the Terms and confirms the minimum age. */
+function Agreement() {
+  const t = useTranslations("Auth");
+  return (
+    <p className="text-center text-sm text-muted-ink">
+      {t.rich("agreement", {
+        terms: (chunks) => (
+          <Link className={LEGAL_LINK_CLASS} href={LEGAL_LINKS.terms}>
+            {chunks}
+          </Link>
+        ),
+        privacy: (chunks) => (
+          <Link className={LEGAL_LINK_CLASS} href={LEGAL_LINKS.privacy}>
+            {chunks}
+          </Link>
+        ),
+      })}
+    </p>
+  );
+}
+
+/** Email → code sign-in, or Google. */
 export function LoginScreen() {
   const t = useTranslations("Auth");
   const tErrors = useTranslations("ApiErrors");
@@ -157,76 +181,80 @@ export function LoginScreen() {
             </>
           ) : null}
         </Card>
+        <Agreement />
       </div>
     );
   }
 
   return (
-    <Card key="code-step" as="section" className="flex flex-col gap-4">
-      <Sticker tone="warning">
-        <Password weight="bold" />
-      </Sticker>
-      <h1 className="font-display text-3xl">{t("codeTitle")}</h1>
-      <p className="text-muted-ink">
-        {t("codeSent", { length: OTP_LENGTH, email })}
-      </p>
-      <form
-        className="flex flex-col gap-4"
-        onSubmit={(event) => {
-          event.preventDefault();
-          submitCode();
-        }}
-        noValidate
-      >
-        <Controller
-          control={codeForm.control}
-          name="code"
-          render={({ field }) => (
-            <CodeInput
-              id="code"
-              label={t("codeLabel")}
-              hint={t("codeHint")}
-              length={OTP_LENGTH}
-              value={field.value ?? ""}
-              onChange={field.onChange}
-              onComplete={submitCode}
-              disabled={verify.isPending}
-              error={
-                codeForm.formState.errors.code
-                  ? t("invalidCodeFormat", { length: OTP_LENGTH })
-                  : errorText(verify.error)
-              }
-            />
-          )}
-        />
-        <Button
-          type="submit"
-          tone="primary"
-          size="lg"
-          disabled={verify.isPending}
-        >
-          {t("verify")}
-        </Button>
-      </form>
-      <div className="flex flex-wrap gap-3">
-        <Button
-          disabled={secondsLeft > 0 || sendCode.isPending}
-          onClick={() => sendCode.mutate(email)}
-        >
-          {secondsLeft > 0
-            ? t("resendIn", { seconds: secondsLeft })
-            : t("resend")}
-        </Button>
-        <Button
-          onClick={() => {
-            setEmail(null);
-            verify.reset();
-            codeForm.reset();
+    <div className="flex flex-col gap-4">
+      <Card key="code-step" as="section" className="flex flex-col gap-4">
+        <Sticker tone="warning">
+          <Password weight="bold" />
+        </Sticker>
+        <h1 className="font-display text-3xl">{t("codeTitle")}</h1>
+        <p className="text-muted-ink">
+          {t("codeSent", { length: OTP_LENGTH, email })}
+        </p>
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            submitCode();
           }}
+          noValidate
         >
-          {t("differentEmail")}
-        </Button>
-      </div>
-    </Card>
+          <Controller
+            control={codeForm.control}
+            name="code"
+            render={({ field }) => (
+              <CodeInput
+                id="code"
+                label={t("codeLabel")}
+                hint={t("codeHint")}
+                length={OTP_LENGTH}
+                value={field.value ?? ""}
+                onChange={field.onChange}
+                onComplete={submitCode}
+                disabled={verify.isPending}
+                error={
+                  codeForm.formState.errors.code
+                    ? t("invalidCodeFormat", { length: OTP_LENGTH })
+                    : errorText(verify.error)
+                }
+              />
+            )}
+          />
+          <Button
+            type="submit"
+            tone="primary"
+            size="lg"
+            disabled={verify.isPending}
+          >
+            {t("verify")}
+          </Button>
+        </form>
+        <div className="flex flex-wrap gap-3">
+          <Button
+            disabled={secondsLeft > 0 || sendCode.isPending}
+            onClick={() => sendCode.mutate(email)}
+          >
+            {secondsLeft > 0
+              ? t("resendIn", { seconds: secondsLeft })
+              : t("resend")}
+          </Button>
+          <Button
+            onClick={() => {
+              setEmail(null);
+              verify.reset();
+              codeForm.reset();
+            }}
+          >
+            {t("differentEmail")}
+          </Button>
+        </div>
+      </Card>
+      <Agreement />
+    </div>
   );
 }

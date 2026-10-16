@@ -6,7 +6,7 @@ import { AnswerView } from "./answer-view";
 /** `/r/[token]`: a member's personal answer page (spec §7.3). No session needed. */
 export default function Page() {
   return (
-    <PublicPage>
+    <PublicPage legalLine>
       {/* AnswerView reads ?choice= through useSearchParams. */}
       <Suspense fallback={<Skeleton className="h-96 w-full" />}>
         <AnswerView />

@@ -37,3 +37,16 @@ test("robots.txt and the sitemap list only the public pages", async ({
   const sitemap = await (await request.get("/sitemap.xml")).text();
   expect(sitemap.match(/<loc>/g)).toHaveLength(3);
 });
+
+test("the sign-in page states the agreement and the age", async ({ page }) => {
+  await page.goto("/login");
+  await expect(page.getByText(/confirm you're 16 or older/)).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Privacy Policy" }),
+  ).toHaveAttribute("href", "/privacy");
+});
+
+test("a token page carries the legal line", async ({ page }) => {
+  await page.goto("/u/not-a-real-token");
+  await expect(page.getByText(/Sent with TapNShow/)).toBeVisible();
+});

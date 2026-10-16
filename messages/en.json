@@ -64,6 +64,7 @@
   },
   "Email": {
     "footer": "You got this email because this address was used on {appName}. If that wasn't you, you can ignore it.",
+    "privacy": "Privacy",
     "signIn": {
       "subject": "Your {appName} sign-in code",
       "preview": "Your sign-in code is inside. It works once and expires in {minutes} minutes.",
@@ -274,6 +275,7 @@
     "resend": "Resend code",
     "differentEmail": "Use a different email",
     "or": "or",
+    "agreement": "By continuing you agree to the <terms>Terms</terms> and <privacy>Privacy Policy</privacy> and confirm you're 16 or older.",
     "google": "Continue with Google",
     "googleFailed": "Google sign-in didn't finish. Try again or use an email code.",
     "invalidEmail": "Enter a valid email address.",
@@ -1407,7 +1409,8 @@
     "terms": "Terms",
     "contact": "Contact",
     "madeBy": "Made by Mohamed Ali Chouikh",
-    "footerLabel": "TapNShow links"
+    "footerLabel": "TapNShow links",
+    "sentWith": "Sent with {appName}"
   },
   "Legal": {
     "updated": "Last updated {date}",
