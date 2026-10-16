@@ -16,7 +16,13 @@
     "toggle": "Color theme: {mode}. Activate to switch.",
     "system": "system",
     "light": "light",
-    "dark": "dark"
+    "dark": "dark",
+    "menuLabel": "Theme",
+    "choices": {
+      "system": "System",
+      "light": "Light",
+      "dark": "Dark"
+    }
   },
   "Design": {
     "title": "Design system",

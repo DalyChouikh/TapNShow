@@ -19,6 +19,7 @@ import {
   type WorkspaceDetails,
 } from "@/shared/api/workspaces";
 import { SettingsSection } from "./settings-section";
+import { SectionIcon } from "./section-icon";
 
 const schema = z.object({
   name: workspaceNameSchema,
@@ -62,7 +63,12 @@ export function GeneralSection({
   });
 
   return (
-    <SettingsSection id="general" title={t("title")} defaultOpen={defaultOpen}>
+    <SettingsSection
+      id="general"
+      title={t("title")}
+      icon={<SectionIcon section="general" />}
+      defaultOpen={defaultOpen}
+    >
       {workspace.myRole === "viewer" ? (
         <>
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">

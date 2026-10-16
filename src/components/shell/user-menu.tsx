@@ -5,12 +5,14 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { ThemeMenuChoice } from "@/components/theme/theme-menu-choice";
 import { Avatar } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { apiRequest } from "@/lib/api-client";
@@ -19,7 +21,7 @@ import { okSchema } from "@/shared/api/common";
 import type { MeResponse } from "@/shared/api/me";
 
 /**
- * Account menu: My invites, Account, Sign out. Signing out clears this device first, then every
+ * Account menu: My invites, Account, the theme choice, Sign out. Signing out clears this device first, then every
  * cached query, then goes to sign-in.
  */
 export function UserMenu({
@@ -70,6 +72,9 @@ export function UserMenu({
             {t("account")}
           </Link>
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <ThemeMenuChoice />
+        <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => signOut.mutate()}>
           <SignOut weight="bold" aria-hidden />
           {t("signOut")}

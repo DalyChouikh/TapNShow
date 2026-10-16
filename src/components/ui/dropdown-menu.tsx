@@ -84,3 +84,35 @@ export function DropdownMenuSeparator({
     />
   );
 }
+
+/** Radix radio group inside a menu (one choice among a few). */
+export function DropdownMenuRadioGroup(
+  props: ComponentProps<typeof MenuPrimitive.RadioGroup>,
+) {
+  return (
+    <MenuPrimitive.RadioGroup
+      data-slot="dropdown-menu-radio-group"
+      {...props}
+    />
+  );
+}
+
+/**
+ * One radio option inside a menu: 44 px tall, the chosen one filled like a segmented control
+ * (no native radio, Owner rule).
+ */
+export function DropdownMenuRadioItem({
+  className,
+  ...props
+}: ComponentProps<typeof MenuPrimitive.RadioItem>) {
+  return (
+    <MenuPrimitive.RadioItem
+      data-slot="dropdown-menu-radio-item"
+      className={cn(
+        "flex min-h-11 flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-control px-2 text-xs font-bold outline-hidden select-none data-highlighted:outline-2 data-highlighted:outline-outline data-[state=checked]:bg-fill-primary data-[state=checked]:text-on-fill [&_svg]:size-4 [&_svg]:shrink-0",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
