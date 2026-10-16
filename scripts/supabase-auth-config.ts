@@ -1,12 +1,11 @@
-import { readFileSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
+import { writeFileSync } from "node:fs";
 import {
   SUPABASE_PROJECTS,
   type SupabaseProjectName,
 } from "../src/config/supabase-projects";
 import { renderSignInCodeTemplate } from "../src/emails/sign-in-code-email";
 import { buildAuthConfigPatch } from "../src/server/supabase/auth-config";
+import { MANAGEMENT_API, readAccessToken } from "./supabase-management";
 
 const LOCAL_TEMPLATE_PATH = "supabase/templates/sign-in-code.html";
 const TARGETS = ["local", "preview", "prod", "all"] as const;
@@ -21,13 +20,6 @@ function readTarget(): Target {
   return target;
 }
 
-function readAccessToken(): string {
-  return (
-    process.env.SUPABASE_ACCESS_TOKEN ??
-    readFileSync(join(homedir(), ".supabase", "access-token"), "utf8").trim()
-  );
-}
-
 async function pushHosted(
   name: SupabaseProjectName,
   template: { subject: string; html: string },
@@ -35,7 +27,7 @@ async function pushHosted(
 ): Promise<void> {
   const project = SUPABASE_PROJECTS[name];
   const response = await fetch(
-    `https://api.supabase.com/v1/projects/${project.ref}/config/auth`,
+    `${MANAGEMENT_API}/projects/${project.ref}/config/auth`,
     {
       method: "PATCH",
       headers: {

@@ -28,12 +28,47 @@ export function addGoogleIdentity(
  * `--agent no` keeps the CLI output a plain JSON array on every machine.
  */
 export function queryLocalSql<T>(sql: string, schema: z.ZodType<T>): T {
-  const output = execFileSync(
-    "supabase",
-    ["db", "query", "--local", "--output-format", "json", "--agent", "no", sql],
-    { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
-  );
+  let output: string;
+  try {
+    output = execFileSync(
+      "supabase",
+      [
+        "db",
+        "query",
+        "--local",
+        "--output-format",
+        "json",
+        "--agent",
+        "no",
+        sql,
+      ],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+    );
+  } catch (error) {
+    throw new Error(cliErrorMessage(error instanceof Error ? error : null), {
+      cause: error,
+    });
+  }
   return schema.parse(JSON.parse(output));
+}
+
+/** The CLI's JSON error on stdout: `{"error":{"message":"failed to execute query: error: tn:…"}}`. */
+const cliErrorSchema = z.object({ error: z.object({ message: z.string() }) });
+
+/**
+ * The database's own message for a failed `supabase db query` (the CLI prints it on stdout, which
+ * the child-process error leaves out), so tests can assert `tn:` codes.
+ */
+function cliErrorMessage(error: Error | null): string {
+  const stdout =
+    error && "stdout" in error && typeof error.stdout === "string"
+      ? error.stdout
+      : "";
+  try {
+    return cliErrorSchema.parse(JSON.parse(stdout)).error.message;
+  } catch {
+    return error?.message ?? "supabase db query failed";
+  }
 }
 
 /** The local stack's database as `postgres` (Supabase CLI ports 44320–44329). */
