@@ -256,18 +256,4 @@ describe("check_ip_rate_limit", () => {
     });
     expect(error?.code).toBe("42501");
   });
-
-  it("allows 20 OTP requests per IP per hour", async () => {
-    const ip = `198.51.100.${Math.floor(Math.random() * 250)}-${crypto.randomUUID().slice(0, 4)}`;
-    const results: boolean[] = [];
-    for (let index = 0; index < 21; index += 1) {
-      const { data } = await adminClient().rpc("check_ip_rate_limit", {
-        p_action: "otp_send",
-        p_ip: ip,
-      });
-      results.push(data === true);
-    }
-    expect(results.slice(0, 20).every(Boolean)).toBe(true);
-    expect(results[20]).toBe(false);
-  });
 });

@@ -38,7 +38,6 @@ jobs:
           supabase db dump --db-url "$DB_URL" -f dump/history_schema.sql --schema supabase_migrations
           supabase db dump --db-url "$DB_URL" -f dump/history_data.sql --use-copy --data-only --schema supabase_migrations
           psql "$DB_URL" -At -v ON_ERROR_STOP=1 -f scripts/backup-auth-triggers.sql > dump/auth-triggers.sql
-          psql "$DB_URL" -At -v ON_ERROR_STOP=1 -f scripts/backup-counts.sql > dump/counts.txt
       - name: Restore into a throwaway stack and compare
         run: |
           mkdir -p "$RUNNER_TEMP/restore" && cd "$RUNNER_TEMP/restore"
@@ -48,13 +47,18 @@ jobs:
           # which postgres may not run (checked with a local rehearsal, 2026-10-15).
           LOCAL=$(supabase status -o json | jq -r .DB_URL | sed 's#//postgres:#//supabase_admin:#')
           D="$GITHUB_WORKSPACE/dump"
-          psql "$LOCAL" --single-transaction -v ON_ERROR_STOP=1 \
+          # Terse errors without context: a failed COPY must not print members' rows into this
+          # public repository's run log.
+          psql "$LOCAL" --single-transaction -v ON_ERROR_STOP=1 -v VERBOSITY=terse -v SHOW_CONTEXT=never \
             -f "$D/roles.sql" -f "$D/schema.sql" \
             -c 'SET session_replication_role = replica' -f "$D/data.sql"
-          psql "$LOCAL" --single-transaction -v ON_ERROR_STOP=1 \
+          psql "$LOCAL" --single-transaction -v ON_ERROR_STOP=1 -v VERBOSITY=terse -v SHOW_CONTEXT=never \
             -f "$D/history_schema.sql" -f "$D/history_data.sql" -f "$D/auth-triggers.sql"
-          psql "$LOCAL" -At -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/scripts/backup-counts.sql" > "$D/restored.txt"
-          cd "$GITHUB_WORKSPACE" && bun scripts/compare-counts.ts dump/counts.txt dump/restored.txt
+          psql "$LOCAL" -At -v ON_ERROR_STOP=1 -v VERBOSITY=terse -v SHOW_CONTEXT=never -f "$GITHUB_WORKSPACE/scripts/backup-counts.sql" > "$D/restored.txt"
+          # The expected counts come from the dump itself (one snapshot): a count of production
+          # taken after the dump would race tonight's writes and fail a good backup.
+          cd "$GITHUB_WORKSPACE" && bun scripts/dump-counts.ts dump dump/restored.txt > dump/counts.txt
+          bun scripts/compare-counts.ts dump/counts.txt dump/restored.txt
       - name: Encrypt
         run: |
           tar -czf - -C dump roles.sql schema.sql data.sql history_schema.sql history_data.sql auth-triggers.sql counts.txt \

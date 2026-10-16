@@ -5,7 +5,7 @@ import { createTestUser, type TestUser } from "@/test/db/clients";
 import { seedMeeting } from "@/test/db/meetings";
 import { clearPlatformAdmins, makePlatformAdmin } from "@/test/db/platform";
 import { seedEmailedPeople, seedReport } from "@/test/db/reports";
-import { queryLocalSql, runLocalSql } from "@/test/db/sql";
+import { queryLocalSql, runLocalScript, runLocalSql } from "@/test/db/sql";
 import { createWorkspaceAs } from "@/test/db/workspaces";
 
 beforeEach(() => clearPlatformAdmins());
@@ -238,6 +238,103 @@ describe("edges (Review Focus 3 and 4)", () => {
     expect(
       (data as { last_30: { emails_sent: number } }).last_30.emails_sent,
     ).toBe(2);
+  });
+
+  it("counts yesterday's late email before the night's rollup has run (00:00 to 03:17 UTC)", async () => {
+    const { admin, workspace } = await adminAndWorkspace("Night Club", 2);
+    const mark = queryLocalSql(
+      "select rolled_through::text as day from public.platform_rollup_state",
+      z.array(z.object({ day: z.string() })),
+    );
+    try {
+      runLocalSql(`
+        with rows as (select id, row_number() over (order by id) as n from public.send_log where workspace_id = '${workspace.id}')
+        update public.send_log l set sent_at = case when r.n = 1
+            then date_trunc('day', now() at time zone 'UTC') at time zone 'UTC' - interval '1 minute'
+            else date_trunc('day', now() at time zone 'UTC') at time zone 'UTC' + interval '1 minute' end
+        from rows r where r.id = l.id`);
+      // Last night's rollup ran; tonight's hasn't yet.
+      runLocalScript(`
+        delete from public.platform_daily where workspace_id = '${workspace.id}';
+        insert into public.platform_rollup_state (id, rolled_through)
+        values (true, (now() at time zone 'UTC')::date - 2)
+        on conflict (id) do update set rolled_through = excluded.rolled_through`);
+      const { data } = await admin.client.rpc("admin_workspace", {
+        p_workspace: workspace.id,
+      });
+      expect(
+        (data as { last_30: { emails_sent: number } }).last_30.emails_sent,
+      ).toBe(2);
+    } finally {
+      runLocalSql(
+        mark[0]
+          ? `update public.platform_rollup_state set rolled_through = '${mark[0].day}'`
+          : "delete from public.platform_rollup_state",
+      );
+    }
+  });
+
+  it("records how far the rollup has counted", async () => {
+    runLocalSql("select private.rollup_platform_daily()");
+    const mark = queryLocalSql(
+      "select rolled_through = (now() at time zone 'UTC')::date - 1 as yesterday from public.platform_rollup_state",
+      z.array(z.object({ yesterday: z.boolean() })).length(1),
+    );
+    expect(mark[0].yesterday).toBe(true);
+  });
+
+  it("counts today's failed emails in a workspace's 30 days", async () => {
+    const { admin, workspace } = await adminAndWorkspace("Failing Club", 2);
+    runLocalSql(
+      `update public.outbox_jobs set status = 'failed', updated_at = now() where workspace_id = '${workspace.id}'`,
+    );
+    const { data } = await admin.client.rpc("admin_workspace", {
+      p_workspace: workspace.id,
+    });
+    expect(
+      (data as { last_30: { emails_failed: number } }).last_30.emails_failed,
+    ).toBe(2);
+  });
+
+  it("drops a deleted workspace's emails from today's figures too", async () => {
+    const { admin, owner, workspace } = await adminAndWorkspace(
+      "Short Club",
+      2,
+    );
+    const sent = async () =>
+      (
+        (await admin.client.rpc("admin_overview", { p_days: 7 })).data as {
+          current: { emails_sent: number };
+        }
+      ).current.emails_sent;
+    const before = await sent();
+    const deleted = await owner.client.rpc("delete_workspace", {
+      p_workspace: workspace.id,
+      p_confirm_name: "Short Club",
+    });
+    expect(deleted.error).toBeNull();
+    expect(before - (await sent())).toBe(2);
+  });
+
+  it("counts a day in one period only (the periods start at a UTC midnight)", async () => {
+    const { admin, workspace } = await adminAndWorkspace("Edge Club", 1);
+    runLocalSql("select private.rollup_platform_daily()");
+    const figures = async () => {
+      const data = (await admin.client.rpc("admin_overview", { p_days: 7 }))
+        .data as {
+        current: { emails_sent: number };
+        previous: { emails_sent: number };
+      };
+      return [data.current.emails_sent, data.previous.emails_sent];
+    };
+    const [current, previous] = await figures();
+    // One minute before the 7-day period's first midnight: the previous period's last day.
+    runLocalScript(`
+      update public.send_log set sent_at =
+        date_trunc('day', now() at time zone 'UTC') at time zone 'UTC' - interval '6 days' - interval '1 minute'
+      where workspace_id = '${workspace.id}';
+      select private.rollup_platform_daily();`);
+    expect(await figures()).toEqual([current - 1, previous + 1]);
   });
 
   it("keeps a deleted workspace's events in the log by name, and its page is not found", async () => {

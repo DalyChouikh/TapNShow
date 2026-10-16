@@ -2,8 +2,11 @@ import type { MetadataRoute } from "next";
 import { APP_DESCRIPTION, APP_NAME } from "@/config/app";
 import { palette } from "@/design/tokens";
 
-/** The web app manifest (spec §10 PWA): installs TapNShow with My invites as its start page. */
-export default function manifest(): MetadataRoute.Manifest {
+/**
+ * The web app manifest (spec §10 PWA): installs TapNShow with My invites as its start page. Served
+ * by `src/app/manifest.webmanifest/route.ts` and linked by the root layout.
+ */
+export function webManifest(): MetadataRoute.Manifest {
   return {
     name: APP_NAME,
     short_name: APP_NAME,

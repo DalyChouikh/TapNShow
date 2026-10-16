@@ -56,6 +56,15 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
       className={`${archivoBlack.variable} ${spaceGrotesk.variable} h-full antialiased`}
     >
+      <head>
+        {/* With credentials: on a deployment's own URL (behind Vercel's login) the manifest needs
+            the login cookie, or it is redirected away and the CSP refuses it. */}
+        <link
+          rel="manifest"
+          href="/manifest.webmanifest"
+          crossOrigin="use-credentials"
+        />
+      </head>
       <body className="min-h-full">
         <NextIntlClientProvider
           messages={Object.fromEntries(

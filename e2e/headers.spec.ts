@@ -52,3 +52,16 @@ test("the service worker has its own same-origin policy", async ({
     "default-src 'self'; script-src 'self'; connect-src 'self'",
   );
 });
+
+test("the manifest is fetched with credentials (deployment URLs are behind Vercel's login)", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const manifest = page.locator('link[rel="manifest"]');
+  await expect(manifest).toHaveCount(1);
+  await expect(manifest).toHaveAttribute("href", "/manifest.webmanifest");
+  await expect(manifest).toHaveAttribute("crossorigin", "use-credentials");
+  const response = await page.request.get("/manifest.webmanifest");
+  expect(response.headers()["content-type"]).toBe("application/manifest+json");
+  expect((await response.json()).start_url).toBe("/invites");
+});

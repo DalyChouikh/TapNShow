@@ -10,6 +10,13 @@ union all select 'public.response_history|' || count(*) from public.response_his
 union all select 'public.attendance_marks|' || count(*) from public.attendance_marks
 union all select 'public.google_connections|' || count(*) from public.google_connections
 union all select 'public.outbox_jobs|' || count(*) from public.outbox_jobs
+union all select 'public.abuse_reports|' || count(*) from public.abuse_reports
+union all select 'public.workspace_sending_suspensions|' || count(*) from public.workspace_sending_suspensions
+union all select 'public.platform_admins|' || count(*) from public.platform_admins
+union all select 'public.platform_admin_invites|' || count(*) from public.platform_admin_invites
+union all select 'public.platform_events|' || count(*) from public.platform_events
+union all select 'public.platform_daily|' || count(*) from public.platform_daily
+union all select 'public.platform_rollup_state|' || count(*) from public.platform_rollup_state
 -- Our triggers on Supabase's auth tables (schema.sql leaves the auth schema out; restored from
 -- auth-triggers.sql) and the migration history (restored from history_*.sql).
 union all select 'auth.triggers (ours)|' || count(*) from pg_catalog.pg_trigger t

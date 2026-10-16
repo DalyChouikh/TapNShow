@@ -1,8 +1,10 @@
 # Restore runbook (spec §5 backups)
 
 Backups: GitHub → Actions → Backup → a run → Artifacts → `tapnshow-backup-<run id>` (30 days).
-Each one was restored into a throwaway stack and checked table by table before it was kept
-(`scripts/backup-counts.sql`, compared by `scripts/compare-counts.ts`).
+Each one was restored into a throwaway stack and checked table by table before it was kept:
+`scripts/backup-counts.sql` counts the restored tables, `scripts/dump-counts.ts` counts the same
+tables' rows in the dump itself (`counts.txt`; pg_dump reads one snapshot, so writes made during
+the dump can't fail a good backup), and `scripts/compare-counts.ts` compares them.
 
 ## Decrypt
 
