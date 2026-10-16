@@ -17,6 +17,7 @@ import {
   type ADMIN_LOG_FILTERS,
   type ADMIN_WORKSPACE_FILTERS,
   type ADMIN_WORKSPACE_SORTS,
+  type AdminPeriod,
   adminAdminsSchema,
   adminInvitePreviewSchema,
   adminInviteResultSchema,
@@ -72,16 +73,17 @@ export function useAdminAccessCheck(): void {
   }, [queryClient]);
 }
 
-/** The Overview for a 7, 30 or 90-day period (the last period stays on screen while switching). */
-export function useAdminOverview(days: number) {
+/** The Overview for one period of UTC days (the last period stays on screen while switching). */
+export function useAdminOverview(period: AdminPeriod) {
   return useQuery({
-    queryKey: [...ADMIN_QUERY_KEY, "overview", days],
+    queryKey: [...ADMIN_QUERY_KEY, "overview", period.from, period.to],
     staleTime: ADMIN_STALE_TIME_MS,
     placeholderData: keepPreviousData,
     queryFn: () =>
-      apiRequest(`${ADMIN_API}/overview?days=${days}`, {
-        schema: adminOverviewSchema,
-      }),
+      apiRequest(
+        `${ADMIN_API}/overview?${new URLSearchParams(period).toString()}`,
+        { schema: adminOverviewSchema },
+      ),
   });
 }
 

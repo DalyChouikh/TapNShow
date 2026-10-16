@@ -32,3 +32,20 @@ export function trend(
   const change = Math.round(((current - previous) / previous) * 100);
   return { change, tone: change > 0 ? "up" : change < 0 ? "down" : "flat" };
 }
+
+/** Clean steps per power of ten for chart axes. */
+const NICE_STEPS = [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10];
+
+/**
+ * Three axis ticks (0, a middle step, the top) in clean whole numbers, the top at least `max` (at
+ * least 2 when nothing happened, so an empty chart still has a scale).
+ */
+export function axisTicks(max: number): [number, number, number] {
+  const half = Math.max(max, 1) / 2;
+  const magnitude = 10 ** Math.floor(Math.log10(half));
+  const step =
+    NICE_STEPS.map((nice) => Math.round(nice * magnitude * 1e6) / 1e6).find(
+      (candidate) => candidate >= half && Number.isInteger(candidate),
+    ) ?? 10 * magnitude;
+  return [0, step, step * 2];
+}

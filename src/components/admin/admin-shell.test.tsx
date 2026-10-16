@@ -32,7 +32,7 @@ function meSequence(first: object, then: object): FetchRoute {
 }
 
 function OverviewProbe() {
-  const overview = useAdminOverview(30);
+  const overview = useAdminOverview({ from: "2026-09-17", to: "2026-10-16" });
   return <p>{overview.data ? "figures" : "probe"}</p>;
 }
 
@@ -95,7 +95,7 @@ describe("AdminShell", () => {
   it("shows the not-found view when a read answers 404 (removed while the page is open)", async () => {
     routeFetch({
       "GET /api/me": meSequence(adminMe, meFixture),
-      "GET /api/admin/overview?days=30": notFound,
+      "GET /api/admin/overview?from=2026-09-17&to=2026-10-16": notFound,
     });
     renderWithProviders(
       <AdminShell>

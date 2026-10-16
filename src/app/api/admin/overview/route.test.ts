@@ -14,6 +14,7 @@ vi.mock("@/server/queries/admin", () => ({
 }));
 
 const { GET } = await import("./route");
+const PERIOD = "?from=2026-10-10&to=2026-10-16";
 const get = (query = "") =>
   GET(adminRequest("GET", `/api/admin/overview${query}`));
 
@@ -25,21 +26,27 @@ beforeEach(() => {
 describe("GET /api/admin/overview", () => {
   it("answers 401 signed out and 404 to a non-admin", async () => {
     mocks.context.mockResolvedValueOnce(adminContextAs("signed_out"));
-    expect((await get()).status).toBe(401);
+    expect((await get(PERIOD)).status).toBe(401);
     mocks.context.mockResolvedValueOnce(adminContextAs("member"));
-    expect((await get()).status).toBe(404);
+    expect((await get(PERIOD)).status).toBe(404);
   });
 
-  it("reads 30 days by default, 7 or 90 on request, nothing else", async () => {
+  it("reads the period it is given, and refuses a missing or reversed one", async () => {
     mocks.adminOverview.mockResolvedValue({
       data: { current: {} },
       error: null,
     });
-    expect(await (await get()).json()).toEqual({ current: {} });
-    expect(mocks.adminOverview).toHaveBeenLastCalledWith({}, 30);
-    await get("?days=90");
-    expect(mocks.adminOverview).toHaveBeenLastCalledWith({}, 90);
-    expect((await get("?days=14")).status).toBe(400);
+    const response = await get("?from=2026-10-10&to=2026-10-16");
+    expect(await response.json()).toEqual({ current: {} });
+    expect(mocks.adminOverview).toHaveBeenLastCalledWith(
+      {},
+      { from: "2026-10-10", to: "2026-10-16" },
+    );
+    expect((await get()).status).toBe(400);
+    expect((await get("?from=2026-10-10")).status).toBe(400);
+    expect((await get("?from=2026-13-01&to=2026-10-16")).status).toBe(400);
+    expect((await get("?from=2026-10-16&to=2026-10-10")).status).toBe(400);
+    expect(mocks.adminOverview).toHaveBeenCalledOnce();
   });
 
   it("maps a database refusal", async () => {
@@ -47,6 +54,6 @@ describe("GET /api/admin/overview", () => {
       data: null,
       error: { code: "P0001", message: "tn:not_found" },
     });
-    expect((await get()).status).toBe(404);
+    expect((await get(PERIOD)).status).toBe(404);
   });
 });

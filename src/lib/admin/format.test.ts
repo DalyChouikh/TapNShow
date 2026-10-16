@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  axisTicks,
   deliveredPercent,
   percentFromBasisPoints,
   reportPercent,
@@ -31,5 +32,14 @@ describe("admin number formats", () => {
     expect(trend(5, 5)).toEqual({ change: 0, tone: "flat" });
     expect(trend(4, 0)).toEqual({ change: null, tone: "up" });
     expect(trend(0, 0)).toEqual({ change: 0, tone: "flat" });
+  });
+
+  it("picks three clean axis ticks that fit the highest value", () => {
+    expect(axisTicks(22)).toEqual([0, 15, 30]);
+    expect(axisTicks(7)).toEqual([0, 4, 8]);
+    expect(axisTicks(1)).toEqual([0, 1, 2]);
+    expect(axisTicks(0)).toEqual([0, 1, 2]);
+    expect(axisTicks(250)).toEqual([0, 150, 300]);
+    expect(axisTicks(1000)).toEqual([0, 500, 1000]);
   });
 });

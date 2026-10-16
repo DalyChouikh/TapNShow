@@ -1,8 +1,13 @@
 import { z } from "zod";
 import { PLATFORM_EVENT_KINDS } from "@/lib/discord/platform-events";
 
-/** The overview's period switch (days). */
-export const ADMIN_OVERVIEW_DAYS = [7, 30, 90] as const;
+/**
+ * The longest Overview period, in days (two years). Twin of `p_to - p_from > 730` in
+ * `private.admin_overview` (pinned by the admin reads DB test).
+ */
+export const ADMIN_PERIOD_MAX_DAYS = 731;
+/** The bar size of the Overview's chart: days up to 31 days, weeks up to 183, months beyond. */
+export const ADMIN_SERIES_UNITS = ["day", "week", "month"] as const;
 /** Workspaces list filters and sorts (spec §7.19). */
 export const ADMIN_WORKSPACE_FILTERS = [
   "all",
@@ -33,7 +38,14 @@ const figuresSchema = z.object({
 /** Platform figures for one period. */
 export type AdminFigures = z.infer<typeof figuresSchema>;
 
-/** `GET /api/admin/overview?days=` */
+/** `GET /api/admin/overview?from=&to=` (UTC dates, `yyyy-MM-dd`). */
+export const adminOverviewQuerySchema = z
+  .object({ from: z.iso.date(), to: z.iso.date() })
+  .refine((range) => range.from <= range.to);
+/** One Overview period: its first and last UTC day. */
+export type AdminPeriod = z.infer<typeof adminOverviewQuerySchema>;
+
+/** `GET /api/admin/overview?from=&to=` */
 export const adminOverviewSchema = z.object({
   attention: z.object({
     newReports: z.number(),
@@ -50,7 +62,10 @@ export const adminOverviewSchema = z.object({
   }),
   current: figuresSchema,
   previous: figuresSchema,
-  weekly: z.array(z.object({ week: z.string(), meetings: z.number() })),
+  series: z.object({
+    unit: z.enum(ADMIN_SERIES_UNITS),
+    points: z.array(z.object({ start: z.iso.date(), meetings: z.number() })),
+  }),
   health: z.object({
     queueWaiting: z.number(),
     queueOldest: instant.nullable(),
