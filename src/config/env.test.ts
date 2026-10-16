@@ -20,6 +20,24 @@ describe("parseServerEnv", () => {
     expect(env.LOG_LEVEL).toBe("info");
   });
 
+  it("takes the #platform webhook only as a Discord webhook URL, and runs without it", () => {
+    const hook = "https://discord.com/api/webhooks/1560407795768098836/abc";
+    expect(
+      parseServerEnv({ ...supabase, ...smtp, DISCORD_PLATFORM_WEBHOOK: hook })
+        .DISCORD_PLATFORM_WEBHOOK,
+    ).toBe(hook);
+    expect(
+      parseServerEnv({ ...supabase, ...smtp }).DISCORD_PLATFORM_WEBHOOK,
+    ).toBeUndefined();
+    expect(() =>
+      parseServerEnv({
+        ...supabase,
+        ...smtp,
+        DISCORD_PLATFORM_WEBHOOK: "https://example.test/api/webhooks/1/abc",
+      }),
+    ).toThrow(/DISCORD_PLATFORM_WEBHOOK/);
+  });
+
   it("reads the Vercel environment name and rejects unknown ones", () => {
     expect(
       parseServerEnv({ ...supabase, ...smtp, VERCEL_ENV: "production" })

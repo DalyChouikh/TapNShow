@@ -40,7 +40,7 @@ const EMAILS = {
     renderOwnerAlertEmail({
       kind: "senderBroken",
       workspaceName: "Robotics Club",
-      settingsUrl: "https://tapnshow.vercel.app/w/robotics-ab12/settings",
+      linkUrl: "https://tapnshow.vercel.app/w/robotics-ab12/settings",
     }),
 };
 

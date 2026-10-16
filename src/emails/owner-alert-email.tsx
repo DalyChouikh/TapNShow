@@ -10,13 +10,18 @@ export type OwnerAlertEmailProps =
   | {
       kind: "senderBroken" | "senderRemoved" | "senderAndSheetRemoved";
       workspaceName: string;
-      settingsUrl: string;
+      linkUrl: string;
     }
   | {
       kind: "sheetPaused";
       reason: SheetPauseReason;
       workspaceName: string;
-      settingsUrl: string;
+      linkUrl: string;
+    }
+  | {
+      kind: "sendingSuspended" | "sendingResumed";
+      workspaceName: string;
+      linkUrl: string;
     };
 
 type AlertCopy = {
@@ -41,22 +46,23 @@ function alertCopy(props: OwnerAlertEmailProps): AlertCopy {
       props.kind === "sheetPaused"
         ? tr(`sheetPaused.body.${props.reason}`, values)
         : tr(`${props.kind}.body`, values),
-    button: tr(`${kind}.button`),
-    fallback: tr(`${kind}.fallback`),
+    button: tr(`${kind}.button`, values),
+    fallback: tr(`${kind}.fallback`, values),
   };
 }
 
 /**
  * Tells an Owner that something of their workspace needs them (spec §8): its Gmail needs
  * reconnecting, its sending (and maybe its Google Sheet) stopped because the account was removed,
- * or its Google Sheet stopped updating. Sent by the platform sender.
+ * its Google Sheet stopped updating, or its meeting emails are paused for review or can go out
+ * again (spec §7.12). Sent by the platform sender.
  */
 export function OwnerAlertEmail({
   copy,
-  settingsUrl,
+  linkUrl,
 }: {
   copy: AlertCopy;
-  settingsUrl: string;
+  linkUrl: string;
 }) {
   return (
     <EmailLayout preview={copy.preview} heading={copy.heading}>
@@ -66,7 +72,7 @@ export function OwnerAlertEmail({
         {copy.body}
       </Text>
       <Button
-        href={settingsUrl}
+        href={linkUrl}
         style={{
           ...brutalBox(t.primary, t.radiusControl),
           color: t.ink,
@@ -88,7 +94,7 @@ export function OwnerAlertEmail({
           wordBreak: "break-all",
         }}
       >
-        {copy.fallback} {settingsUrl}
+        {copy.fallback} {linkUrl}
       </Text>
     </EmailLayout>
   );
@@ -99,9 +105,7 @@ export async function renderOwnerAlertEmail(
   props: OwnerAlertEmailProps,
 ): Promise<{ subject: string; html: string; text: string }> {
   const copy = alertCopy(props);
-  const element = (
-    <OwnerAlertEmail copy={copy} settingsUrl={props.settingsUrl} />
-  );
+  const element = <OwnerAlertEmail copy={copy} linkUrl={props.linkUrl} />;
   return {
     subject: copy.subject,
     html: await render(element),

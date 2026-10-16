@@ -1,5 +1,5 @@
 import type { MeResponse } from "@/shared/api/me";
-import type { WorkspaceDetails } from "@/shared/api/workspaces";
+import type { WorkspaceResponse } from "@/shared/api/workspaces";
 
 /** A signed-in Owner with two workspaces. */
 export const meFixture: MeResponse = {
@@ -27,11 +27,12 @@ export const meFixture: MeResponse = {
 };
 
 /** Robotics Club as seen by its Owner. */
-export const workspaceFixture: WorkspaceDetails = {
+export const workspaceFixture: WorkspaceResponse = {
   id: "0b1f6a3e-5d0a-4a0e-9a49-3e2d0f5b9c11",
   slug: "robotics-cd34",
   name: "Robotics Club",
   timezone: "Africa/Tunis",
   myRole: "owner",
   canCheckIn: false,
+  sendingSuspension: null,
 };

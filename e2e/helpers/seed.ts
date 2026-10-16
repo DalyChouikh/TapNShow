@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { adminClient, workspaceIdOf } from "./admin";
 
 /** Adds a named member with `role` to the workspace at `slug` (service role; test setup only). */
@@ -249,4 +249,67 @@ export async function dueTimers(meetingId: string): Promise<void> {
   if (error) {
     throw error;
   }
+}
+
+/**
+ * `count` people invited to a scheduled meeting of the workspace at `slug`, as if their invites
+ * went out (service role; test setup only). Returns each one's answer-link token (the app keeps
+ * only its SHA-256, like `inviteeTokenHash`).
+ */
+export async function seedInvitedPeople(
+  slug: string,
+  stamp: string,
+  count: number,
+): Promise<string[]> {
+  const client = adminClient();
+  const workspaceId = await workspaceIdOf(slug);
+  const meeting = await client
+    .from("meetings")
+    .insert({
+      workspace_id: workspaceId,
+      title: `Invited sync ${stamp}`,
+      starts_at: new Date(Date.now() + 2 * 86_400_000).toISOString(),
+      duration_minutes: 60,
+      timezone: "Africa/Tunis",
+      location_mode: "in_person",
+      location_text: "Room 1",
+      response_mode: "attendance",
+      delay_options: [5, 10, 15],
+      reason_required: true,
+      comments_enabled: false,
+      status: "scheduled",
+    })
+    .select("id")
+    .single();
+  if (meeting.error) {
+    throw meeting.error;
+  }
+  const tokens: string[] = [];
+  for (let index = 0; index < count; index += 1) {
+    const contact = await client
+      .from("contacts")
+      .insert({
+        workspace_id: workspaceId,
+        email: `invited-${index}-${stamp}@example.test`,
+        full_name: `Invited ${index} ${stamp}`,
+      })
+      .select("id")
+      .single();
+    if (contact.error) {
+      throw contact.error;
+    }
+    const token = randomBytes(32).toString("base64url");
+    const invitee = await client.from("meeting_invitees").insert({
+      workspace_id: workspaceId,
+      meeting_id: meeting.data.id,
+      contact_id: contact.data.id,
+      token_hash: createHash("sha256").update(token).digest("hex"),
+      email_status: "sent",
+    });
+    if (invitee.error) {
+      throw invitee.error;
+    }
+    tokens.push(token);
+  }
+  return tokens;
 }

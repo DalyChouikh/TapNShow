@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { routePatternUrl, scrubUrl } from "./scrub";
+import { routePatternUrl, scrubText, scrubUrl } from "./scrub";
 
 describe("scrubUrl", () => {
   it("redacts personal-link tokens but keeps the query", () => {
@@ -83,5 +83,30 @@ describe("routePatternUrl", () => {
     ],
   ])("%s → %s", (input, expected) => {
     expect(routePatternUrl(input)).toBe(expected);
+  });
+});
+
+describe("scrubText", () => {
+  it("redacts Discord webhook URLs (the token is the path's last part), every host Discord uses", () => {
+    for (const host of [
+      "discord.com",
+      "discordapp.com",
+      "canary.discord.com",
+      "ptb.discord.com",
+    ]) {
+      const text = `POST https://${host}/api/webhooks/1560407795768098836/AbC-_x.9yZ?wait=true failed`;
+      expect(scrubText(text)).toBe(
+        "POST [REDACTED_DISCORD_WEBHOOK]?wait=true failed",
+      );
+    }
+    expect(scrubText("https://discord.com/api/v10/webhooks/123/tok")).toBe(
+      "[REDACTED_DISCORD_WEBHOOK]",
+    );
+  });
+
+  it("keeps redacting the other credential shapes", () => {
+    expect(scrubText("key sb_secret_abc123")).toBe(
+      "key [REDACTED_SUPABASE_KEY]",
+    );
   });
 });

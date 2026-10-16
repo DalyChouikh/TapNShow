@@ -31,6 +31,13 @@ const serverEnvSchema = z
     DISPATCH_SECRET: z.string().min(32).optional(),
     /** Web Push signing key (VAPID, RFC 8292; spec §11 Secrets). Set with VAPID_SUBJECT. */
     VAPID_PRIVATE_KEY: z.string().min(40).optional(),
+    /** The #platform channel's webhook (spec §5). Unset (local, CI, previews): events aren't posted. */
+    DISCORD_PLATFORM_WEBHOOK: z
+      .url()
+      .regex(
+        /^https:\/\/(?:(?:canary|ptb)\.)?discord(?:app)?\.com\/api\/webhooks\//,
+      )
+      .optional(),
     /** Who push services contact about our pushes: mailto: or https: (RFC 8292). */
     VAPID_SUBJECT: z
       .string()

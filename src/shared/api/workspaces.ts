@@ -16,7 +16,7 @@ export const createWorkspaceBodySchema = z.object({
 /** `POST /api/workspaces` response. */
 export const createWorkspaceResponseSchema = z.object({ slug: z.string() });
 
-/** `GET /api/workspaces/[slug]` response. */
+/** A workspace and the caller's role (`GET /api/workspaces/[slug]` adds the suspension). */
 export const workspaceDetailsSchema = z.object({
   id: z.uuid(),
   slug: z.string(),
@@ -28,6 +28,19 @@ export const workspaceDetailsSchema = z.object({
 
 /** A workspace as seen by one of its members. */
 export type WorkspaceDetails = z.infer<typeof workspaceDetailsSchema>;
+
+/**
+ * `GET /api/workspaces/[slug]`: the workspace plus, while its sending is paused for review (spec
+ * §7.12), since when and how to reach us. Only this route reads the suspension.
+ */
+export const workspaceResponseSchema = workspaceDetailsSchema.extend({
+  sendingSuspension: z
+    .object({ since: z.iso.datetime({ offset: true }), contact: z.string() })
+    .nullable(),
+});
+
+/** What the workspace hook holds. */
+export type WorkspaceResponse = z.infer<typeof workspaceResponseSchema>;
 
 /** `PATCH /api/workspaces/[slug]` body (Owner/Admin). */
 export const updateWorkspaceBodySchema = z

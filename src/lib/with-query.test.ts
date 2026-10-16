@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { resultPath, settingsPath, withQuery } from "./with-query";
+import {
+  resultPath,
+  settingsPath,
+  withQuery,
+  workspaceHomePath,
+} from "./with-query";
 
 describe("withQuery", () => {
   it("adds or replaces a parameter and keeps the hash", () => {
@@ -44,5 +49,12 @@ describe("resultPath", () => {
     ).toBe(
       "/w/club/settings?google_error=rate_limited&google_for=sheets#sheets",
     );
+  });
+});
+
+describe("workspaceHomePath", () => {
+  it("links a workspace's Home, never a crafted slug", () => {
+    expect(workspaceHomePath("robotics-ab12")).toBe("/w/robotics-ab12");
+    expect(workspaceHomePath("../..//evil.example")).toBe("/welcome");
   });
 });
