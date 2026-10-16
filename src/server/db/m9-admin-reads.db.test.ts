@@ -1,0 +1,306 @@
+import { beforeEach, describe, expect, it } from "vitest";
+import { z } from "zod";
+import { sqlNullable } from "@/server/db/rpc-args";
+import { createTestUser, type TestUser } from "@/test/db/clients";
+import { seedMeeting } from "@/test/db/meetings";
+import { clearPlatformAdmins, makePlatformAdmin } from "@/test/db/platform";
+import { seedEmailedPeople, seedReport } from "@/test/db/reports";
+import { queryLocalSql, runLocalSql } from "@/test/db/sql";
+import { createWorkspaceAs } from "@/test/db/workspaces";
+
+beforeEach(() => clearPlatformAdmins());
+
+async function adminAndWorkspace(name: string, people: number) {
+  const admin = await createTestUser();
+  makePlatformAdmin(admin);
+  const owner = await createTestUser({ fullName: "Owner Person" });
+  const workspace = await createWorkspaceAs(owner, name);
+  const meetingId = await seedMeeting(workspace.id, {
+    status: "scheduled",
+    created_by: owner.id,
+  });
+  seedEmailedPeople(workspace.id, meetingId, people);
+  return { admin, owner, workspace };
+}
+
+/** Each admin read, called as `user` (the pages' first-page arguments). */
+const ADMIN_READS: Array<
+  [
+    string,
+    (user: TestUser) => PromiseLike<{ error: { message: string } | null }>,
+  ]
+> = [
+  [
+    "admin_overview",
+    (user) => user.client.rpc("admin_overview", { p_days: 30 }),
+  ],
+  [
+    "admin_workspaces",
+    (user) =>
+      user.client.rpc("admin_workspaces", {
+        p_search: sqlNullable<string>(null),
+        p_filter: "all",
+        p_sort: "newest",
+        p_after_value: sqlNullable<string>(null),
+        p_after_id: sqlNullable<string>(null),
+        p_limit: 25,
+      }),
+  ],
+  [
+    "admin_reports",
+    (user) =>
+      user.client.rpc("admin_reports", {
+        p_after_at: sqlNullable<string>(null),
+        p_after_id: sqlNullable<string>(null),
+        p_limit: 25,
+      }),
+  ],
+  [
+    "admin_log",
+    (user) =>
+      user.client.rpc("admin_log", {
+        p_filter: "all",
+        p_after_id: sqlNullable<number>(null),
+        p_limit: 25,
+      }),
+  ],
+];
+
+describe("admin reads are for platform admins only", () => {
+  it.each(ADMIN_READS)(
+    "%s refuses a workspace Owner with not_found",
+    async (_name, read) => {
+      const owner = await createTestUser();
+      expect((await read(owner)).error?.message).toBe("tn:not_found");
+    },
+  );
+});
+
+describe("admin_workspaces", () => {
+  it("lists health per workspace, never contact names or emails, masked Owner email", async () => {
+    const { admin, owner, workspace } = await adminAndWorkspace(
+      "Health Club",
+      10,
+    );
+    seedReport(workspace.id);
+    const { data, error } = await admin.client.rpc("admin_workspaces", {
+      p_search: "health",
+      p_filter: "reported",
+      p_sort: "reports",
+      p_after_value: sqlNullable<string>(null),
+      p_after_id: sqlNullable<string>(null),
+      p_limit: 25,
+    });
+    expect(error).toBeNull();
+    const row = (
+      data as { items: Array<Record<string, string | number | boolean>> }
+    ).items.find((item) => item.id === workspace.id);
+    expect(row).toMatchObject({
+      name: "Health Club",
+      team: 1,
+      emails_30d: 10,
+      reports_7d: 1,
+      people_7d: 10,
+      suspended: false,
+      sender: "none",
+      sheet: "off",
+    });
+    expect(String(row?.owner_email)).toMatch(/^.•••@example\.test$/);
+    expect(JSON.stringify(data)).not.toMatch(/p\d+-.*@example\.test/);
+    expect(owner.email).not.toBe(row?.owner_email);
+  });
+
+  it("pages by keyset with no duplicates or gaps", async () => {
+    const admin = await createTestUser();
+    makePlatformAdmin(admin);
+    const owner = await createTestUser();
+    for (let i = 0; i < 5; i += 1)
+      await createWorkspaceAs(owner, `Paging ${i}`);
+    const seen: string[] = [];
+    let after: { value: string | null; id: string | null } = {
+      value: null,
+      id: null,
+    };
+    for (let page = 0; page < 10; page += 1) {
+      const { data } = await admin.client.rpc("admin_workspaces", {
+        p_search: "paging",
+        p_filter: "all",
+        p_sort: "newest",
+        p_after_value: sqlNullable(after.value),
+        p_after_id: sqlNullable(after.id),
+        p_limit: 2,
+      });
+      const items = (
+        data as { items: Array<{ id: string; sort_value: string }> }
+      ).items;
+      if (items.length === 0) break;
+      seen.push(...items.map((item) => item.id));
+      const last = items.at(-1)!;
+      after = { value: last.sort_value, id: last.id };
+    }
+    expect(seen).toHaveLength(5);
+    expect(new Set(seen).size).toBe(5);
+  });
+});
+
+describe("admin_workspace, reports and the log", () => {
+  it("shows the full Owner email for copying, the 30-day figures and the suspension history", async () => {
+    const { admin, owner, workspace } = await adminAndWorkspace(
+      "Detail Club",
+      4,
+    );
+    await admin.client.rpc("admin_suspend", { p_workspace: workspace.id });
+    await admin.client.rpc("admin_lift", { p_workspace: workspace.id });
+    const { data } = await admin.client.rpc("admin_workspace", {
+      p_workspace: workspace.id,
+    });
+    const detail = data as {
+      owner_email: string;
+      last_30: { emails_sent: number };
+      suspensions: Array<{ reason: string; lifted_at: string | null }>;
+    };
+    expect(detail.owner_email).toBe(owner.email);
+    expect(detail.last_30).toMatchObject({ emails_sent: 4 });
+    expect(detail.suspensions).toHaveLength(1);
+    expect(detail.suspensions[0].reason).toBe("platform_admin");
+    expect(detail.suspensions[0].lifted_at).not.toBeNull();
+  });
+
+  it("marks a report reviewed once, logged with the reviewer", async () => {
+    const { admin, workspace } = await adminAndWorkspace("Report Club", 3);
+    seedReport(workspace.id);
+    const { data } = await admin.client.rpc("admin_reports", {
+      p_after_at: sqlNullable<string>(null),
+      p_after_id: sqlNullable<string>(null),
+      p_limit: 25,
+    });
+    const report = (
+      data as {
+        items: Array<{
+          id: string;
+          workspace_id: string;
+          reviewed_at: string | null;
+        }>;
+      }
+    ).items.find((item) => item.workspace_id === workspace.id)!;
+    expect(report.reviewed_at).toBeNull();
+    expect(
+      (await admin.client.rpc("admin_mark_reviewed", { p_report: report.id }))
+        .error,
+    ).toBeNull();
+    expect(
+      (await admin.client.rpc("admin_mark_reviewed", { p_report: report.id }))
+        .error,
+    ).toBeNull();
+    const reviewed = queryLocalSql(
+      `select count(*)::int as n from public.platform_events where kind = 'report_reviewed' and workspace_id = '${workspace.id}'`,
+      z.array(z.object({ n: z.number() })).length(1),
+    );
+    expect(reviewed[0].n).toBe(1);
+  });
+
+  it("filters the log and names the actor", async () => {
+    const { admin, workspace } = await adminAndWorkspace("Log Club", 1);
+    await admin.client.rpc("admin_suspend", { p_workspace: workspace.id });
+    const { data } = await admin.client.rpc("admin_log", {
+      p_filter: "suspensions",
+      p_after_id: sqlNullable<number>(null),
+      p_limit: 25,
+    });
+    const items = (
+      data as { items: Array<{ kind: string; workspace_name: string }> }
+    ).items;
+    expect(
+      items.every((item) =>
+        ["auto_suspended", "suspended", "lifted"].includes(item.kind),
+      ),
+    ).toBe(true);
+    expect(items[0]).toMatchObject({
+      kind: "suspended",
+      workspace_name: "Log Club",
+    });
+  });
+});
+
+describe("edges (Review Focus 3 and 4)", () => {
+  it("never counts an email twice across midnight UTC (rolled yesterday + live today)", async () => {
+    const { admin, workspace } = await adminAndWorkspace("Midnight Club", 2);
+    runLocalSql(`
+      with rows as (select id, row_number() over (order by id) as n from public.send_log where workspace_id = '${workspace.id}')
+      update public.send_log l set sent_at = case when r.n = 1
+          then date_trunc('day', now() at time zone 'UTC') at time zone 'UTC' - interval '1 minute'
+          else date_trunc('day', now() at time zone 'UTC') at time zone 'UTC' + interval '1 minute' end
+      from rows r where r.id = l.id`);
+    runLocalSql("select private.rollup_platform_daily()");
+    const { data } = await admin.client.rpc("admin_workspace", {
+      p_workspace: workspace.id,
+    });
+    expect(
+      (data as { last_30: { emails_sent: number } }).last_30.emails_sent,
+    ).toBe(2);
+  });
+
+  it("keeps a deleted workspace's events in the log by name, and its page is not found", async () => {
+    const { admin, owner, workspace } = await adminAndWorkspace("Gone Club", 1);
+    await admin.client.rpc("admin_suspend", { p_workspace: workspace.id });
+    const deleted = await owner.client.rpc("delete_workspace", {
+      p_workspace: workspace.id,
+      p_confirm_name: "Gone Club",
+    });
+    expect(deleted.error).toBeNull();
+    const { data } = await admin.client.rpc("admin_log", {
+      p_filter: "suspensions",
+      p_after_id: sqlNullable<number>(null),
+      p_limit: 25,
+    });
+    const item = (
+      data as {
+        items: Array<{ workspace_id: string | null; workspace_name: string }>;
+      }
+    ).items.find((entry) => entry.workspace_name === "Gone Club");
+    expect(item?.workspace_id).toBeNull();
+    expect(
+      (await admin.client.rpc("admin_workspace", { p_workspace: workspace.id }))
+        .error?.message,
+    ).toBe("tn:not_found");
+  });
+});
+
+describe("rollup and overview", () => {
+  it("rolls up the last 29 days idempotently and keeps the push counters", async () => {
+    const { admin, workspace } = await adminAndWorkspace("Rollup Club", 3);
+    runLocalSql(
+      `update public.send_log set sent_at = now() - interval '2 days' where workspace_id = '${workspace.id}'`,
+    );
+    runLocalSql(
+      `insert into public.platform_daily (day, workspace_id, pushes_sent) values ((now() - interval '2 days')::date, '${workspace.id}', 7)`,
+    );
+    // Twice: the rollup is an idempotent upsert.
+    runLocalSql("select private.rollup_platform_daily()");
+    runLocalSql("select private.rollup_platform_daily()");
+    const row = queryLocalSql(
+      `select emails_sent, people_emailed, pushes_sent from public.platform_daily where workspace_id = '${workspace.id}' and day = (now() - interval '2 days')::date`,
+      z
+        .array(
+          z.object({
+            emails_sent: z.number(),
+            people_emailed: z.number(),
+            pushes_sent: z.number(),
+          }),
+        )
+        .length(1),
+    );
+    expect(row[0]).toEqual({
+      emails_sent: 3,
+      people_emailed: 3,
+      pushes_sent: 7,
+    });
+    const { data } = await admin.client.rpc("admin_overview", { p_days: 7 });
+    const overview = data as {
+      current: { emails_sent: number; pushes_sent: number };
+      weekly: Array<{ week: string; meetings: number }>;
+    };
+    expect(overview.current.emails_sent).toBeGreaterThanOrEqual(3);
+    expect(overview.weekly).toHaveLength(12);
+  });
+});

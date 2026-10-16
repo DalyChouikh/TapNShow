@@ -49,3 +49,33 @@ export function planUsesIndex(plan: string, index: string): boolean {
     `(Index Scan|Index Only Scan)( Backward)? using ${index}\\b|Bitmap Index Scan on ${index}\\b`,
   ).test(plan);
 }
+
+/**
+ * Runs `select <call>` as `userId` (role `authenticated`) `runs` times inside one rolled-back
+ * transaction and returns the median duration in milliseconds (psql's `\timing`). The first run
+ * warms the caches like a real page load after the previous one. Test assertions only.
+ */
+export function timeCall(call: string, userId: string, runs = 5): number {
+  const claims = JSON.stringify({ sub: userId, role: "authenticated" });
+  const sql = [
+    "begin;",
+    `select set_config('request.jwt.claims', '${claims}', true);`,
+    "set local role authenticated;",
+    "\\timing on",
+    ...Array.from({ length: runs }, () => `select ${call};`),
+    "rollback;",
+  ].join("\n");
+  const result = spawnSync("psql", [ADMIN_URL, "-v", "ON_ERROR_STOP=1"], {
+    input: sql,
+    encoding: "utf8",
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  if (result.status !== 0) {
+    throw new Error(`psql failed: ${result.stderr}`);
+  }
+  const times = [...result.stdout.matchAll(/^Time: ([\d.]+) ms/gm)]
+    .map((match) => Number(match[1]))
+    .slice(0, runs)
+    .sort((a, b) => a - b);
+  return times[Math.floor(times.length / 2)];
+}

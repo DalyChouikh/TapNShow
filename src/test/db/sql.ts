@@ -1,4 +1,4 @@
-import { execFileSync, spawn } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { z } from "zod";
 
 /**
@@ -122,4 +122,27 @@ export async function holdLocalTransaction(
   }
   child.kill();
   throw new Error(`held transaction never started: ${stderr}`);
+}
+
+/**
+ * Runs a multi-statement SQL script in one transaction as the local `postgres` superuser (psql;
+ * `supabase db query` runs one statement). Bulk test seeding only.
+ */
+export function runLocalScript(sql: string): void {
+  const result = spawnSync(
+    "psql",
+    [
+      LOCAL_DB_URL,
+      "-v",
+      "ON_ERROR_STOP=1",
+      "--single-transaction",
+      "-q",
+      "-c",
+      sql,
+    ],
+    { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 },
+  );
+  if (result.status !== 0) {
+    throw new Error(`psql failed: ${result.stderr}`);
+  }
 }
