@@ -2,6 +2,7 @@ import { withSerwist } from "@serwist/turbopack";
 import { withSentryConfig } from "@sentry/nextjs/config";
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
+import { parsePublicEnv } from "./src/config/public-env-schema";
 import {
   noIndexHeaders,
   serviceWorkerCsp,
@@ -9,6 +10,10 @@ import {
   staticSecurityHeaders,
   tokenPageHeaders,
 } from "./src/config/security-headers";
+
+// The browser reads the public env without Zod (`readPublicEnv`); its rules run here, so an invalid
+// value fails the build instead of reaching a page.
+parsePublicEnv(process.env);
 
 const nextConfig: NextConfig = {
   // Later rules win for the same header: the token pages' no-referrer overrides the default.

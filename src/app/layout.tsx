@@ -1,15 +1,8 @@
-import { SerwistProvider } from "@serwist/turbopack/react";
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import { NextIntlClientProvider } from "next-intl";
-import { getLocale } from "next-intl/server";
-import { MotionProvider } from "@/components/motion/motion-provider";
-import { InstallPromptProvider } from "@/components/providers/install-prompt-provider";
+import { getLocale, getMessages } from "next-intl/server";
 import { PageAnalytics } from "@/components/providers/page-analytics";
-import { QueryProvider } from "@/components/providers/query-provider";
-import { RegisterServiceWorker } from "@/components/providers/register-service-worker";
-import { RemindersCheckIn } from "@/components/providers/reminders-check-in";
-import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { APP_DESCRIPTION, APP_NAME } from "@/config/app";
 import { publicEnv } from "@/config/public-env";
@@ -18,6 +11,8 @@ import { archivoBlack, spaceGrotesk } from "./fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  // Resolves relative canonical and Open Graph URLs (each page's `alternates.canonical`).
+  metadataBase: new URL(publicEnv.NEXT_PUBLIC_APP_URL),
   title: APP_NAME,
   description: APP_DESCRIPTION,
   verification: publicEnv.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
@@ -33,9 +28,25 @@ export const metadata: Metadata = {
 /** The browser bar and the installed app's frame take the app background (spec §10 PWA). */
 export const viewport: Viewport = { themeColor: palette.light.background };
 
-/** Root layout: fonts, theme (no-flash), motion, i18n, the install offer, the service worker and the reminders check-in. */
+/**
+ * The message namespaces the public pages' client components use (theme switch, header, FAQ, the
+ * error view). The app's pages get every message from `(app)/layout.tsx`.
+ */
+const PUBLIC_CLIENT_MESSAGES = [
+  "Errors",
+  "Landing",
+  "Public",
+  "Theme",
+] as const;
+
+/**
+ * Root layout: what every page needs, and nothing more, so the public pages (landing, Privacy,
+ * Terms, not found) stay light: fonts, theme (no-flash), the public pages' messages and analytics.
+ * The app's providers live in `(app)/layout.tsx`.
+ */
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const locale = await getLocale();
+  const messages = await getMessages();
   // This request's CSP nonce (proxy.ts). Reading headers renders every page per request, which the
   // nonce needs anyway (spec §11 M9).
   const nonce = (await headers()).get("x-nonce") ?? undefined;
@@ -46,30 +57,14 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       className={`${archivoBlack.variable} ${spaceGrotesk.variable} h-full antialiased`}
     >
       <body className="min-h-full">
-        <NextIntlClientProvider>
+        <NextIntlClientProvider
+          messages={Object.fromEntries(
+            PUBLIC_CLIENT_MESSAGES.map((name) => [name, messages[name]]),
+          )}
+        >
           <ThemeProvider nonce={nonce}>
-            <QueryProvider>
-              <InstallPromptProvider>
-                {/* The service worker runs in production builds only (e2e uses one too). It
-                    caches nothing on its own while browsing and never reloads the page when the
-                    connection returns (a half-typed answer must survive). RegisterServiceWorker
-                    registers it, so a browser that refuses one isn't reported as a crash. */}
-                <SerwistProvider
-                  swUrl="/serwist/sw.js"
-                  disable={process.env.NODE_ENV !== "production"}
-                  register={false}
-                  cacheOnNavigation={false}
-                  reloadOnOnline={false}
-                  options={{ scope: "/" }}
-                >
-                  <RegisterServiceWorker />
-                  <MotionProvider>{children}</MotionProvider>
-                  <RemindersCheckIn />
-                </SerwistProvider>
-              </InstallPromptProvider>
-              <Toaster />
-              <PageAnalytics />
-            </QueryProvider>
+            {children}
+            <PageAnalytics />
           </ThemeProvider>
         </NextIntlClientProvider>
       </body>

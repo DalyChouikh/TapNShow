@@ -22,7 +22,7 @@ import { ApiClientError } from "@/lib/api-client";
 import { responseDeadlineProblem } from "@/lib/meetings/deadline";
 import { formatDeadline, formatMeetingWhen } from "@/lib/meetings/format";
 import { quotaLine } from "@/lib/meetings/quota-line";
-import { GoogleConnectResult } from "@/app/w/[slug]/settings/google-connect-result";
+import { GoogleConnectResult } from "@/app/(app)/w/[slug]/settings/google-connect-result";
 import { EmailPreviewDialog } from "./email-preview-dialog";
 import { WizardFooter } from "./wizard-footer";
 import {
