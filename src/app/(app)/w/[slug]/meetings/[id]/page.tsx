@@ -124,6 +124,7 @@ export default function MeetingPage() {
           slug={slug}
           results={results.data}
           canConnect={workspace.data.myRole === "owner"}
+          suspended={Boolean(workspace.data.sendingSuspension)}
         />
       ) : (
         <EmailLine

@@ -14,6 +14,12 @@ const mocks = vi.hoisted(() => ({
   >(async () => ({})),
   configured: true,
   dispatchDeps: vi.fn(() => ({})),
+  runPlatformEvents: vi.fn<(deps: object, options: object) => Promise<object>>(
+    async () => ({}),
+  ),
+  recordWorkerFailure: vi.fn<(client: object, lane: string) => Promise<void>>(
+    async () => undefined,
+  ),
 }));
 vi.mock("next/server", () => ({
   after: (task: () => Promise<void>) => {
@@ -38,6 +44,18 @@ vi.mock("@/server/sheets/run-sheets", () => ({
 vi.mock("@/server/sheets/sheets-deps", () => ({
   createSheetsDeps: () => ({}),
 }));
+vi.mock("@/server/platform/run-platform-events", () => ({
+  runPlatformEvents: mocks.runPlatformEvents,
+}));
+vi.mock("@/server/platform/platform-deps", () => ({
+  createPlatformDeps: () => ({}),
+}));
+vi.mock("@/server/queries/platform", () => ({
+  recordWorkerFailure: mocks.recordWorkerFailure,
+}));
+vi.mock("@/server/supabase/admin-client", () => ({
+  createSupabaseAdminClient: () => ({}),
+}));
 vi.mock("@/lib/logger", () => ({
   logger: { error: mocks.logError, info: vi.fn(), warn: vi.fn() },
 }));
@@ -52,11 +70,31 @@ beforeEach(() => {
 });
 
 describe("scheduleWorkers", () => {
-  it("runs both workers by default", async () => {
+  it("runs every worker by default (emails, sheets, platform events)", async () => {
     scheduleWorkers();
     await settle();
     expect(mocks.runDispatch).toHaveBeenCalledTimes(1);
     expect(mocks.runSheetSync).toHaveBeenCalledTimes(1);
+    expect(mocks.runPlatformEvents).toHaveBeenCalledTimes(1);
+  });
+
+  it("records a crashed lane once, by name, and keeps the others going", async () => {
+    mocks.runPlatformEvents.mockRejectedValueOnce(new Error("boom"));
+    scheduleWorkers();
+    await settle();
+    expect(mocks.runDispatch).toHaveBeenCalledTimes(1);
+    expect(mocks.recordWorkerFailure).toHaveBeenCalledExactlyOnceWith(
+      {},
+      "platform",
+    );
+  });
+
+  it("logs, and does not throw, when the failure can't be recorded either", async () => {
+    mocks.runSheetSync.mockRejectedValueOnce(new Error("boom"));
+    mocks.recordWorkerFailure.mockRejectedValueOnce(new Error("db down"));
+    scheduleWorkers(["sheets"]);
+    await settle();
+    expect(mocks.logError).toHaveBeenCalledTimes(2);
   });
 
   it("runs only the named worker", async () => {

@@ -56,6 +56,27 @@ export async function getWorkspaceBySlug(
 }
 
 /**
+ * Since when the workspace's sending is paused for review, or null (spec §7.12). Members read it
+ * through RLS (`workspace_sending_suspensions_select_member`).
+ * @throws Error on database failures
+ */
+export async function getSendingSuspension(
+  client: Client,
+  workspaceId: string,
+): Promise<{ since: string } | null> {
+  const { data, error } = await client
+    .from("workspace_sending_suspensions")
+    .select("created_at")
+    .eq("workspace_id", workspaceId)
+    .is("lifted_at", null)
+    .maybeSingle();
+  if (error) {
+    throw new Error(error.message);
+  }
+  return data ? { since: data.created_at } : null;
+}
+
+/**
  * Renames / changes the timezone (RLS: Owner/Admin). Zero updated rows means the caller may
  * not edit it, reported as `tn:forbidden` so routes map it like database refusals.
  */

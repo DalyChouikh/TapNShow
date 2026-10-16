@@ -47,4 +47,16 @@ describe("sendOwnerAlert", () => {
       `href="${APP}/w/robotics-ab12/settings#sheets"`,
     );
   });
+
+  it("links the workspace's Home when sending is paused or resumes", async () => {
+    for (const kind of ["sendingSuspended", "sendingResumed"] as const) {
+      const email = await sent({
+        kind,
+        workspaceName: "Robotics Club",
+        workspaceSlug: "robotics-ab12",
+      });
+      expect(email.html).toContain(`href="${APP}/w/robotics-ab12"`);
+      expect(email.html).not.toContain("/settings");
+    }
+  });
 });

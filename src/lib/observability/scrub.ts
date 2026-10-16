@@ -73,11 +73,16 @@ const CREDENTIAL_PATTERNS: ReadonlyArray<[RegExp, string]> = [
   [/\bya29\.[A-Za-z0-9._-]+/g, "[REDACTED_GOOGLE_TOKEN]"],
   [/\b1\/\/[A-Za-z0-9._-]{10,}/g, "[REDACTED_GOOGLE_TOKEN]"],
   [/\bsb_secret_[A-Za-z0-9_-]+/g, "[REDACTED_SUPABASE_KEY]"],
+  // A Discord webhook URL is its own credential (the token is the path's last segment).
+  [
+    /\bhttps?:\/\/(?:(?:canary|ptb)\.)?discord(?:app)?\.com\/api(?:\/v\d+)?\/webhooks\/\d+\/[A-Za-z0-9._-]+/gi,
+    "[REDACTED_DISCORD_WEBHOOK]",
+  ],
 ];
 
 /**
  * Scrubs free text: personal-link tokens plus credential-shaped strings (Bearer
- * tokens, JWTs, Google OAuth tokens, Supabase secret keys).
+ * tokens, JWTs, Google OAuth tokens, Supabase secret keys, Discord webhook URLs).
  */
 export function scrubText(text: string): string {
   return CREDENTIAL_PATTERNS.reduce(

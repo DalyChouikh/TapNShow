@@ -4,7 +4,7 @@ import { resultsFixture } from "@/test/fixtures/meetings";
 import { renderWithProviders } from "@/test/render";
 import { SendProgress } from "./send-progress";
 
-const props = { slug: "club-ab12", canConnect: false };
+const props = { slug: "club-ab12", canConnect: false, suspended: false };
 
 describe("SendProgress", () => {
   it("shows live sending with the done count", () => {
@@ -55,5 +55,22 @@ describe("SendProgress", () => {
         "If an address doesn't exist, Gmail will tell you in your inbox.",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("says sending is paused for review, without offering to connect Gmail", () => {
+    renderWithProviders(
+      <SendProgress
+        {...props}
+        canConnect
+        suspended
+        results={{ ...resultsFixture, paused: 1 }}
+      />,
+    );
+    expect(
+      screen.getByText(
+        "Sending is paused while TapNShow reviews reports about this workspace.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /connect/i })).toBeNull();
   });
 });

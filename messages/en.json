@@ -200,6 +200,22 @@
       },
       "button": "Open Settings",
       "fallback": "If the button doesn't work, copy this link:"
+    },
+    "sendingSuspended": {
+      "subject": "Meeting emails from {workspace} are paused",
+      "preview": "{appName} paused {workspace}'s meeting emails while it looks at reports.",
+      "heading": "Meeting emails from {workspace} are paused",
+      "body": "People told {appName} they never joined {workspace}. While we look at it, the meeting emails waiting to go out are paused and new ones can't be sent. Nothing is deleted. If you think this is a mistake, reply to this email.",
+      "button": "Open {workspace}",
+      "fallback": "If the button doesn't work, copy this link:"
+    },
+    "sendingResumed": {
+      "subject": "Meeting emails from {workspace} can go out again",
+      "preview": "{workspace} can send meeting emails again.",
+      "heading": "{workspace} can send again",
+      "body": "We looked at the reports. The paused meeting emails are going out now, except for meetings that have already started.",
+      "button": "Open {workspace}",
+      "fallback": "If the button doesn't work, copy this link:"
     }
   },
   "ApiErrors": {
@@ -338,7 +354,10 @@
     "signOut": "Sign out",
     "notFoundTitle": "Workspace not found",
     "notFoundBody": "It doesn't exist or you're not a member.",
-    "backHome": "Go to my workspaces"
+    "backHome": "Go to my workspaces",
+    "suspendedTitle": "Sending is paused.",
+    "suspendedBody": "TapNShow is reviewing reports about this workspace. Emails waiting to go out will be sent once it's sorted, and nothing is deleted.",
+    "suspendedContact": "Contact us"
   },
   "Profile": {
     "nameLabel": "Name",
@@ -1194,7 +1213,8 @@
       "lateOther": "Other",
       "lateCustom": "Minutes late",
       "lateInvalid": "Enter 1 to 240 minutes."
-    }
+    },
+    "pausedSuspended": "Sending is paused while TapNShow reviews reports about this workspace."
   },
   "TokenPages": {
     "invalidTitle": "This link isn't valid",

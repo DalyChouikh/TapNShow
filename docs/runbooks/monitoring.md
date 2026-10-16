@@ -50,10 +50,20 @@ Webhook URL. The URL is a secret: paste it only into the commands below, never i
 |---|---|
 | `#deploys` | `gh secret set DISCORD_DEPLOYS_WEBHOOK` (paste when asked) |
 | `#uptime` | `gh secret set DISCORD_UPTIME_WEBHOOK` |
-| `#platform` | Vercel `DISCORD_PLATFORM_WEBHOOK` (Production, server-only), added in Task 17 |
+| `#platform` | Vercel `DISCORD_PLATFORM_WEBHOOK`, Production only, sensitive (`vercel env add DISCORD_PLATFORM_WEBHOOK production --sensitive`; set 2026-10-16). Previews and local have none, so test events never post. |
 | `#errors` | none: Sentry's own Discord integration |
 
-Back each one up in `.env.local` (commented OTHER SECRETS block).
+Back each one up in `.env.local` (commented OTHER SECRETS block; Vercel values also in VERCEL BACKUP).
+
+### `#platform` (the app's platform-events lane, spec §8)
+
+Every platform event (reports, suspensions and lifts, admin changes, the platform email cap, a
+failing worker) posts one embed: workspace names, counts and roles, never a person's name or
+address. Suspensions and lifts also email the workspace's Owner once, within the platform's daily
+email budget. The dispatcher wakes for waiting events every minute; a report also starts the lane
+at once. A failed post is retried with a growing delay and given up after
+`platform_notify_attempts_max` (5) tries; the action itself is already saved and the admin area's
+Log shows it either way. Without the variable, events are marked handled without posting.
 
 ## GitHub variables for the keep-alive (public values)
 

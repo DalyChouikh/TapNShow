@@ -91,11 +91,10 @@ export function answerLinkFrom(mime: string, choice: string): string {
 }
 
 /**
- * Seeds `people` (on one list) and a sender, then creates and sends a meeting at 18:00 `daysAhead`
- * days from today (default tomorrow) through the wizard, waiting until every invite is out. Returns
- * the meeting page's path.
+ * Seeds `people` into the Members list and a Gmail sender, then fills the wizard for a meeting
+ * `daysAhead` days from today (default tomorrow) up to Review, where Send is one click away.
  */
-export async function sendMeetingThroughUi(
+export async function openReviewThroughUi(
   page: Page,
   slug: string,
   options: {
@@ -104,9 +103,8 @@ export async function sendMeetingThroughUi(
     title: string;
     daysAhead?: number;
   },
-): Promise<string> {
+): Promise<void> {
   const count = options.people.length;
-  const invites = count === 1 ? "1 invite" : `${count} invites`;
   await seedRoster(
     slug,
     options.people.map((person) => ({ ...person, lists: ["Members"] })),
@@ -143,12 +141,35 @@ export async function sendMeetingThroughUi(
     ),
   ).toBeVisible();
   await expectNoHorizontalScroll(page);
+}
+
+/** Clicks Send on Review and confirms the dialog (`count` invites). */
+export async function confirmSend(page: Page, count: number): Promise<void> {
+  const invites = count === 1 ? "1 invite" : `${count} invites`;
   await page.getByRole("button", { name: `Send ${invites}` }).click();
   const dialog = page.getByRole("dialog", {
     name: new RegExp(`Send ${invites} from .* now\\?`),
   });
   await dialog.getByRole("button", { name: `Send ${invites}` }).click();
+}
 
+/**
+ * Sends a meeting to `people` through the wizard (Members list, a seeded sender), waiting until
+ * every invite is out. Returns the meeting page's path.
+ */
+export async function sendMeetingThroughUi(
+  page: Page,
+  slug: string,
+  options: {
+    stamp: string;
+    people: Array<{ fullName: string; email: string }>;
+    title: string;
+    daysAhead?: number;
+  },
+): Promise<string> {
+  const count = options.people.length;
+  await openReviewThroughUi(page, slug, options);
+  await confirmSend(page, count);
   // Once every invite is out, the progress card gives way to the email line (M5).
   await expect(
     page.getByRole("button", { name: `Emails: ${count} sent` }),

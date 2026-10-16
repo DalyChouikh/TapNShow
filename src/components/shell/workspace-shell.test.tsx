@@ -63,4 +63,31 @@ describe("WorkspaceShell", () => {
       });
     });
   });
+
+  it.each([
+    ["admin", true],
+    ["viewer", false],
+  ] as const)(
+    "shows the paused-sending banner to an %s: %s",
+    async (role, shown) => {
+      routeFetch({
+        "GET /api/me": json(meFixture),
+        "GET /api/workspaces/chess-ab12": json({
+          ...workspaceFixture,
+          slug: "chess-ab12",
+          myRole: role,
+          sendingSuspension: {
+            since: "2026-10-16T09:00:00.000Z",
+            contact: "mailto:team@example.test",
+          },
+        }),
+        "PATCH /api/me": json({ ok: true }),
+      });
+      renderWithProviders(
+        <WorkspaceShell slug="chess-ab12">content</WorkspaceShell>,
+      );
+      expect(await screen.findByText("content")).toBeInTheDocument();
+      expect(Boolean(screen.queryByText("Sending is paused."))).toBe(shown);
+    },
+  );
 });

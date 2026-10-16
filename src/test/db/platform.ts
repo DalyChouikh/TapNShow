@@ -18,3 +18,10 @@ export function clearPlatformAdmins(): void {
   runLocalSql("delete from public.platform_admins");
   runLocalSql("delete from public.platform_admin_invites");
 }
+
+/** Marks every waiting platform event as handled (tests of the wake-up that need nothing due). */
+export function parkAllPlatformEvents(): void {
+  runLocalSql(
+    "update public.platform_events set notified_at = now() where notified_at is null",
+  );
+}

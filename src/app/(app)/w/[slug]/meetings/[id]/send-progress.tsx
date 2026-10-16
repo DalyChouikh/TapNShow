@@ -7,39 +7,48 @@ import { Card } from "@/components/ui/card";
 import type { MeetingResults } from "@/shared/api/responses";
 import { googleConnectHref } from "@/shared/api/google-connect";
 
-/** Live send progress (spec §7.2): a bar, one caption for the current state, the bounce note. */
+/**
+ * Live send progress (spec §7.2): a bar, one caption for the current state, the bounce note. While
+ * the workspace's sending is paused for review (spec §7.12) that is the caption, and connecting
+ * Gmail isn't offered (it wouldn't help).
+ */
 export function SendProgress({
   slug,
   results,
   canConnect,
+  suspended,
 }: {
   slug: string;
   results: MeetingResults;
   canConnect: boolean;
+  suspended: boolean;
 }) {
   const t = useTranslations("MeetingPage");
   const progress = results;
   const counts = results.emails;
   const done = counts.total - counts.queued;
-  const paused = progress.paused > 0 || progress.senderState !== "ok";
-  const caption = paused
-    ? progress.senderState === "broken"
-      ? t("pausedBroken")
-      : t("pausedMissing")
-    : progress.resumesAt
-      ? t("queuedResume", {
-          count: counts.queued,
-          time: format(new Date(progress.resumesAt), "HH:mm"),
-        })
-      : counts.queued > 0
-        ? t("sending", { done, total: counts.total })
-        : counts.failed + counts.unknown > 0
-          ? t("doneWithIssues", {
-              sent: counts.sent,
-              failed: counts.failed,
-              unknown: counts.unknown,
-            })
-          : t("done", { count: counts.sent });
+  const paused =
+    suspended || progress.paused > 0 || progress.senderState !== "ok";
+  const caption = suspended
+    ? t("pausedSuspended")
+    : paused
+      ? progress.senderState === "broken"
+        ? t("pausedBroken")
+        : t("pausedMissing")
+      : progress.resumesAt
+        ? t("queuedResume", {
+            count: counts.queued,
+            time: format(new Date(progress.resumesAt), "HH:mm"),
+          })
+        : counts.queued > 0
+          ? t("sending", { done, total: counts.total })
+          : counts.failed + counts.unknown > 0
+            ? t("doneWithIssues", {
+                sent: counts.sent,
+                failed: counts.failed,
+                unknown: counts.unknown,
+              })
+            : t("done", { count: counts.sent });
   const tone = paused
     ? "bg-fill-warning"
     : counts.queued > 0
@@ -75,7 +84,7 @@ export function SendProgress({
       {counts.queued > 0 && !paused ? (
         <p className="text-sm">{t("leave")}</p>
       ) : null}
-      {paused && canConnect ? (
+      {paused && canConnect && !suspended ? (
         <Button asChild tone="primary">
           <a href={googleConnectHref(slug, "sending")}>{t("connect")}</a>
         </Button>

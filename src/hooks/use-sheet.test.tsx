@@ -159,6 +159,7 @@ describe("useExportSheetLink", () => {
         timezone: "Africa/Tunis",
         myRole: role,
         canCheckIn: false,
+        sendingSuspension: null,
       }),
     });
     const { result } = renderHook(() => useExportSheetLink("club-ab12"), {

@@ -35,6 +35,11 @@ export function settingsPath(slug: string, section: SettingsSectionId): string {
     : "/welcome";
 }
 
+/** A link to a workspace's Home (Owner emails), with the same guard as `settingsPath`. */
+export function workspaceHomePath(slug: string): string {
+  return slug.length <= SLUG_MAX && SLUG.test(slug) ? `/w/${slug}` : "/welcome";
+}
+
 /**
  * A Google connect result on the way back (`google` / `google_error`, plus `google_for` naming the
  * purpose), so only the banner of that purpose reacts. Shared by the connect route and the callback.

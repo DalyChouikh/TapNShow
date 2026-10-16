@@ -17,6 +17,7 @@ import { BottomBar } from "./bottom-bar";
 import { contentWidthFor } from "./nav-items";
 import { UserMenu } from "./user-menu";
 import { WorkspaceSwitcher } from "./workspace-switcher";
+import { SuspendedBanner } from "./suspended-banner";
 
 /** Organizer shell for `/w/[slug]/*`: header, content, bottom bar (spec §4, §10). */
 export function WorkspaceShell({
@@ -89,6 +90,14 @@ export function WorkspaceShell({
           contentWidthFor(pathname, slug) === "wide" && "md:max-w-5xl",
         )}
       >
+        {workspace.data.sendingSuspension &&
+        workspace.data.myRole !== "viewer" ? (
+          <div className="mb-4">
+            <SuspendedBanner
+              contact={workspace.data.sendingSuspension.contact}
+            />
+          </div>
+        ) : null}
         {children}
       </main>
       <BottomBar role={workspace.data.myRole} slug={slug} />

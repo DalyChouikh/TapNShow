@@ -334,13 +334,13 @@ isOneToOne: false
                   ]
                 },"platform_events": {
                   Row: {
-                    "actor_id": string | null,"created_at": string,"facts": NonNullable<Json>,"id": number,"kind": Database["public"]['Enums']["platform_event_kind"],"locked_until": string | null,"notified_at": string | null,"notify_attempts": number,"workspace_id": string | null,"workspace_name": string | null
+                    "actor_id": string | null,"created_at": string,"emailed_at": string | null,"facts": NonNullable<Json>,"id": number,"kind": Database["public"]['Enums']["platform_event_kind"],"locked_until": string | null,"notified_at": string | null,"notify_attempts": number,"workspace_id": string | null,"workspace_name": string | null
                   }
                   Insert: {
-                    "actor_id"?: string | null,"created_at"?: string,"facts"?: NonNullable<Json>,"id"?: never,"kind": Database["public"]['Enums']["platform_event_kind"],"locked_until"?: string | null,"notified_at"?: string | null,"notify_attempts"?: number,"workspace_id"?: string | null,"workspace_name"?: string | null
+                    "actor_id"?: string | null,"created_at"?: string,"emailed_at"?: string | null,"facts"?: NonNullable<Json>,"id"?: never,"kind": Database["public"]['Enums']["platform_event_kind"],"locked_until"?: string | null,"notified_at"?: string | null,"notify_attempts"?: number,"workspace_id"?: string | null,"workspace_name"?: string | null
                   }
                   Update: {
-                    "actor_id"?: string | null,"created_at"?: string,"facts"?: NonNullable<Json>,"id"?: never,"kind"?: Database["public"]['Enums']["platform_event_kind"],"locked_until"?: string | null,"notified_at"?: string | null,"notify_attempts"?: number,"workspace_id"?: string | null,"workspace_name"?: string | null
+                    "actor_id"?: string | null,"created_at"?: string,"emailed_at"?: string | null,"facts"?: NonNullable<Json>,"id"?: never,"kind"?: Database["public"]['Enums']["platform_event_kind"],"locked_until"?: string | null,"notified_at"?: string | null,"notify_attempts"?: number,"workspace_id"?: string | null,"workspace_name"?: string | null
                   }
                   Relationships: [
                     {
@@ -883,6 +883,18 @@ isOneToOne: false
                            },
 "nudge_meeting":
 { Args: { "p_meeting": string }; Returns: Json
+                           },
+"platform_event_done":
+{ Args: { "p_event": number }; Returns: undefined
+                           },
+"platform_event_failed":
+{ Args: { "p_event": number }; Returns: number
+                           },
+"platform_event_owner_target":
+{ Args: { "p_event": number }; Returns: Json
+                           },
+"platform_events_claim":
+{ Args: { "p_lease_seconds": number,"p_limit": number }; Returns: Json
                            },
 "push_claim":
 { Args: { "p_lease_seconds": number,"p_limit": number,"p_run": string }; Returns: Json
