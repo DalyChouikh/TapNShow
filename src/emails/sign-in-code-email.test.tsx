@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { OTP_EXPIRY_SECONDS } from "@/config/auth";
 import { PRIVACY_POLICY_URL } from "@/config/legal";
@@ -32,5 +33,12 @@ describe("renderSignInCodeTemplate", () => {
     expect(html).toContain(palette.light.outline);
     expect(html).not.toContain("box-shadow");
     expect(html).not.toMatch(EMOJI);
+  });
+
+  it("is what the local stack sends (regenerate with `bun run auth:config local`)", async () => {
+    const { html } = await renderSignInCodeTemplate();
+    expect(readFileSync("supabase/templates/sign-in-code.html", "utf8")).toBe(
+      html,
+    );
   });
 });
