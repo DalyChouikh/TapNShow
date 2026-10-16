@@ -258,7 +258,8 @@
     "cancel_emails_waiting": "The cancellation emails are waiting for Gmail. Reconnect Gmail, then delete the meeting once they've gone out.",
     "owns_workspaces": "You own a workspace. Give it to an Admin or delete it first.",
     "reminders_unavailable": "Reminders aren't available right now.",
-    "workspace_seats_limit_reached": "You're in the most workspaces allowed. Leave one to join this one."
+    "workspace_seats_limit_reached": "You're in the most workspaces allowed. Leave one to join this one.",
+    "platform_owner": "You run TapNShow's admin area. Hand that role to someone else before deleting your account."
   },
   "Auth": {
     "title": "Sign in to {appName}",

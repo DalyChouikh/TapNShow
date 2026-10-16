@@ -7,7 +7,7 @@ import type { LegalDocument } from "./types";
  */
 export const privacyPolicy: LegalDocument = {
   title: "Privacy Policy",
-  updated: "2026-10-15",
+  updated: "2026-10-16",
   summary: [
     "TapNShow helps groups invite people to meetings and see who's coming. A group decides whom it invites; we keep that data for the group.",
     "We ask Google only to send email from the organizer's own Gmail and to keep the one spreadsheet TapNShow creates. We never read anyone's email.",
@@ -91,6 +91,7 @@ export const privacyPolicy: LegalDocument = {
         "- Abuse counters (including IP addresses): 2 days.",
         "- Reminder devices you haven't used for 90 days are removed.",
         "- Empty draft meetings: 24 hours.",
+        "- Our admin log (for example, when a group's sending was paused): kept for as long as TapNShow runs. It names workspaces, never their members, and shows our team's addresses only partly.",
       ].join("\n"),
     },
     {
@@ -98,7 +99,7 @@ export const privacyPolicy: LegalDocument = {
       title: "Deleting your data",
       body: [
         "- **Your account:** go to [Account](/account) and choose Delete my account. We erase your reasons and comments in every group, remove you from every workspace, disconnect your Google connections and delete your account. Your answers' statuses and check-ins stay with the groups for their records. If you own a workspace, give it to an Admin or delete it first.",
-        "- **A workspace:** its Owner can delete it from Settings; all its data is deleted.",
+        "- **A workspace:** its Owner can delete it from Settings; all its data is deleted. Our admin log keeps the workspace's name next to anything our team did about it.",
         "- **Copies:** we can't reach copies people made themselves, such as a downloaded file or a copy of a group's Google Sheet.",
       ].join("\n"),
     },
