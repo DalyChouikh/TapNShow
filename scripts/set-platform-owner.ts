@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { parseArgs } from "node:util";
 import { z } from "zod";
 import { SUPABASE_PROJECTS } from "../src/config/supabase-projects";
+import { maskEmail } from "../src/lib/mask-email";
 import { MANAGEMENT_API, readAccessToken, tnCode } from "./supabase-management";
 
 const PROJECTS = ["local", "preview", "production"] as const;
@@ -38,12 +39,6 @@ export function parseOwnerArgs(argv: string[]): {
 /** The one statement the script runs (the address is dollar-quoted; `$` is refused above). */
 export function ownerSql(email: string, replace: boolean): string {
   return `select private.set_platform_owner($tn$${email}$tn$, ${replace}) as result`;
-}
-
-/** What the script prints instead of the address (the shape of `private.mask_email`). */
-export function maskEmail(email: string): string {
-  const [local, domain] = email.split("@");
-  return `${local.slice(0, 1)}•••@${domain}`;
 }
 
 /** Runs the statement as `postgres` on a hosted project (Management API, the `auth:config` token). */

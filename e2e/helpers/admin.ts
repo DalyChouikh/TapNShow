@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 
 /** The service-role client, for e2e setup only (the app under test never sees it). */
@@ -48,4 +49,22 @@ export async function ownerEmailOf(workspaceId: string): Promise<string> {
     throw error ?? new Error("the Owner has no email");
   }
   return data.user.email;
+}
+
+/**
+ * Makes the account signed in on `page` a platform admin (e2e setup: the product adds admins
+ * through invites).
+ */
+export async function makePlatformAdmin(page: Page): Promise<void> {
+  const me = await page.request.get("/api/me");
+  if (!me.ok()) {
+    throw new Error(`/api/me answered ${me.status()}`);
+  }
+  const { userId } = (await me.json()) as { userId: string };
+  const { error } = await adminClient()
+    .from("platform_admins")
+    .insert({ user_id: userId, role: "admin" });
+  if (error) {
+    throw error;
+  }
 }

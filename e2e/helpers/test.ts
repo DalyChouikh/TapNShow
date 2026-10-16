@@ -31,7 +31,11 @@ export const test = base.extend<Fixtures>({
           if (type !== "error" && type !== "warning") {
             return;
           }
-          const text = message.text();
+          // A failed resource's own URL is the message's location, not part of its text.
+          const source = message.location().url;
+          const text = source
+            ? `${message.text()} <${source}>`
+            : message.text();
           if (!allowConsole?.test(text)) {
             problems.push(`${type}: ${text} (${page.url()})`);
           }

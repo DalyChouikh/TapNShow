@@ -12,8 +12,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Sticker } from "@/components/ui/sticker";
-import { cn } from "@/lib/utils";
 import type { WorkspaceRole } from "@/shared/api/me";
+import { NavLink } from "./nav-link";
 import { navItemsFor, type NavItem } from "./nav-items";
 
 const ICONS: Record<NavItem["key"], Icon> = {
@@ -66,20 +66,14 @@ export function BottomBar({
               </li>
             );
           }
-          const active = isActive(item);
           return (
             <li key={item.key}>
-              <Link
+              <NavLink
                 href={item.href}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "flex min-h-11 min-w-14 flex-col items-center gap-0.5 rounded-control px-2 py-1 text-xs font-bold",
-                  active ? "bg-fill-primary text-on-fill" : "text-ink",
-                )}
-              >
-                <Glyph weight="bold" aria-hidden className="size-6" />
-                {t(item.key)}
-              </Link>
+                label={t(item.key)}
+                glyph={Glyph}
+                active={isActive(item)}
+              />
             </li>
           );
         })}
