@@ -11,17 +11,19 @@ import { ADMIN_PERIOD_MAX_DAYS, type AdminPeriod } from "@/shared/api/admin";
 
 /** The Overview's period presets, in the switch's order (custom comes after them). */
 export const ADMIN_PERIOD_PRESETS = ["7d", "30d", "90d", "12m"] as const;
+/** One of the presets. */
+export type AdminPeriodPreset = (typeof ADMIN_PERIOD_PRESETS)[number];
 /** One preset, or a range the admin picked. */
-export type AdminPeriodChoice =
-  (typeof ADMIN_PERIOD_PRESETS)[number] | "custom";
-/** What the Overview shows: the choice and its UTC days. */
-export type AdminPeriodSelection = {
-  preset: AdminPeriodChoice;
-  period: AdminPeriod;
-};
+export type AdminPeriodChoice = AdminPeriodPreset | "custom";
+/**
+ * What the Overview shows: a preset (its days follow today, so an Overview left open past
+ * midnight UTC moves on with it) or the days the admin picked.
+ */
+export type AdminPeriodSelection =
+  { preset: AdminPeriodPreset } | { preset: "custom"; period: AdminPeriod };
 
 /** The preset the Overview opens on. */
-export const DEFAULT_ADMIN_PERIOD = "30d";
+export const DEFAULT_ADMIN_PERIOD: AdminPeriodPreset = "30d";
 
 const DAY = "yyyy-MM-dd";
 const PRESET_DAYS = { "7d": 7, "30d": 30, "90d": 90 } as const;
@@ -33,7 +35,7 @@ export function utcToday(now: Date = new Date()): string {
 
 /** A preset's UTC days, ending today; 12 months start on the first of the month 11 months back. */
 export function presetPeriod(
-  preset: (typeof ADMIN_PERIOD_PRESETS)[number],
+  preset: AdminPeriodPreset,
   today: string,
 ): AdminPeriod {
   const end = parseISO(today);
@@ -82,16 +84,23 @@ export function periodFromParams(
     (choice) => choice === params.get("period"),
   );
   if (preset) {
-    return { preset, period: presetPeriod(preset, today) };
+    return { preset };
   }
   const range = { from: params.get("from"), to: params.get("to") };
   if (isValidPeriod(range, today) && range.from && range.to) {
     return { preset: "custom", period: { from: range.from, to: range.to } };
   }
-  return {
-    preset: DEFAULT_ADMIN_PERIOD,
-    period: presetPeriod(DEFAULT_ADMIN_PERIOD, today),
-  };
+  return { preset: DEFAULT_ADMIN_PERIOD };
+}
+
+/** The UTC days a selection covers today. */
+export function selectedPeriod(
+  selection: AdminPeriodSelection,
+  today: string,
+): AdminPeriod {
+  return selection.preset === "custom"
+    ? selection.period
+    : presetPeriod(selection.preset, today);
 }
 
 /** The address' query for a selection (empty for the default). */
@@ -99,10 +108,9 @@ export function periodParams(selection: AdminPeriodSelection): string {
   if (selection.preset === DEFAULT_ADMIN_PERIOD) {
     return "";
   }
-  const params = new URLSearchParams(
+  return new URLSearchParams(
     selection.preset === "custom"
-      ? { from: selection.period.from, to: selection.period.to }
+      ? selection.period
       : { period: selection.preset },
-  );
-  return params.toString();
+  ).toString();
 }

@@ -90,7 +90,9 @@ const overviewRow = z.object({
   previous: figuresRow,
   series: z.object({
     unit: z.enum(ADMIN_SERIES_UNITS),
-    points: z.array(z.object({ start: z.string(), meetings: z.number() })),
+    points: z.array(
+      z.object({ start: z.string(), end: z.string(), meetings: z.number() }),
+    ),
   }),
   health: z.object({
     queue_waiting: z.number(),

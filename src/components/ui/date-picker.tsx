@@ -82,6 +82,8 @@ export function DatePicker({
             selected={selected}
             defaultMonth={selected ?? toDate(today)}
             today={toDate(today)}
+            startMonth={min ? toDate(min) : undefined}
+            endMonth={max ? toDate(max) : undefined}
             disabled={[
               ...(min ? [{ before: toDate(min) }] : []),
               ...(max ? [{ after: toDate(max) }] : []),
@@ -111,9 +113,9 @@ export function DatePicker({
                 "flex h-11 items-center justify-center font-display",
               nav: "absolute inset-x-0 top-0 flex justify-between",
               button_previous:
-                "inline-flex size-11 items-center justify-center rounded-control",
+                "inline-flex size-11 items-center justify-center rounded-control aria-disabled:opacity-40",
               button_next:
-                "inline-flex size-11 items-center justify-center rounded-control",
+                "inline-flex size-11 items-center justify-center rounded-control aria-disabled:opacity-40",
               month_grid: "border-collapse",
               weekday: "size-11 text-xs font-bold text-muted-ink",
               day: "p-0 text-center",

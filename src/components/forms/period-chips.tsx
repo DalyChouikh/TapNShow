@@ -1,8 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { DateRangeFields } from "@/components/forms/date-range-fields";
 import { Chip } from "@/components/ui/chip";
-import { DatePicker } from "@/components/ui/date-picker";
 import { HISTORY_PERIODS } from "@/config/responses";
 import type { HistoryPeriod } from "@/lib/responses/periods";
 import { CHIP_ROW_CLASS } from "@/components/ui/chip-row";
@@ -40,25 +40,12 @@ export function PeriodChips({
         ))}
       </div>
       {value === "custom" ? (
-        <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
-          <DatePicker
-            id="period-from"
-            label={t("from")}
-            value={custom.from}
-            today={today}
-            onChange={(from) =>
-              onCustomChange({ from, to: custom.to < from ? from : custom.to })
-            }
-          />
-          <DatePicker
-            id="period-to"
-            label={t("to")}
-            value={custom.to}
-            today={today}
-            min={custom.from}
-            onChange={(to) => onCustomChange({ ...custom, to })}
-          />
-        </div>
+        <DateRangeFields
+          id="period"
+          value={custom}
+          onChange={onCustomChange}
+          today={today}
+        />
       ) : null}
     </div>
   );
