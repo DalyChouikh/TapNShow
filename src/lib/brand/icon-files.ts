@@ -7,7 +7,8 @@ export const ICON_FILES: Readonly<
   "icon-192.png": { size: 192, variant: "full" },
   "icon-512.png": { size: 512, variant: "full" },
   "maskable-512.png": { size: 512, variant: "maskable" },
-  "apple-touch-icon.png": { size: 180, variant: "maskable" },
+  "apple-touch-icon.png": { size: 180, variant: "square" },
+  "logo-120.png": { size: 120, variant: "square" },
   "badge-96.png": { size: 96, variant: "badge" },
 };
 

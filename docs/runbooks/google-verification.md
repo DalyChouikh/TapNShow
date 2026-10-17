@@ -25,7 +25,9 @@ in the same PR.
       (pinned by `src/content/legal/content.test.ts`).
 - [ ] Search Console shows the Domain property `tapnshow.tn` verified (DNS record at the
       registrar; it covers `www` and the apex).
-- [ ] Google Auth Platform → Branding: app name TapNShow, the new logo, support email = the platform
+- [ ] Google Auth Platform → Branding: app name TapNShow, the new logo (download
+      https://www.tapnshow.tn/icons/logo-120.png and upload it; uploading a logo starts verification, so
+      do it here, as part of the submission), support email = the platform
       address, home page, privacy and terms links = the three pages above, authorized domain
       `tapnshow.tn`.
 - [ ] Data access: exactly the scopes in the table above.
