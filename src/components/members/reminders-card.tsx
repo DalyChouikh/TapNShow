@@ -3,7 +3,6 @@
 import { BellRinging, BellSlash, Check } from "@phosphor-icons/react";
 import { useNow, useTranslations } from "next-intl";
 import { useState } from "react";
-import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Sticker } from "@/components/ui/sticker";
@@ -11,11 +10,8 @@ import { DEVICE_KEYS, REMINDERS_NOT_NOW_DAYS } from "@/config/members";
 import { useInstallPrompt } from "@/hooks/use-install-prompt";
 import { useReminders } from "@/hooks/use-reminders";
 import { useDeviceKind } from "@/lib/device/kind";
-import { readDeviceValue, writeDeviceValue } from "@/lib/device/storage";
-import { useIsClient } from "@/lib/use-is-client";
+import { useHiddenUntil } from "@/lib/device/use-hidden-until";
 import { IphoneInstallSheet } from "./iphone-install-sheet";
-
-const DAY_MS = 86_400_000;
 
 /**
  * The reminders card at the top of `/invites` (spec §7.4, mockup 2026-10-14). It changes with the
@@ -27,11 +23,14 @@ export function RemindersCard() {
   const t = useTranslations("Reminders");
   const { state, turnOn, pending, justTurnedOn } = useReminders();
   const { canInstall, install } = useInstallPrompt();
-  const isClient = useIsClient();
   const now = useNow();
+  const notNow = useHiddenUntil(
+    DEVICE_KEYS.remindersHiddenUntil,
+    REMINDERS_NOT_NOW_DAYS,
+    now,
+  );
   const device = useDeviceKind();
   const thisDevice = t("thisDevice", { device });
-  const [dismissed, setDismissed] = useState(false);
   const [guide, setGuide] = useState(false);
   if (state === "on" && justTurnedOn) {
     return (
@@ -43,26 +42,12 @@ export function RemindersCard() {
       </p>
     );
   }
-  const hiddenUntil = isClient
-    ? readDeviceValue(DEVICE_KEYS.remindersHiddenUntil, z.iso.datetime())
-    : null;
-  const hidden =
-    dismissed ||
-    (hiddenUntil !== null && Date.parse(hiddenUntil) > now.getTime());
   if (
-    !isClient ||
-    hidden ||
+    notNow.hidden ||
     (state !== "off" && state !== "needs_install" && state !== "blocked")
   ) {
     return null;
   }
-  const hide = () => {
-    writeDeviceValue(
-      DEVICE_KEYS.remindersHiddenUntil,
-      new Date(Date.now() + REMINDERS_NOT_NOW_DAYS * DAY_MS).toISOString(),
-    );
-    setDismissed(true);
-  };
   const blocked = state === "blocked";
   const iphone = state === "needs_install";
   return (
@@ -102,7 +87,9 @@ export function RemindersCard() {
             {t("showMe")}
           </Button>
         ) : null}
-        <Button onClick={hide}>{blocked ? t("hide") : t("notNow")}</Button>
+        <Button onClick={notNow.hide}>
+          {blocked ? t("hide") : t("notNow")}
+        </Button>
       </div>
       <IphoneInstallSheet open={guide} onOpenChange={setGuide} />
     </Card>
