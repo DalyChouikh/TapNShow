@@ -104,4 +104,11 @@ describe("ResultTiles", () => {
     expect(screen.queryByRole("button", { name: /To reconfirm/ })).toBeNull();
     expect(screen.getByRole("group").className).toContain("md:grid-cols-4");
   });
+
+  it("renders plain boxes without onFilter", () => {
+    renderWithProviders(<ResultTiles results={results} />);
+    expect(screen.queryByRole("button")).toBeNull();
+    const tiles = screen.getByRole("group", { name: "Answers" });
+    expect(tiles).toHaveTextContent("Going17Late4Absent3No reply6");
+  });
 });

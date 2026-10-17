@@ -1,5 +1,6 @@
 let reducedMotion = false;
 let wideViewport = false;
+let coarsePointer = false;
 
 /**
  * Toggles the emulated `prefers-reduced-motion: reduce` media query for tests.
@@ -17,6 +18,14 @@ export function setWideViewport(value: boolean): void {
   wideViewport = value;
 }
 
+/**
+ * Emulates a touch screen for `(pointer: coarse)` media queries in tests.
+ * @param value - true to make the primary pointer coarse
+ */
+export function setCoarsePointer(value: boolean): void {
+  coarsePointer = value;
+}
+
 /** Installs a deterministic `window.matchMedia` (jsdom has none). */
 export function installMatchMedia(): void {
   Object.defineProperty(window, "matchMedia", {
@@ -27,7 +36,9 @@ export function installMatchMedia(): void {
         ? reducedMotion
         : query.includes("min-width")
           ? wideViewport
-          : false,
+          : query.includes("pointer: coarse")
+            ? coarsePointer
+            : false,
       media: query,
       onchange: null,
       addListener: () => undefined,

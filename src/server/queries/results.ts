@@ -6,6 +6,7 @@ import { SORT_NAME_MAX } from "@/config/pagination";
 import { sqlNullable } from "@/server/db/rpc-args";
 import { encodeCursor } from "@/server/http/pagination";
 import { responseModeSchema } from "@/shared/api/meeting-settings";
+import type { WorkspaceInsights } from "@/shared/api/insights";
 import { inviteeStatusSchema } from "@/shared/api/meetings";
 import type { Page } from "@/shared/api/pagination";
 import {
@@ -333,6 +334,88 @@ export async function getAttendanceSummary(
         late: row.late,
         absent: row.absent,
         noReply: row.no_reply,
+      })),
+    },
+    error: null,
+  };
+}
+
+const dbInsightsSchema = z.object({
+  roster: z.object({ members: count, lists: count, committee: count }),
+  held: count,
+  period: z.object({
+    meetings: count,
+    came_average: z.number(),
+    invited_average: z.number(),
+    answered_before_start: z.number().nullable(),
+  }),
+  chart: z.array(
+    z.object({
+      id: z.uuid(),
+      title: z.string(),
+      starts_at: iso,
+      timezone: z.string(),
+      attending: count,
+      late: count,
+      absent: count,
+      no_reply: count,
+    }),
+  ),
+  often_missing: z.array(
+    z.object({
+      contact_id: z.uuid(),
+      full_name: z.string(),
+      invited: count,
+      missed: count,
+      absent: count,
+      no_reply: count,
+    }),
+  ),
+});
+
+/** `workspace_insights()`: Home's roster counts, the period's numbers, its chart and who often misses. */
+export async function getWorkspaceInsights(
+  client: Client,
+  workspaceId: string,
+  range: PeriodRange,
+): Promise<Result<WorkspaceInsights>> {
+  const { data, error } = await client.rpc("workspace_insights", {
+    p_workspace: workspaceId,
+    p_from: sqlNullable(range.from),
+    p_to: sqlNullable(range.to),
+  });
+  if (error) {
+    return { data: null, error };
+  }
+  const { roster, held, period, chart, often_missing } =
+    dbInsightsSchema.parse(data);
+  return {
+    data: {
+      roster,
+      held,
+      period: {
+        meetings: period.meetings,
+        cameAverage: period.came_average,
+        invitedAverage: period.invited_average,
+        answeredBeforeStart: period.answered_before_start,
+      },
+      chart: chart.map((meeting) => ({
+        id: meeting.id,
+        title: meeting.title,
+        startsAt: meeting.starts_at,
+        timezone: meeting.timezone,
+        attending: meeting.attending,
+        late: meeting.late,
+        absent: meeting.absent,
+        noReply: meeting.no_reply,
+      })),
+      oftenMissing: often_missing.map((person) => ({
+        contactId: person.contact_id,
+        fullName: person.full_name,
+        invited: person.invited,
+        missed: person.missed,
+        absent: person.absent,
+        noReply: person.no_reply,
       })),
     },
     error: null,

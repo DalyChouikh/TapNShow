@@ -6,7 +6,7 @@ import { useAdminAdmins } from "@/hooks/use-admin";
 import { useMe } from "@/hooks/use-me";
 import { AdminList } from "./admin-list";
 import { InviteAdminButton } from "./invite-admin-dialog";
-import { AdminLoadError } from "./load-error";
+import { LoadError } from "@/components/errors/load-error";
 import { WaitingInvites } from "./waiting-invites";
 
 /**
@@ -22,7 +22,7 @@ export function AdminAdminsView() {
     <div className="flex flex-col gap-4">
       <h1 className="font-display text-3xl">{t("title")}</h1>
       {admins.isError && !admins.data ? (
-        <AdminLoadError onRetry={() => void admins.refetch()} />
+        <LoadError onRetry={() => void admins.refetch()} />
       ) : !admins.data || !me.data ? (
         <div aria-busy="true" className="flex flex-col gap-3">
           <Skeleton className="h-20 w-full" />

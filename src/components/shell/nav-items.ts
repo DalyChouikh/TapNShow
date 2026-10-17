@@ -28,10 +28,15 @@ export function contentWidthFor(
   pathname: string,
   slug: string,
 ): "narrow" | "wide" {
-  if (!pathname.startsWith(`/w/${slug}/`)) {
+  const home = `/w/${slug}`;
+  // Home lays out two columns on computers (and keeps its phone column narrow itself).
+  if (pathname === home || pathname === `${home}/`) {
+    return "wide";
+  }
+  if (!pathname.startsWith(`${home}/`)) {
     return "narrow";
   }
-  const parts = pathname.slice(`/w/${slug}/`.length).split("/");
+  const parts = pathname.slice(`${home}/`.length).split("/");
   // The meeting page (`meetings/<id>`) shows its answers as a table from `md` up.
   const meetingPage =
     parts.length === 2 && parts[0] === "meetings" && UUID.test(parts[1]);

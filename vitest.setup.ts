@@ -3,6 +3,7 @@ import { cleanup } from "@testing-library/react";
 import { afterEach, vi } from "vitest";
 import {
   installMatchMedia,
+  setCoarsePointer,
   setReducedMotion,
   setWideViewport,
 } from "./src/test/match-media";
@@ -47,6 +48,7 @@ afterEach(() => {
   cleanup();
   setReducedMotion(false);
   setWideViewport(false);
+  setCoarsePointer(false);
   // Zero warnings (spec §12, M9): any console.error / console.warn a test didn't expect fails it.
   const problems = consoleGuard.take();
   if (problems.length > 0) {

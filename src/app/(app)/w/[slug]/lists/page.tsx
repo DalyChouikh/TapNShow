@@ -3,8 +3,7 @@
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Suspense } from "react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { LoadError } from "@/components/errors/load-error";
 import { useRoster } from "@/hooks/use-roster";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { RosterSkeleton } from "./roster-skeleton";
@@ -18,12 +17,10 @@ export default function ListsPage() {
   const roster = useRoster(slug);
   if (roster.isError) {
     return (
-      <Card as="section" className="flex flex-col items-start gap-3">
-        <p>{t("loadError")}</p>
-        <Button tone="primary" onClick={() => void roster.refetch()}>
-          {t("retry")}
-        </Button>
-      </Card>
+      <LoadError
+        message={t("loadError")}
+        onRetry={() => void roster.refetch()}
+      />
     );
   }
   if (!workspace.data || !roster.data) {

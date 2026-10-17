@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import type { MeetingResults } from "@/shared/api/responses";
 import { googleConnectHref } from "@/shared/api/google-connect";
 
@@ -67,20 +68,7 @@ export function SendProgress({
           {done} / {counts.total}
         </span>
       </div>
-      <div
-        role="progressbar"
-        aria-valuemin={0}
-        aria-valuemax={counts.total}
-        aria-valuenow={done}
-        className="h-4 overflow-hidden rounded-full border-[length:var(--tn-border-width)] border-outline bg-surface"
-      >
-        <div
-          className="h-full border-r-[length:var(--tn-border-width)] border-outline bg-fill-primary transition-[width] motion-reduce:transition-none"
-          style={{
-            width: `${counts.total ? (done / counts.total) * 100 : 0}%`,
-          }}
-        />
-      </div>
+      <ProgressBar label={t("progressTitle")} value={done} max={counts.total} />
       <p className="font-bold">{caption}</p>
       {counts.queued > 0 && !paused ? (
         <p className="text-sm">{t("leave")}</p>

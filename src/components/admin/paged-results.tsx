@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { ShowMore } from "@/components/ui/show-more";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { usePagedList } from "@/hooks/use-paged-list";
-import { AdminLoadError } from "./load-error";
+import { LoadError } from "@/components/errors/load-error";
 
 /** What `usePagedList` returns, for any item type. */
 type PagedList<T> = Omit<ReturnType<typeof usePagedList>, "items"> & {
@@ -27,7 +27,7 @@ export function PagedResults<T>({
   children: (items: T[]) => ReactNode;
 }) {
   if (list.query.isError && list.items.length === 0) {
-    return <AdminLoadError onRetry={() => void list.query.refetch()} />;
+    return <LoadError onRetry={() => void list.query.refetch()} />;
   }
   if (list.query.isPending) {
     return (

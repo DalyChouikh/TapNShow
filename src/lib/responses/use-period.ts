@@ -6,18 +6,30 @@ import { useState } from "react";
 import { HISTORY_DEFAULT_PERIOD } from "@/config/responses";
 import { type HistoryPeriod, periodRange } from "./periods";
 
+/** A chosen period: the chip, and the days of "From…" (`yyyy-MM-dd`, workspace zone). */
+export type PeriodChoice = {
+  period: HistoryPeriod;
+  custom: { from: string; to: string };
+};
+
 /**
- * Period chip state for history screens. "Now" is fixed when the screen opens, so the range (and
- * the query key built from it) stays stable between renders.
+ * Period chip state for history screens, starting on `initial` (another screen's choice) or the
+ * default. "Now" is fixed when the screen opens, so the range (and the query key built from it)
+ * stays stable between renders.
  */
-export function usePeriod(timezone: string) {
+export function usePeriod(timezone: string, initial?: PeriodChoice) {
   const [now] = useState(() => new Date());
   const today = format(new TZDate(now, timezone), "yyyy-MM-dd");
-  const [period, setPeriod] = useState<HistoryPeriod>(HISTORY_DEFAULT_PERIOD);
-  const [custom, setCustom] = useState(() => ({
-    from: format(subDays(new TZDate(now, timezone), 30), "yyyy-MM-dd"),
-    to: today,
-  }));
+  const [period, setPeriod] = useState<HistoryPeriod>(
+    initial?.period ?? HISTORY_DEFAULT_PERIOD,
+  );
+  const [custom, setCustom] = useState(
+    () =>
+      initial?.custom ?? {
+        from: format(subDays(new TZDate(now, timezone), 30), "yyyy-MM-dd"),
+        to: today,
+      },
+  );
   return {
     period,
     setPeriod,
@@ -27,3 +39,6 @@ export function usePeriod(timezone: string) {
     range: periodRange(period, now, timezone, custom),
   };
 }
+
+/** A screen's period state (chips, custom days, the range they cover). */
+export type PeriodState = ReturnType<typeof usePeriod>;
