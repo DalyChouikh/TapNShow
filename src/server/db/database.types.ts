@@ -1020,6 +1020,9 @@ isOneToOne: false
 "update_contact":
 { Args: { "p_contact": string,"p_email": string,"p_full_name": string,"p_list_ids": (string)[],"p_workspace": string }; Returns: undefined
                            },
+"workspace_insights":
+{ Args: { "p_from"?: string,"p_to"?: string,"p_workspace": string }; Returns: Json
+                           },
 "workspace_sender":
 { Args: { "p_workspace": string }; Returns: Json
                            },

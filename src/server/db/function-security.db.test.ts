@@ -80,6 +80,7 @@ const PRIVATE_FUNCTIONS_FOR_AUTHENTICATED = [
   "transfer_ownership",
   "turn_off_sheet",
   "valid_delay_options",
+  "workspace_insights",
   "workspace_sender",
   "workspace_sheet",
 ];
