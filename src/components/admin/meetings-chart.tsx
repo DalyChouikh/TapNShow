@@ -27,7 +27,7 @@ const DATE_FORMAT: Record<ChartUnit, { bar: string; group: string }> = {
 /** The room a bar's date label needs (px) before neighbours' labels would touch. */
 const LABEL_PX: Record<ChartUnit, number> = { day: 16, week: 16, month: 26 };
 /** The room a month or year name under the dates needs (px). */
-const GROUP_PX: Record<ChartUnit, number> = { day: 28, week: 28, month: 32 };
+const GROUP_PX: Record<ChartUnit, number> = { day: 32, week: 32, month: 36 };
 
 /** Keys that move the chosen bar, and by how much (Home and End jump to the ends). */
 const STEPS: Record<string, number> = {
