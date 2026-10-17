@@ -44,9 +44,13 @@ describe("contentWidthFor", () => {
     expect(contentWidthFor("/w/club-ab12/meetings/new", "club-ab12")).toBe(
       "narrow",
     );
-    expect(contentWidthFor("/w/club-ab12", "club-ab12")).toBe("narrow");
     expect(contentWidthFor("/w/club-ab12/settings", "club-ab12")).toBe(
       "narrow",
     );
+  });
+
+  it("gives Home a wide page for its two columns on computers", () => {
+    expect(contentWidthFor("/w/club-ab12", "club-ab12")).toBe("wide");
+    expect(contentWidthFor("/w/club-ab12/", "club-ab12")).toBe("wide");
   });
 });

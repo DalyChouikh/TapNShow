@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 import { ADMIN_PERIOD_MAX_DAYS } from "@/shared/api/admin";
 import { AttentionList } from "./attention-list";
 import { FigureTiles } from "./figure-tiles";
-import { AdminLoadError } from "./load-error";
+import { LoadError } from "@/components/errors/load-error";
 import { MeetingsChart } from "./meetings-chart";
 import { SystemHealth } from "./system-health";
 
@@ -121,7 +121,7 @@ export function AdminOverviewView() {
             <FigureTiles current={data.current} previous={data.previous} />
           </div>
         ) : failed ? (
-          <AdminLoadError onRetry={() => void overview.refetch()} />
+          <LoadError onRetry={() => void overview.refetch()} />
         ) : (
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
             {Array.from({ length: FIGURE_COUNT }, (_, index) => (

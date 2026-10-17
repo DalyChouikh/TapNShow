@@ -1,108 +1,112 @@
-import { screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
-import { json, routeFetch } from "@/test/fetch";
+import { screen, within } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import { workspaceFixture } from "@/test/fixtures/me";
-import { renderWithProviders } from "@/test/render";
-import { HomeChecklist } from "./home-checklist";
+import { expectNothingShown, renderWithProviders } from "@/test/render";
+import { HomeChecklist, type ReadySetup } from "./home-checklist";
 
-const activeSender = {
-  connectionId: "3f1c2b8e-6a43-4f0e-9a51-1f2c3d4e5f60",
-  email: "club@gmail.com",
-  status: "active",
-  connectedBy: "Amira Ben Ali",
-  connectedAt: "2026-10-07T10:00:00Z",
-  isMine: true,
-  sentLast24h: 0,
-  dailyLimit: 400,
+const pending: ReadySetup = {
+  state: "ready",
+  done: {
+    importMembers: true,
+    connectGmail: false,
+    inviteCommittee: true,
+    connectSheets: false,
+  },
+  complete: false,
+  ownerName: "Daly",
 };
+const complete: ReadySetup = {
+  ...pending,
+  done: { ...pending.done, connectGmail: true },
+  complete: true,
+};
+const admin = { ...workspaceFixture, myRole: "admin" as const };
+const viewer = { ...workspaceFixture, myRole: "viewer" as const };
 
-const sheet = (state: "off" | "on") => ({
-  state,
-  spreadsheetId: state === "on" ? "file-abcdefghij" : null,
-  pausedReason: null,
-  syncedAt: null,
-  behind: false,
-  createdAt: null,
-  turnedOnBy: "",
-  accountEmail: null,
-  ownerName: "Amira Ben Ali",
-  tabs: [],
-});
-
-function senderIs(sender: object | null, sheetState: "off" | "on" = "off") {
-  routeFetch({
-    "GET /api/workspaces/robotics-cd34/sender": json({
-      sender,
-      ownerName: "Amira Ben Ali",
-      myConnections: [],
-    }),
-    "GET /api/workspaces/robotics-cd34/sheet": json(sheet(sheetState)),
-  });
-}
-
-const connectLinks = async () =>
-  (await screen.findAllByRole("link", { name: "Connect" })).map((link) =>
-    link.getAttribute("href"),
-  );
-
-beforeEach(() => senderIs(null));
+const step = (name: string) =>
+  screen.getByText(name).closest("li") as HTMLElement;
 
 describe("HomeChecklist", () => {
-  it("offers the Viewer invite now and no step is coming soon any more", () => {
-    renderWithProviders(<HomeChecklist workspace={workspaceFixture} />);
-    expect(
-      screen.getByRole("heading", { name: "Welcome to Robotics Club" }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Invite" })).toHaveAttribute(
-      "href",
-      "/w/robotics-cd34/settings#people",
-    );
-    expect(screen.queryByText("Coming soon")).toBeNull();
-  });
-
-  it("sends the Owner to Settings > Sending and Settings > Sheets, where the confirm lives", async () => {
-    renderWithProviders(<HomeChecklist workspace={workspaceFixture} />);
-    await screen.findByText("Sync responses to Google Sheets");
-    expect(await connectLinks()).toEqual([
-      "/w/robotics-cd34/settings#sending",
-      "/w/robotics-cd34/settings#sheets",
-    ]);
-  });
-
-  it("shows Done once a sender is active and a sheet is on", async () => {
-    senderIs(activeSender, "on");
-    renderWithProviders(<HomeChecklist workspace={workspaceFixture} />);
-    expect(await screen.findAllByText("Done")).toHaveLength(2);
-    expect(screen.queryByRole("link", { name: "Connect" })).toBeNull();
-  });
-
-  it("tells Admins the Owner connects Gmail", async () => {
+  it("marks each step Done from the roster, committee, sender and sheet", () => {
     renderWithProviders(
-      <HomeChecklist workspace={{ ...workspaceFixture, myRole: "admin" }} />,
+      <HomeChecklist workspace={workspaceFixture} setup={pending} />,
     );
     expect(
-      await screen.findByText("Amira Ben Ali connects Gmail"),
+      screen.getByRole("heading", { name: "Get set up" }),
     ).toBeInTheDocument();
+    expect(screen.getByText("1 of 2 needed")).toBeInTheDocument();
     expect(
-      await screen.findByText("Amira Ben Ali connects Google Sheets"),
+      screen.getByRole("progressbar", { name: "1 of 2 needed" }),
+    ).toHaveAttribute("aria-valuenow", "1");
+    for (const name of ["Import your members", "Invite your committee"]) {
+      expect(within(step(name)).getByText("Done")).toBeInTheDocument();
+      expect(within(step(name)).queryByRole("link")).toBeNull();
+    }
+    expect(
+      within(step("Connect your group's Gmail")).getByRole("link", {
+        name: "Connect",
+      }),
+    ).toHaveAttribute("href", "/w/robotics-cd34/settings#sending");
+    expect(
+      within(step("Sync answers to Google Sheets")).getByRole("link", {
+        name: "Connect",
+      }),
+    ).toHaveAttribute("href", "/w/robotics-cd34/settings#sheets");
+    expect(
+      screen.getByText(
+        "This card goes away once your members and Gmail are in.",
+      ),
     ).toBeInTheDocument();
   });
 
-  it("links the import step to the roster", () => {
-    renderWithProviders(<HomeChecklist workspace={workspaceFixture} />);
+  it("links import to the roster and invite to the committee settings", () => {
+    renderWithProviders(
+      <HomeChecklist
+        workspace={workspaceFixture}
+        setup={{
+          ...pending,
+          done: {
+            ...pending.done,
+            importMembers: false,
+            inviteCommittee: false,
+          },
+        }}
+      />,
+    );
+    expect(screen.getByText("0 of 2 needed")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Import" })).toHaveAttribute(
       "href",
       "/w/robotics-cd34/lists",
     );
+    expect(screen.getByRole("link", { name: "Invite" })).toHaveAttribute(
+      "href",
+      "/w/robotics-cd34/settings#people",
+    );
   });
 
-  it("shows Viewers a read-only welcome instead", () => {
+  it("disappears once members and Gmail are done", () => {
     renderWithProviders(
-      <HomeChecklist workspace={{ ...workspaceFixture, myRole: "viewer" }} />,
+      <HomeChecklist workspace={workspaceFixture} setup={complete} />,
+    );
+    expectNothingShown();
+  });
+
+  it("asks Admins to ask the Owner for Gmail and Sheets", () => {
+    renderWithProviders(<HomeChecklist workspace={admin} setup={pending} />);
+    expect(screen.getAllByText("Ask Daly to connect")).toHaveLength(2);
+    expect(screen.queryByRole("link", { name: "Connect" })).toBeNull();
+  });
+
+  it("shows Viewers the short welcome until setup is done", () => {
+    const { unmount } = renderWithProviders(
+      <HomeChecklist workspace={viewer} setup={pending} />,
     );
     expect(
       screen.getByRole("heading", { name: "You're a Viewer in Robotics Club" }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Invite" })).toBeNull();
+    expect(screen.queryByRole("link")).toBeNull();
+    unmount();
+    renderWithProviders(<HomeChecklist workspace={viewer} setup={complete} />);
+    expectNothingShown();
   });
 });

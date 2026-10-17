@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAdminWorkspace } from "@/hooks/use-admin";
 import { ApiClientError } from "@/lib/api-client";
-import { AdminLoadError } from "./load-error";
+import { LoadError } from "@/components/errors/load-error";
 import { SuspensionActions } from "./suspension-actions";
 import { SuspensionHistory } from "./suspension-history";
 import { WorkspaceFacts } from "./workspace-facts";
@@ -43,7 +43,7 @@ export function AdminWorkspaceView({ id }: { id: string }) {
           <p>{t("gone")}</p>
         </Card>
       ) : workspace.isError && !workspace.data ? (
-        <AdminLoadError onRetry={() => void workspace.refetch()} />
+        <LoadError onRetry={() => void workspace.refetch()} />
       ) : !workspace.data ? (
         <div aria-busy="true" className="flex flex-col gap-4">
           <Skeleton className="h-10 w-2/3" />
