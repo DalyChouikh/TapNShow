@@ -1,6 +1,5 @@
-import { ImageResponse } from "next/og";
-import { appIconSvg } from "@/lib/brand/app-icon";
 import { ICON_FILES } from "@/lib/brand/icon-files";
+import { iconImage } from "@/lib/brand/icon-image";
 
 export const dynamic = "force-static";
 export const dynamicParams = false;
@@ -10,7 +9,7 @@ export function generateStaticParams(): { file: string }[] {
   return Object.keys(ICON_FILES).map((file) => ({ file }));
 }
 
-/** One app icon PNG, drawn from the single SVG source (`appIconSvg`). */
+/** One app icon PNG (`ICON_FILES`). */
 export async function GET(
   _request: Request,
   ctx: RouteContext<"/icons/[file]">,
@@ -19,10 +18,5 @@ export async function GET(
   if (!spec) {
     return new Response(null, { status: 404 });
   }
-  const src = `data:image/svg+xml;base64,${Buffer.from(appIconSvg(spec.variant)).toString("base64")}`;
-  return new ImageResponse(
-    // eslint-disable-next-line @next/next/no-img-element -- Satori draws plain <img>
-    <img src={src} width={spec.size} height={spec.size} alt="" />,
-    { width: spec.size, height: spec.size },
-  );
+  return iconImage(spec.variant, spec.size);
 }

@@ -50,9 +50,9 @@ function job(
       responseMode: "attendance" as const,
       responseDeadline: null,
       footerNote: "",
-      icsUid: "meeting-1@tapnshow.vercel.app",
+      icsUid: "meeting-1@www.tapnshow.tn",
       threadId,
-      rootMessageId: threadId ? "<root@tapnshow.vercel.app>" : null,
+      rootMessageId: threadId ? "<root@www.tapnshow.tn>" : null,
     },
   };
 }
@@ -133,7 +133,7 @@ function setup(options: {
     ),
     openToken: vi.fn<DispatchDeps["openToken"]>(() => "1//refresh"),
     tokenFor: (inviteeId: string) => `token-${inviteeId}`,
-    appUrl: "https://tapnshow.vercel.app",
+    appUrl: "https://www.tapnshow.tn",
     now: () => clock,
     sleep: vi.fn<DispatchDeps["sleep"]>(async (ms) => {
       clock += ms;
@@ -155,9 +155,7 @@ describe("runDispatch", () => {
     const secondRaw = Buffer.from(gmail[1][0].raw, "base64url").toString(
       "utf8",
     );
-    expect(secondRaw).toMatch(
-      /In-Reply-To: <[0-9a-f-]+@tapnshow\.vercel\.app>/,
-    );
+    expect(secondRaw).toMatch(/In-Reply-To: <[0-9a-f-]+@www\.tapnshow\.tn>/);
     expect(store.setThread).toHaveBeenCalledTimes(1);
     expect(store.finish).toHaveBeenCalledWith(
       job(1).jobId,
@@ -176,7 +174,7 @@ describe("runDispatch", () => {
     await runDispatch(deps, OPTIONS);
     // Quoted-printable: soft line breaks removed, "=" shown as "=3D".
     const body = rawOf(deps).replace(/=\r\n/g, "");
-    expect(body).toContain('href=3D"https://tapnshow.vercel.app/invites"');
+    expect(body).toContain('href=3D"https://www.tapnshow.tn/invites"');
   });
 
   it("joins an existing thread on this connection", async () => {
@@ -368,7 +366,7 @@ describe("runDispatch", () => {
     const ics = String(spy.mock.results[0]?.value);
     expect(ics).toContain("METHOD:CANCEL");
     expect(ics).toContain("SEQUENCE:3");
-    expect(ics).toContain("UID:meeting-1@tapnshow.vercel.app");
+    expect(ics).toContain("UID:meeting-1@www.tapnshow.tn");
     expect(ics).not.toContain("/r/");
     expect(ics).not.toContain(deps.tokenFor(calendarJob(1).inviteeId));
     expect(decoded(vi.mocked(deps.gmail).mock.calls[0][0].raw)).toMatch(

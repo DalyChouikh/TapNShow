@@ -20,11 +20,11 @@ const base: PlatformEvent = {
 
 describe("platformEventMessage", () => {
   it("an automatic suspension: amber, the rate, a link to the workspace in Admin", () => {
-    const event = platformEventMessage(base, "https://tapnshow.vercel.app");
+    const event = platformEventMessage(base, "https://www.tapnshow.tn");
     expect(event).toMatchObject({
       tone: "attention",
       title: "Sending suspended automatically",
-      url: "https://tapnshow.vercel.app/admin/workspaces/w1",
+      url: "https://www.tapnshow.tn/admin/workspaces/w1",
       source: "platform",
     });
     expect(event.fields).toEqual([

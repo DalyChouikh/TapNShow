@@ -43,7 +43,7 @@ function dbClaimRow(job: Record<string, string | object | null>) {
           response_mode: "attendance",
           response_deadline: null,
           footer_note: "Bring a laptop",
-          ics_uid: "meeting-1@tapnshow.vercel.app",
+          ics_uid: "meeting-1@www.tapnshow.tn",
           thread_id: null,
           root_message_id: null,
         },

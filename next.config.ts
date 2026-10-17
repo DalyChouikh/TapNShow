@@ -3,6 +3,7 @@ import { withSentryConfig } from "@sentry/nextjs/config";
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 import { parsePublicEnv } from "./src/config/public-env-schema";
+import { legacyHostRedirects } from "./src/config/site";
 import {
   noIndexHeaders,
   serviceWorkerCsp,
@@ -13,9 +14,11 @@ import {
 
 // The browser reads the public env without Zod (`readPublicEnv`); its rules run here, so an invalid
 // value fails the build instead of reaching a page.
-parsePublicEnv(process.env);
+const publicEnv = parsePublicEnv(process.env);
 
 const nextConfig: NextConfig = {
+  // The old address's pages move to the app address for good (spec §7.18, 2026-10-17).
+  redirects: async () => legacyHostRedirects(publicEnv.NEXT_PUBLIC_APP_URL),
   // Later rules win for the same header: the token pages' no-referrer overrides the default.
   headers: async () => [
     ...staticSecurityHeaders,

@@ -34,26 +34,26 @@ const EMAILS = {
       workspaceName: "Robotics Club",
       inviterName: "Amira",
       role: "viewer",
-      link: "https://tapnshow.vercel.app/invite/abc",
+      link: "https://www.tapnshow.tn/invite/abc",
       expiresInDays: 7,
     }),
   "admin invite": () =>
     renderAdminInviteEmail({
       inviterName: "Mohamed",
-      link: "https://tapnshow.vercel.app/admin/join/abc",
+      link: "https://www.tapnshow.tn/admin/join/abc",
       expiresInDays: 7,
     }),
   "owner alert": () =>
     renderOwnerAlertEmail({
       kind: "senderBroken",
       workspaceName: "Robotics Club",
-      linkUrl: "https://tapnshow.vercel.app/w/robotics-ab12/settings",
+      linkUrl: "https://www.tapnshow.tn/w/robotics-ab12/settings",
     }),
 };
 
 describe("every email links the privacy policy in its footer (spec §7.18)", () => {
   it("links production's policy, from every environment", () => {
-    expect(PRIVACY_POLICY_URL).toBe("https://tapnshow.vercel.app/privacy");
+    expect(PRIVACY_POLICY_URL).toBe("https://www.tapnshow.tn/privacy");
   });
 
   it.each(Object.entries(EMAILS))("the %s email", async (_kind, render) => {

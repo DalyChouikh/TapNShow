@@ -2,15 +2,15 @@ import { describe, expect, it } from "vitest";
 import { trustedAppOrigin } from "./app-origin";
 
 const trusted = {
-  appUrl: "https://tapnshow.vercel.app",
+  appUrl: "https://www.tapnshow.tn",
   vercelUrl: "tapnshow-abc123-dalychouikhs-projects.vercel.app",
   vercelBranchUrl: "tapnshow-git-feat-x-dalychouikhs-projects.vercel.app",
 };
 
 describe("trustedAppOrigin", () => {
   it("keeps the request origin when it is this deployment", () => {
-    expect(trustedAppOrigin("https://tapnshow.vercel.app", trusted)).toBe(
-      "https://tapnshow.vercel.app",
+    expect(trustedAppOrigin("https://www.tapnshow.tn", trusted)).toBe(
+      "https://www.tapnshow.tn",
     );
     expect(
       trustedAppOrigin(
@@ -28,14 +28,14 @@ describe("trustedAppOrigin", () => {
 
   it("never lets a spoofed host or Origin choose where emailed links point", () => {
     expect(trustedAppOrigin("https://evil.example", trusted)).toBe(
-      "https://tapnshow.vercel.app",
+      "https://www.tapnshow.tn",
     );
-    expect(trustedAppOrigin("http://tapnshow.vercel.app", trusted)).toBe(
-      "https://tapnshow.vercel.app",
+    expect(trustedAppOrigin("http://www.tapnshow.tn", trusted)).toBe(
+      "https://www.tapnshow.tn",
     );
     expect(
-      trustedAppOrigin("https://tapnshow.vercel.app.evil.example", trusted),
-    ).toBe("https://tapnshow.vercel.app");
+      trustedAppOrigin("https://www.tapnshow.tn.evil.example", trusted),
+    ).toBe("https://www.tapnshow.tn");
   });
 
   it("works locally without Vercel variables", () => {

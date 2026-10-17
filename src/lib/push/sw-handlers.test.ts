@@ -60,7 +60,7 @@ describe("focusOrOpen", () => {
       async () => null,
     );
     const client = {
-      url: "https://tapnshow.vercel.app/invites",
+      url: "https://www.tapnshow.tn/invites",
       navigate,
       focus,
     };
@@ -88,7 +88,7 @@ describe("focusOrOpen never loses a tap or someone's work", () => {
     path: string,
     navigate: (url: string) => Promise<object | null>,
   ) => ({
-    url: `https://tapnshow.vercel.app${path}`,
+    url: `https://www.tapnshow.tn${path}`,
     navigate: vi.fn(navigate),
     focus: vi.fn<() => Promise<object>>(async () => ({})),
   });

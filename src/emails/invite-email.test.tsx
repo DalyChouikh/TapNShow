@@ -9,17 +9,15 @@ describe("renderInviteEmail", () => {
       workspaceName: "Robotics Club",
       inviterName: "Amira",
       role: "viewer",
-      link: "https://tapnshow.vercel.app/invite/abc",
+      link: "https://www.tapnshow.tn/invite/abc",
       expiresInDays: 7,
     });
     expect(email.subject).toBe(
       "Amira invited you to Robotics Club on TapNShow",
     );
-    expect(email.html).toContain(
-      'href="https://tapnshow.vercel.app/invite/abc"',
-    );
+    expect(email.html).toContain('href="https://www.tapnshow.tn/invite/abc"');
     expect(email.html).toContain("a Viewer");
-    expect(email.text).toContain("https://tapnshow.vercel.app/invite/abc");
+    expect(email.text).toContain("https://www.tapnshow.tn/invite/abc");
     expect(email.text).toContain("expires in 7 days");
     expect(email.html).not.toContain("box-shadow");
     expect(email.html).not.toMatch(EMOJI);

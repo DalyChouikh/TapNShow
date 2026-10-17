@@ -9,7 +9,7 @@ describe("discordMessage", () => {
       discordMessage({
         tone: "success",
         title: "Production deploy succeeded",
-        url: "https://tapnshow.vercel.app",
+        url: "https://www.tapnshow.tn",
         description: "docs(spec): M8 done (#324)",
         fields: [{ name: "Commit", value: "`a618827`" }],
         source: "deploys",
@@ -21,7 +21,7 @@ describe("discordMessage", () => {
         {
           color: DISCORD_COLORS.success,
           title: "Production deploy succeeded",
-          url: "https://tapnshow.vercel.app",
+          url: "https://www.tapnshow.tn",
           description: "docs(spec): M8 done (#324)",
           fields: [{ name: "Commit", value: "`a618827`", inline: true }],
           footer: { text: "deploys" },

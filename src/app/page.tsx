@@ -7,20 +7,18 @@ import { LandingFaq } from "@/components/landing/landing-faq";
 import { LandingHero } from "@/components/landing/landing-hero";
 import { PrivacyStrip } from "@/components/landing/privacy-strip";
 import { PublicShell } from "@/components/public/public-shell";
+import { JsonLd, websiteJsonLd } from "@/components/seo/json-ld";
+import { publicEnv } from "@/config/public-env";
+import { publicPageMetadata } from "@/lib/seo/public-metadata";
 
 /** Title, description and the share card (spec §7.18). */
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Landing");
-  return {
+  return publicPageMetadata({
+    path: "/",
     title: t("metaTitle"),
     description: t("metaDescription"),
-    alternates: { canonical: "/" },
-    openGraph: {
-      title: t("metaTitle"),
-      description: t("metaDescription"),
-      type: "website",
-    },
-  };
+  });
 }
 
 /**
@@ -30,6 +28,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default function HomePage() {
   return (
     <PublicShell>
+      <JsonLd data={websiteJsonLd(publicEnv.NEXT_PUBLIC_APP_URL)} />
       <LandingHero />
       <HowItWorks />
       <Features />

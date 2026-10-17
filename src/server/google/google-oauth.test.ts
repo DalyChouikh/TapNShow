@@ -67,8 +67,7 @@ describe("createGoogleConnectAuthorization", () => {
   it("asks for offline gmail.send with PKCE, consent and incremental scopes", () => {
     const { url, state } = createGoogleConnectAuthorization({
       clientId: "client",
-      redirectUri:
-        "https://tapnshow.vercel.app/api/integrations/google/callback",
+      redirectUri: "https://www.tapnshow.tn/api/integrations/google/callback",
       workspaceSlug: "club-ab12",
       next: "/w/club-ab12/settings",
       purpose: "sending",

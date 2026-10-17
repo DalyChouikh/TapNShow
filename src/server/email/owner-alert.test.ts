@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { type OwnerAlertInput, sendOwnerAlert } from "./owner-alert";
 
-const APP = "https://tapnshow.vercel.app";
+const APP = "https://www.tapnshow.tn";
 
 async function sent(alert: OwnerAlertInput) {
   const send = vi.fn<

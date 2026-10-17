@@ -8,7 +8,7 @@ import {
 
 const BASE: MeetingIcsInput = {
   method: "REQUEST",
-  uid: "abc@tapnshow.vercel.app",
+  uid: "abc@www.tapnshow.tn",
   sequence: 0,
   stamp: new Date("2026-10-08T12:00:00Z"),
   start: new Date("2026-10-09T17:00:00Z"),
@@ -35,7 +35,7 @@ describe("buildMeetingIcs", () => {
         "VERSION:2.0",
         "METHOD:REQUEST",
         "BEGIN:VEVENT",
-        "UID:abc@tapnshow.vercel.app",
+        "UID:abc@www.tapnshow.tn",
         "SEQUENCE:0",
         "DTSTAMP:20261008T120000Z",
         "DTSTART:20261009T170000Z",

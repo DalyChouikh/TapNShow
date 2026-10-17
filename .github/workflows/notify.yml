@@ -34,7 +34,7 @@ jobs:
           subject=$(git log -1 --format=%s "$SHA")
           if [ "$STATE" = success ]; then tone=success; title="Production deploy succeeded"; else tone=failure; title="Production deploy failed"; fi
           bun scripts/discord-notify.ts --webhook-env DISCORD_DEPLOYS_WEBHOOK --tone "$tone" \
-            --title "$title" --url "https://tapnshow.vercel.app" --description "$subject" \
+            --title "$title" --url "https://www.tapnshow.tn" --description "$subject" \
             --field "Commit=\`${SHA:0:7}\`" --field "Deployment=$SITE" --source "production"
   ci:
     if: >-

@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { renderOwnerAlertEmail } from "./owner-alert-email";
 
 const EMOJI = /\p{Extended_Pictographic}/u;
-const SENDING = "https://tapnshow.vercel.app/w/robotics-ab12/settings#sending";
-const SHEETS = "https://tapnshow.vercel.app/w/robotics-ab12/settings#sheets";
+const SENDING = "https://www.tapnshow.tn/w/robotics-ab12/settings#sending";
+const SHEETS = "https://www.tapnshow.tn/w/robotics-ab12/settings#sheets";
 
 describe("renderOwnerAlertEmail", () => {
   it("keeps the sender-broken wording and links Sending settings", async () => {
@@ -95,7 +95,7 @@ describe("renderOwnerAlertEmail", () => {
   });
 
   it("says plainly that meeting emails are paused, and links the workspace", async () => {
-    const home = "https://tapnshow.vercel.app/w/robotics-ab12";
+    const home = "https://www.tapnshow.tn/w/robotics-ab12";
     const email = await renderOwnerAlertEmail({
       kind: "sendingSuspended",
       workspaceName: "Robotics Club",
@@ -113,7 +113,7 @@ describe("renderOwnerAlertEmail", () => {
     const email = await renderOwnerAlertEmail({
       kind: "sendingResumed",
       workspaceName: "Robotics Club",
-      linkUrl: "https://tapnshow.vercel.app/w/robotics-ab12",
+      linkUrl: "https://www.tapnshow.tn/w/robotics-ab12",
     });
     expect(email.subject).toBe(
       "Meeting emails from Robotics Club can go out again",

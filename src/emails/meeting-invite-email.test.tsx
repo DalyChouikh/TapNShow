@@ -23,10 +23,10 @@ const base: MeetingInviteEmailProps = {
     responseDeadline: "2026-10-09T11:00:00.000Z",
   },
   links: {
-    respond: "https://tapnshow.vercel.app/r/TOKEN",
-    unsubscribe: "https://tapnshow.vercel.app/u/TOKEN",
-    report: "https://tapnshow.vercel.app/report/TOKEN",
-    invites: "https://tapnshow.vercel.app/invites",
+    respond: "https://www.tapnshow.tn/r/TOKEN",
+    unsubscribe: "https://www.tapnshow.tn/u/TOKEN",
+    report: "https://www.tapnshow.tn/report/TOKEN",
+    invites: "https://www.tapnshow.tn/invites",
   },
   now: new Date("2026-10-08T10:00:00.000Z"),
 };
@@ -43,18 +43,14 @@ describe("renderMeetingInviteEmail", () => {
     expect(email.html).toContain("<strong>Hackathon</strong>");
     for (const choice of ["attending", "late", "absent"]) {
       expect(email.html).toContain(
-        `href="https://tapnshow.vercel.app/r/TOKEN?choice=${choice}"`,
+        `href="https://www.tapnshow.tn/r/TOKEN?choice=${choice}"`,
       );
     }
     expect(email.html).toContain("Please answer by Fri 9 Oct, 12:00.");
-    expect(email.html).toContain('href="https://tapnshow.vercel.app/u/TOKEN"');
-    expect(email.html).toContain(
-      'href="https://tapnshow.vercel.app/report/TOKEN"',
-    );
+    expect(email.html).toContain('href="https://www.tapnshow.tn/u/TOKEN"');
+    expect(email.html).toContain('href="https://www.tapnshow.tn/report/TOKEN"');
     expect(email.html).toContain("Sent from club@gmail.com with TapNShow.");
-    expect(email.text).toContain(
-      "https://tapnshow.vercel.app/r/TOKEN?choice=late",
-    );
+    expect(email.text).toContain("https://www.tapnshow.tn/r/TOKEN?choice=late");
     expect(email.html).not.toContain("box-shadow");
     expect(email.html).not.toMatch(EMOJI);
   });
@@ -114,7 +110,7 @@ describe("renderMeetingInviteEmail", () => {
     expect(announcement.html).toContain("No answer needed.");
     expect(announcement.html).toContain("Add to my calendar");
     expect(announcement.html).toContain(
-      'href="https://tapnshow.vercel.app/r/TOKEN"',
+      'href="https://www.tapnshow.tn/r/TOKEN"',
     );
   });
 

@@ -10,9 +10,9 @@ const input = {
   subject: "Weekly sync · Fri 9 Oct, 18:00",
   html: "<p>Hello</p>",
   text: "Hello",
-  messageId: "<m-2@tapnshow.vercel.app>",
-  inReplyTo: "<m-1@tapnshow.vercel.app>",
-  listUnsubscribeUrl: "https://tapnshow.vercel.app/api/r/TOKEN/unsubscribe",
+  messageId: "<m-2@www.tapnshow.tn>",
+  inReplyTo: "<m-1@www.tapnshow.tn>",
+  listUnsubscribeUrl: "https://www.tapnshow.tn/api/r/TOKEN/unsubscribe",
 };
 
 describe("buildMeetingMime", () => {
@@ -25,11 +25,11 @@ describe("buildMeetingMime", () => {
     expect(headers).toContain(
       "Subject: =?UTF-8?Q?Weekly_sync_=C2=B7_Fri_9_Oct=2C_18=3A00?=",
     );
-    expect(headers).toContain("Message-ID: <m-2@tapnshow.vercel.app>");
-    expect(headers).toContain("In-Reply-To: <m-1@tapnshow.vercel.app>");
-    expect(headers).toContain("References: <m-1@tapnshow.vercel.app>");
+    expect(headers).toContain("Message-ID: <m-2@www.tapnshow.tn>");
+    expect(headers).toContain("In-Reply-To: <m-1@www.tapnshow.tn>");
+    expect(headers).toContain("References: <m-1@www.tapnshow.tn>");
     expect(headers).toContain(
-      "List-Unsubscribe: <https://tapnshow.vercel.app/api/r/TOKEN/unsubscribe>",
+      "List-Unsubscribe: <https://www.tapnshow.tn/api/r/TOKEN/unsubscribe>",
     );
     expect(headers).toContain(
       "List-Unsubscribe-Post: List-Unsubscribe=One-Click",
@@ -62,8 +62,8 @@ describe("buildMeetingMime", () => {
 
 describe("newMessageId", () => {
   it("uses the app's host", () => {
-    expect(newMessageId("https://tapnshow.vercel.app")).toMatch(
-      /^<[0-9a-f-]{36}@tapnshow\.vercel\.app>$/,
+    expect(newMessageId("https://www.tapnshow.tn")).toMatch(
+      /^<[0-9a-f-]{36}@www\.tapnshow\.tn>$/,
     );
   });
 

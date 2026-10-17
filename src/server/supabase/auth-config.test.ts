@@ -16,14 +16,14 @@ describe("buildAuthConfigPatch", () => {
 
   it("sets code length, expiry, email rate and site URL from config", () => {
     const patch = buildAuthConfigPatch({
-      siteUrl: "https://tapnshow.vercel.app",
+      siteUrl: "https://www.tapnshow.tn",
       template,
     });
     expect(patch).toMatchObject({
       mailer_otp_length: OTP_LENGTH,
       mailer_otp_exp: OTP_EXPIRY_SECONDS,
       rate_limit_email_sent: AUTH_EMAILS_PER_HOUR,
-      site_url: "https://tapnshow.vercel.app",
+      site_url: "https://www.tapnshow.tn",
     });
   });
 

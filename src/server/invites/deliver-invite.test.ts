@@ -29,7 +29,7 @@ const base = {
   workspaceId: "w1",
   inviteId: "i1",
   token: "T".repeat(43),
-  origin: "https://tapnshow.vercel.app",
+  origin: "https://www.tapnshow.tn",
   inviterName: "Amira",
   workspaceName: "Robotics Club",
 };
@@ -48,7 +48,7 @@ describe("deliverInvite", () => {
     expect(await response.json()).toEqual({
       id: "i1",
       delivery: "link",
-      link: `https://tapnshow.vercel.app/invite/${"T".repeat(43)}`,
+      link: `https://www.tapnshow.tn/invite/${"T".repeat(43)}`,
     });
     expect(mocks.consumeInviteEmail).not.toHaveBeenCalled();
     expect(mocks.send).not.toHaveBeenCalled();

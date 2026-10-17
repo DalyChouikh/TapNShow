@@ -20,14 +20,14 @@ in the same PR.
 
 ## Before submitting (I check, you confirm)
 
-- [ ] https://tapnshow.vercel.app/ is the landing (not a sign-in page) and links /privacy and /terms.
+- [ ] https://www.tapnshow.tn/ is the landing (not a sign-in page) and links /privacy and /terms.
 - [ ] /privacy has the Limited Use sentence and says what Gmail and Drive access are for
       (pinned by `src/content/legal/content.test.ts`).
-- [ ] Search Console still shows the property verified (`NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` is
-      set in Vercel Production).
+- [ ] Search Console shows the Domain property `tapnshow.tn` verified (DNS record at the
+      registrar; it covers `www` and the apex).
 - [ ] Google Auth Platform → Branding: app name TapNShow, the new logo, support email = the platform
       address, home page, privacy and terms links = the three pages above, authorized domain
-      `tapnshow.vercel.app`.
+      `tapnshow.tn`.
 - [ ] Data access: exactly the scopes in the table above.
 
 ## Steps
@@ -45,7 +45,7 @@ in the same PR.
 
 ## Demo video script (English; one take is fine)
 
-1. Open https://tapnshow.vercel.app, show the landing and the privacy page's Google section (10 s).
+1. Open https://www.tapnshow.tn, show the landing and the privacy page's Google section (10 s).
 2. Sign in, open a test workspace → Settings → Sending → **Connect Gmail**.
 3. Google's consent screen: show the app name, then the address bar (the `client_id` is in the URL),
    then the permission "Send email on your behalf". Continue.

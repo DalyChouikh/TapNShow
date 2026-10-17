@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { clientIp, isSameOrigin, parseJsonBody } from "./request";
 
-const url = "https://tapnshow.vercel.app/api/x";
+const url = "https://www.tapnshow.tn/api/x";
 
 describe("isSameOrigin", () => {
   it("accepts the request's own origin only", () => {
@@ -10,7 +10,7 @@ describe("isSameOrigin", () => {
       isSameOrigin(
         new Request(url, {
           method: "POST",
-          headers: { origin: "https://tapnshow.vercel.app" },
+          headers: { origin: "https://www.tapnshow.tn" },
         }),
       ),
     ).toBe(true);

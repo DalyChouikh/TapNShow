@@ -16,3 +16,6 @@ export function resolveLocale(candidate: string | null | undefined): Locale {
     SUPPORTED_LOCALES.find((locale) => locale === candidate) ?? DEFAULT_LOCALE
   );
 }
+
+/** Each locale as Open Graph writes it (`language_TERRITORY`, ogp.me `og:locale`). */
+export const OPEN_GRAPH_LOCALES: Record<Locale, string> = { en: "en_US" };

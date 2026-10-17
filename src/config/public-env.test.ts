@@ -3,7 +3,7 @@ import type { EnvSource } from "./env-utils";
 import { readPublicEnv } from "./public-env";
 import { parsePublicEnv } from "./public-env-schema";
 
-const base = { NEXT_PUBLIC_APP_URL: "https://tapnshow.vercel.app" };
+const base = { NEXT_PUBLIC_APP_URL: "https://www.tapnshow.tn" };
 
 describe("readPublicEnv (twin of parsePublicEnv)", () => {
   it.each<[string, EnvSource]>([

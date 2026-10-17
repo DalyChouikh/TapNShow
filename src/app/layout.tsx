@@ -5,6 +5,7 @@ import { getLocale, getMessages } from "next-intl/server";
 import { PageAnalytics } from "@/components/providers/page-analytics";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { APP_DESCRIPTION, APP_NAME } from "@/config/app";
+import { FAVICON_SIZES } from "@/lib/brand/icon-files";
 import { publicEnv } from "@/config/public-env";
 import { palette } from "@/design/tokens";
 import { archivoBlack, spaceGrotesk } from "./fonts";
@@ -18,8 +19,16 @@ export const metadata: Metadata = {
   verification: publicEnv.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
     ? { google: publicEnv.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION }
     : undefined,
+  // The .ico for tabs and crawlers that ask for it, and a 192 px PNG (Google recommends a favicon
+  // larger than 48 px for its results).
   icons: {
-    icon: "/icons/favicon-32.png",
+    icon: [
+      {
+        url: "/favicon.ico",
+        sizes: FAVICON_SIZES.map((size) => `${size}x${size}`).join(" "),
+      },
+      { url: "/icons/icon-192.png", type: "image/png", sizes: "192x192" },
+    ],
     apple: "/icons/apple-touch-icon.png",
   },
   appleWebApp: { capable: true, title: APP_NAME, statusBarStyle: "default" },
