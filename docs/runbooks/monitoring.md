@@ -113,3 +113,39 @@ must not appear in Sentry.
 - e2e is clean on every page (the e2e console guard fails on any violation).
 - Preview and production have run report-only for at least 3 days with zero reports in Sentry
   (count them per source first).
+- A report found restarts the 3 days after its fix is live. 2026-10-16: the manifest on a
+  deployment's own URL (behind Vercel's login) was refused; fixed by linking it with credentials
+  (`src/app/layout.tsx`); the 3 days run from 2026-10-16 19:46 UTC.
+
+## Firewall rate limit (Vercel WAF, the outer guard)
+
+The database limits (route registry, `private.app_limits`) guard each action; this rule guards the
+whole API per IP, before a function runs. Vercel Hobby allows one rate-limit rule (and 3 custom
+rules); it can't be written in `vercel.json` (`mitigate` there is challenge or deny only), so it
+lives in the Firewall and is managed with the CLI:
+
+| | |
+|---|---|
+| Name | `API rate limit` |
+| Matches | path starts with `/api/`, is not `/api/health`, doesn't start with `/api/internal/`; or path is `/monitoring` |
+| Counts | per IP, fixed window of 60 s (counters are per region) |
+| Limit | 900 requests, then 429 ("Too many attempts" in the app; Vercel's 429 has no Retry-After) |
+
+Why 900 (measured 2026-10-16 on a local production build): a member opening an invite link and
+answering makes 3 requests; an organizer on a meeting page makes 18 a minute (it polls every
+10 s). A lecture hall of 100 members on one Wi-Fi, with reloads and changed answers (~5 each),
+plus 3 organizers, is about 554 in a minute.
+
+Commands (`vercel firewall …`, project linked):
+
+    vercel firewall rules list --expand        # what is live
+    vercel firewall rules disable "API rate limit" --yes && vercel firewall publish --yes   # emergency off
+    vercel firewall rules enable "API rate limit" --yes && vercel firewall publish --yes
+
+Checking it: never against production. On a preview deployment (behind Vercel's login, so the
+requests need the project's development OIDC token as `x-vercel-trusted-oidc-idp-token`), run
+`VERCEL_OIDC_TOKEN=<fresh development token> bun scripts/probe-rate-limit.ts <preview>/api/me 1000`
+(the token from `vercel env pull <temporary file> --environment=development`, never `.env.local`,
+deleted right after); 429s must appear, and
+`/api/health` must never get one. 2026-10-16: `/api/me` × 1000 → 896 answered, 104 × 429;
+`/api/health` × 300 → 300 × 200.

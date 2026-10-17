@@ -24,7 +24,8 @@ export function errorCodeOf<Thrown>(error: Thrown): ApiErrorCode {
 
 /**
  * Calls one of our API routes and validates the JSON response with `schema`.
- * A 401 triggers `onUnauthenticated` (default: go to sign-in with `next`).
+ * A 401 triggers `onUnauthenticated` (default: go to sign-in with `next`). A 429 without our JSON
+ * error body (Vercel's firewall) is `rate_limited`; any other unreadable error is `internal`.
  * @throws ApiClientError for every non-2xx response
  */
 export async function apiRequest<T>(
@@ -57,5 +58,9 @@ export async function apiRequest<T>(
         response.status,
         parsed.data.error.details,
       )
-    : new ApiClientError("internal", response.status);
+    : // Our routes always send a JSON error; a bare 429 is the firewall's rate limit.
+      new ApiClientError(
+        response.status === 429 ? "rate_limited" : "internal",
+        response.status,
+      );
 }
