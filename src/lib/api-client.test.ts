@@ -52,6 +52,19 @@ describe("apiRequest", () => {
     expect(onUnauthenticated).toHaveBeenCalledOnce();
   });
 
+  it("reads a 429 without our error body (the firewall's) as too many attempts", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () => new Response("<html>Too Many Requests", { status: 429 }),
+      ),
+    );
+    await expect(apiRequest("/api/x", { schema })).rejects.toMatchObject({
+      code: "rate_limited",
+      status: 429,
+    });
+  });
+
   it("treats unreadable error bodies as internal", async () => {
     vi.stubGlobal(
       "fetch",
