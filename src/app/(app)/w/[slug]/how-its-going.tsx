@@ -36,18 +36,17 @@ export function HowItsGoing({
   const t = useTranslations("WorkspaceHome.howItsGoing");
   const format = useFormatter();
   const insights = useWorkspaceInsights(slug, period.range);
-  if (insights.isError && !insights.data) {
-    return <LoadError onRetry={() => void insights.refetch()} />;
-  }
   const data = insights.data;
+  // A period that fails keeps the title and the chips, so another period can still be picked.
+  const failed = insights.isError && !data;
   const whole = (value: number) =>
     format.number(value, { maximumFractionDigits: 0 });
   return (
     <Card as="section" className="flex flex-col gap-3">
       <h2 className="font-display text-xl">{t("title")}</h2>
-      {!data ? (
+      {!data && !failed ? (
         <Skeleton className="h-64 w-full" />
-      ) : data.held === 0 ? (
+      ) : data?.held === 0 ? (
         <p className="text-sm text-muted-ink">{t("firstMeeting")}</p>
       ) : (
         <>
@@ -58,64 +57,68 @@ export function HowItsGoing({
             onCustomChange={period.setCustom}
             today={period.today}
           />
-          {/* The last period stays, dimmed, while the next one loads. */}
-          <div
-            aria-busy={insights.isPlaceholderData}
-            className={cn(
-              "flex flex-col gap-3 transition-opacity motion-reduce:transition-none",
-              insights.isPlaceholderData && "opacity-60",
-            )}
-          >
+          {!data ? (
+            <LoadError bare onRetry={() => void insights.refetch()} />
+          ) : (
+            /* The last period stays, dimmed, while the next one loads. */
             <div
-              role="group"
-              aria-label={t("title")}
-              className="grid grid-cols-3 gap-3"
+              aria-busy={insights.isPlaceholderData}
+              className={cn(
+                "flex flex-col gap-3 transition-opacity motion-reduce:transition-none",
+                insights.isPlaceholderData && "opacity-60",
+              )}
             >
-              <Stat
-                value={data.period.meetings}
-                label={t("meetings", { count: data.period.meetings })}
-              />
-              <Stat
-                value={
-                  <>
-                    {whole(data.period.cameAverage)}
-                    <span className="ml-1 font-sans text-sm text-muted-ink">
-                      {t("cameOf", {
-                        invited: whole(data.period.invitedAverage),
+              <div
+                role="group"
+                aria-label={t("title")}
+                className="grid grid-cols-3 gap-3"
+              >
+                <Stat
+                  value={data.period.meetings}
+                  label={t("meetings", { count: data.period.meetings })}
+                />
+                <Stat
+                  value={
+                    <>
+                      {whole(data.period.cameAverage)}
+                      <span className="ml-1 font-sans text-sm text-muted-ink">
+                        {t("cameOf", {
+                          invited: whole(data.period.invitedAverage),
+                        })}
+                      </span>
+                    </>
+                  }
+                  label={t("came")}
+                />
+                <Stat
+                  value={
+                    data.period.answeredBeforeStart === null
+                      ? t("noShare")
+                      : format.number(data.period.answeredBeforeStart, {
+                          style: "percent",
+                          maximumFractionDigits: 0,
+                        })
+                  }
+                  label={t("answeredBefore")}
+                />
+              </div>
+              {data.period.meetings === 0 ? (
+                <p className="text-sm text-muted-ink">{t("emptyPeriod")}</p>
+              ) : (
+                <>
+                  {data.period.meetings > data.chart.length ? (
+                    <p className="text-sm text-muted-ink">
+                      {t("latest", {
+                        shown: data.chart.length,
+                        total: data.period.meetings,
                       })}
-                    </span>
-                  </>
-                }
-                label={t("came")}
-              />
-              <Stat
-                value={
-                  data.period.answeredBeforeStart === null
-                    ? t("noShare")
-                    : format.number(data.period.answeredBeforeStart, {
-                        style: "percent",
-                        maximumFractionDigits: 0,
-                      })
-                }
-                label={t("answeredBefore")}
-              />
+                    </p>
+                  ) : null}
+                  <InsightsChart slug={slug} meetings={data.chart} />
+                </>
+              )}
             </div>
-            {data.period.meetings === 0 ? (
-              <p className="text-sm text-muted-ink">{t("emptyPeriod")}</p>
-            ) : (
-              <>
-                {data.period.meetings > data.chart.length ? (
-                  <p className="text-sm text-muted-ink">
-                    {t("latest", {
-                      shown: data.chart.length,
-                      total: data.period.meetings,
-                    })}
-                  </p>
-                ) : null}
-                <InsightsChart slug={slug} meetings={data.chart} />
-              </>
-            )}
-          </div>
+          )}
         </>
       )}
     </Card>

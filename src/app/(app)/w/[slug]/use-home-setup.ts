@@ -37,8 +37,7 @@ export function useHomeSetup(slug: string, range: PeriodRange): HomeSetup {
   const insights = useWorkspaceInsights(slug, range);
   const sender = useWorkspaceSender(slug);
   const sheet = useWorkspaceSheet(slug);
-  const roster = insights.data?.roster;
-  if (!roster || !sender.data || !sheet.data) {
+  if (!insights.data || !sender.data || !sheet.data) {
     const failed = [insights, sender, sheet].filter((query) => query.isError);
     return failed.length > 0
       ? {
@@ -51,6 +50,7 @@ export function useHomeSetup(slug: string, range: PeriodRange): HomeSetup {
         }
       : { state: "loading" };
   }
+  const { roster, held } = insights.data;
   const done: Record<SetupStepKey, boolean> = {
     importMembers: roster.members > 0,
     // Connected, even if it needs reconnecting: Needs attention asks for that.
@@ -61,7 +61,10 @@ export function useHomeSetup(slug: string, range: PeriodRange): HomeSetup {
   return {
     state: "ready",
     done,
-    complete: SETUP_STEPS.every((step) => !step.required || done[step.key]),
+    // A workspace that has held a meeting is set up for good: a Gmail disconnected later is
+    // Needs attention's and the next-meeting card's to mention, not a new-workspace welcome.
+    complete:
+      held > 0 || SETUP_STEPS.every((step) => !step.required || done[step.key]),
     ownerName: sender.data.ownerName,
   };
 }

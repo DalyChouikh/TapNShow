@@ -5,6 +5,7 @@ import { SVG_FILL_CLASS } from "@/components/ui/fill";
 import { OUTCOME_TONES } from "@/design/tokens";
 import type { InsightsMeeting } from "@/shared/api/insights";
 import { INSIGHTS_IDS, insightsFixture } from "@/test/fixtures/insights";
+import { setCoarsePointer } from "@/test/match-media";
 import { renderWithProviders } from "@/test/render";
 import { InsightsChart } from "./insights-chart";
 
@@ -120,5 +121,28 @@ describe("InsightsChart", () => {
       expect(segment(key)).toHaveClass(SVG_FILL_CLASS[OUTCOME_TONES[key]]);
     }
     expect(bar.querySelector('[data-hatch="noReply"]')).not.toBeNull();
+  });
+
+  it("on a touch screen, bars narrower than 44 px aren't links but keep their labels", () => {
+    setCoarsePointer(true);
+    mocks.width = 360;
+    renderWithProviders(
+      <InsightsChart slug="club-ab12" meetings={weekly(12)} />,
+    );
+    expect(screen.queryByRole("link")).toBeNull();
+    const bars = screen.getAllByRole("img");
+    expect(bars).toHaveLength(12);
+    expect(bars[11]).toHaveAccessibleName(
+      "Weekly sync 12, Mon 12 Oct: 18 came, 4 late, 5 absent, 3 no reply",
+    );
+  });
+
+  it("on a touch screen, bars wide enough for 44 px stay links", () => {
+    setCoarsePointer(true);
+    mocks.width = 360;
+    renderWithProviders(
+      <InsightsChart slug="club-ab12" meetings={insightsFixture.chart} />,
+    );
+    expect(screen.getAllByRole("link")).toHaveLength(2);
   });
 });

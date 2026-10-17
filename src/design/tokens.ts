@@ -17,6 +17,9 @@ export const FILL_TONES = [
 /** A pastel fill tone. */
 export type FillTone = (typeof FILL_TONES)[number];
 
+/** The smallest tap target, in CSS pixels (AGENTS.md: at least 44 px). */
+export const MIN_TAP_TARGET_PX = 44;
+
 /**
  * The tone of each attendance outcome: Going, Late, Absent, No reply (the meeting page's tiles, a
  * person's history counts, Home's chart).

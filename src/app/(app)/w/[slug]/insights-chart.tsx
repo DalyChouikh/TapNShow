@@ -4,9 +4,17 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useId } from "react";
 import { FILL_CLASS, SVG_FILL_CLASS } from "@/components/ui/fill";
-import { CHART_THIN_LABELS_BELOW_PX } from "@/config/home";
-import { OUTCOME_TONES, type Outcome } from "@/design/tokens";
+import {
+  CHART_THIN_LABELS_BELOW_PX,
+  COARSE_POINTER_MEDIA,
+} from "@/config/home";
+import {
+  MIN_TAP_TARGET_PX,
+  OUTCOME_TONES,
+  type Outcome,
+} from "@/design/tokens";
 import { useElementWidth } from "@/hooks/use-element-width";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { formatDate, formatShortDate } from "@/lib/meetings/format";
 import { cn } from "@/lib/utils";
 import type { InsightsMeeting } from "@/shared/api/insights";
@@ -48,8 +56,9 @@ function axisStep(max: number): number {
 /**
  * Home's chart (design §2.4): one stacked bar per counted meeting, oldest to newest, segmented as
  * Came, Late, Absent and No reply in the tiles' tones with ink outlines; No reply is also hatched,
- * so it never depends on colour alone. Each bar links to its meeting and names every count; dates
- * are in each meeting's own zone, every other one (the newest kept) below 400 px.
+ * so it never depends on colour alone. Each bar names every count and links to its meeting (on a
+ * touch screen only where its column fits a finger); dates are in each meeting's own zone, every
+ * other one (the newest kept) below 400 px.
  */
 export function InsightsChart({
   slug,
@@ -60,6 +69,7 @@ export function InsightsChart({
 }) {
   const t = useTranslations("WorkspaceHome.howItsGoing.chart");
   const [measure, measured] = useElementWidth<HTMLDivElement>();
+  const touch = useMediaQuery(COARSE_POINTER_MEDIA);
   const hatchId = `hatch-${useId().replace(/[^\w-]/g, "")}`;
   const width = measured ?? FALLBACK_WIDTH;
   // The tallest bar sets the scale (at least 1, so an all-empty period still draws an axis).
@@ -71,6 +81,9 @@ export function InsightsChart({
   const y = (value: number) =>
     PLOT_TOP + PLOT_HEIGHT - (value / top) * PLOT_HEIGHT;
   const thin = width < CHART_THIN_LABELS_BELOW_PX;
+  // On a touch screen a bar is a link only if its column fits a finger (Owner, 2026-10-17); the
+  // meeting stays one tap away in Meetings.
+  const linked = !touch || slot >= MIN_TAP_TARGET_PX;
   const newest = meetings.length - 1;
   const ticks = Array.from({ length: top / step + 1 }, (_, n) => n * step);
   return (
@@ -135,7 +148,37 @@ export function InsightsChart({
               noReply: meeting.noReply,
             });
             let base = 0;
-            return (
+            const segments = SEGMENTS.map((key) => {
+              const value = meeting[key];
+              const from = base;
+              base += value;
+              if (value === 0) {
+                return null;
+              }
+              const box = {
+                x,
+                y: y(from + value),
+                width: barWidth,
+                height: y(from) - y(from + value),
+              };
+              return (
+                <g key={key}>
+                  <rect
+                    {...box}
+                    data-segment={key}
+                    className={cn(
+                      SVG_FILL_CLASS[OUTCOME_TONES[key]],
+                      "stroke-outline",
+                    )}
+                    strokeWidth="2"
+                  />
+                  {key === "noReply" ? (
+                    <rect {...box} data-hatch={key} fill={`url(#${hatchId})`} />
+                  ) : null}
+                </g>
+              );
+            });
+            return linked ? (
               <Link
                 key={meeting.id}
                 href={`/w/${slug}/meetings/${meeting.id}`}
@@ -150,41 +193,13 @@ export function InsightsChart({
                   height={PLOT_HEIGHT}
                   fill="transparent"
                 />
-                {SEGMENTS.map((key) => {
-                  const value = meeting[key];
-                  const from = base;
-                  base += value;
-                  if (value === 0) {
-                    return null;
-                  }
-                  const box = {
-                    x,
-                    y: y(from + value),
-                    width: barWidth,
-                    height: y(from) - y(from + value),
-                  };
-                  return (
-                    <g key={key}>
-                      <rect
-                        {...box}
-                        data-segment={key}
-                        className={cn(
-                          SVG_FILL_CLASS[OUTCOME_TONES[key]],
-                          "stroke-outline",
-                        )}
-                        strokeWidth="2"
-                      />
-                      {key === "noReply" ? (
-                        <rect
-                          {...box}
-                          data-hatch={key}
-                          fill={`url(#${hatchId})`}
-                        />
-                      ) : null}
-                    </g>
-                  );
-                })}
+                {segments}
               </Link>
+            ) : (
+              <g key={meeting.id} role="img" aria-label={label}>
+                <title>{label}</title>
+                {segments}
+              </g>
             );
           })}
           <g data-testid="chart-dates" aria-hidden>

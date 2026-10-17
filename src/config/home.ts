@@ -22,3 +22,6 @@ export const GREETING_HOURS = {
 
 /** Below this width (px) the chart labels every other meeting's date, the newest included. */
 export const CHART_THIN_LABELS_BELOW_PX = 400;
+
+/** A touch screen: the primary pointer is coarse (a finger). */
+export const COARSE_POINTER_MEDIA = "(pointer: coarse)";

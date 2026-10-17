@@ -141,4 +141,28 @@ describe("HowItsGoing", () => {
       await screen.findByRole("group", { name: "How it's going" }),
     ).toBeInTheDocument();
   });
+
+  it("keeps the chips when a period can't load, so another period can be picked", async () => {
+    serve(insightsFixture, {
+      [ALL_TIME]: () =>
+        new Response(JSON.stringify({ error: { code: "forbidden" } }), {
+          status: 403,
+        }),
+    });
+    renderWithProviders(<Home />);
+    await screen.findByRole("group", { name: "How it's going" });
+    await userEvent.click(screen.getByRole("button", { name: "All time" }));
+    expect(
+      await screen.findByRole("button", { name: "Try again" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "How it's going" }),
+    ).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Last 3 months" }),
+    );
+    expect(
+      await screen.findByRole("group", { name: "How it's going" }),
+    ).toHaveTextContent(/^2meetings/);
+  });
 });
