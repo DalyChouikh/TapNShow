@@ -12,9 +12,20 @@ export const alt = SHARE_IMAGE.alt;
 
 // The app's display face. ImageResponse can't use next/font and doesn't read woff2 (Next 16
 // `image-response.md`, "Custom fonts"); self-hosted under the OFL (`OFL-archivo-black.txt`).
-const archivoBlack = await readFile(
-  join(process.cwd(), "src/assets/fonts/archivo-black-400.ttf"),
-);
+const FONT_NAME = "Archivo Black";
+let font: Promise<Buffer> | undefined;
+
+/**
+ * The font file, read once when the image is first drawn. Never at module scope: Next imports this
+ * module into every page for its `alt`, `size` and `contentType`, and a top-level read would run
+ * (and be traced) for each of them.
+ */
+function archivoBlack(): Promise<Buffer> {
+  font ??= readFile(
+    join(process.cwd(), "src/assets/fonts/archivo-black-400.ttf"),
+  );
+  return font;
+}
 
 const ICON_SIZE = 176;
 
@@ -24,7 +35,7 @@ const ICON_SIZE = 176;
  * `messages/en.json`: ImageResponse can't use next-intl, so change both together. Pages link it at
  * its versioned address (`SHARE_IMAGE_URL`).
  */
-export default function OpengraphImage() {
+export default async function OpengraphImage(): Promise<ImageResponse> {
   const { background, ink } = palette.light;
   return new ImageResponse(
     <div
@@ -38,7 +49,7 @@ export default function OpengraphImage() {
         padding: "0 84px",
         background,
         color: ink,
-        fontFamily: "Archivo Black",
+        fontFamily: FONT_NAME,
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 36 }}>
@@ -56,8 +67,8 @@ export default function OpengraphImage() {
       ...size,
       fonts: [
         {
-          name: "Archivo Black",
-          data: archivoBlack,
+          name: FONT_NAME,
+          data: await archivoBlack(),
           weight: 400,
           style: "normal",
         },

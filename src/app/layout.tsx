@@ -6,6 +6,7 @@ import { PageAnalytics } from "@/components/providers/page-analytics";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { APP_DESCRIPTION, APP_NAME } from "@/config/app";
 import { FAVICON_SIZES } from "@/lib/brand/icon-files";
+import { VERSIONED_SHARE_IMAGE } from "@/lib/seo/share-image-url";
 import { publicEnv } from "@/config/public-env";
 import { palette } from "@/design/tokens";
 import { archivoBlack, spaceGrotesk } from "./fonts";
@@ -32,6 +33,10 @@ export const metadata: Metadata = {
     apple: "/icons/apple-touch-icon.png",
   },
   appleWebApp: { capable: true, title: APP_NAME, statusBarStyle: "default" },
+  // Every page shares one preview image at its versioned address. Without this, pages that don't
+  // set `openGraph` (app pages, invite links) get Next's own address for the image file, which
+  // doesn't change when the mark or the line does.
+  openGraph: { images: [VERSIONED_SHARE_IMAGE] },
 };
 
 /** The browser bar and the installed app's frame take the app background (spec §10 PWA). */

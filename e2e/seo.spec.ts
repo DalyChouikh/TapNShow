@@ -152,3 +152,24 @@ test("the link preview image is a 1200 × 630 PNG, at its versioned and its old 
     ]);
   }
 });
+
+test("every page names the same versioned preview image, app pages and shared links included", async ({
+  page,
+  baseURL,
+}) => {
+  const versioned = new RegExp(`^${baseURL}/opengraph-image\\?v=[0-9a-f]{10}$`);
+  const seen = new Set<string>();
+  // The home page, a legal page, and an app page whose link people paste into chats.
+  for (const path of ["/", "/privacy", "/login"]) {
+    await page.goto(path);
+    for (const selector of [
+      'meta[property="og:image"]',
+      'meta[name="twitter:image"]',
+    ]) {
+      const content = await page.locator(selector).getAttribute("content");
+      expect(content, `${selector} on ${path}`).toMatch(versioned);
+      seen.add(content ?? "");
+    }
+  }
+  expect(seen.size).toBe(1);
+});

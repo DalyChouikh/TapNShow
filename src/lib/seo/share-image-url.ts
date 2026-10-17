@@ -21,3 +21,6 @@ export const SHARE_IMAGE_URL = `${SHARE_IMAGE.url}?v=${shareImageVersion([
   APP_NAME,
   SHARE_IMAGE_LINE,
 ])}`;
+
+/** The share card's image entry at its versioned address, for every page's `openGraph.images`. */
+export const VERSIONED_SHARE_IMAGE = { ...SHARE_IMAGE, url: SHARE_IMAGE_URL };
