@@ -1,18 +1,42 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { ImageResponse } from "next/og";
 import { APP_NAME } from "@/config/app";
 import { SHARE_IMAGE, SHARE_IMAGE_LINE } from "@/config/share-image";
 import { palette } from "@/design/tokens";
+import { appIconDataUri } from "@/lib/brand/icon-image";
 
 export const size = { width: SHARE_IMAGE.width, height: SHARE_IMAGE.height };
 export const contentType = SHARE_IMAGE.type;
 export const alt = SHARE_IMAGE.alt;
 
+// The app's display face. ImageResponse can't use next/font and doesn't read woff2 (Next 16
+// `image-response.md`, "Custom fonts"); self-hosted under the OFL (`OFL-archivo-black.txt`).
+const FONT_NAME = "Archivo Black";
+let font: Promise<Buffer> | undefined;
+
 /**
- * The link preview image (spec §7.18). Text only until the new logo exists. Its sentence is
- * `Landing.title` in `messages/en.json`: ImageResponse can't use next-intl, so change both together.
+ * The font file, read once when the image is first drawn. Never at module scope: Next imports this
+ * module into every page for its `alt`, `size` and `contentType`, and a top-level read would run
+ * (and be traced) for each of them.
  */
-export default function OpengraphImage() {
-  const { background, ink, primary } = palette.light;
+function archivoBlack(): Promise<Buffer> {
+  font ??= readFile(
+    join(process.cwd(), "src/assets/fonts/archivo-black-400.ttf"),
+  );
+  return font;
+}
+
+const ICON_SIZE = 176;
+
+/**
+ * The link preview image (spec §7.18; docs/superpowers/specs/2026-10-17-logo-design.md §4): the
+ * mark and the name, then the product line, in Archivo Black. Its sentence is `Landing.title` in
+ * `messages/en.json`: ImageResponse can't use next-intl, so change both together. Pages link it at
+ * its versioned address (`SHARE_IMAGE_URL`).
+ */
+export default async function OpengraphImage(): Promise<ImageResponse> {
+  const { background, ink } = palette.light;
   return new ImageResponse(
     <div
       style={{
@@ -21,35 +45,34 @@ export default function OpengraphImage() {
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",
-        padding: 80,
+        gap: 44,
+        padding: "0 84px",
         background,
         color: ink,
+        fontFamily: FONT_NAME,
       }}
     >
-      <div
-        style={{
-          fontSize: 40,
-          fontWeight: 700,
-          background: primary,
-          padding: "8px 20px",
-          borderRadius: 16,
-          border: `6px solid ${ink}`,
-          alignSelf: "flex-start",
-        }}
-      >
-        {APP_NAME}
+      <div style={{ display: "flex", alignItems: "center", gap: 36 }}>
+        <img
+          src={appIconDataUri("full")}
+          width={ICON_SIZE}
+          height={ICON_SIZE}
+          alt=""
+        />
+        <div style={{ fontSize: 64 }}>{APP_NAME}</div>
       </div>
-      <div
-        style={{
-          fontSize: 76,
-          fontWeight: 800,
-          marginTop: 40,
-          lineHeight: 1.1,
-        }}
-      >
-        {SHARE_IMAGE_LINE}
-      </div>
+      <div style={{ fontSize: 68, lineHeight: 1.1 }}>{SHARE_IMAGE_LINE}</div>
     </div>,
-    size,
+    {
+      ...size,
+      fonts: [
+        {
+          name: FONT_NAME,
+          data: await archivoBlack(),
+          weight: 400,
+          style: "normal",
+        },
+      ],
+    },
   );
 }

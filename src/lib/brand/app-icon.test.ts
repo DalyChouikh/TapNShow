@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { palette } from "@/design/tokens";
-import { appIconSvg, markRadius, VARIANT_SCALE } from "./app-icon";
+import { appIconSvg, MARK, markRadius, VARIANT_SCALE } from "./app-icon";
 
 describe("appIconSvg (the calendar mark, docs/superpowers/specs/2026-10-17-logo-design.md)", () => {
   it("keeps every variant's drawing inside the centre circle of radius 40% (W3C safe zone)", () => {
@@ -8,6 +8,15 @@ describe("appIconSvg (the calendar mark, docs/superpowers/specs/2026-10-17-logo-
     expect(markRadius()).toBeCloseTo(225.51, 1);
     for (const scale of Object.values(VARIANT_SCALE)) {
       expect(markRadius() * scale).toBeLessThanOrEqual(0.4 * 512);
+    }
+  });
+
+  it("draws each variant at its scale, with the outline and shadow markRadius measures", () => {
+    for (const variant of ["full", "square", "maskable"] as const) {
+      const svg = appIconSvg(variant);
+      expect(svg).toContain(`scale(${VARIANT_SCALE[variant]})`);
+      expect(svg).toContain(`translate(0 ${MARK.shadow})`);
+      expect(svg).toContain(`stroke-width="${2 * MARK.outline}"`);
     }
   });
 

@@ -76,9 +76,10 @@ test("the public pages have a complete share card and the home page names the si
   await expect(og("type")).toHaveAttribute("content", "website");
   await expect(og("site_name")).toHaveAttribute("content", "TapNShow");
   await expect(og("locale")).toHaveAttribute("content", "en_US");
+  // Versioned by what the picture shows, so a new picture gets a new address.
   await expect(og("image")).toHaveAttribute(
     "content",
-    `${baseURL}/opengraph-image`,
+    new RegExp(`^${baseURL}/opengraph-image\\?v=[0-9a-f]{10}$`),
   );
   await expect(page.locator('meta[name="twitter:image"]')).toHaveCount(1);
 
@@ -130,4 +131,45 @@ test("the Google Cloud logo is a 120 px square PNG under 1 MB", async ({
   expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([120, 120]);
   // Google Cloud Help 15549049: at most 1 MB.
   expect(bytes.length).toBeLessThan(1024 * 1024);
+});
+
+test("the link preview image is a 1200 × 630 PNG, at its versioned and its old address", async ({
+  page,
+  request,
+}) => {
+  await page.goto("/");
+  const versioned = await page
+    .locator('meta[property="og:image"]')
+    .getAttribute("content");
+  // The bare address keeps answering for links shared before the change.
+  for (const url of [versioned ?? "", "/opengraph-image"]) {
+    const response = await request.get(url);
+    expect(response.status()).toBe(200);
+    expect(response.headers()["content-type"]).toBe("image/png");
+    const bytes = await response.body();
+    expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([
+      1200, 630,
+    ]);
+  }
+});
+
+test("every page names the same versioned preview image, app pages and shared links included", async ({
+  page,
+  baseURL,
+}) => {
+  const versioned = new RegExp(`^${baseURL}/opengraph-image\\?v=[0-9a-f]{10}$`);
+  const seen = new Set<string>();
+  // The home page, a legal page, and an app page whose link people paste into chats.
+  for (const path of ["/", "/privacy", "/login"]) {
+    await page.goto(path);
+    for (const selector of [
+      'meta[property="og:image"]',
+      'meta[name="twitter:image"]',
+    ]) {
+      const content = await page.locator(selector).getAttribute("content");
+      expect(content, `${selector} on ${path}`).toMatch(versioned);
+      seen.add(content ?? "");
+    }
+  }
+  expect(seen.size).toBe(1);
 });

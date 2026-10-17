@@ -59,6 +59,19 @@ Vercel issues and renews the certificates (Let's Encrypt) by itself. Check with
 - **Keep the redirects** for at least a year (Google's site-move guide; longer is better), and
   keep `tapnshow.tn` registered.
 
+## After a logo or link-preview change
+
+- **Google:** Search Console → URL Inspection → `https://www.tapnshow.tn/` → **Request indexing**.
+  Google shows a new favicon after it recrawls the home page, which takes "several days to several
+  weeks" (Google Search Central, favicon guide). `/favicon.ico` keeps its address on purpose: the
+  guide asks for a stable favicon URL.
+- **Link previews:** the image's address changes by itself (`?v=`, `src/lib/seo/share-image-url.ts`).
+  Warm the caches by re-scraping `https://www.tapnshow.tn/` in Meta's Sharing Debugger
+  (developers.facebook.com/tools/debug) and LinkedIn's Post Inspector (linkedin.com/post-inspector).
+  Links shared before show the new picture once Meta refreshes them (it re-scrapes link data about
+  every 30 days), because the old bare address now serves the new picture too.
+- **IndexNow:** only if a page's content changed too (see above).
+
 ## Checks (any time)
 
 ```bash

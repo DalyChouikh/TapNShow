@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 import { APP_NAME } from "@/config/app";
 import { DEFAULT_LOCALE, OPEN_GRAPH_LOCALES } from "@/config/i18n";
-import { SHARE_IMAGE } from "@/config/share-image";
 import type { LegalDocument } from "@/content/legal/types";
+import { VERSIONED_SHARE_IMAGE } from "./share-image-url";
 
 /**
  * Metadata for a public page (spec §7.18): its title and description, its own canonical address,
  * and a share card with the four properties ogp.me requires (title, type, image, url) plus the
  * site name and locale. The image is listed here because a page's `openGraph` replaces the one it
- * would inherit (Next merges metadata shallowly); relative paths resolve against `metadataBase`.
+ * would inherit (Next merges metadata shallowly), at its versioned address (`VERSIONED_SHARE_IMAGE`);
+ * relative paths resolve against `metadataBase`.
  */
 export function publicPageMetadata(page: {
   path: string;
@@ -27,7 +28,7 @@ export function publicPageMetadata(page: {
       locale: OPEN_GRAPH_LOCALES[DEFAULT_LOCALE],
       title,
       description,
-      images: [SHARE_IMAGE],
+      images: [VERSIONED_SHARE_IMAGE],
     },
   };
 }

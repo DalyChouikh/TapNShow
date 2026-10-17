@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { SHARE_IMAGE } from "@/config/share-image";
 import { legalPageMetadata, publicPageMetadata } from "./public-metadata";
+import { SHARE_IMAGE_URL } from "./share-image-url";
 
 describe("publicPageMetadata", () => {
   it("gives a public page its canonical address and a complete share card", () => {
@@ -21,7 +22,7 @@ describe("publicPageMetadata", () => {
         locale: "en_US",
         title: "Privacy Policy · TapNShow",
         description: "What we keep.",
-        images: [SHARE_IMAGE],
+        images: [{ ...SHARE_IMAGE, url: SHARE_IMAGE_URL }],
       },
     });
   });
