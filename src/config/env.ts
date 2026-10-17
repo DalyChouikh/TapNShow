@@ -76,6 +76,9 @@ const serverEnvSchema = z
     }
   });
 
+/** Every variable the server schema reads (`.env.example` lists them; a test keeps it so). */
+export const SERVER_ENV_NAMES = Object.keys(serverEnvSchema.shape);
+
 /** Server-only environment variables (secrets live here, never in PublicEnv). */
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
 
