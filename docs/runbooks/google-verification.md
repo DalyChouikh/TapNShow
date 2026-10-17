@@ -4,8 +4,10 @@ Order (Owner, 2026-10-15): M9 engineering → the new logo, uploaded in Google C
 the promo video. Branding can't change while verification is in progress.
 
 Written from Google's pages read on 2026-10-15 (Google Auth Platform help: brand verification,
-sensitive scope verification, the API Services User Data Policy). Re-check each link the day it is
-used: Google changes these screens without notice.
+sensitive scope verification, the API Services User Data Policy); the demo video part re-read on
+2026-10-17 against [Sensitive scope verification](https://developers.google.com/identity/protocols/oauth2/production-readiness/sensitive-scope-verification)
+(step 13, last updated 2026-08-19). Re-check each link the day it is used: Google changes these
+screens without notice.
 
 ## Scopes TapNShow asks for
 
@@ -41,21 +43,36 @@ in the same PR.
    > `gmail.send` is the narrowest Gmail scope that sends: TapNShow never reads, lists, modifies or
    > deletes mail, so `gmail.readonly`, `gmail.compose` and `gmail.modify` would grant more than it
    > uses.
-3. Demo video: link the unlisted YouTube video (script below).
+3. Demo video: upload it to YouTube Studio with Visibility **Unlisted**, then paste its link in the
+   **YouTube link** field (script below).
 4. Submit; answer Google's questions from the Owner's inbox. Google says sensitive-scope review
    "typically takes 3-5 business days".
 
 ## Demo video script (English; one take is fine)
 
+Google's page (step 13) asks the video to show, in English:
+
+| Google asks the video to show | Shown in step |
+|---|---|
+| How a user initiates and grants access: the consent flow and, because TapNShow uses Google Sign-In, the sign-in flow | 2 and 3 |
+| The consent screen displays the App Name (TapNShow) | 2 and 4 |
+| The consent screen's browser address bar includes the app's OAuth client ID (`client_id=` in the URL) | 2 and 4 |
+| The feature enabled by each sensitive scope: `gmail.send` sends the group's meeting emails | 5 to 7 |
+
+Record the whole browser window so the address bar is always in the picture.
+
 1. Open https://www.tapnshow.tn, show the landing and the privacy page's Google section (10 s).
-2. Sign in, open a test workspace → Settings → Sending → **Connect Gmail**.
-3. Google's consent screen: show the app name, then the address bar (the `client_id` is in the URL),
-   then the permission "Send email on your behalf". Continue.
-4. Back in TapNShow: "Sending from <test address>".
-5. Create a meeting to the Owner's own test addresses only → Review → Send → the progress reaches
+2. **Sign in with Google:** in a signed-out window, Sign in → **Continue with Google**. On Google's
+   screen, show the app name, then the address bar (`client_id=` in the URL), then pick the test
+   Google account and continue.
+3. Back in TapNShow, signed in: open a test workspace → Settings → Sending → **Connect Gmail**.
+4. Google's consent screen: show the app name, then the address bar (`client_id=` in the URL), then
+   the permission "Send email on your behalf". Continue.
+5. Back in TapNShow: "Sending from <test address>".
+6. Create a meeting to the Owner's own test addresses only → Review → Send → the progress reaches
    sent.
-6. Open the test inbox: the invite from the group's address; tap "I'm going"; show the answer in
-   TapNShow.
-7. (Sheets uses `drive.file`, non-sensitive: not needed in the video.)
+7. Open the test inbox: the invite comes from the group's address; tap "I'm going"; show the answer
+   in TapNShow.
+8. (Sheets uses `drive.file`, non-sensitive: not needed in the video.)
 
 Never use the club's workspace or members' addresses in the video.
