@@ -81,8 +81,10 @@ For everyone with access, Viewers included.
     whose first answer came before the meeting started.
 - **Chart:** one stacked bar per counted meeting, oldest to newest, the **newest 12** in the
   period, segmented as Came, Late, Absent, No reply (tile colours, ink outlines), with a legend and
-  date labels in each meeting's time zone (every other label below 400 px). Each bar is a link to
-  its meeting, labelled "<title>, <date>: 18 came, 4 late, 5 absent, 3 no reply". The note under it
+  date labels in each meeting's time zone (every other label below 400 px). Each bar is labelled
+  "<title>, <date>: 18 came, 4 late, 5 absent, 3 no reply" and is a link to its meeting, except on
+  a touch screen where its column is narrower than 44 px (Owner, 2026-10-17). No reply is also
+  hatched, so it never depends on colour alone. The note under it
   says "Check-ins where you marked them, otherwise the answers." When the period has more than 12
   meetings, the chart says "The latest 12 of N".
 - **Empty states:**
@@ -157,9 +159,13 @@ For Owner and Admin, until the two required steps are done.
   - "often missing" uses roster contacts only (`not is_adhoc`).
 - **A DB test pins the twins:** for the same period, `oftenMissing` and the totals equal what
   `private.attendance_summary` gives.
-- **Performance:** measured with `EXPLAIN` on a volume seed of one workspace with 2,000 contacts
-  and 150 past meetings × 2,000 invitees (300,000 invitee rows), plus 200 small workspaces. Target:
-  under 100 ms warm. Indexes are added only if the plan needs them, partial to this reader.
+- **Performance:** measured with `EXPLAIN` on a volume seed at the product's caps
+  (`private.app_limits`): one workspace with 2,000 roster members and 150 past meetings × 500
+  invitees (75,000 invitee rows; a meeting can't invite more than 500), plus 200 small workspaces.
+  Budgets, warm: Home's default period (Last 3 months) under 100 ms; All time under 250 ms
+  (measured 72 ms locally, 124 ms on the CI runner, 2026-10-17). The three meeting indexes carry
+  the join key and the columns this read needs (index-only merge joins), and the plan test pins
+  that shape.
 
 ### 3.2 Reused as they are
 

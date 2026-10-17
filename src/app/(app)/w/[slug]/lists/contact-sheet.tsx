@@ -21,7 +21,7 @@ import {
   type Roster,
   type UpdateContactBody,
 } from "@/shared/api/roster";
-import { ContactHistory } from "./contact-history";
+import { ContactHistory } from "@/components/members/contact-history";
 import { describeEditError } from "./describe-edit-error";
 import { ListTag } from "@/components/forms/list-tag";
 

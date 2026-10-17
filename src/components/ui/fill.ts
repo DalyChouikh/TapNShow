@@ -12,3 +12,13 @@ export const FILL_CLASS: Record<FillTone, string> = {
   info: "bg-fill-info",
   neutral: "bg-fill-neutral",
 };
+
+/** The SVG fill class of each pastel fill (chart marks). Written out in full for Tailwind. */
+export const SVG_FILL_CLASS: Record<FillTone, string> = {
+  primary: "fill-fill-primary",
+  success: "fill-fill-success",
+  warning: "fill-fill-warning",
+  danger: "fill-fill-danger",
+  info: "fill-fill-info",
+  neutral: "fill-fill-neutral",
+};

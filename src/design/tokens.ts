@@ -17,6 +17,23 @@ export const FILL_TONES = [
 /** A pastel fill tone. */
 export type FillTone = (typeof FILL_TONES)[number];
 
+/** The smallest tap target, in CSS pixels (AGENTS.md: at least 44 px). */
+export const MIN_TAP_TARGET_PX = 44;
+
+/**
+ * The tone of each attendance outcome: Going, Late, Absent, No reply (the meeting page's tiles, a
+ * person's history counts, Home's chart).
+ */
+export const OUTCOME_TONES = {
+  attending: "success",
+  late: "warning",
+  absent: "danger",
+  noReply: "neutral",
+} as const satisfies Record<string, FillTone>;
+
+/** An attendance outcome, as the counts name it. */
+export type Outcome = keyof typeof OUTCOME_TONES;
+
 /**
  * Every color a theme must define (hex). `onFill` is the text color on any pastel fill;
  * `onFillMuted` is secondary text on a fill (e.g. a placeholder in an invalid input).

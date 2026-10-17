@@ -1,6 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { FILL_CLASS } from "@/components/ui/fill";
+import { OUTCOME_TONES } from "@/design/tokens";
 import { cn } from "@/lib/utils";
 import type { MeetingResults, PeopleFilter } from "@/shared/api/responses";
 
@@ -51,31 +53,40 @@ export function ResultTiles({
           {
             filter: "attending",
             count: answers.attending,
-            fill: "bg-fill-success",
+            fill: FILL_CLASS[OUTCOME_TONES.attending],
           },
           {
+            // Not going counts as Absent.
             filter: "not_attending",
             count: answers.notAttending,
-            fill: "bg-fill-danger",
+            fill: FILL_CLASS[OUTCOME_TONES.absent],
           },
           {
             filter: "no_reply",
             count: answers.noReply,
-            fill: "bg-fill-neutral",
+            fill: FILL_CLASS[OUTCOME_TONES.noReply],
           },
         ]
       : [
           {
             filter: "attending",
             count: answers.attending,
-            fill: "bg-fill-success",
+            fill: FILL_CLASS[OUTCOME_TONES.attending],
           },
-          { filter: "late", count: answers.late, fill: "bg-fill-warning" },
-          { filter: "absent", count: answers.absent, fill: "bg-fill-danger" },
+          {
+            filter: "late",
+            count: answers.late,
+            fill: FILL_CLASS[OUTCOME_TONES.late],
+          },
+          {
+            filter: "absent",
+            count: answers.absent,
+            fill: FILL_CLASS[OUTCOME_TONES.absent],
+          },
           {
             filter: "no_reply",
             count: answers.noReply,
-            fill: "bg-fill-neutral",
+            fill: FILL_CLASS[OUTCOME_TONES.noReply],
           },
         ];
   // People asked to confirm again after a time change (spec §7.5), only while there are some.

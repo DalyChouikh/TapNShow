@@ -156,6 +156,100 @@ export async function seedPastMeetingWithAnswer(
   return fullName;
 }
 
+/** One person's answer to a seeded past meeting; null leaves it unanswered. */
+export type PastAnswer = "attending" | "late" | "absent" | null;
+
+/**
+ * Weekly past meetings of the workspace at `slug` (the newest a week ago), each inviting every
+ * contact named in `people` (already in the roster) with `answers[meeting][person]`, answered
+ * through the real answer function while upcoming, then moved into the past (service role; test
+ * setup only). Returns the meeting ids, oldest first.
+ */
+export async function seedPastMeetings(
+  slug: string,
+  stamp: string,
+  people: string[],
+  answers: PastAnswer[][],
+): Promise<string[]> {
+  const client = adminClient();
+  const workspaceId = await workspaceIdOf(slug);
+  const contacts = await client
+    .from("contacts")
+    .select("id, full_name")
+    .eq("workspace_id", workspaceId)
+    .in("full_name", people);
+  if (contacts.error) {
+    throw contacts.error;
+  }
+  const idOf = new Map(contacts.data.map((row) => [row.full_name, row.id]));
+  const ids: string[] = [];
+  for (const [index, row] of answers.entries()) {
+    const meeting = await client
+      .from("meetings")
+      .insert({
+        workspace_id: workspaceId,
+        title: `Weekly sync ${index + 1} ${stamp}`,
+        starts_at: new Date(Date.now() + 86_400_000).toISOString(),
+        duration_minutes: 60,
+        timezone: "Africa/Tunis",
+        location_mode: "in_person",
+        location_text: "Room 1",
+        response_mode: "attendance",
+        delay_options: [5, 10, 15],
+        reason_required: true,
+        comments_enabled: false,
+        status: "scheduled",
+      })
+      .select("id")
+      .single();
+    if (meeting.error) {
+      throw meeting.error;
+    }
+    for (const [person, status] of row.entries()) {
+      const tokenHash = createHash("sha256")
+        .update(crypto.randomUUID())
+        .digest("hex");
+      const invitee = await client.from("meeting_invitees").insert({
+        workspace_id: workspaceId,
+        meeting_id: meeting.data.id,
+        contact_id: idOf.get(people[person]) ?? "",
+        token_hash: tokenHash,
+        email_status: "sent",
+      });
+      if (invitee.error) {
+        throw invitee.error;
+      }
+      if (status) {
+        const answered = await client.rpc("token_submit_response", {
+          p_token_hash: tokenHash,
+          p_status: status,
+          p_delay_minutes: status === "late" ? 10 : null,
+          p_reason: status === "attending" ? null : "Exam the next morning",
+          p_comment: null,
+        });
+        if (answered.error) {
+          throw answered.error;
+        }
+      }
+    }
+    const startsAt = Date.now() - (answers.length - index) * 7 * 86_400_000;
+    const moved = await client
+      .from("meetings")
+      .update({ starts_at: new Date(startsAt).toISOString() })
+      .eq("id", meeting.data.id);
+    // The answers came while it was upcoming: a day before its (new) start.
+    const dated = await client
+      .from("responses")
+      .update({ responded_at: new Date(startsAt - 86_400_000).toISOString() })
+      .eq("meeting_id", meeting.data.id);
+    if (moved.error || dated.error) {
+      throw moved.error ?? dated.error;
+    }
+    ids.push(meeting.data.id);
+  }
+  return ids;
+}
+
 /**
  * A meeting that started an hour ago with two invited people: `going` answered Going, `silent`
  * did not answer (service role; test setup only). Returns the meeting id.

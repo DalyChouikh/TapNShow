@@ -20,6 +20,7 @@ function serve(options: {
   committee: number;
   sender: boolean | "broken";
   sheet: "off" | "on";
+  held?: number;
 }) {
   const sender = senderFixture(options.sender !== false);
   return routeFetch({
@@ -30,6 +31,7 @@ function serve(options: {
         lists: 0,
         committee: options.committee,
       },
+      held: options.held ?? 0,
     }),
     [`GET ${base}/sender`]: json(
       options.sender === "broken" && sender.sender
@@ -80,6 +82,20 @@ describe("useHomeSetup", () => {
       expect(result.current).toMatchObject({
         state: "ready",
         done: { connectGmail: true },
+        complete: true,
+      }),
+    );
+  });
+
+  it("stays set up once a meeting has counted, even with Gmail disconnected later", async () => {
+    serve({ members: 30, committee: 1, sender: false, sheet: "off", held: 40 });
+    const { result } = renderHook(() => useHomeSetup("club-ab12", ALL_TIME), {
+      wrapper,
+    });
+    await waitFor(() =>
+      expect(result.current).toMatchObject({
+        state: "ready",
+        done: { connectGmail: false },
         complete: true,
       }),
     );

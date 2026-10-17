@@ -3,7 +3,9 @@ import {
   durationText,
   formatTime,
   formatDeadline,
+  formatCalendarDay,
   formatMeetingWhen,
+  formatShortDate,
   meetingSubject,
   utcToZonedParts,
   zonedWallTimeToUtc,
@@ -109,5 +111,23 @@ describe("formatTime", () => {
     expect(formatTime("2026-10-08T13:20:00.000Z", "Africa/Tunis")).toBe(
       "14:20",
     );
+  });
+});
+
+describe("formatShortDate", () => {
+  it("prints the day and month in the meeting's zone", () => {
+    expect(formatShortDate("2026-10-05T23:30:00Z", "Africa/Tunis")).toBe(
+      "6 Oct",
+    );
+    expect(formatShortDate("2026-10-05T23:30:00Z", "America/New_York")).toBe(
+      "5 Oct",
+    );
+  });
+});
+
+describe("formatCalendarDay", () => {
+  it("prints a picked day (yyyy-MM-dd) as it was picked, whatever the device's zone", () => {
+    expect(formatCalendarDay("2026-10-09")).toBe("9 Oct");
+    expect(formatCalendarDay("2026-01-01")).toBe("1 Jan");
   });
 });

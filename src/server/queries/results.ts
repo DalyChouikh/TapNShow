@@ -342,6 +342,7 @@ export async function getAttendanceSummary(
 
 const dbInsightsSchema = z.object({
   roster: z.object({ members: count, lists: count, committee: count }),
+  held: count,
   period: z.object({
     meetings: count,
     came_average: z.number(),
@@ -386,10 +387,12 @@ export async function getWorkspaceInsights(
   if (error) {
     return { data: null, error };
   }
-  const { roster, period, chart, often_missing } = dbInsightsSchema.parse(data);
+  const { roster, held, period, chart, often_missing } =
+    dbInsightsSchema.parse(data);
   return {
     data: {
       roster,
+      held,
       period: {
         meetings: period.meetings,
         cameAverage: period.came_average,

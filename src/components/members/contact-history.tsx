@@ -5,21 +5,16 @@ import { format } from "date-fns";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { PeriodChips } from "@/components/forms/period-chips";
+import { FILL_CLASS } from "@/components/ui/fill";
 import { ShowMore } from "@/components/ui/show-more";
 import { Skeleton } from "@/components/ui/skeleton";
+import { OUTCOME_TONES } from "@/design/tokens";
 import { useAnswerLabels } from "@/hooks/use-answer-labels";
 import { useContactHistory } from "@/hooks/use-results";
 import { describeCheckIn } from "@/lib/responses/describe-answer";
-import { usePeriod } from "@/lib/responses/use-period";
+import { type PeriodChoice, usePeriod } from "@/lib/responses/use-period";
 import { cn } from "@/lib/utils";
 import type { HistoryRow } from "@/shared/api/responses";
-
-const COUNT_FILL = {
-  attending: "bg-fill-success",
-  late: "bg-fill-warning",
-  absent: "bg-fill-danger",
-  noReply: "bg-fill-neutral",
-} as const;
 
 function RowAnswer({ row }: { row: HistoryRow }) {
   const t = useTranslations("History");
@@ -60,13 +55,16 @@ export function ContactHistory({
   slug,
   contactId,
   timezone,
+  initialPeriod,
 }: {
   slug: string;
   contactId: string;
   timezone: string;
+  /** Opens on this period (Home's) instead of the default. */
+  initialPeriod?: PeriodChoice;
 }) {
   const t = useTranslations("History");
-  const period = usePeriod(timezone);
+  const period = usePeriod(timezone, initialPeriod);
   const history = useContactHistory(slug, contactId, period.range);
   return (
     <section className="flex flex-col gap-3 border-t-2 border-dashed border-outline pt-3">
@@ -89,7 +87,7 @@ export function ContactHistory({
               key={key}
               className={cn(
                 "flex flex-col items-center rounded-control border-[length:var(--tn-border-width)] border-outline p-1.5 text-on-fill",
-                COUNT_FILL[key],
+                FILL_CLASS[OUTCOME_TONES[key]],
               )}
             >
               <span className="text-xs font-bold">{t(`counts.${key}`)}</span>

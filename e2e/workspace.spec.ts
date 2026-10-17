@@ -1,7 +1,8 @@
 import { expect, test } from "./helpers/test";
 import { expectNoHorizontalScroll } from "./helpers/layout";
 import { createWorkspace, sendMeetingThroughUi } from "./helpers/meetings";
-import { seedRoster } from "./helpers/seed";
+import { seedPastMeetings, seedRoster } from "./helpers/seed";
+import { seedSender } from "./helpers/seed-sender";
 import {
   openNewWorkspace,
   signInWithCode,
@@ -106,6 +107,69 @@ test.describe("Home", () => {
     await expect(page.getByText(/^Reminded 2 at /)).toBeVisible();
 
     await page.setViewportSize({ width: 320, height: 800 });
+    await expectNoHorizontalScroll(page);
+  });
+
+  test("Home shows how the group is doing and who often misses", async ({
+    page,
+  }) => {
+    const slug = await createWorkspace(page, "Insights Club");
+    const stamp = crypto.randomUUID().slice(0, 8);
+    const people = [`Amira ${stamp}`, `Bilel ${stamp}`, `Chaima ${stamp}`];
+    await seedRoster(
+      slug,
+      people.map((fullName, index) => ({
+        fullName,
+        email: `p${index}-${stamp}@example.test`,
+        lists: ["Members"],
+      })),
+    );
+    await seedSender(slug, `e2e-club-${stamp}@example.test`);
+    const meetings = await seedPastMeetings(slug, stamp, people, [
+      ["absent", "attending", "late"],
+      ["absent", "attending", null],
+      [null, "attending", "attending"],
+    ]);
+    await page.reload();
+
+    // Three numbers and a bar per meeting, each linking to it.
+    const numbers = page.getByRole("group", { name: "How it's going" }).first();
+    await expect(numbers).toContainText("3meetings");
+    await expect(numbers).toContainText("78%answered before the start");
+    const chart = page.getByRole("group", { name: "Who came to each meeting" });
+    await expect(chart.getByRole("link")).toHaveCount(3);
+    await expect(chart.getByRole("link").last()).toHaveAccessibleName(
+      new RegExp(
+        `^Weekly sync 3 ${stamp}, .*: 2 came, 0 late, 0 absent, 1 no reply$`,
+      ),
+    );
+
+    // Often missing: Amira first, opening her history over Home.
+    const missing = page.getByRole("button", { name: new RegExp(people[0]) });
+    await expect(missing).toContainText("Missed 3 of 3: 2 absent, 1 no reply");
+    await expect(
+      page.getByRole("button", { name: new RegExp(people[2]) }),
+    ).toContainText("Missed 1 of 3: 0 absent, 1 no reply");
+    await missing.click();
+    const dialog = page.getByRole("dialog", { name: people[0] });
+    await expect(dialog.getByRole("group", { name: "History" })).toContainText(
+      "2",
+    );
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+    await expect(
+      page.getByRole("link", { name: "See everyone's attendance" }),
+    ).toHaveAttribute("href", `/w/${slug}/lists?view=attendance`);
+
+    // All time reads the same three; a bar opens its meeting.
+    await page.getByRole("button", { name: "All time" }).click();
+    await expect(numbers).toContainText("3meetings");
+    await chart.getByRole("link").first().click();
+    await expect(page).toHaveURL(new RegExp(`/meetings/${meetings[0]}$`));
+
+    await page.goto(`/w/${slug}`);
+    await page.setViewportSize({ width: 320, height: 800 });
+    await expect(chart.getByRole("link")).toHaveCount(3);
     await expectNoHorizontalScroll(page);
   });
 });

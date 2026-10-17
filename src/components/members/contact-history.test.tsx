@@ -85,6 +85,46 @@ describe("ContactHistory", () => {
     );
   });
 
+  it("starts on the period it is given (Home's)", async () => {
+    const urls: string[] = [];
+    routeFetch(
+      new Proxy(
+        {},
+        {
+          get: (_target, key: string) => () => {
+            urls.push(key);
+            return new Response(
+              JSON.stringify({
+                counts: { attending: 0, late: 0, absent: 0, noReply: 0 },
+                items: [],
+                nextCursor: null,
+              }),
+            );
+          },
+        },
+      ),
+    );
+    renderWithProviders(
+      <ContactHistory
+        slug="club-ab12"
+        contactId={CONTACT}
+        timezone="Africa/Tunis"
+        initialPeriod={{
+          period: "all",
+          custom: { from: "2026-09-01", to: "2026-09-30" },
+        }}
+      />,
+    );
+    expect(
+      await screen.findByRole("button", { name: "All time" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await waitFor(() =>
+      expect(urls[0]).toBe(
+        `GET /api/workspaces/club-ab12/contacts/${CONTACT}/history?limit=50`,
+      ),
+    );
+  });
+
   it("says there are no past meetings when the period is empty", async () => {
     routeFetch(
       new Proxy(

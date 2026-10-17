@@ -21,4 +21,14 @@ describe("LoadError", () => {
       screen.getByText("We couldn't load your roster."),
     ).toBeInTheDocument();
   });
+
+  it("can sit inside a card without a frame of its own", () => {
+    const { container } = renderWithProviders(
+      <LoadError bare onRetry={() => {}} />,
+    );
+    expect(container.querySelector("section")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Try again" }),
+    ).toBeInTheDocument();
+  });
 });

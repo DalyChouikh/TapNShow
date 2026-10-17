@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useNow } from "next-intl";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { LoadError } from "@/components/errors/load-error";
 import { Skeleton } from "@/components/ui/skeleton";
 import { HOME_TWO_COLUMNS_MEDIA } from "@/config/home";
@@ -15,8 +15,14 @@ import { usePeriod } from "@/lib/responses/use-period";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
 import { HomeChecklist } from "./home-checklist";
 import { HomeGreeting } from "./home-greeting";
+import { HowItsGoing } from "./how-its-going";
 import { NeedsAttention } from "./needs-attention";
 import { NextMeetingCard } from "./next-meeting-card";
+import { OftenMissing } from "./often-missing";
+import {
+  type HistoryPerson,
+  PersonHistoryDialog,
+} from "./person-history-dialog";
 import { SheetsTip } from "./sheets-tip";
 import { useHomeSetup } from "./use-home-setup";
 
@@ -35,10 +41,13 @@ export default function WorkspaceHomePage() {
 
 function WorkspaceHome({ workspace }: { workspace: WorkspaceDetails }) {
   const now = useNow({ updateInterval: RELATIVE_TIME_TICK_MS });
-  // One period for every card: the same insights request feeds the greeting, setup and charts.
+  // One period for How it's going and Often missing, chosen with the chips.
   const period = usePeriod(workspace.timezone);
-  const insights = useWorkspaceInsights(workspace.slug, period.range);
-  const setup = useHomeSetup(workspace.slug, period.range);
+  // The greeting and setup read the request Home opened with (the same one, at first): roster
+  // counts don't depend on the period, and a later period that fails stays in its own card.
+  const [openingRange] = useState(period.range);
+  const insights = useWorkspaceInsights(workspace.slug, openingRange);
+  const setup = useHomeSetup(workspace.slug, openingRange);
   const me = useMe();
   const wide = useMediaQuery(HOME_TWO_COLUMNS_MEDIA);
   const canManage = workspace.myRole !== "viewer";
@@ -54,38 +63,47 @@ function WorkspaceHome({ workspace }: { workspace: WorkspaceDetails }) {
       now={now}
     />
   );
+  const going = (
+    <HowItsGoing key="going" slug={workspace.slug} period={period} />
+  );
+  // The history dialog lives here, not in its card: crossing lg remounts the cards.
+  const [person, setPerson] = useState<HistoryPerson | null>(null);
+  const missing = (
+    <OftenMissing
+      key="missing"
+      slug={workspace.slug}
+      period={period}
+      onOpen={setPerson}
+    />
+  );
   let layout: HomeLayout;
-  if (setup.state === "loading") {
-    const loading = <Skeleton key="setup" className="h-64 w-full" />;
-    layout = {
-      phone: [attention, loading],
-      main: [loading],
-      side: [attention],
-    };
-  } else if (setup.state === "error") {
-    const failed = <LoadError key="setup" onRetry={setup.retry} />;
-    layout = {
-      phone: [attention, failed, next],
-      main: [failed, next],
-      side: [attention],
-    };
-  } else if (!setup.complete) {
+  if (setup.state === "ready" && !setup.complete) {
     const checklist = (
       <HomeChecklist key="setup" workspace={workspace} setup={setup} />
     );
     layout = {
-      phone: [attention, checklist, next],
+      phone: [attention, checklist, next, going],
       main: [checklist],
-      side: [attention, next],
+      side: [attention, next, going],
     };
   } else {
-    const sheetsTip = (
-      <SheetsTip key="sheets" workspace={workspace} setup={setup} now={now} />
-    );
+    // While setup loads or fails, the same cards stay mounted around its slot. A card mounting
+    // then would ask again for a request that just failed (TanStack retries on mount), flipping
+    // setup back to loading and remounting it, in a loop of requests.
+    const setupSlot =
+      setup.state === "loading" ? (
+        <Skeleton key="setup" className="h-64 w-full" />
+      ) : setup.state === "error" ? (
+        <LoadError key="setup" onRetry={setup.retry} />
+      ) : null;
+    const sheetsTip =
+      setup.state === "ready" ? (
+        <SheetsTip key="sheets" workspace={workspace} setup={setup} now={now} />
+      ) : null;
     layout = {
-      phone: [attention, next, sheetsTip],
-      main: [next],
-      side: [attention, sheetsTip],
+      phone: [attention, setupSlot, next, going, missing, sheetsTip],
+      main: [setupSlot, next, going],
+      side: [attention, missing, sheetsTip],
     };
   }
 
@@ -121,6 +139,13 @@ function WorkspaceHome({ workspace }: { workspace: WorkspaceDetails }) {
           {layout.phone}
         </div>
       )}
+      <PersonHistoryDialog
+        slug={workspace.slug}
+        timezone={workspace.timezone}
+        period={{ period: period.period, custom: period.custom }}
+        person={person}
+        onClose={() => setPerson(null)}
+      />
     </div>
   );
 }

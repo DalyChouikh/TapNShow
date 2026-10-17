@@ -10,6 +10,7 @@ export const INSIGHTS_IDS = {
 /** Two counted meetings in a 30-member workspace (Africa/Tunis), one member often missing. */
 export const insightsFixture: WorkspaceInsights = {
   roster: { members: 30, lists: 2, committee: 1 },
+  held: 8,
   period: {
     meetings: 2,
     cameAverage: 22.5,
