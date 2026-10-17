@@ -291,6 +291,9 @@ export const ROUTES: Record<
       ],
     },
   },
+  "workspaces/[slug]/insights": {
+    GET: { limits: [SIGNED_IN_READ], list: bounded("aggregate counts") },
+  },
   "workspaces/[slug]/invites": {
     GET: { limits: [SIGNED_IN_READ], list: PAGED },
     POST: { limits: [user("invite_create", "public.create_invite")] },

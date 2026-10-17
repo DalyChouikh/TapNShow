@@ -1,10 +1,11 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { PROGRESS_POLL_MS } from "@/config/meetings";
 import { RESULTS_POLL_MS } from "@/config/responses";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { apiRequest } from "@/lib/api-client";
+import { workspaceInsightsSchema } from "@/shared/api/insights";
 import {
   type AttendanceDetailRow,
   attendanceDetailsPageSchema,
@@ -107,6 +108,24 @@ export function useAttendance(slug: string, range: PeriodRange) {
         { schema: attendanceSummarySchema },
       );
     },
+  });
+}
+
+/**
+ * Home's insights for a period: one request per period (cached by its bounds). The last period's
+ * numbers stay on screen while the next one loads, so the cards don't blink.
+ */
+export function useWorkspaceInsights(slug: string, range: PeriodRange) {
+  return useQuery({
+    queryKey: ["insights", slug, range.from ?? "", range.to ?? ""],
+    queryFn: () => {
+      const query = new URLSearchParams(periodParams(range)).toString();
+      return apiRequest(
+        `${workspaceBase(slug)}/insights${query ? `?${query}` : ""}`,
+        { schema: workspaceInsightsSchema },
+      );
+    },
+    placeholderData: keepPreviousData,
   });
 }
 

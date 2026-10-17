@@ -3,10 +3,13 @@ import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { json, routeFetch } from "@/test/fetch";
+import { insightsFixture } from "@/test/fixtures/insights";
+import type { PeriodRange } from "@/shared/api/responses";
 import {
   fetchAllAttendanceDetails,
   useMeetingPeople,
   useMeetingResults,
+  useWorkspaceInsights,
 } from "./use-results";
 
 const wrapper = ({ children }: { children: ReactNode }) => (
@@ -84,5 +87,33 @@ describe("organizer hooks", () => {
       to: null,
     });
     expect(rows.map((r) => r.fullName)).toEqual(["Member 1", "Member 2"]);
+  });
+
+  it("asks once per period and keeps the last insights while the next period loads", async () => {
+    const lastThreeMonths: PeriodRange = {
+      from: "2026-07-17T10:00:00.000Z",
+      to: null,
+    };
+    const allTime: PeriodRange = { from: null, to: null };
+    const fetchMock = routeFetch({
+      [`GET ${base}/insights?from=2026-07-17T10%3A00%3A00.000Z`]:
+        json(insightsFixture),
+      // All time never answers here: the screen keeps the last numbers meanwhile.
+      [`GET ${base}/insights`]: () => new Promise<Response>(() => {}),
+    });
+    const { result, rerender } = renderHook(
+      ({ range }) => useWorkspaceInsights("club-ab12", range),
+      { wrapper, initialProps: { range: lastThreeMonths } },
+    );
+    await waitFor(() => expect(result.current.data).toEqual(insightsFixture));
+
+    rerender({ range: allTime });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(result.current.isPlaceholderData).toBe(true);
+    expect(result.current.data).toEqual(insightsFixture);
+
+    rerender({ range: lastThreeMonths });
+    expect(result.current.data).toEqual(insightsFixture);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
