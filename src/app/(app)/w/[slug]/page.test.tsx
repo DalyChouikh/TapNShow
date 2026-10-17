@@ -78,10 +78,23 @@ function serve(
   routeFetch({
     [`GET ${base}`]: json(workspaceFixture),
     "GET /api/me": json(meFixture),
-    [INSIGHTS]: json({
-      ...insightsFixture,
-      roster: { ...insightsFixture.roster, members: options.members ?? 30 },
-    }),
+    [INSIGHTS]: json(
+      options.members === 0
+        ? {
+            ...insightsFixture,
+            roster: { ...insightsFixture.roster, members: 0 },
+            held: 0,
+            period: {
+              meetings: 0,
+              cameAverage: 0,
+              invitedAverage: 0,
+              answeredBeforeStart: null,
+            },
+            chart: [],
+            oftenMissing: [],
+          }
+        : insightsFixture,
+    ),
     [`GET ${base}/sender`]: json(senderFixture(options.sender ?? true)),
     [`GET ${base}/sheet`]: json(sheetFixture(options.sheet ?? "off")),
     [LIST]: json({
@@ -122,10 +135,12 @@ describe("Workspace Home", () => {
       }),
     ).toBeInTheDocument();
     await screen.findByText("No meeting coming up.");
+    await screen.findByText(/After your first meeting/);
     expect(headings()).toEqual([
       "Welcome to Robotics Club",
       "Get set up",
       "Next meeting",
+      "How it's going",
     ]);
   });
 
@@ -145,27 +160,39 @@ describe("Workspace Home", () => {
     expect(
       await screen.findByText("Robotics Club · 30 members"),
     ).toBeInTheDocument();
+    await screen.findByRole("heading", { name: "Often missing" });
     expect(headings()).toEqual([
       "Good afternoon, Amira",
       "Next meeting",
+      "How it's going",
+      "Often missing",
       "Keep a Google Sheet of every answer",
     ]);
   });
 
-  it("lays out two columns from lg: the next meeting left, the Sheets tip right", async () => {
+  it("lays out two columns from lg: the meeting and the chart left, who's missing and the Sheets tip right", async () => {
     setWideViewport(true);
     serve();
     const { container } = renderWithProviders(<WorkspaceHomePage />);
     await screen.findByRole("link", { name: "Weekly sync" });
     const main = container.querySelector<HTMLElement>('[data-slot="main"]');
     const side = container.querySelector<HTMLElement>('[data-slot="side"]');
-    expect(main && within(main).getByRole("heading", { name: "Next meeting" }));
+    expect(main).not.toBeNull();
+    expect(side).not.toBeNull();
+    if (!main || !side) {
+      return;
+    }
+    await within(side).findByRole("heading", { name: "Often missing" });
     expect(
-      side &&
-        (await within(side).findByRole("heading", {
-          name: "Keep a Google Sheet of every answer",
-        })),
-    ).toBeInTheDocument();
+      within(main)
+        .getAllByRole("heading")
+        .map((heading) => heading.textContent),
+    ).toEqual(["Next meeting", "How it's going"]);
+    expect(
+      within(side)
+        .getAllByRole("heading")
+        .map((heading) => heading.textContent),
+    ).toEqual(["Often missing", "Keep a Google Sheet of every answer"]);
   });
 
   it("keeps each card's loading and retry to itself", async () => {
@@ -184,19 +211,64 @@ describe("Workspace Home", () => {
     expect(list.calls()).toBe(2);
   });
 
-  it("still shows the next meeting when the setup data can't load", async () => {
-    const insights = failingOnce(insightsFixture);
-    serve({ routes: { [INSIGHTS]: insights } });
+  it("still shows the next meeting when the insights can't load, and tries them again", async () => {
+    // Refused until the person taps Try again: Home must not keep asking by itself.
+    let healthy = false;
+    let calls = 0;
+    serve({
+      routes: {
+        [INSIGHTS]: () => {
+          calls += 1;
+          return healthy
+            ? new Response(JSON.stringify(insightsFixture))
+            : refused();
+        },
+      },
+    });
     renderWithProviders(<WorkspaceHomePage />);
     expect(
       await screen.findByRole("link", { name: "Weekly sync" }),
     ).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
-    await waitFor(() => expect(insights.calls()).toBe(2));
+    // Setup and How it's going each offer it; either asks for the same insights.
+    const retries = await screen.findAllByRole("button", { name: "Try again" });
+    expect(retries).toHaveLength(2);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(calls).toBe(1);
+    healthy = true;
+    await userEvent.click(retries[0]);
     expect(
       await screen.findByText("Robotics Club · 30 members"),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Try again" })).toBeNull(),
+    );
+  });
+
+  it("keeps a period that can't load to How it's going", async () => {
+    let allTimeCalls = 0;
+    serve({
+      routes: {
+        [`GET ${base}/insights`]: () => {
+          allTimeCalls += 1;
+          return refused();
+        },
+      },
+    });
+    renderWithProviders(<WorkspaceHomePage />);
+    await screen.findByRole("heading", { name: "Often missing" });
+    await userEvent.click(screen.getByRole("button", { name: "All time" }));
+    expect(
+      await screen.findByRole("button", { name: "Try again" }),
+    ).toBeInTheDocument();
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(allTimeCalls).toBe(1);
+    expect(screen.getAllByRole("button", { name: "Try again" })).toHaveLength(
+      1,
+    );
+    expect(screen.getByText("Robotics Club · 30 members")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Weekly sync" }),
+    ).toBeInTheDocument();
   });
 
   it("settles when the sender can't load, instead of asking again and again", async () => {
@@ -224,5 +296,37 @@ describe("Workspace Home", () => {
     await new Promise((resolve) => setTimeout(resolve, 600));
     expect(senderCalls).toBe(settled);
     expect(senderCalls).toBeLessThanOrEqual(2);
+  });
+
+  it("keeps a member's history open when the screen crosses lg", async () => {
+    setWideViewport(true);
+    const [amira] = insightsFixture.oftenMissing;
+    serve({
+      routes: {
+        [`GET ${base}/contacts/${amira.contactId}/history?${new URLSearchParams({ from: range.from ?? "" })}&limit=50`]:
+          json({
+            counts: { attending: 0, late: 0, absent: 1, noReply: 1 },
+            items: [],
+            nextCursor: null,
+          }),
+      },
+    });
+    const { container, rerender } = renderWithProviders(<WorkspaceHomePage />);
+    await userEvent.click(
+      await screen.findByRole("button", { name: new RegExp(amira.fullName) }),
+    );
+    // It opens on Home's period (the only history address served here).
+    const dialog = await screen.findByRole("dialog", { name: amira.fullName });
+    expect(
+      await within(dialog).findByRole("group", { name: "History" }),
+    ).toHaveTextContent("1");
+
+    setWideViewport(false);
+    rerender(<WorkspaceHomePage />);
+
+    expect(container.querySelector('[data-slot="side"]')).toBeNull();
+    expect(
+      screen.getByRole("dialog", { name: amira.fullName }),
+    ).toBeInTheDocument();
   });
 });

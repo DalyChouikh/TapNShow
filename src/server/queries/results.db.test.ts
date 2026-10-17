@@ -32,6 +32,7 @@ describe("getWorkspaceInsights", () => {
     const insights = workspaceInsightsSchema.parse(data);
     expect(insights).toEqual({
       roster: { members: 1, lists: 0, committee: 0 },
+      held: 1,
       period: {
         meetings: 1,
         cameAverage: 0,

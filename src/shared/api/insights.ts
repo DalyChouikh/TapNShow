@@ -34,6 +34,8 @@ export type MissingMember = z.infer<typeof missingMemberSchema>;
 export const workspaceInsightsSchema = z.object({
   /** Roster members (not ad hoc), lists, and Admins and Viewers plus pending invites. */
   roster: z.object({ members: count, lists: count, committee: count }),
+  /** Counted meetings ever, whatever the period (0: none has happened yet). */
+  held: count,
   period: z.object({
     /** Counted meetings in the period. */
     meetings: count,

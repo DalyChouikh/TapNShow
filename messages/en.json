@@ -572,6 +572,33 @@
       "body": "Optional. Your committee can open it any time.",
       "connect": "Connect",
       "notNow": "Not now"
+    },
+    "howItsGoing": {
+      "title": "How it's going",
+      "meetings": "{count, plural, one {meeting} other {meetings}}",
+      "cameOf": "of {invited}",
+      "came": "came on average",
+      "answeredBefore": "answered before the start",
+      "noShare": "None yet",
+      "firstMeeting": "After your first meeting, you'll see here who came, who was late and who didn't answer.",
+      "emptyPeriod": "No meetings in this period.",
+      "latest": "The latest {shown} of {total}",
+      "chart": {
+        "label": "Who came to each meeting",
+        "legend": "Legend",
+        "attending": "Came",
+        "late": "Late",
+        "absent": "Absent",
+        "noReply": "No reply",
+        "bar": "{title}, {date}: {attending} came, {late} late, {absent} absent, {noReply} no reply",
+        "note": "Check-ins where you marked them, otherwise the answers."
+      }
+    },
+    "oftenMissing": {
+      "title": "Often missing",
+      "customRange": "{from} to {to}",
+      "missed": "Missed {missed} of {invited}: {absent} absent, {noReply} no reply",
+      "seeAll": "See everyone's attendance"
     }
   },
   "Invites": {

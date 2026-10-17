@@ -19,3 +19,6 @@ export const GREETING_HOURS = {
   afternoon: 12,
   evening: 18,
 } as const;
+
+/** Below this width (px) the chart labels every other meeting's date, the newest included. */
+export const CHART_THIN_LABELS_BELOW_PX = 400;

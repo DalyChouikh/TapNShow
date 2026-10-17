@@ -1,5 +1,5 @@
 import { TZDate } from "@date-fns/tz";
-import { addMinutes, format } from "date-fns";
+import { addMinutes, format, parseISO } from "date-fns";
 
 /** A meeting's time as shown everywhere (always in the meeting's own zone, spec §7.10). */
 export type MeetingWhen = {
@@ -10,6 +10,7 @@ export type MeetingWhen = {
 };
 
 const DATE_FORMAT = "EEE d MMM";
+const SHORT_DATE_FORMAT = "d MMM";
 const TIME_FORMAT = "HH:mm";
 
 /** The translated words a duration is built from. */
@@ -59,6 +60,16 @@ export function formatTime(iso: string, timezone: string): string {
 /** "Fri 9 Oct" in the meeting's zone. */
 export function formatDate(iso: string, timezone: string): string {
   return format(new TZDate(iso, timezone), DATE_FORMAT);
+}
+
+/** "9 Oct" in the meeting's zone (chart labels). */
+export function formatShortDate(iso: string, timezone: string): string {
+  return format(new TZDate(iso, timezone), SHORT_DATE_FORMAT);
+}
+
+/** "9 Oct" for a picked calendar day (`yyyy-MM-dd`, read as that day wherever the device is). */
+export function formatCalendarDay(day: string): string {
+  return format(parseISO(day), SHORT_DATE_FORMAT);
 }
 
 /** "Fri 9 Oct, 12:00" in the meeting's zone. */

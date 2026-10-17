@@ -23,6 +23,7 @@ const count = z.number().int().nonnegative();
 /** The documented shape (Task 1 Interfaces), exactly: Task 2 parses the same keys. */
 const insightsSchema = z.strictObject({
   roster: z.strictObject({ members: count, lists: count, committee: count }),
+  held: count,
   period: z.strictObject({
     meetings: count,
     came_average: z.number().nonnegative(),
@@ -499,6 +500,25 @@ describe("workspace_insights (Home, spec §3.1)", () => {
     }
   });
 
+  it("counts the meetings held ever, whatever the period", async () => {
+    await pastMeeting(500);
+    await pastMeeting(2);
+    await pastMeeting(3, { status: "cancelled" });
+    await pastMeeting(3, { response_mode: "announcement" });
+    await seedMeeting(workspaceId, {
+      status: "scheduled",
+      starts_at: hoursFromNow(24),
+    });
+
+    const recent = await insights({ from: hoursFromNow(-100) });
+    expect(recent.held).toBe(2);
+    expect(recent.period.meetings).toBe(1);
+
+    const quiet = await insights({ to: hoursFromNow(-1000) });
+    expect(quiet.held).toBe(2);
+    expect(quiet.period.meetings).toBe(0);
+  });
+
   it("counts roster members, lists, and committee (admins, viewers, pending invites)", async () => {
     await seedContacts(workspaceId, 3);
     await person("Guest Speaker", true);
@@ -541,7 +561,10 @@ describe("workspace_insights (Home, spec §3.1)", () => {
     ]);
     await addMember(workspaceId, viewer.id, "viewer");
 
-    expect((await insights({ client: viewer.client })).period.meetings).toBe(0);
+    expect(await insights({ client: viewer.client })).toMatchObject({
+      held: 0,
+      period: { meetings: 0 },
+    });
     await expectAppError(
       stranger.client.rpc("workspace_insights", { p_workspace: workspaceId }),
       "forbidden",
