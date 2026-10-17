@@ -23,6 +23,9 @@ const publicEnvSchema = z.object({
     .optional(),
 }) satisfies z.ZodType<PublicEnv, EnvSource>;
 
+/** Every variable the public schema reads (`.env.example` lists them; a test keeps it so). */
+export const PUBLIC_ENV_NAMES = Object.keys(publicEnvSchema.shape);
+
 /**
  * Validates browser-safe environment variables.
  * @throws Error naming every invalid or missing variable
