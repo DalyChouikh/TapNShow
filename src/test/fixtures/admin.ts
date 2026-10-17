@@ -8,6 +8,11 @@ import type {
   AdminWorkspaceRow,
 } from "@/shared/api/admin";
 
+/** `yyyy-MM-dd` of a UTC calendar date (the month counts from 0; days past its end roll over). */
+function utcDate(year: number, month: number, day: number): string {
+  return new Date(Date.UTC(year, month, day)).toISOString().slice(0, 10);
+}
+
 /** A workspace id used across admin tests. */
 export const ADMIN_WORKSPACE_ID = "6f1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d";
 
@@ -43,13 +48,13 @@ export const overviewFixture: AdminOverview = {
   },
   current: figuresFixture,
   previous: { ...figuresFixture, meetingsSent: 181 },
-  // Twelve weeks from Monday 27 Jul 2026 with 0, 2, 4, … 22 meetings (132 in all).
+  // Twelve weeks from Monday 27 Jul 2026 with 0, 2, 4, … 22 meetings (132 in all); the period
+  // ends on Friday 16 Oct 2026, so the last week is cut to its first five days.
   series: {
     unit: "week",
     points: Array.from({ length: 12 }, (_, index) => ({
-      start: new Date(Date.UTC(2026, 6, 27 + index * 7))
-        .toISOString()
-        .slice(0, 10),
+      start: utcDate(2026, 6, 27 + index * 7),
+      end: index === 11 ? "2026-10-16" : utcDate(2026, 6, 27 + index * 7 + 6),
       meetings: index * 2,
     })),
   },

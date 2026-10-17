@@ -871,7 +871,9 @@
     "nextMonth": "Next month",
     "timeSearch": "Type a time, e.g. 1830",
     "useTime": "Use {time}",
-    "noTime": "Not a time. Try 1830 or 6:30 pm."
+    "noTime": "Not a time. Try 1830 or 6:30 pm.",
+    "from": "From",
+    "to": "To"
   },
   "MarkdownEditor": {
     "write": "Write",
@@ -1335,8 +1337,6 @@
       "all": "All time",
       "custom": "From…"
     },
-    "from": "From",
-    "to": "To",
     "counts": {
       "attending": "Going",
       "late": "Late",
@@ -1556,9 +1556,7 @@
       "30d": "30 days",
       "90d": "90 days",
       "12m": "12 months",
-      "custom": "Custom",
-      "from": "From",
-      "to": "To"
+      "custom": "Custom"
     },
     "attention": {
       "title": "Needs attention · {count}",
@@ -1605,9 +1603,8 @@
         "month": "This month so far"
       },
       "point": {
-        "day": "{date}",
-        "week": "Week of {date}",
-        "month": "{date}"
+        "date": "{date}",
+        "range": "{start} – {end}"
       },
       "choose": {
         "day": "Choose a day",

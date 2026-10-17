@@ -69,6 +69,30 @@ describe("DatePicker", () => {
     ).toBeDisabled();
   });
 
+  it("pages only through months that have a day to pick", async () => {
+    renderWithProviders(
+      <DatePicker
+        id="d"
+        label="Date"
+        value="2026-10-07"
+        today="2026-10-07"
+        min="2026-10-01"
+        max="2026-11-15"
+        onChange={vi.fn()}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /^Date / }));
+    // DayPicker marks an arrow that has no month to page to as aria-disabled.
+    expect(
+      screen.getByRole("button", { name: "Previous month" }),
+    ).toHaveAttribute("aria-disabled", "true");
+    await userEvent.click(screen.getByRole("button", { name: "Next month" }));
+    expect(screen.getByRole("button", { name: "Next month" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+  });
+
   it("names the year only when it is not this year, on one line", () => {
     renderWithProviders(
       <DatePicker

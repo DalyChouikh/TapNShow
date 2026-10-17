@@ -19,7 +19,7 @@ type Series = {
   current: { meetings_sent: number };
   series: {
     unit: "day" | "week" | "month";
-    points: Array<{ start: string; meetings: number }>;
+    points: Array<{ start: string; end: string; meetings: number }>;
   };
 };
 
@@ -403,6 +403,42 @@ describe("edges (Review Focus 3 and 4)", () => {
   });
 });
 
+/**
+ * A meeting of `workspaceId` that started at `startsAt` with three people emailed: one answered
+ * before the start, one after it, one never (so 3 invited, 1 answered in the figures).
+ */
+async function startedMeeting(workspaceId: string, startsAt: string) {
+  const meetingId = await seedMeeting(workspaceId, {
+    status: "scheduled",
+    starts_at: startsAt,
+  });
+  seedEmailedPeople(workspaceId, meetingId, 3);
+  runLocalSql(`
+    insert into public.responses (workspace_id, meeting_id, invitee_id, status, responded_at)
+    select i.workspace_id, i.meeting_id, i.id, 'attending',
+      '${startsAt}'::timestamptz + case when row_number() over (order by i.id) = 1
+        then interval '-1 hour' else interval '1 hour' end
+    from public.meeting_invitees i where i.meeting_id = '${meetingId}'
+    order by i.id limit 2`);
+  return meetingId;
+}
+
+/** Platform-wide invitations and answers before the start for the UTC days [from, to]. */
+function answerCounts(from: string, to: string) {
+  return queryLocalSql(
+    `select invited, answered from private.answer_counts(
+      '${from}'::timestamp at time zone 'UTC', ('${to}'::date + 1)::timestamp at time zone 'UTC')`,
+    z.array(z.object({ invited: z.number(), answered: z.number() })).length(1),
+  )[0];
+}
+
+/** Moves the rollup's mark (the last day the rolled-up columns count). */
+function setRollupMark(day: string) {
+  runLocalSql(
+    `update public.platform_rollup_state set rolled_through = '${day}'`,
+  );
+}
+
 describe("rollup and overview", () => {
   it("rolls up the last 29 days idempotently and keeps the push counters", async () => {
     const { admin, workspace } = await adminAndWorkspace("Rollup Club", 3);
@@ -439,6 +475,55 @@ describe("rollup and overview", () => {
     };
     expect(overview.current.emails_sent).toBeGreaterThanOrEqual(3);
     expect(overview.series.points).toHaveLength(7);
+  });
+
+  it("counts a started meeting's answers once, before and after the night's rollup", async () => {
+    const { workspace } = await adminAndWorkspace("Answers Club", 1);
+    runLocalSql("select private.rollup_platform_daily()");
+    // Yesterday is live until tonight's run.
+    setRollupMark(utcDay(-2));
+    const before = answerCounts(utcDay(-6), utcDay());
+    await startedMeeting(workspace.id, `${utcDay(-1)}T10:00:00Z`);
+    const live = answerCounts(utcDay(-6), utcDay());
+    expect({
+      invited: live.invited - before.invited,
+      answered: live.answered - before.answered,
+    }).toEqual({ invited: 3, answered: 1 });
+    runLocalSql("select private.rollup_platform_daily()");
+    expect(answerCounts(utcDay(-6), utcDay())).toEqual(live);
+  });
+
+  it("keeps the answers of meetings older than the nightly window once backfilled", async () => {
+    const { workspace } = await adminAndWorkspace("History Club", 1);
+    runLocalSql("select private.rollup_platform_daily()");
+    const before = answerCounts(utcDay(-120), utcDay(-1));
+    await startedMeeting(workspace.id, `${utcDay(-100)}T10:00:00Z`);
+    // The nightly run recomputes only the last 29 days: an older day needs the backfill.
+    runLocalSql("select private.rollup_platform_daily()");
+    expect(answerCounts(utcDay(-120), utcDay(-1))).toEqual(before);
+    runLocalSql(
+      `select private.rollup_answers('-infinity', '${utcDay()}'::date)`,
+    );
+    const after = answerCounts(utcDay(-120), utcDay(-1));
+    expect(after.invited - before.invited).toBe(3);
+    expect(after.answered - before.answered).toBe(1);
+  });
+
+  it("drops a deleted meeting's answers from its day when the day is rolled up again", async () => {
+    const { workspace } = await adminAndWorkspace("Deleted Club", 1);
+    runLocalSql("select private.rollup_platform_daily()");
+    const before = answerCounts(utcDay(-6), utcDay(-1));
+    const meetingId = await startedMeeting(
+      workspace.id,
+      `${utcDay(-3)}T10:00:00Z`,
+    );
+    runLocalSql("select private.rollup_platform_daily()");
+    expect(answerCounts(utcDay(-6), utcDay(-1)).invited).toBe(
+      before.invited + 3,
+    );
+    runLocalSql(`delete from public.meetings where id = '${meetingId}'`);
+    runLocalSql("select private.rollup_platform_daily()");
+    expect(answerCounts(utcDay(-6), utcDay(-1))).toEqual(before);
   });
 });
 
@@ -496,6 +581,30 @@ describe("overview periods (Owner, 2026-10-16: one switch for the figures and th
     expect(total).toBe(data.current.meetings_sent);
   });
 
+  it("names each bar's last day: the day before the next bar, the period's end for the last", async () => {
+    const { admin } = await adminAndWorkspace("Ends Club", 1);
+    for (const from of [utcDay(-6), utcDay(-89), utcDay(-400)]) {
+      const { points } = (await overview(admin, from, utcDay(-1))).series;
+      points.forEach((point, index) => {
+        const next = points[index + 1];
+        const dayBeforeNext = next
+          ? new Date(Date.parse(`${next.start}T00:00:00Z`) - 86_400_000)
+              .toISOString()
+              .slice(0, 10)
+          : utcDay(-1);
+        expect(point.end).toBe(dayBeforeNext);
+        expect(point.end >= point.start).toBe(true);
+      });
+    }
+  });
+
+  it("ends a period that runs past today on today (a device clock a little ahead)", async () => {
+    const { admin } = await adminAndWorkspace("Clock Club", 1);
+    const data = await overview(admin, utcDay(-6), utcDay(1));
+    expect(data.series.points).toHaveLength(7);
+    expect(data.series.points.at(-1)?.end).toBe(utcDay());
+  });
+
   it("accepts two years exactly (ADMIN_PERIOD_MAX_DAYS, its TS twin)", async () => {
     const { admin } = await adminAndWorkspace("Long Club", 1);
     const data = await overview(
@@ -509,7 +618,7 @@ describe("overview periods (Owner, 2026-10-16: one switch for the figures and th
   it.each([
     ["the start after the end", utcDay(-1), utcDay(-2)],
     ["more than two years", utcDay(-ADMIN_PERIOD_MAX_DAYS), utcDay()],
-    ["an end after today", utcDay(-6), utcDay(1)],
+    ["a start after today", utcDay(1), utcDay(2)],
   ])("answers invalid input for %s", async (_label, from, to) => {
     const { admin } = await adminAndWorkspace("Range Club", 1);
     const { error } = await admin.client.rpc("admin_overview", {

@@ -64,7 +64,13 @@ export const adminOverviewSchema = z.object({
   previous: figuresSchema,
   series: z.object({
     unit: z.enum(ADMIN_SERIES_UNITS),
-    points: z.array(z.object({ start: z.iso.date(), meetings: z.number() })),
+    points: z.array(
+      z.object({
+        start: z.iso.date(),
+        end: z.iso.date(),
+        meetings: z.number(),
+      }),
+    ),
   }),
   health: z.object({
     queueWaiting: z.number(),

@@ -315,13 +315,13 @@ isOneToOne: false
                   ]
                 },"platform_daily": {
                   Row: {
-                    "day": string,"emails_failed": number,"emails_sent": number,"people_emailed": number,"pushes_failed": number,"pushes_sent": number,"workspace_id": string
+                    "answered": number,"day": string,"emails_failed": number,"emails_sent": number,"invited": number,"people_emailed": number,"pushes_failed": number,"pushes_sent": number,"workspace_id": string
                   }
                   Insert: {
-                    "day": string,"emails_failed"?: number,"emails_sent"?: number,"people_emailed"?: number,"pushes_failed"?: number,"pushes_sent"?: number,"workspace_id": string
+                    "answered"?: number,"day": string,"emails_failed"?: number,"emails_sent"?: number,"invited"?: number,"people_emailed"?: number,"pushes_failed"?: number,"pushes_sent"?: number,"workspace_id": string
                   }
                   Update: {
-                    "day"?: string,"emails_failed"?: number,"emails_sent"?: number,"people_emailed"?: number,"pushes_failed"?: number,"pushes_sent"?: number,"workspace_id"?: string
+                    "answered"?: number,"day"?: string,"emails_failed"?: number,"emails_sent"?: number,"invited"?: number,"people_emailed"?: number,"pushes_failed"?: number,"pushes_sent"?: number,"workspace_id"?: string
                   }
                   Relationships: [
                     {

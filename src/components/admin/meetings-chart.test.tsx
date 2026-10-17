@@ -6,17 +6,22 @@ import { overviewFixture } from "@/test/fixtures/admin";
 import { renderWithProviders } from "@/test/render";
 import { MeetingsChart } from "./meetings-chart";
 
-// Twelve weeks from 27 Jul with 0, 2, 4, … 22 meetings: 132 in all, the last one 22.
+// Twelve weeks from 27 Jul with 0, 2, 4, … 22 meetings: 132 in all, the last one 22, the period
+// ending on 16 Oct.
 const weeks = overviewFixture.series;
+const TODAY = "2026-10-16";
+const LATER = "2026-10-20";
 
 function days(count: number, first: string): AdminOverview["series"] {
   const start = Date.parse(`${first}T00:00:00Z`);
   return {
     unit: "day",
-    points: Array.from({ length: count }, (_, index) => ({
-      start: new Date(start + index * 86_400_000).toISOString().slice(0, 10),
-      meetings: index % 3,
-    })),
+    points: Array.from({ length: count }, (_, index) => {
+      const day = new Date(start + index * 86_400_000)
+        .toISOString()
+        .slice(0, 10);
+      return { start: day, end: day, meetings: index % 3 };
+    }),
   };
 }
 
@@ -31,7 +36,7 @@ function axis(container: HTMLElement) {
 
 describe("MeetingsChart", () => {
   it("leads with the current week's number and the period's total", () => {
-    renderWithProviders(<MeetingsChart series={weeks} live />);
+    renderWithProviders(<MeetingsChart series={weeks} today={TODAY} />);
     expect(
       screen.getByRole("heading", { name: "Meetings sent per week" }),
     ).toBeInTheDocument();
@@ -41,16 +46,16 @@ describe("MeetingsChart", () => {
     );
   });
 
-  it("names the last week by its date when the period ended before today", () => {
-    renderWithProviders(<MeetingsChart series={weeks} live={false} />);
+  it("names the last week by its days when the period ended before today", () => {
+    renderWithProviders(<MeetingsChart series={weeks} today={LATER} />);
     expect(screen.getByTestId("chart-readout")).toHaveTextContent(
-      "22meetingsWeek of 12 Oct",
+      "22meetings12 – 16 Oct",
     );
   });
 
   it("dates every bar, with the month written where it changes", () => {
     const { container } = renderWithProviders(
-      <MeetingsChart series={weeks} live />,
+      <MeetingsChart series={weeks} today={TODAY} />,
     );
     expect(axis(container)).toEqual({
       bars: [
@@ -73,7 +78,7 @@ describe("MeetingsChart", () => {
 
   it("draws days for a month, each one dated", () => {
     const { container } = renderWithProviders(
-      <MeetingsChart series={days(30, "2026-09-17")} live />,
+      <MeetingsChart series={days(30, "2026-09-17")} today={TODAY} />,
     );
     expect(
       screen.getByRole("heading", { name: "Meetings sent per day" }),
@@ -90,12 +95,15 @@ describe("MeetingsChart", () => {
   it("draws months with the year written where it changes", () => {
     const series: AdminOverview["series"] = {
       unit: "month",
-      points: ["2025-11-01", "2025-12-01", "2026-01-01", "2026-02-01"].map(
-        (start, index) => ({ start, meetings: index }),
-      ),
+      points: [
+        ["2025-11-01", "2025-11-30"],
+        ["2025-12-01", "2025-12-31"],
+        ["2026-01-01", "2026-01-31"],
+        ["2026-02-01", "2026-02-28"],
+      ].map(([start, end], index) => ({ start, end, meetings: index })),
     };
     const { container } = renderWithProviders(
-      <MeetingsChart series={series} live={false} />,
+      <MeetingsChart series={series} today={TODAY} />,
     );
     expect(axis(container)).toEqual({
       bars: ["Nov", "Dec", "Jan", "Feb"],
@@ -108,7 +116,7 @@ describe("MeetingsChart", () => {
 
   it("draws columns on a clean scale and labels the busiest one", () => {
     const { container } = renderWithProviders(
-      <MeetingsChart series={weeks} live />,
+      <MeetingsChart series={weeks} today={TODAY} />,
     );
     const ticks = Array.from(container.querySelectorAll("[data-tick]")).map(
       (tick) => tick.textContent,
@@ -120,13 +128,17 @@ describe("MeetingsChart", () => {
     expect(container.querySelectorAll("[data-peak]")).toHaveLength(1);
     const peak = container.querySelector("[data-peak]");
     expect(peak).toHaveTextContent("22");
-    // The label rides on its bar, so it never takes height from it (the bar keeps its value).
-    expect(peak?.parentElement).toBe(bars[bars.length - 1]);
+    // On the bar's top, over its centre, pulled back by the same share so it stays on the plot.
+    expect(peak).toHaveStyle({
+      bottom: "73.333%",
+      left: "95.833%",
+      transform: "translateX(-95.833%)",
+    });
   });
 
   it("moves between bars with the arrow keys and says which one is chosen", async () => {
     const user = userEvent.setup();
-    renderWithProviders(<MeetingsChart series={weeks} live />);
+    renderWithProviders(<MeetingsChart series={weeks} today={TODAY} />);
     const slider = screen.getByRole("slider", { name: "Choose a week" });
     expect(slider).toHaveAttribute(
       "aria-valuetext",
@@ -134,24 +146,21 @@ describe("MeetingsChart", () => {
     );
     slider.focus();
     await user.keyboard("{ArrowLeft}");
-    expect(slider).toHaveAttribute(
-      "aria-valuetext",
-      "Week of 5 Oct: 20 meetings",
-    );
+    expect(slider).toHaveAttribute("aria-valuetext", "5 – 11 Oct: 20 meetings");
     expect(screen.getByTestId("chart-readout")).toHaveTextContent(
-      "20meetingsWeek of 5 Oct",
+      "20meetings5 – 11 Oct",
     );
     await user.keyboard("{Home}");
     expect(slider).toHaveAttribute(
       "aria-valuetext",
-      "Week of 27 Jul: 0 meetings",
+      "27 Jul – 2 Aug: 0 meetings",
     );
     await user.keyboard("{End}");
     expect(slider).toHaveAttribute("aria-valuenow", "11");
   });
 
   it("chooses the bar under a finger or the pointer", () => {
-    renderWithProviders(<MeetingsChart series={weeks} live />);
+    renderWithProviders(<MeetingsChart series={weeks} today={TODAY} />);
     const slider = screen.getByRole("slider", { name: "Choose a week" });
     slider.getBoundingClientRect = () => new DOMRect(0, 0, 120, 160);
     fireEvent.pointerDown(slider, { clientX: 15 });
@@ -163,22 +172,22 @@ describe("MeetingsChart", () => {
   it("goes back to the latest bar when the period changes", async () => {
     const user = userEvent.setup();
     const { rerender } = renderWithProviders(
-      <MeetingsChart series={weeks} live />,
+      <MeetingsChart series={weeks} today={TODAY} />,
     );
     const slider = screen.getByRole("slider", { name: "Choose a week" });
     slider.focus();
     await user.keyboard("{Home}");
-    rerender(<MeetingsChart series={days(7, "2026-10-10")} live />);
+    rerender(<MeetingsChart series={days(7, "2026-10-10")} today={TODAY} />);
     expect(
       screen.getByRole("slider", { name: "Choose a day" }),
     ).toHaveAttribute("aria-valuenow", "6");
   });
 
   it("keeps every number in a table for screen readers", () => {
-    renderWithProviders(<MeetingsChart series={weeks} live />);
+    renderWithProviders(<MeetingsChart series={weeks} today={TODAY} />);
     const rows = within(screen.getByRole("table")).getAllByRole("row");
     expect(rows).toHaveLength(13);
-    expect(rows[1]).toHaveTextContent("Week of 27 Jul0");
+    expect(rows[1]).toHaveTextContent("27 Jul – 2 Aug0");
     expect(rows[12]).toHaveTextContent("This week so far22");
   });
 
@@ -189,7 +198,7 @@ describe("MeetingsChart", () => {
           ...weeks,
           points: weeks.points.map((point) => ({ ...point, meetings: 0 })),
         }}
-        live
+        today={TODAY}
       />,
     );
     expect(
@@ -197,5 +206,39 @@ describe("MeetingsChart", () => {
     ).toBeInTheDocument();
     expect(container.querySelectorAll("[data-bar]")).toHaveLength(0);
     expect(container.querySelector("[data-peak]")).toBeNull();
+  });
+
+  it("names a month the period cuts by its days, a whole one by its name", () => {
+    const series: AdminOverview["series"] = {
+      unit: "month",
+      points: [
+        { start: "2025-10-20", end: "2025-10-31", meetings: 4 },
+        { start: "2025-11-01", end: "2025-11-30", meetings: 9 },
+      ],
+    };
+    renderWithProviders(<MeetingsChart series={series} today={TODAY} />);
+    const rows = within(screen.getByRole("table")).getAllByRole("row");
+    expect(rows[1]).toHaveTextContent("20 – 31 Oct 20254");
+    expect(rows[2]).toHaveTextContent("November 20259");
+  });
+
+  it("writes large scales short, so the scale fits beside the bars on a phone", () => {
+    const { container } = renderWithProviders(
+      <MeetingsChart
+        series={{
+          ...weeks,
+          points: weeks.points.map((point, index) => ({
+            ...point,
+            meetings: index * 250,
+          })),
+        }}
+        today={TODAY}
+      />,
+    );
+    const ticks = Array.from(container.querySelectorAll("[data-tick]")).map(
+      (tick) => tick.textContent,
+    );
+    expect(ticks).toEqual(["3K", "1.5K", "0"]);
+    expect(container.querySelector("[data-peak]")).toHaveTextContent("2,750");
   });
 });

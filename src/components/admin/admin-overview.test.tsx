@@ -133,6 +133,49 @@ describe("AdminOverviewView", () => {
       "true",
     );
     expect(screen.getByText("214", { selector: "dd" })).toBeInTheDocument();
+    // …and says they are loading, so they aren't read as the new period's.
+    expect(screen.getByRole("region", { name: "Figures" })).toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
+  });
+
+  it("keeps the period switch when a period can't load, so another one can be picked", async () => {
+    routeFetch({
+      [THIRTY_DAYS]: json(overviewFixture),
+      [`${OVERVIEW}?from=2026-07-19&to=2026-10-16`]: () =>
+        new Response(JSON.stringify({ error: { code: "invalid_input" } }), {
+          status: 400,
+        }),
+    });
+    const user = userEvent.setup();
+    renderWithProviders(<AdminOverviewView />);
+    await user.click(await screen.findByRole("radio", { name: "90 days" }));
+    expect(
+      await screen.findByRole("button", { name: "Try again" }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("radio", { name: "30 days" }));
+    expect(
+      await screen.findByText("214", { selector: "dd" }),
+    ).toBeInTheDocument();
+  });
+
+  it("moves a preset on to the new day after midnight UTC", async () => {
+    vi.setSystemTime(new Date("2026-10-16T23:59:50Z"));
+    const fetchMock = routeFetch({
+      [THIRTY_DAYS]: json(overviewFixture),
+      [`${OVERVIEW}?from=2026-09-18&to=2026-10-17`]: json(overviewFixture),
+    });
+    const { rerender } = renderWithProviders(<AdminOverviewView />);
+    await screen.findByRole("heading", { name: "Needs attention · 3" });
+    vi.setSystemTime(new Date("2026-10-17T00:00:10Z"));
+    rerender(<AdminOverviewView />);
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/admin/overview?from=2026-09-18&to=2026-10-17",
+        expect.anything(),
+      ),
+    );
   });
 
   it("offers to try again when the overview can't load", async () => {
