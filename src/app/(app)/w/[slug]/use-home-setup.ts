@@ -53,7 +53,8 @@ export function useHomeSetup(slug: string, range: PeriodRange): HomeSetup {
   }
   const done: Record<SetupStepKey, boolean> = {
     importMembers: roster.members > 0,
-    connectGmail: sender.data.sender?.status === "active",
+    // Connected, even if it needs reconnecting: Needs attention asks for that.
+    connectGmail: sender.data.sender !== null,
     inviteCommittee: roster.committee > 0,
     connectSheets: sheet.data.state !== "off",
   };

@@ -18,9 +18,10 @@ const ALL_TIME: PeriodRange = { from: null, to: null };
 function serve(options: {
   members: number;
   committee: number;
-  sender: boolean;
+  sender: boolean | "broken";
   sheet: "off" | "on";
 }) {
+  const sender = senderFixture(options.sender !== false);
   return routeFetch({
     [`GET ${base}/insights`]: json({
       ...insightsFixture,
@@ -30,7 +31,11 @@ function serve(options: {
         committee: options.committee,
       },
     }),
-    [`GET ${base}/sender`]: json(senderFixture(options.sender)),
+    [`GET ${base}/sender`]: json(
+      options.sender === "broken" && sender.sender
+        ? { ...sender, sender: { ...sender.sender, status: "broken" } }
+        : sender,
+    ),
     [`GET ${base}/sheet`]: json(sheetFixture(options.sheet)),
   });
 }
@@ -63,6 +68,20 @@ describe("useHomeSetup", () => {
     });
     await waitFor(() =>
       expect(result.current).toMatchObject({ state: "ready", complete: true }),
+    );
+  });
+
+  it("counts a Gmail that needs reconnecting as connected (Needs attention asks for that)", async () => {
+    serve({ members: 30, committee: 1, sender: "broken", sheet: "off" });
+    const { result } = renderHook(() => useHomeSetup("club-ab12", ALL_TIME), {
+      wrapper,
+    });
+    await waitFor(() =>
+      expect(result.current).toMatchObject({
+        state: "ready",
+        done: { connectGmail: true },
+        complete: true,
+      }),
     );
   });
 
