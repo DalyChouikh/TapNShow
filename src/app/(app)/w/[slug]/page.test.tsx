@@ -198,4 +198,31 @@ describe("Workspace Home", () => {
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
   });
+
+  it("settles when the sender can't load, instead of asking again and again", async () => {
+    let senderCalls = 0;
+    serve({
+      meeting: false,
+      routes: {
+        [`GET ${base}/sender`]: () => {
+          senderCalls += 1;
+          return refused();
+        },
+      },
+    });
+    renderWithProviders(<WorkspaceHomePage />);
+    expect(
+      await screen.findByRole("button", { name: "Try again" }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText("No meeting coming up."),
+    ).toBeInTheDocument();
+    // The no-meeting card mounts after the failure and asks once more (TanStack retries on
+    // mount); then Home settles until the person taps Try again.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const settled = senderCalls;
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    expect(senderCalls).toBe(settled);
+    expect(senderCalls).toBeLessThanOrEqual(2);
+  });
 });
