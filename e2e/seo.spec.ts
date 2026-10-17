@@ -117,3 +117,17 @@ test("/favicon.ico is an icon file with the 16, 32 and 48 px images", async ({
     "89504e47",
   );
 });
+
+test("the Google Cloud logo is a 120 px square PNG under 1 MB", async ({
+  request,
+}) => {
+  const response = await request.get("/icons/logo-120.png");
+  expect(response.status()).toBe(200);
+  expect(response.headers()["content-type"]).toBe("image/png");
+  const bytes = await response.body();
+  expect(bytes.subarray(0, 4).toString("hex")).toBe("89504e47");
+  // IHDR: width and height right after the signature and the chunk header.
+  expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([120, 120]);
+  // Google Cloud Help 15549049: at most 1 MB.
+  expect(bytes.length).toBeLessThan(1024 * 1024);
+});
