@@ -24,7 +24,7 @@ function input(delivery: "email" | "link") {
       email: "new@example.test",
       expiresAt: new Date(Date.now() + 7 * 86_400_000).toISOString(),
       delivery,
-      origin: "https://tapnshow.vercel.app",
+      origin: "https://www.tapnshow.tn",
       inviterName: "Mohamed",
       mailer: { send },
     },
@@ -36,7 +36,7 @@ describe("deliverAdminInvite", () => {
     const { args, send } = input("link");
     expect(await deliverAdminInvite(args)).toEqual({
       status: "link",
-      link: `https://tapnshow.vercel.app/admin/join/${"t".repeat(43)}`,
+      link: `https://www.tapnshow.tn/admin/join/${"t".repeat(43)}`,
     });
     expect(mocks.budget).not.toHaveBeenCalled();
     expect(send).not.toHaveBeenCalled();

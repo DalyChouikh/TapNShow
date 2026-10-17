@@ -169,7 +169,7 @@ describe("createLogger", () => {
       forward: (record) => forwarded.push(record),
     });
     log.info(
-      { link: "https://tapnshow.vercel.app/r/abcDEF123secret" },
+      { link: "https://www.tapnshow.tn/r/abcDEF123secret" },
       "opened /u/zzzSecret",
     );
     expect(JSON.stringify(forwarded)).not.toMatch(/abcDEF123secret|zzzSecret/);

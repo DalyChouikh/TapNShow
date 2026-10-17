@@ -1,13 +1,11 @@
 import { ImageResponse } from "next/og";
 import { APP_NAME } from "@/config/app";
+import { SHARE_IMAGE, SHARE_IMAGE_LINE } from "@/config/share-image";
 import { palette } from "@/design/tokens";
 
-export const size = { width: 1200, height: 630 };
-export const contentType = "image/png";
-/** Same words as `Landing.title` (keep both in step). */
-const LINE = "Know who's coming before the meeting starts.";
-
-export const alt = `${APP_NAME}: ${LINE}`;
+export const size = { width: SHARE_IMAGE.width, height: SHARE_IMAGE.height };
+export const contentType = SHARE_IMAGE.type;
+export const alt = SHARE_IMAGE.alt;
 
 /**
  * The link preview image (spec §7.18). Text only until the new logo exists. Its sentence is
@@ -49,7 +47,7 @@ export default function OpengraphImage() {
           lineHeight: 1.1,
         }}
       >
-        {LINE}
+        {SHARE_IMAGE_LINE}
       </div>
     </div>,
     size,

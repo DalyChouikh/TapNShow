@@ -3,9 +3,9 @@ import { routePatternUrl, scrubText, scrubUrl } from "./scrub";
 
 describe("scrubUrl", () => {
   it("redacts personal-link tokens but keeps the query", () => {
-    expect(
-      scrubUrl("https://tapnshow.vercel.app/r/abc123XYZ?choice=late"),
-    ).toBe("https://tapnshow.vercel.app/r/[REDACTED]?choice=late");
+    expect(scrubUrl("https://www.tapnshow.tn/r/abc123XYZ?choice=late")).toBe(
+      "https://www.tapnshow.tn/r/[REDACTED]?choice=late",
+    );
   });
 
   it("redacts relative token paths", () => {
@@ -13,8 +13,8 @@ describe("scrubUrl", () => {
   });
 
   it("leaves other URLs untouched", () => {
-    expect(scrubUrl("https://tapnshow.vercel.app/w/robotics/meetings")).toBe(
-      "https://tapnshow.vercel.app/w/robotics/meetings",
+    expect(scrubUrl("https://www.tapnshow.tn/w/robotics/meetings")).toBe(
+      "https://www.tapnshow.tn/w/robotics/meetings",
     );
   });
 
@@ -34,9 +34,9 @@ describe("scrubUrl", () => {
   });
 
   it("scrubs invite tokens like personal links", () => {
-    expect(
-      scrubUrl("https://tapnshow.vercel.app/invite/Abc_123-xyz?next=1"),
-    ).toBe("https://tapnshow.vercel.app/invite/[REDACTED]?next=1");
+    expect(scrubUrl("https://www.tapnshow.tn/invite/Abc_123-xyz?next=1")).toBe(
+      "https://www.tapnshow.tn/invite/[REDACTED]?next=1",
+    );
     expect(scrubUrl("/invite/[token]")).toBe("/invite/[token]");
   });
 
@@ -47,15 +47,15 @@ describe("scrubUrl", () => {
       expect(scrubUrl("/api/r/abc/unsubscribe")).toBe(
         "/api/r/[REDACTED]/unsubscribe",
       );
-      expect(scrubUrl("https://tapnshow.vercel.app/r/abc?choice=late")).toBe(
-        "https://tapnshow.vercel.app/r/[REDACTED]?choice=late",
+      expect(scrubUrl("https://www.tapnshow.tn/r/abc?choice=late")).toBe(
+        "https://www.tapnshow.tn/r/[REDACTED]?choice=late",
       );
       expect(scrubUrl("/w/club/lists")).toBe("/w/club/lists");
     });
 
     it("redacts admin invite links, encoded slashes too, but not the admin area", () => {
-      expect(scrubUrl("https://tapnshow.vercel.app/admin/join/abc")).toBe(
-        "https://tapnshow.vercel.app/admin/join/[REDACTED]",
+      expect(scrubUrl("https://www.tapnshow.tn/admin/join/abc")).toBe(
+        "https://www.tapnshow.tn/admin/join/[REDACTED]",
       );
       expect(scrubUrl("/welcome?next=%2Fadmin%2Fjoin%2Fabc")).toBe(
         "/welcome?next=/admin/join/[REDACTED]",
@@ -68,32 +68,29 @@ describe("scrubUrl", () => {
 describe("routePatternUrl", () => {
   it.each([
     [
-      "https://tapnshow.vercel.app/r/abcDEF123?choice=going",
-      "https://tapnshow.vercel.app/r/[token]",
+      "https://www.tapnshow.tn/r/abcDEF123?choice=going",
+      "https://www.tapnshow.tn/r/[token]",
+    ],
+    ["https://www.tapnshow.tn/u/x1", "https://www.tapnshow.tn/u/[token]"],
+    [
+      "https://www.tapnshow.tn/report/x1#top",
+      "https://www.tapnshow.tn/report/[token]",
     ],
     [
-      "https://tapnshow.vercel.app/u/x1",
-      "https://tapnshow.vercel.app/u/[token]",
+      "https://www.tapnshow.tn/invite/x1",
+      "https://www.tapnshow.tn/invite/[token]",
     ],
     [
-      "https://tapnshow.vercel.app/report/x1#top",
-      "https://tapnshow.vercel.app/report/[token]",
+      "https://www.tapnshow.tn/admin/join/x1",
+      "https://www.tapnshow.tn/admin/join/[token]",
     ],
     [
-      "https://tapnshow.vercel.app/invite/x1",
-      "https://tapnshow.vercel.app/invite/[token]",
+      "https://www.tapnshow.tn/login?next=%2Fr%2Fsecret",
+      "https://www.tapnshow.tn/login",
     ],
     [
-      "https://tapnshow.vercel.app/admin/join/x1",
-      "https://tapnshow.vercel.app/admin/join/[token]",
-    ],
-    [
-      "https://tapnshow.vercel.app/login?next=%2Fr%2Fsecret",
-      "https://tapnshow.vercel.app/login",
-    ],
-    [
-      "https://tapnshow.vercel.app/w/club-ab12/meetings",
-      "https://tapnshow.vercel.app/w/club-ab12/meetings",
+      "https://www.tapnshow.tn/w/club-ab12/meetings",
+      "https://www.tapnshow.tn/w/club-ab12/meetings",
     ],
   ])("%s → %s", (input, expected) => {
     expect(routePatternUrl(input)).toBe(expected);

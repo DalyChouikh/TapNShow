@@ -17,7 +17,7 @@ Sentry's two default rules ("high priority issues", "pull requests are ready") w
 
 ## Uptime monitor (Alerts → Create Alert → Uptime)
 
-- URL `https://tapnshow.vercel.app/api/health`, method GET, interval 1 minute, expect 200.
+- URL `https://www.tapnshow.tn/api/health`, method GET, interval 1 minute, expect 200.
 - Notify: email (the Owner) and Discord `#uptime`.
 - It also keeps production active (one database read a minute through `healthcheck()`).
 - Created 2026-10-15 as "TapNShow /api/health" (3 failed checks open an uptime issue, 1 success

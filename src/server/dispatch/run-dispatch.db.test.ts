@@ -93,7 +93,7 @@ function deps(
     openToken: (sealed, userId, sub) =>
       openSecret(sealed, KEY, connectionAssociatedData(userId, sub)),
     tokenFor: (id) => deriveInviteeToken(id, SECRET),
-    appUrl: "https://tapnshow.vercel.app",
+    appUrl: "https://www.tapnshow.tn",
     now: () => Date.now(),
     sleep: async () => undefined,
     alertBroken: vi.fn<DispatchDeps["alertBroken"]>(async () => undefined),

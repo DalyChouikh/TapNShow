@@ -1,4 +1,5 @@
 import { SerwistProvider } from "@serwist/turbopack/react";
+import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { MotionProvider } from "@/components/motion/motion-provider";
 import { InstallPromptProvider } from "@/components/providers/install-prompt-provider";
@@ -6,6 +7,12 @@ import { QueryProvider } from "@/components/providers/query-provider";
 import { RegisterServiceWorker } from "@/components/providers/register-service-worker";
 import { RemindersCheckIn } from "@/components/providers/reminders-check-in";
 import { Toaster } from "@/components/ui/sonner";
+
+/**
+ * No app page belongs in search results (spec §7.18): sign-in, workspaces, invites, the token
+ * pages. Only the public pages outside this group (`/`, `/privacy`, `/terms`) are indexable.
+ */
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 /**
  * The app's pages (workspaces, invites, account, sign-in, the token pages): every message, data

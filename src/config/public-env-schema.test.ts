@@ -4,9 +4,9 @@ import { parsePublicEnv } from "./public-env-schema";
 describe("parsePublicEnv", () => {
   it("parses a valid environment", () => {
     const env = parsePublicEnv({
-      NEXT_PUBLIC_APP_URL: "https://tapnshow.vercel.app",
+      NEXT_PUBLIC_APP_URL: "https://www.tapnshow.tn",
     });
-    expect(env.NEXT_PUBLIC_APP_URL).toBe("https://tapnshow.vercel.app");
+    expect(env.NEXT_PUBLIC_APP_URL).toBe("https://www.tapnshow.tn");
     expect(env.NEXT_PUBLIC_SENTRY_DSN).toBeUndefined();
   });
 
@@ -54,7 +54,7 @@ describe("parsePublicEnv", () => {
 
   it("keeps Gmail connect off unless set", () => {
     const env = parsePublicEnv({
-      NEXT_PUBLIC_APP_URL: "https://tapnshow.vercel.app",
+      NEXT_PUBLIC_APP_URL: "https://www.tapnshow.tn",
     });
     expect(env.NEXT_PUBLIC_GMAIL_CONNECT_ENABLED).toBe(false);
   });

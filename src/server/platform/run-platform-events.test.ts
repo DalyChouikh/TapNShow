@@ -37,7 +37,7 @@ function fakes(batches: PlatformEvent[][]) {
   const queue = [...batches];
   const targeted = new Set<number>();
   const deps = {
-    appUrl: "https://tapnshow.vercel.app",
+    appUrl: "https://www.tapnshow.tn",
     webhook: WEBHOOK as string | undefined,
     now: vi.fn<() => number>(() => 0),
     store: {
