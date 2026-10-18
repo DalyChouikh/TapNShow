@@ -3,18 +3,13 @@
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { ReminderChoice } from "@/components/forms/reminder-choice";
+import { DelayOptionsPicker } from "@/components/forms/delay-options-picker";
 import { SwitchRow } from "@/components/forms/switch-row";
-import { Chip } from "@/components/ui/chip";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { TimePicker } from "@/components/ui/time-picker";
-import {
-  DELAY_OPTION_CHOICES,
-  DELAY_OPTIONS_MAX,
-  FOOTER_NOTE_MAX,
-} from "@/config/meetings";
-import { delayChoices } from "@/lib/meetings/late";
+import { DELAY_OPTIONS_MAX, FOOTER_NOTE_MAX } from "@/config/meetings";
 import {
   REMINDER_GOING_CHOICES,
   REMINDER_GOING_DEFAULT,
@@ -63,7 +58,6 @@ export function ResponsesStep({
     deadlineDate: deadline?.date ?? null,
     deadlineTime: deadline?.time ?? null,
     timezone: meeting.timezone,
-    durationMinutes: meeting.durationMinutes,
     reminderPendingHours: meeting.reminderPendingHours,
     reminderGoingHours: meeting.reminderGoingHours,
   });
@@ -72,15 +66,6 @@ export function ResponsesStep({
     key: K,
     value: ResponsesValues[K],
   ) => setValues((current) => ({ ...current, [key]: value }));
-  const toggleDelay = (minutes: number) =>
-    set(
-      "delayOptions",
-      values.delayOptions.includes(minutes)
-        ? values.delayOptions.filter((value) => value !== minutes)
-        : values.delayOptions.length < DELAY_OPTIONS_MAX
-          ? [...values.delayOptions, minutes].sort((a, b) => a - b)
-          : values.delayOptions,
-    );
   const problems = () =>
     validateResponses(values, meeting.startsAt, new Date(), savedDeadline);
   const next = () => {
@@ -106,10 +91,6 @@ export function ResponsesStep({
     ? utcToZonedParts(meeting.startsAt, meeting.timezone).date
     : undefined;
   const answers = values.responseMode !== "announcement";
-  // Only late choices shorter than the meeting (#400); none for a meeting that short.
-  const choices = delayChoices(meeting.durationMinutes);
-  const delaysError =
-    choices.length === 0 ? "tooShortForLate" : errors.delayOptions;
   return (
     <div className="flex flex-col gap-5">
       <SegmentedControl
@@ -132,37 +113,18 @@ export function ResponsesStep({
         <p className="text-muted-ink">{t("responses.announcementHint")}</p>
       ) : null}
       {values.responseMode === "attendance" ? (
-        <fieldset
-          className="flex flex-col gap-2"
-          aria-describedby="delays-hint"
-        >
-          <legend className="text-sm font-bold">{t("responses.delays")}</legend>
-          {choices.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {choices.map((minutes) => (
-                <Chip
-                  key={minutes}
-                  disabled={editing}
-                  pressed={values.delayOptions.includes(minutes)}
-                  onPressedChange={() => toggleDelay(minutes)}
-                >
-                  {t("details.minutes", { count: minutes })}
-                </Chip>
-              ))}
-            </div>
-          ) : null}
-          <p id="delays-hint" className="text-sm text-muted-ink">
-            {delaysError ? (
-              <strong className="text-ink">
-                {t(`errors.${delaysError}`, {
-                  minutes: DELAY_OPTION_CHOICES[0],
-                })}
-              </strong>
-            ) : (
-              t("responses.delaysHint", { max: DELAY_OPTIONS_MAX })
-            )}
-          </p>
-        </fieldset>
+        <DelayOptionsPicker
+          id="delays"
+          legend={t("responses.delays")}
+          durationMinutes={meeting.durationMinutes}
+          value={values.delayOptions}
+          onChange={(next) => set("delayOptions", next)}
+          disabled={editing}
+          hint={t("responses.delaysHint", { max: DELAY_OPTIONS_MAX })}
+          error={
+            errors.delayOptions ? t(`errors.${errors.delayOptions}`) : undefined
+          }
+        />
       ) : null}
       {answers ? (
         <>

@@ -4,7 +4,12 @@ import {
   DURATION_MIN,
   LATE_MINUTES_MAX,
 } from "@/config/meetings";
-import { delayChoices, fittingDelays, lateMinutesMax } from "./late";
+import {
+  addDelayOption,
+  delayChoices,
+  fittingDelays,
+  lateMinutesMax,
+} from "./late";
 
 describe("lateMinutesMax", () => {
   it("is one minute shorter than the meeting", () => {
@@ -45,5 +50,32 @@ describe("delayChoices", () => {
   it("offers every chip for a long meeting, and none for the shortest", () => {
     expect(delayChoices(120)).toEqual([...DELAY_OPTION_CHOICES]);
     expect(delayChoices(DURATION_MIN)).toEqual([]);
+  });
+});
+
+describe("addDelayOption (Other)", () => {
+  it("adds a typed late time shorter than the meeting, in order", () => {
+    expect(addDelayOption([5, 10], 25, 30)).toEqual({ options: [5, 10, 25] });
+    expect(addDelayOption([10, 20], 3, 30)).toEqual({ options: [3, 10, 20] });
+    expect(addDelayOption([], 4, DURATION_MIN)).toEqual({ options: [4] });
+  });
+
+  it("refuses a time that isn't 1 to one minute less than the meeting", () => {
+    expect(addDelayOption([5], 30, 30)).toEqual({ problem: "range" });
+    expect(addDelayOption([5], 0, 30)).toEqual({ problem: "range" });
+    expect(addDelayOption([5], 2.5, 30)).toEqual({ problem: "range" });
+    expect(addDelayOption([5], LATE_MINUTES_MAX + 1, 720)).toEqual({
+      problem: "range",
+    });
+  });
+
+  it("refuses a time already among the choices", () => {
+    expect(addDelayOption([5, 25], 25, 30)).toEqual({ problem: "taken" });
+  });
+
+  it("refuses a seventh choice", () => {
+    expect(addDelayOption([1, 2, 3, 4, 5, 6], 7, 30)).toEqual({
+      problem: "full",
+    });
   });
 });

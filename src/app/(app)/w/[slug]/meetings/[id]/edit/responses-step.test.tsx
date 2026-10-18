@@ -102,19 +102,20 @@ describe("ResponsesStep", () => {
     ).toBeInTheDocument();
   });
 
-  it("says a meeting too short for any late choice needs to be longer, and saves nothing", async () => {
-    const { patches } = setup("draft", {
+  it("lets a meeting no chip fits take a typed late time, and saves it", async () => {
+    const { goTo, patches } = setup("draft", {
       ...meetingFixture,
       durationMinutes: 5,
       delayOptions: [],
     });
-    const message =
-      "Too short for late answers: make the meeting longer than 5 min, or pick Going / not.";
-    expect(screen.getByText(message)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "5 min" })).toBeNull();
     await next();
-    expect(screen.getByText(message)).toBeInTheDocument();
-    expect(patches()).toEqual([]);
+    expect(screen.getByText("Pick at least one delay.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Other" }));
+    await userEvent.type(screen.getByLabelText("Minutes late"), "3{Enter}");
+    await next();
+    await vi.waitFor(() => expect(goTo).toHaveBeenCalledWith("review"));
+    expect(patches().at(-1)).toMatchObject({ delayOptions: [3] });
   });
 
   it("keeps the deadline before the start, on the time field", async () => {

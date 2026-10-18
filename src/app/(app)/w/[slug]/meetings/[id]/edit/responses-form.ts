@@ -1,5 +1,4 @@
 import { editDeadlineProblem } from "@/lib/meetings/deadline";
-import { delayChoices } from "@/lib/meetings/late";
 import { utcToZonedParts, zonedWallTimeToUtc } from "@/lib/meetings/format";
 import type { ResponseMode } from "@/shared/api/meeting-settings";
 import type { UpdateMeetingBody } from "@/shared/api/meetings";
@@ -15,15 +14,13 @@ export type ResponsesValues = {
   deadlineDate: string | null;
   deadlineTime: string | null;
   timezone: string;
-  /** The meeting's length, set on the Details step: late choices must be shorter (#400). */
-  durationMinutes: number;
   reminderPendingHours: number | null;
   reminderGoingHours: number | null;
 };
 
 /** Error keys under `Wizard.errors`, each shown on the field that is wrong. */
 export type ResponsesErrors = {
-  delayOptions?: "delaysRequired" | "tooShortForLate";
+  delayOptions?: "delaysRequired";
   deadlineDate?: "dateRequired" | "deadlineAfterStart";
   deadlineTime?: "timeRequired" | "inPast" | "deadlineAfterStart";
 };
@@ -85,12 +82,11 @@ export function validateResponses(
   savedDeadline: string | null = null,
 ): ResponsesErrors {
   const errors: ResponsesErrors = {};
-  if (values.responseMode === "attendance") {
-    if (delayChoices(values.durationMinutes).length === 0) {
-      errors.delayOptions = "tooShortForLate";
-    } else if (values.delayOptions.length === 0) {
-      errors.delayOptions = "delaysRequired";
-    }
+  if (
+    values.responseMode === "attendance" &&
+    values.delayOptions.length === 0
+  ) {
+    errors.delayOptions = "delaysRequired";
   }
   if (values.deadlineEnabled && values.responseMode !== "announcement") {
     Object.assign(errors, deadlineErrors(values, startsAt, now, savedDeadline));

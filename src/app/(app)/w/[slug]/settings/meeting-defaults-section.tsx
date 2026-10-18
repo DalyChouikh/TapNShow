@@ -4,13 +4,13 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ReminderChoice } from "@/components/forms/reminder-choice";
+import { DelayOptionsPicker } from "@/components/forms/delay-options-picker";
 import { SwitchRow } from "@/components/forms/switch-row";
 import { Chip } from "@/components/ui/chip";
 import { Input } from "@/components/ui/input";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  DELAY_OPTIONS_MAX,
   DURATION_CHOICES,
   FOOTER_NOTE_MAX,
   LOCATION_MAX,
@@ -28,7 +28,7 @@ import {
 } from "@/hooks/use-meeting-defaults";
 import { errorCodeOf } from "@/lib/api-client";
 import { durationText } from "@/lib/meetings/format";
-import { delayChoices, fittingDelays } from "@/lib/meetings/late";
+import { fittingDelays } from "@/lib/meetings/late";
 import {
   type MeetingDefaults,
   responseModeSchema,
@@ -74,16 +74,6 @@ export function MeetingDefaultsSection({
       hoursMinutes: (hours, rest) =>
         tw("details.hoursMinutes", { hours, minutes: rest }),
     });
-  const toggleDelay = (delay: number) => {
-    const next = value.delayOptions.includes(delay)
-      ? value.delayOptions.filter((d) => d !== delay)
-      : value.delayOptions.length < DELAY_OPTIONS_MAX
-        ? [...value.delayOptions, delay].sort((a, b) => a - b)
-        : value.delayOptions;
-    if (next !== value.delayOptions) {
-      save({ delayOptions: next });
-    }
-  };
   // Late choices are shorter than the meeting (#400): a shorter default length keeps only the ones
   // that fit, in the same save, and says which went.
   const saveDuration = (durationMinutes: number) => {
@@ -156,22 +146,13 @@ export function MeetingDefaultsSection({
         ]}
       />
       {value.responseMode === "attendance" ? (
-        <fieldset className="flex flex-col gap-2">
-          <legend className="text-sm font-bold">
-            {tw("responses.delays")}
-          </legend>
-          <div className="flex flex-wrap gap-2">
-            {delayChoices(value.durationMinutes).map((delay) => (
-              <Chip
-                key={delay}
-                pressed={value.delayOptions.includes(delay)}
-                onPressedChange={() => toggleDelay(delay)}
-              >
-                {tw("details.minutes", { count: delay })}
-              </Chip>
-            ))}
-          </div>
-        </fieldset>
+        <DelayOptionsPicker
+          id="default-delays"
+          legend={tw("responses.delays")}
+          durationMinutes={value.durationMinutes}
+          value={value.delayOptions}
+          onChange={(next) => save({ delayOptions: next })}
+        />
       ) : null}
       {value.responseMode !== "announcement" ? (
         <>

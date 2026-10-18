@@ -17,7 +17,6 @@ const base: ResponsesValues = {
   deadlineDate: null,
   deadlineTime: null,
   timezone: "Africa/Tunis",
-  durationMinutes: 60,
   reminderPendingHours: 24,
   reminderGoingHours: 2,
 };
@@ -34,30 +33,6 @@ describe("validateResponses", () => {
         now,
       ),
     ).toEqual({});
-  });
-
-  it("says when the meeting is too short for any late choice (#400)", () => {
-    expect(
-      validateResponses(
-        { ...base, durationMinutes: 5, delayOptions: [] },
-        startsAt,
-        now,
-      ),
-    ).toEqual({ delayOptions: "tooShortForLate" });
-    expect(
-      validateResponses(
-        { ...base, responseMode: "rsvp", durationMinutes: 5, delayOptions: [] },
-        startsAt,
-        now,
-      ),
-    ).toEqual({});
-    expect(
-      validateResponses(
-        { ...base, durationMinutes: 6, delayOptions: [] },
-        startsAt,
-        now,
-      ),
-    ).toEqual({ delayOptions: "delaysRequired" });
   });
 
   describe("the deadline (meeting at 18:00 Tunis on 9 Oct)", () => {

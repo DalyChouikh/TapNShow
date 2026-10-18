@@ -90,6 +90,16 @@ describe("MeetingDefaultsSection", () => {
       ).toBeInTheDocument();
     });
 
+    it("saves a typed late time at once, with Other", async () => {
+      const patches = setup();
+      const group = await lateBy();
+      await userEvent.click(
+        within(group).getByRole("button", { name: "Other" }),
+      );
+      await userEvent.type(screen.getByLabelText("Minutes late"), "25{Enter}");
+      expect(patches()).toEqual([{ delayOptions: [5, 10, 15, 25, 30] }]);
+    });
+
     it("saves only the length when every late choice still fits", async () => {
       const patches = setup();
       await lateBy();

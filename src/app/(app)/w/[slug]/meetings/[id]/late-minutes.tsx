@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { Input } from "@/components/ui/input";
+import { MinutesInput } from "@/components/forms/minutes-input";
 import { Chip } from "@/components/ui/chip";
 import { lateMinutesMax } from "@/lib/meetings/late";
 import { lateMinutesSchema } from "@/shared/api/meeting-settings";
@@ -74,20 +74,13 @@ export function LateMinutes({
         </Chip>
       </div>
       {custom ? (
-        <Input
+        <MinutesInput
           id={inputId}
           label={t("lateCustom")}
-          inputMode="numeric"
           value={text}
           error={invalid ? t("lateInvalid", { max }) : undefined}
-          onChange={(event) => setText(event.target.value.replace(/\D/g, ""))}
-          onBlur={commit}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              commit();
-            }
-          }}
+          onValueChange={setText}
+          onCommit={commit}
         />
       ) : null}
     </div>

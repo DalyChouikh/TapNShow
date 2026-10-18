@@ -1,4 +1,8 @@
-import { DELAY_OPTION_CHOICES, LATE_MINUTES_MAX } from "@/config/meetings";
+import {
+  DELAY_OPTION_CHOICES,
+  DELAY_OPTIONS_MAX,
+  LATE_MINUTES_MAX,
+} from "@/config/meetings";
 
 /**
  * The longest late time a meeting of `durationMinutes` allows: shorter than the meeting (#400),
@@ -25,4 +29,32 @@ export function fittingDelays(
 /** The delay chips a meeting of `durationMinutes` offers (wizard Answers step, Settings defaults). */
 export function delayChoices(durationMinutes: number): number[] {
   return fittingDelays(DELAY_OPTION_CHOICES, durationMinutes);
+}
+
+/** Why a typed late time can't join the choices: out of 1 to `lateMinutesMax`, a repeat, or a seventh. */
+export type AddDelayProblem = "range" | "taken" | "full";
+
+/**
+ * Adds a typed late time ("Other") to the delay choices, kept in order, or says why it can't: the
+ * same rules the database applies (`private.valid_delay_options`, `private.fitting_delays`).
+ */
+export function addDelayOption(
+  options: readonly number[],
+  minutes: number,
+  durationMinutes: number,
+): { options: number[] } | { problem: AddDelayProblem } {
+  if (
+    !Number.isInteger(minutes) ||
+    minutes < 1 ||
+    minutes > lateMinutesMax(durationMinutes)
+  ) {
+    return { problem: "range" };
+  }
+  if (options.includes(minutes)) {
+    return { problem: "taken" };
+  }
+  if (options.length >= DELAY_OPTIONS_MAX) {
+    return { problem: "full" };
+  }
+  return { options: [...options, minutes].sort((a, b) => a - b) };
 }
