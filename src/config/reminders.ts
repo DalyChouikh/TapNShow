@@ -17,3 +17,5 @@ export const REMINDER_GOING_DEFAULT = 2;
 export type ReminderPendingHours = (typeof REMINDER_PENDING_CHOICES)[number];
 /** One "Going and Late" choice. */
 export type ReminderGoingHours = (typeof REMINDER_GOING_CHOICES)[number];
+/** How often the Answers step re-checks which reminder times are still ahead (#403). */
+export const REMINDER_RECHECK_MS = 60_000;

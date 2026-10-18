@@ -4,16 +4,22 @@ import { describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/render";
 import { ReminderChoice } from "./reminder-choice";
 
-function setup(value: number | null, onChange = vi.fn()) {
+function setup(
+  value: number | null,
+  onChange = vi.fn<(value: number | null) => void>(),
+  extra: { note?: string; disabled?: boolean; choices?: number[] } = {},
+) {
   renderWithProviders(
     <ReminderChoice
       id="reminder-pending"
       label="Remind people who haven't answered"
       hint="Before the deadline, or before the start if there is none."
       value={value}
-      choices={[1, 2, 6, 24, 48]}
+      choices={extra.choices ?? [1, 2, 6, 24, 48]}
       fallback={24}
       onChange={onChange}
+      note={extra.note}
+      disabled={extra.disabled}
     />,
   );
   return onChange;
@@ -46,5 +52,32 @@ describe("ReminderChoice", () => {
     expect(onChange).toHaveBeenLastCalledWith(6);
     await userEvent.click(screen.getByRole("switch"));
     expect(onChange).toHaveBeenLastCalledWith(null);
+  });
+
+  it("shows a note under the hours, linked to them (#403)", () => {
+    setup(2, undefined, {
+      choices: [1, 2],
+      note: "24 h before has already passed, so 2 h before is picked.",
+    });
+    expect(screen.getAllByRole("radio")).toHaveLength(2);
+    expect(screen.getByRole("radiogroup")).toHaveAccessibleDescription(
+      /24 h before has already passed, so 2 h before is picked\./,
+    );
+  });
+
+  it("shows the note while off and greyed, when no time is left", () => {
+    setup(null, undefined, {
+      choices: [],
+      disabled: true,
+      note: "Too close to the start for this reminder.",
+    });
+    expect(
+      screen.getByRole("switch", {
+        name: "Remind people who haven't answered",
+      }),
+    ).toBeDisabled();
+    expect(
+      screen.getByText("Too close to the start for this reminder."),
+    ).toBeInTheDocument();
   });
 });

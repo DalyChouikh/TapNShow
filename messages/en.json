@@ -1040,7 +1040,11 @@
       "hoursBefore": "{count} h",
       "delayOther": "Other",
       "delayCustom": "Minutes late",
-      "delayAdd": "Add"
+      "delayAdd": "Add",
+      "reminderReplaced": "{from} h before has already passed, so {to} h before is picked.",
+      "reminderTooCloseStart": "Too close to the start for this reminder.",
+      "reminderTooCloseDeadline": "Too close to the deadline for this reminder.",
+      "reminderPassed": "Its time has passed."
     },
     "errors": {
       "titleRequired": "Give the meeting a title.",

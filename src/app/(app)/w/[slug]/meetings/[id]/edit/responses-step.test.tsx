@@ -262,4 +262,64 @@ describe("ResponsesStep", () => {
     expect(screen.queryByText("Pick a time in the future.")).toBeNull();
     sessionStorage.clear();
   });
+
+  describe("reminder times follow the meeting's time (#403)", () => {
+    // The meeting starts Fri 9 Oct at 17:00 UTC; defaults: 24 h and 2 h before.
+    const pendingRow = () =>
+      screen.getByRole("radiogroup", {
+        name: "Remind people who haven't answered",
+      });
+    const hours = (group: HTMLElement) =>
+      within(group)
+        .getAllByRole("radio")
+        .map((chip) => chip.textContent);
+
+    it("offers only times still ahead, and picks the longest left for a passed one", async () => {
+      vi.setSystemTime(new Date("2026-10-09T12:00:00Z"));
+      const { goTo, patches } = setup();
+      expect(hours(pendingRow())).toEqual(["1 h", "2 h"]);
+      expect(
+        within(pendingRow()).getByRole("radio", { name: "2 h" }),
+      ).toHaveAttribute("aria-checked", "true");
+      expect(
+        screen.getByText(
+          "24 h before has already passed, so 2 h before is picked.",
+        ),
+      ).toBeInTheDocument();
+      await next();
+      await vi.waitFor(() => expect(goTo).toHaveBeenCalledWith("review"));
+      expect(patches().at(-1)).toMatchObject({
+        reminderPendingHours: 2,
+        reminderGoingHours: 2,
+      });
+    });
+
+    it("switches a reminder off and greys it when no time is left", async () => {
+      vi.setSystemTime(new Date("2026-10-09T16:30:00Z"));
+      const { patches } = setup();
+      expect(
+        screen.getByRole("switch", { name: "Remind Going and Late" }),
+      ).toBeDisabled();
+      expect(
+        screen.getAllByText("Too close to the start for this reminder."),
+      ).toHaveLength(2);
+      await next();
+      await vi.waitFor(() => expect(patches()).toHaveLength(1));
+      expect(patches()[0]).toMatchObject({
+        reminderPendingHours: null,
+        reminderGoingHours: null,
+      });
+    });
+
+    it("keeps a sent meeting's reminder whose time has passed, locked", () => {
+      vi.setSystemTime(new Date("2026-10-09T12:00:00Z"));
+      setup("edit", { ...meetingFixture, status: "scheduled" });
+      expect(hours(pendingRow())).toEqual(["24 h"]);
+      expect(
+        within(pendingRow()).getByRole("radio", { name: "24 h" }),
+      ).toBeDisabled();
+      expect(screen.getByText("Its time has passed.")).toBeInTheDocument();
+      sessionStorage.clear();
+    });
+  });
 });

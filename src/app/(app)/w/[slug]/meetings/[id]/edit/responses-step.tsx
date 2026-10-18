@@ -11,16 +11,18 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { TimePicker } from "@/components/ui/time-picker";
 import { DELAY_OPTIONS_MAX, FOOTER_NOTE_MAX } from "@/config/meetings";
 import {
-  REMINDER_GOING_CHOICES,
   REMINDER_GOING_DEFAULT,
-  REMINDER_PENDING_CHOICES,
   REMINDER_PENDING_DEFAULT,
+  REMINDER_RECHECK_MS,
 } from "@/config/reminders";
+import { useNow } from "@/hooks/use-now";
 import { utcToZonedParts } from "@/lib/meetings/format";
 import { responseModeSchema } from "@/shared/api/meeting-settings";
 import {
+  reminderRows,
   responsesPatch,
   validateResponses,
+  type ReminderRow,
   type ResponsesErrors,
   type ResponsesValues,
 } from "./responses-form";
@@ -66,22 +68,51 @@ export function ResponsesStep({
     key: K,
     value: ResponsesValues[K],
   ) => setValues((current) => ({ ...current, [key]: value }));
-  const problems = () =>
-    validateResponses(values, meeting.startsAt, new Date(), savedDeadline);
+  // Reminder times follow the meeting's time and the clock (#403): re-checked every minute here,
+  // and again at the moment of saving.
+  const now = useNow(REMINDER_RECHECK_MS);
+  const rowsAt = (at: Date) =>
+    reminderRows(values, meeting.startsAt, at, editing ? saved : null);
+  const rows = rowsAt(now);
+  const withReminders = (at: Date): ResponsesValues => {
+    const { pending, going } = rowsAt(at);
+    return {
+      ...values,
+      reminderPendingHours: pending.value,
+      reminderGoingHours: going.value,
+    };
+  };
+  const problems = (at: Date) =>
+    validateResponses(withReminders(at), meeting.startsAt, at, savedDeadline);
   const next = () => {
-    const found = problems();
+    const at = new Date();
+    const found = problems(at);
     setErrors(found);
     if (Object.keys(found).length === 0 && after) {
-      saver.save(responsesPatch(values), () => goTo(after));
+      saver.save(responsesPatch(withReminders(at)), () => goTo(after));
     }
   };
   const back = () => {
-    if (Object.keys(problems()).length === 0) {
-      saver.save(responsesPatch(values));
+    const at = new Date();
+    if (Object.keys(problems(at)).length === 0) {
+      saver.save(responsesPatch(withReminders(at)));
     }
     if (before) {
       goTo(before);
     }
+  };
+  const reminderNote = (row: ReminderRow) => {
+    if (row.locked) {
+      return t("responses.reminderPassed");
+    }
+    if (row.tooClose) {
+      return row.fromDeadline
+        ? t("responses.reminderTooCloseDeadline")
+        : t("responses.reminderTooCloseStart");
+    }
+    return row.replaced !== null && row.value !== null
+      ? t("responses.reminderReplaced", { from: row.replaced, to: row.value })
+      : undefined;
   };
   const today = utcToZonedParts(
     new Date().toISOString(),
@@ -190,19 +221,23 @@ export function ResponsesStep({
             id="reminder-pending"
             label={t("responses.remindPending")}
             hint={t("responses.remindPendingHint")}
-            value={values.reminderPendingHours}
-            choices={REMINDER_PENDING_CHOICES}
+            value={rows.pending.value}
+            choices={rows.pending.choices}
             fallback={REMINDER_PENDING_DEFAULT}
             onChange={(value) => set("reminderPendingHours", value)}
+            disabled={rows.pending.tooClose || rows.pending.locked}
+            note={reminderNote(rows.pending)}
           />
           <ReminderChoice
             id="reminder-going"
             label={t("responses.remindGoing")}
             hint={t("responses.remindGoingHint")}
-            value={values.reminderGoingHours}
-            choices={REMINDER_GOING_CHOICES}
+            value={rows.going.value}
+            choices={rows.going.choices}
             fallback={REMINDER_GOING_DEFAULT}
             onChange={(value) => set("reminderGoingHours", value)}
+            disabled={rows.going.tooClose || rows.going.locked}
+            note={reminderNote(rows.going)}
           />
         </>
       ) : null}

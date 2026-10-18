@@ -9,7 +9,8 @@ import { CHIP_ROW_CLASS } from "@/components/ui/chip-row";
  * A reminder setting (spec §7.6; owner's mockup B, 2026-10-09): a switch like the other switches
  * of the Answers step, then the hours before as one-choice chips while it is on. Switching on picks
  * `fallback` (callers pass `REMINDER_PENDING_DEFAULT` / `REMINDER_GOING_DEFAULT`); switching off
- * sends `null`.
+ * sends `null`. `note` says what the meeting's time changed (#403: a passed time replaced, too
+ * close for any, already passed), shown on or off.
  */
 export function ReminderChoice({
   id,
@@ -20,6 +21,7 @@ export function ReminderChoice({
   fallback,
   onChange,
   disabled = false,
+  note,
 }: {
   id: string;
   label: string;
@@ -29,6 +31,7 @@ export function ReminderChoice({
   fallback: number;
   onChange: (value: number | null) => void;
   disabled?: boolean;
+  note?: string;
 }) {
   const t = useTranslations("Wizard.responses");
   return (
@@ -45,7 +48,7 @@ export function ReminderChoice({
           <div
             role="radiogroup"
             aria-labelledby={`${id}-label`}
-            aria-describedby={`${id}-hint`}
+            aria-describedby={note ? `${id}-hint ${id}-note` : `${id}-hint`}
             className={CHIP_ROW_CLASS}
           >
             {choices.map((hours) => (
@@ -64,6 +67,11 @@ export function ReminderChoice({
             {hint}
           </p>
         </>
+      ) : null}
+      {note ? (
+        <p id={`${id}-note`} className="text-sm font-bold text-ink">
+          {note}
+        </p>
       ) : null}
     </div>
   );
