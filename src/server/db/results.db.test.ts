@@ -211,7 +211,7 @@ describe("contact_history", () => {
 });
 
 describe("attendance_summary and attendance_details", () => {
-  it("summarizes every roster contact, zeros included", async () => {
+  it("summarizes every roster contact, zeros included; no reply leaves out undelivered invites", async () => {
     const { data } = await viewer.client.rpc("attendance_summary", {
       p_workspace: workspace.id,
       p_from: null,
@@ -225,16 +225,33 @@ describe("attendance_summary and attendance_details", () => {
             .object({
               contact_id: z.uuid(),
               invited: z.number(),
+              attending: z.number(),
+              late: z.number(),
+              absent: z.number(),
               no_reply: z.number(),
             })
             .loose(),
         ),
       })
       .parse(data);
+    const row = (contact: string) =>
+      parsed.rows.find((r) => r.contact_id === contact);
     expect(parsed.meetings).toBeGreaterThanOrEqual(1);
-    expect(parsed.rows.find((r) => r.contact_id === contacts[4])).toMatchObject(
-      { invited: 1, no_reply: 1 },
-    );
+    const none = { attending: 0, late: 0, absent: 0, no_reply: 0 };
+    expect(row(contacts[0])).toMatchObject({
+      ...none,
+      invited: 1,
+      attending: 1,
+    });
+    expect(row(contacts[1])).toMatchObject({ ...none, invited: 1, late: 1 });
+    expect(row(contacts[2])).toMatchObject({ ...none, invited: 1, absent: 1 });
+    expect(row(contacts[4])).toMatchObject({
+      ...none,
+      invited: 1,
+      no_reply: 1,
+    });
+    // contacts[5]'s invite failed: invited, but never counted as not answering.
+    expect(row(contacts[5])).toMatchObject({ ...none, invited: 1 });
   });
 
   it("lists one row per person per counted meeting, in pages", async () => {

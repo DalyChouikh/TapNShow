@@ -2,7 +2,12 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { createTestUser, type TestUser } from "@/test/db/clients";
 import { withLimit } from "@/test/db/limits";
-import { explainCall, planUsesIndex, timeCall } from "@/test/db/plans";
+import {
+  explainCall,
+  functionCalls,
+  planUsesIndex,
+  timeCall,
+} from "@/test/db/plans";
 import { queryLocalSql, runLocalScript, runLocalSql } from "@/test/db/sql";
 
 /** Three years of weekly meetings in the busy workspace. */
@@ -11,14 +16,20 @@ const MEETINGS = 150;
 const SMALL_WORKSPACES = 200;
 const SMALL_CONTACTS = 50;
 const SMALL_MEETINGS = 10;
-/** The slowest Home's insights may answer, warm, for its default period (Last 3 months). */
-const INSIGHTS_BUDGET_MS = 100;
+/**
+ * The slowest Home's insights and Lists → Attendance may answer, warm, for their default period
+ * (Last 3 months, `HISTORY_DEFAULT_PERIOD`).
+ */
+const DEFAULT_PERIOD_BUDGET_MS = 100;
 /**
  * …and for "All time" at the caps: every invitee row of three years, about 1 µs each, already
- * index-only (measured warm: 72 ms locally, 124 ms on the CI runner). The plan assertions below
- * pin the shape that keeps it there on any machine.
+ * index-only (insights measured warm: 72 ms locally, 124 ms on the CI runner). The plan
+ * assertions below pin the shape that keeps it there on any machine.
  */
-const INSIGHTS_ALL_TIME_BUDGET_MS = 250;
+const ALL_TIME_BUDGET_MS = 250;
+/** `private.effective_status` runs once per (check-in, answer) pair, never per invitee row. */
+const EFFECTIVE_STATUS =
+  "private.effective_status(public.attendance_actual, public.response_status)";
 /** Names this run's workspaces, so a rerun on the same database finds its own. */
 const RUN = crypto.randomUUID().slice(0, 6);
 /** The tables the read joins, vacuumed and analyzed after seeding as autovacuum keeps them. */
@@ -50,7 +61,7 @@ function seedVolume(ownerId: string): void {
         case when g = 0 then ${MEETINGS} else ${SMALL_MEETINGS} end as meetings
       from generate_series(0, ${SMALL_WORKSPACES}) g;
     insert into public.workspaces (id, name, slug, timezone)
-      select id, 'Insights Club ${RUN} ' || g, 'insights-' || g || '-' || left(id::text, 8), 'Africa/Tunis'
+      select id, 'Attendance Club ${RUN} ' || g, 'attendance-' || g || '-' || left(id::text, 8), 'Africa/Tunis'
       from plan_ws;
     insert into public.workspace_roles (workspace_id, user_id, role)
       select id, '${ownerId}', 'owner' from plan_ws;
@@ -101,53 +112,88 @@ beforeAll(async () => {
   }
   const ids = queryLocalSql(
     `select id::text as id from public.workspaces
-     where name in ('Insights Club ${RUN} 0', 'Insights Club ${RUN} 100') order by name`,
+     where name in ('Attendance Club ${RUN} 0', 'Attendance Club ${RUN} 100') order by name`,
     z.array(z.object({ id: z.string() })).length(2),
   );
   [big, small] = ids.map((row) => row.id);
 }, 600_000);
 
-const call = (workspaceId: string, from: string) =>
-  `public.workspace_insights('${workspaceId}', ${from}, null)`;
+/** Both reads take (workspace, from, to); "to" is open here, as the default periods leave it. */
+const READS = ["workspace_insights", "attendance_summary"] as const;
+type Read = (typeof READS)[number];
+const call = (read: Read, workspaceId: string, from: string) =>
+  `public.${read}('${workspaceId}', ${from}, null)`;
 
 const ALL_TIME = "null";
 const LAST_3_MONTHS = "now() - interval '3 months'";
 
-describe(`Home insights at the roster and per-meeting caps × ${MEETINGS} meetings, next to ${SMALL_WORKSPACES} small workspaces`, () => {
-  it.each([
-    ["Last 3 months", LAST_3_MONTHS, INSIGHTS_BUDGET_MS],
-    ["All time", ALL_TIME, INSIGHTS_ALL_TIME_BUDGET_MS],
-  ])("reads %s on the big workspace within %s ms", (_, from, budget) => {
-    expect(timeCall(call(big, from), owner.id)).toBeLessThanOrEqual(budget);
-  });
+/** The (check-in, answer) pairs: each enum's values, plus "none". */
+function outcomePairs(): number {
+  const [row] = queryLocalSql(
+    `select ((select count(*) from unnest(enum_range(null::public.attendance_actual))) + 1)
+       * ((select count(*) from unnest(enum_range(null::public.response_status))) + 1) as pairs`,
+    z.array(z.object({ pairs: z.coerce.number() })).length(1),
+  );
+  return row.pairs;
+}
 
-  it("reads meetings by the workspace index, and each meeting's people index-only", () => {
-    for (const from of [ALL_TIME, LAST_3_MONTHS]) {
-      const plan = explainCall(call(big, from), owner.id);
-      expect(plan).not.toMatch(/Seq Scan on meetings\b/);
-      for (const index of [
-        "meeting_invitees_meeting_ws_idx",
-        "responses_meeting_ws_idx",
-        "attendance_marks_meeting_idx",
-      ]) {
-        expect(plan, index).toMatch(
-          new RegExp(`Index Only Scan using ${index}\\b`),
-        );
+describe(`Home insights and Lists → Attendance at the roster and per-meeting caps × ${MEETINGS} meetings, next to ${SMALL_WORKSPACES} small workspaces`, () => {
+  it.each(
+    READS.flatMap((read) => [
+      [read, "Last 3 months", DEFAULT_PERIOD_BUDGET_MS, LAST_3_MONTHS] as const,
+      [read, "All time", ALL_TIME_BUDGET_MS, ALL_TIME] as const,
+    ]),
+  )(
+    "%s reads %s on the big workspace within %s ms",
+    (read, _, budget, from) => {
+      expect(timeCall(call(read, big, from), owner.id)).toBeLessThanOrEqual(
+        budget,
+      );
+    },
+  );
+
+  it.each(READS)(
+    "%s decides each outcome once per (check-in, answer) pair",
+    (read) => {
+      expect(
+        functionCalls(call(read, big, ALL_TIME), owner.id, EFFECTIVE_STATUS),
+      ).toBeLessThanOrEqual(outcomePairs());
+    },
+  );
+
+  it.each(READS)(
+    "%s reads meetings by the workspace index, and each meeting's people index-only",
+    (read) => {
+      for (const from of [ALL_TIME, LAST_3_MONTHS]) {
+        const plan = explainCall(call(read, big, from), owner.id);
+        expect(plan).not.toMatch(/Seq Scan on meetings\b/);
+        for (const index of [
+          "meeting_invitees_meeting_ws_idx",
+          "responses_meeting_ws_idx",
+          "attendance_marks_meeting_idx",
+        ]) {
+          expect(plan, index).toMatch(
+            new RegExp(`Index Only Scan using ${index}\\b`),
+          );
+        }
       }
-    }
-  });
+    },
+  );
 
-  it("a small workspace reads only its own rows (no whole-table scan)", () => {
-    const plan = explainCall(call(small, ALL_TIME), owner.id);
-    for (const table of [
-      "meetings",
-      "meeting_invitees",
-      "responses",
-      "attendance_marks",
-      "contacts",
-    ]) {
-      expect(plan, table).not.toMatch(new RegExp(`Seq Scan on ${table}\\b`));
-    }
-    expect(planUsesIndex(plan, "meeting_invitees_meeting_ws_idx")).toBe(true);
-  });
+  it.each(READS)(
+    "%s on a small workspace reads only its own rows (no whole-table scan)",
+    (read) => {
+      const plan = explainCall(call(read, small, ALL_TIME), owner.id);
+      for (const table of [
+        "meetings",
+        "meeting_invitees",
+        "responses",
+        "attendance_marks",
+        "contacts",
+      ]) {
+        expect(plan, table).not.toMatch(new RegExp(`Seq Scan on ${table}\\b`));
+      }
+      expect(planUsesIndex(plan, "meeting_invitees_meeting_ws_idx")).toBe(true);
+    },
+  );
 });
