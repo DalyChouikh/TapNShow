@@ -43,6 +43,44 @@ export function explainCall(
   return `${result.stdout}\n${result.stderr}`;
 }
 
+/**
+ * Runs `select <call>` once as `userId` (role `authenticated`) inside a rolled-back transaction
+ * and returns how many times `fn` (a regprocedure, e.g. "private.f(integer)") ran during it,
+ * from the transaction's own function statistics. Only functions Postgres doesn't inline are
+ * counted. Test assertions only.
+ */
+export function functionCalls(
+  call: string,
+  userId: string,
+  fn: string,
+): number {
+  const claims = JSON.stringify({ sub: userId, role: "authenticated" });
+  const sql = [
+    "begin;",
+    "set local track_functions = 'all';",
+    `select set_config('request.jwt.claims', '${claims}', true);`,
+    "set local role authenticated;",
+    `select (${call}) is not null;`,
+    "reset role;",
+    "\\pset tuples_only on",
+    `select 'calls=' || coalesce(pg_stat_get_xact_function_calls('${fn}'::regprocedure), 0);`,
+    "rollback;",
+  ].join("\n");
+  const result = spawnSync("psql", [ADMIN_URL, "-v", "ON_ERROR_STOP=1"], {
+    input: sql,
+    encoding: "utf8",
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  if (result.status !== 0) {
+    throw new Error(`psql failed: ${result.stderr}`);
+  }
+  const match = /calls=(\d+)/.exec(result.stdout);
+  if (!match) {
+    throw new Error("psql printed no call count");
+  }
+  return Number(match[1]);
+}
+
 /** True when the plan text scans `index` (index, index-only or bitmap index scan). */
 export function planUsesIndex(plan: string, index: string): boolean {
   return new RegExp(
