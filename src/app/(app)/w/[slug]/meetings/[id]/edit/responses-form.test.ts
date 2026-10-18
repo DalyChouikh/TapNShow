@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  reminderRows,
   responsesPatch,
   validateResponses,
   type ResponsesValues,
@@ -104,5 +105,88 @@ describe("responsesPatch", () => {
         deadlineTime: "12:00",
       }).responseDeadline,
     ).toBe("2026-10-09T11:00:00.000Z");
+  });
+});
+
+describe("reminderRows (#403)", () => {
+  // The meeting starts Fri 9 Oct at 17:00 UTC (18:00 Tunis); defaults: 24 h and 2 h before.
+  const at = (iso: string) => new Date(iso);
+  const sent = {
+    startsAt,
+    responseDeadline: null,
+    responseMode: "attendance" as const,
+    reminderPendingHours: 24,
+    reminderGoingHours: 2,
+  };
+
+  it("offers every time far ahead, as picked", () => {
+    const rows = reminderRows(base, startsAt, now, null);
+    expect(rows.pending).toMatchObject({
+      choices: [1, 2, 6, 24, 48],
+      value: 24,
+    });
+    expect(rows.going).toMatchObject({ choices: [1, 2, 6, 24], value: 2 });
+  });
+
+  it("picks the longest time left when the picked one has passed", () => {
+    const rows = reminderRows(base, startsAt, at("2026-10-09T12:00:00Z"), null);
+    expect(rows.pending).toMatchObject({
+      choices: [1, 2],
+      value: 2,
+      replaced: 24,
+      tooClose: false,
+      locked: false,
+    });
+    expect(rows.going).toMatchObject({ value: 2, replaced: null });
+  });
+
+  it("counts the not-answered reminder back from the deadline", () => {
+    const rows = reminderRows(
+      {
+        ...base,
+        deadlineEnabled: true,
+        deadlineDate: "2026-10-09",
+        deadlineTime: "12:00",
+      },
+      startsAt,
+      at("2026-10-09T09:30:00Z"),
+      null,
+    );
+    expect(rows.pending).toMatchObject({
+      choices: [1],
+      value: 1,
+      fromDeadline: true,
+    });
+    expect(rows.going).toMatchObject({
+      choices: [1, 2, 6],
+      fromDeadline: false,
+    });
+  });
+
+  it("switches a reminder off when no time is left", () => {
+    const rows = reminderRows(base, startsAt, at("2026-10-09T16:30:00Z"), null);
+    expect(rows.going).toMatchObject({ value: null, tooClose: true });
+  });
+
+  it("locks a sent meeting's reminder whose time passed with the start unmoved", () => {
+    const rows = reminderRows(base, startsAt, at("2026-10-09T12:00:00Z"), sent);
+    expect(rows.pending).toMatchObject({
+      choices: [24],
+      value: 24,
+      replaced: null,
+      locked: true,
+    });
+    expect(rows.going).toMatchObject({ locked: false, value: 2 });
+  });
+
+  it("offers the times left again once the edit moves the start", () => {
+    const moved = "2026-10-10T17:00:00.000Z";
+    const rows = reminderRows(base, moved, at("2026-10-09T20:00:00Z"), sent);
+    expect(rows.pending).toMatchObject({
+      locked: false,
+      choices: [1, 2, 6],
+      value: 6,
+      replaced: 24,
+    });
   });
 });

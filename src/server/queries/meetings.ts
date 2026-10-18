@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { REMINDER_AUDIENCES } from "@/config/reminders";
 import type { Database } from "@/server/db/database.types";
 import {
   type AddPeopleBody,
@@ -439,7 +440,7 @@ export async function editSentMeeting(
       emails: z.number().int(),
       calendar_only: z.number().int(),
       reconfirm: z.boolean(),
-      reminders_skipped: z.array(z.enum(["pending", "going"])),
+      reminders_skipped: z.array(z.enum(REMINDER_AUDIENCES)),
     })
     .parse(data);
   return {
