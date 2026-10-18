@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { REMINDER_AUDIENCES } from "@/config/reminders";
 import { locationModeSchema, responseModeSchema } from "./meeting-settings";
 
 /** One leased delivery with what its notification says, DB-shaped in, camelCase out. Twin: `private.push_claim`. */
@@ -6,7 +7,7 @@ export const pushItemSchema = z
   .object({
     id: z.uuid(),
     kind: z.enum(["invite", "update", "cancel", "reminder"]),
-    audience: z.enum(["pending", "going"]).nullable(),
+    audience: z.enum(REMINDER_AUDIENCES).nullable(),
     attempts: z.number().int(),
     invitee_id: z.uuid(),
     endpoint: z.string(),

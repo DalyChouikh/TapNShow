@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { REMINDER_AUDIENCES } from "@/config/reminders";
 import {
   AGENDA_MAX,
   LOCATION_MAX,
@@ -156,7 +157,7 @@ export const editResultSchema = z.object({
   calendarOnly: z.number().int(),
   reconfirm: z.boolean(),
   /** Reminders this edit moves into the past, so they won't be sent (#255). */
-  remindersSkipped: z.array(z.enum(["pending", "going"])).default([]),
+  remindersSkipped: z.array(z.enum(REMINDER_AUDIENCES)).default([]),
 });
 /** An edit's preview or result. */
 export type EditResult = z.infer<typeof editResultSchema>;

@@ -22,6 +22,7 @@ import { ApiClientError } from "@/lib/api-client";
 import { responseDeadlineProblem } from "@/lib/meetings/deadline";
 import { formatDeadline, formatMeetingWhen } from "@/lib/meetings/format";
 import { quotaLine } from "@/lib/meetings/quota-line";
+import { remindersSkippedAt } from "@/lib/meetings/reminders";
 import { GoogleConnectResult } from "@/app/(app)/w/[slug]/settings/google-connect-result";
 import { EmailPreviewDialog } from "./email-preview-dialog";
 import { WizardFooter } from "./wizard-footer";
@@ -113,17 +114,16 @@ export function ReviewStep({
         dailyLimit: connection.dailyLimit,
       })
     : null;
-  // A later Details edit (or the clock) can break a deadline the Responses step accepted.
+  // A later Details edit (or the clock) can break a deadline the Responses step accepted, and leave
+  // a reminder's time behind: sending drops that reminder, so Review names it (#403).
+  const now = new Date();
   const deadlineProblem =
     !inviteMore &&
     meeting.responseMode !== "announcement" &&
     meeting.responseDeadline
-      ? responseDeadlineProblem(
-          meeting.responseDeadline,
-          meeting.startsAt,
-          new Date(),
-        )
+      ? responseDeadlineProblem(meeting.responseDeadline, meeting.startsAt, now)
       : null;
+  const remindersSkipped = inviteMore ? [] : remindersSkippedAt(meeting, now);
   const editUrl = `/w/${slug}/meetings/${meeting.id}/edit?step=review`;
   const confirmSend = () =>
     send.mutate(undefined, {
@@ -182,6 +182,11 @@ export function ReviewStep({
               {t(`review.deadlineProblem.${deadlineProblem}`)}
             </strong>
           ) : null}
+          {remindersSkipped.map((audience) => (
+            <strong key={audience} className="block text-ink">
+              {t(`changes.reminderSkipped.${audience}`)}
+            </strong>
+          ))}
         </Summary>
       ) : null}
       <Card className="flex items-center justify-between gap-2">

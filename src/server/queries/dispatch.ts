@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { REMINDER_AUDIENCES } from "@/config/reminders";
 import type { Database, Json } from "@/server/db/database.types";
 import { sqlNullable } from "@/server/db/rpc-args";
 import { changeSetSchema } from "@/shared/api/meeting-changes";
@@ -31,7 +32,7 @@ const jobPayloadSchema = z
     changes: changeSetSchema.default({}),
     notify: z.boolean().default(false),
     reconfirm: z.boolean().default(false),
-    audience: z.enum(["pending", "going"]).default("pending"),
+    audience: z.enum(REMINDER_AUDIENCES).default("pending"),
   })
   .default({
     changes: {},

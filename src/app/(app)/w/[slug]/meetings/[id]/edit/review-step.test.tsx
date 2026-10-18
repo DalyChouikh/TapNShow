@@ -184,4 +184,48 @@ describe("ReviewStep", () => {
       ).toBeDisabled();
     });
   });
+
+  describe("reminders whose time has already passed (#403)", () => {
+    // The meeting starts Fri 9 Oct at 17:00 UTC: not answered 24 h before, Going and Late 2 h before.
+    const pending =
+      "The reminder for people who haven't answered would be in the past, so it won't be sent.";
+    const going =
+      "The reminder for people who are going would be in the past, so it won't be sent.";
+    const at = async (iso: string, meeting = meetingFixture) => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date(iso));
+      fetchMock = routeFetch(routes(sender()));
+      renderReview(workspaceFixture, meeting);
+      await screen.findByText("From Robotics Club <club@gmail.com>");
+    };
+    afterEach(() => vi.useRealTimers());
+
+    it("says the not-answered reminder won't go out once its time has passed", async () => {
+      await at("2026-10-09T10:00:00Z");
+      expect(screen.getByText(pending)).toBeInTheDocument();
+      expect(screen.queryByText(going)).toBeNull();
+    });
+
+    it("names both when both times have passed", async () => {
+      await at("2026-10-09T15:30:00Z");
+      expect(screen.getByText(pending)).toBeInTheDocument();
+      expect(screen.getByText(going)).toBeInTheDocument();
+    });
+
+    it("says nothing while both are ahead", async () => {
+      await at("2026-10-08T12:00:00Z");
+      expect(screen.queryByText(pending)).toBeNull();
+      expect(screen.queryByText(going)).toBeNull();
+    });
+
+    it("says nothing about reminders that are off", async () => {
+      await at("2026-10-09T15:30:00Z", {
+        ...meetingFixture,
+        reminderPendingHours: null,
+        reminderGoingHours: null,
+      });
+      expect(screen.queryByText(pending)).toBeNull();
+      expect(screen.queryByText(going)).toBeNull();
+    });
+  });
 });
