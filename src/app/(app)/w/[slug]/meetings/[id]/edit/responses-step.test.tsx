@@ -66,7 +66,7 @@ describe("ResponsesStep", () => {
   });
 
   it("needs a delay, and ignores a seventh one", async () => {
-    setup();
+    setup("draft", { ...meetingFixture, durationMinutes: 90 });
     await userEvent.click(screen.getByRole("button", { name: "20 min" }));
     await userEvent.click(screen.getByRole("button", { name: "45 min" }));
     const sixty = screen.getByRole("button", { name: "60 min" });
@@ -79,6 +79,43 @@ describe("ResponsesStep", () => {
     }
     await next();
     expect(screen.getByText("Pick at least one delay.")).toBeInTheDocument();
+  });
+
+  it("offers only late choices shorter than the meeting (#400)", () => {
+    setup("draft", {
+      ...meetingFixture,
+      durationMinutes: 30,
+      delayOptions: [5, 10, 15],
+    });
+    for (const minutes of [5, 10, 15, 20]) {
+      expect(
+        screen.getByRole("button", { name: `${minutes} min` }),
+      ).toBeInTheDocument();
+    }
+    for (const minutes of [30, 45, 60]) {
+      expect(
+        screen.queryByRole("button", { name: `${minutes} min` }),
+      ).toBeNull();
+    }
+    expect(
+      screen.getByText("Pick up to 6. Each is shorter than the meeting."),
+    ).toBeInTheDocument();
+  });
+
+  it("lets a meeting no chip fits take a typed late time, and saves it", async () => {
+    const { goTo, patches } = setup("draft", {
+      ...meetingFixture,
+      durationMinutes: 5,
+      delayOptions: [],
+    });
+    expect(screen.queryByRole("button", { name: "5 min" })).toBeNull();
+    await next();
+    expect(screen.getByText("Pick at least one delay.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Other" }));
+    await userEvent.type(screen.getByLabelText("Minutes late"), "3{Enter}");
+    await next();
+    await vi.waitFor(() => expect(goTo).toHaveBeenCalledWith("review"));
+    expect(patches().at(-1)).toMatchObject({ delayOptions: [3] });
   });
 
   it("keeps the deadline before the start, on the time field", async () => {

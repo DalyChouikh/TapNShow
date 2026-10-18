@@ -1,17 +1,16 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ReminderChoice } from "@/components/forms/reminder-choice";
+import { DelayOptionsPicker } from "@/components/forms/delay-options-picker";
 import { SwitchRow } from "@/components/forms/switch-row";
 import { Chip } from "@/components/ui/chip";
 import { Input } from "@/components/ui/input";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  DELAY_OPTION_CHOICES,
-  DELAY_OPTIONS_MAX,
   DURATION_CHOICES,
   FOOTER_NOTE_MAX,
   LOCATION_MAX,
@@ -27,7 +26,9 @@ import {
   useMeetingDefaults,
   useUpdateMeetingDefaults,
 } from "@/hooks/use-meeting-defaults";
+import { errorCodeOf } from "@/lib/api-client";
 import { durationText } from "@/lib/meetings/format";
+import { fittingDelays } from "@/lib/meetings/late";
 import {
   type MeetingDefaults,
   responseModeSchema,
@@ -49,6 +50,7 @@ export function MeetingDefaultsSection({
   const t = useTranslations("Settings.defaults");
   const tw = useTranslations("Wizard");
   const tErrors = useTranslations("ApiErrors");
+  const format = useFormatter();
   const defaults = useMeetingDefaults(workspace.slug);
   const update = useUpdateMeetingDefaults(workspace.slug);
   const [footer, setFooter] = useState<string | null>(null);
@@ -60,8 +62,11 @@ export function MeetingDefaultsSection({
   }
   const value: MeetingDefaults = defaults.data;
   const readOnly = workspace.myRole === "viewer";
-  const save = (patch: UpdateMeetingDefaultsBody) =>
-    update.mutate(patch, { onError: () => toast.error(tErrors("internal")) });
+  const save = (patch: UpdateMeetingDefaultsBody, onSaved?: () => void) =>
+    update.mutate(patch, {
+      onSuccess: onSaved,
+      onError: (error) => toast.error(tErrors(errorCodeOf(error))),
+    });
   const minutes = (total: number) =>
     durationText(total, {
       minutes: (count) => tw("details.minutes", { count }),
@@ -69,15 +74,27 @@ export function MeetingDefaultsSection({
       hoursMinutes: (hours, rest) =>
         tw("details.hoursMinutes", { hours, minutes: rest }),
     });
-  const toggleDelay = (delay: number) => {
-    const next = value.delayOptions.includes(delay)
-      ? value.delayOptions.filter((d) => d !== delay)
-      : value.delayOptions.length < DELAY_OPTIONS_MAX
-        ? [...value.delayOptions, delay].sort((a, b) => a - b)
-        : value.delayOptions;
-    if (next !== value.delayOptions) {
-      save({ delayOptions: next });
+  // Late choices are shorter than the meeting (#400): a shorter default length keeps only the ones
+  // that fit, in the same save, and says which went.
+  const saveDuration = (durationMinutes: number) => {
+    const kept = fittingDelays(value.delayOptions, durationMinutes);
+    const removed = value.delayOptions.filter((d) => !kept.includes(d));
+    if (removed.length === 0) {
+      save({ durationMinutes });
+      return;
     }
+    save({ durationMinutes, delayOptions: kept }, () => {
+      if (value.responseMode === "attendance") {
+        toast(
+          t("delaysRemoved", {
+            count: removed.length,
+            list: format.list(
+              removed.map((d) => tw("details.minutes", { count: d })),
+            ),
+          }),
+        );
+      }
+    });
   };
   if (readOnly) {
     return (
@@ -129,22 +146,13 @@ export function MeetingDefaultsSection({
         ]}
       />
       {value.responseMode === "attendance" ? (
-        <fieldset className="flex flex-col gap-2">
-          <legend className="text-sm font-bold">
-            {tw("responses.delays")}
-          </legend>
-          <div className="flex flex-wrap gap-2">
-            {DELAY_OPTION_CHOICES.map((delay) => (
-              <Chip
-                key={delay}
-                pressed={value.delayOptions.includes(delay)}
-                onPressedChange={() => toggleDelay(delay)}
-              >
-                {tw("details.minutes", { count: delay })}
-              </Chip>
-            ))}
-          </div>
-        </fieldset>
+        <DelayOptionsPicker
+          id="default-delays"
+          legend={tw("responses.delays")}
+          durationMinutes={value.durationMinutes}
+          value={value.delayOptions}
+          onChange={(next) => save({ delayOptions: next })}
+        />
       ) : null}
       {value.responseMode !== "announcement" ? (
         <>
@@ -242,7 +250,7 @@ export function MeetingDefaultsSection({
             <Chip
               key={duration}
               pressed={value.durationMinutes === duration}
-              onPressedChange={() => save({ durationMinutes: duration })}
+              onPressedChange={() => saveDuration(duration)}
             >
               {minutes(duration)}
             </Chip>

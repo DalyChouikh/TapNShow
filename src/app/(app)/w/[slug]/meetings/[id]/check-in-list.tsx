@@ -89,6 +89,7 @@ export function CheckInList({
               slug={slug}
               person={person}
               delayOptions={meeting.delayOptions}
+              durationMinutes={meeting.durationMinutes}
               failed={failed.get(person.inviteeId) ?? null}
               onMark={(actual, lateMinutes) =>
                 onMark(person.inviteeId, actual, lateMinutes)

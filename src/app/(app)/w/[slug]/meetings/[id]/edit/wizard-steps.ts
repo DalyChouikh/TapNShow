@@ -59,7 +59,8 @@ export function stepBefore(
 export type StepSaver = {
   save: (patch: UpdateMeetingBody, onSaved?: () => void) => void;
   pending: boolean;
-  failed: boolean;
+  /** Why the last save failed (null when it didn't). */
+  error: Error | null;
 };
 
 /** Props every step component receives from the shell. */

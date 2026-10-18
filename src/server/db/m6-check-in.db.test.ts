@@ -330,7 +330,9 @@ describe("how late, at the door (owner feedback #257)", () => {
       "invalid_input",
     );
     await expectAppError(late(a, 0), "invalid_input");
-    await expectAppError(late(a, 241), "invalid_input");
+    // Never as long as the meeting (#400): this one lasts 60 minutes.
+    await expectAppError(late(a, 60), "late_too_long");
+    await expectAppError(late(a, 241), "late_too_long");
   });
 
   it("keeps a Late person's own minutes when marking the rest", async () => {

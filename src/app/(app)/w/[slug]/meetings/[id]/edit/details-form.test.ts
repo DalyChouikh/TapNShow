@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  delaysRemoved,
   detailsPatch,
   validateDetails,
   type DetailsValues,
@@ -70,14 +71,53 @@ describe("validateDetails", () => {
 
 describe("detailsPatch", () => {
   it("stores the picked wall time as UTC and trims text", () => {
-    expect(detailsPatch({ ...valid, title: " Kickoff " })).toMatchObject({
+    expect(detailsPatch({ ...valid, title: " Kickoff " }, [])).toMatchObject({
       title: "Kickoff",
       startsAt: "2026-10-09T17:00:00.000Z",
       timezone: "Africa/Tunis",
     });
-    expect(detailsPatch({ ...valid, date: null }).startsAt).toBeNull();
+    expect(detailsPatch({ ...valid, date: null }, []).startsAt).toBeNull();
     expect(
-      detailsPatch({ ...valid, onlineText: " Club Discord " }).onlineText,
+      detailsPatch({ ...valid, onlineText: " Club Discord " }, []).onlineText,
     ).toBe("Club Discord");
+  });
+});
+
+describe("the late choices and the meeting's length (#400)", () => {
+  const short = { ...valid, durationMinutes: 30 };
+
+  it("a draft made shorter saves only the late choices that still fit, in the same save", () => {
+    expect(detailsPatch(short, [5, 10, 15, 30, 45])).toMatchObject({
+      durationMinutes: 30,
+      delayOptions: [5, 10, 15],
+    });
+  });
+
+  it("leaves the late choices out of the save when they all fit", () => {
+    expect(detailsPatch(valid, [5, 10, 15, 30])).not.toHaveProperty(
+      "delayOptions",
+    );
+  });
+
+  it("names the late choices a shorter length would remove", () => {
+    expect(delaysRemoved(short, [5, 10, 15, 30, 45])).toEqual([30, 45]);
+    expect(delaysRemoved(valid, [5, 10, 15, 30])).toEqual([]);
+    expect(delaysRemoved({ ...valid, durationMinutes: 0 }, [5])).toEqual([]);
+  });
+
+  it("refuses a sent meeting's length its fixed late choices don't fit", () => {
+    expect(validateDetails(short, now, [5, 10, 30])).toEqual({
+      durationMinutes: "lateLongerThanMeeting",
+    });
+    expect(
+      validateDetails({ ...valid, durationMinutes: 31 }, now, [5, 10, 30]),
+    ).toEqual({});
+    expect(validateDetails(short, now)).toEqual({});
+  });
+
+  it("asks for a valid length before anything about late choices", () => {
+    expect(validateDetails({ ...valid, durationMinutes: 0 }, now, [5])).toEqual(
+      { durationMinutes: "durationRange" },
+    );
   });
 });

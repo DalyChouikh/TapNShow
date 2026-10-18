@@ -2,25 +2,29 @@
 
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { Input } from "@/components/ui/input";
+import { MinutesInput } from "@/components/forms/minutes-input";
 import { Chip } from "@/components/ui/chip";
+import { lateMinutesMax } from "@/lib/meetings/late";
 import { lateMinutesSchema } from "@/shared/api/meeting-settings";
 
 /**
  * How late someone was at the door (owner feedback #257): the meeting's delay choices, or Other
- * with any number of minutes (1–240), saved on Enter or when the field loses focus. Optional:
- * tapping the pressed choice clears the minutes.
+ * with any number of minutes shorter than the meeting (#400), saved on Enter or when the field
+ * loses focus. Optional: tapping the pressed choice clears the minutes.
  */
 export function LateMinutes({
   inviteeId,
   name,
   options,
+  durationMinutes,
   value,
   onChange,
 }: {
   inviteeId: string;
   name: string;
   options: number[];
+  /** The meeting's length: Other accepts 1 to one minute less. */
+  durationMinutes: number;
   value: number | null;
   onChange: (minutes: number | null) => void;
 }) {
@@ -30,8 +34,9 @@ export function LateMinutes({
   const [text, setText] = useState(saved === null ? "" : String(saved));
   const [invalid, setInvalid] = useState(false);
   const inputId = `late-minutes-${inviteeId}`;
+  const max = lateMinutesMax(durationMinutes);
   const commit = () => {
-    const minutes = lateMinutesSchema.safeParse(Number(text));
+    const minutes = lateMinutesSchema.max(max).safeParse(Number(text));
     setInvalid(text !== "" && !minutes.success);
     if (minutes.success && minutes.data !== value) {
       onChange(minutes.data);
@@ -69,20 +74,13 @@ export function LateMinutes({
         </Chip>
       </div>
       {custom ? (
-        <Input
+        <MinutesInput
           id={inputId}
           label={t("lateCustom")}
-          inputMode="numeric"
           value={text}
-          error={invalid ? t("lateInvalid") : undefined}
-          onChange={(event) => setText(event.target.value.replace(/\D/g, ""))}
-          onBlur={commit}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              commit();
-            }
-          }}
+          error={invalid ? t("lateInvalid", { max }) : undefined}
+          onValueChange={setText}
+          onCommit={commit}
         />
       ) : null}
     </div>
