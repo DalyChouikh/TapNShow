@@ -15,6 +15,7 @@ import { togglePerson, toggleList } from "@/lib/meetings/audience-edit";
 import { normalizeForSearch } from "@/lib/roster/filter-contacts";
 import { AddPeopleSheet } from "./add-people-sheet";
 import { AudiencePersonRow } from "./audience-person-row";
+import { StepSaveError } from "./step-save-error";
 import { WizardFooter } from "./wizard-footer";
 import { stepAfter, stepBefore, type WizardStepProps } from "./wizard-steps";
 import { CHIP_ROW_CLASS } from "@/components/ui/chip-row";
@@ -140,11 +141,7 @@ export function AudienceStep({ slug, meeting, steps, goTo }: WizardStepProps) {
           {t("audience.addPeople")}
         </Button>
       </Card>
-      {setAudience.isError ? (
-        <p role="alert" className="font-bold">
-          {t("errors.saveFailed")}
-        </p>
-      ) : null}
+      <StepSaveError error={setAudience.error} />
       <AddPeopleSheet
         open={adding}
         onOpenChange={setAdding}

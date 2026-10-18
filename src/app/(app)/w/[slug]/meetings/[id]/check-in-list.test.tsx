@@ -222,8 +222,9 @@ describe("CheckInList", () => {
       within(minutes).getByRole("button", { name: "Other" }),
     );
     const custom = screen.getByLabelText("Minutes late");
-    await userEvent.type(custom, "300{Enter}");
-    expect(screen.getByText("Enter 1 to 240 minutes.")).toBeInTheDocument();
+    // A late time is shorter than the meeting (#400): this one lasts 60 minutes.
+    await userEvent.type(custom, "60{Enter}");
+    expect(screen.getByText("Enter 1 to 59 minutes.")).toBeInTheDocument();
     const sent = bodies.length;
     await userEvent.clear(custom);
     await userEvent.type(custom, "25{Enter}");

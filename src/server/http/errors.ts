@@ -38,6 +38,19 @@ const POSTGRES_CODES: Record<string, ApiErrorCode> = {
   "23505": "conflict",
 };
 
+/**
+ * Check constraints whose refusal means something the person can act on, by name (others stay
+ * `invalid_input`). Database twins: the named constraints in
+ * `20261018121952_late_shorter_than_meeting.sql`.
+ */
+const CHECK_CONSTRAINT_CODES: Readonly<Record<string, ApiErrorCode>> = {
+  meetings_delays_fit: "late_too_long",
+  workspaces_default_delays_fit: "late_too_long",
+};
+
+/** The constraint a check violation names (PostgREST passes Postgres's message through). */
+const CHECK_CONSTRAINT_NAME = /violates check constraint "([a-z0-9_]+)"/;
+
 function isApiErrorCode(value: string): value is ApiErrorCode {
   return API_ERROR_CODES.some((code) => code === value);
 }
@@ -56,9 +69,15 @@ export function fromDatabaseError(
   if (appCode && isApiErrorCode(appCode)) {
     return apiError(appCode);
   }
-  const mapped = error.code
-    ? (overrides[error.code] ?? POSTGRES_CODES[error.code])
-    : undefined;
+  const constraint =
+    error.code === "23514"
+      ? CHECK_CONSTRAINT_NAME.exec(error.message)?.[1]
+      : undefined;
+  const mapped =
+    (constraint && CHECK_CONSTRAINT_CODES[constraint]) ||
+    (error.code
+      ? (overrides[error.code] ?? POSTGRES_CODES[error.code])
+      : undefined);
   if (mapped) {
     return apiError(mapped);
   }

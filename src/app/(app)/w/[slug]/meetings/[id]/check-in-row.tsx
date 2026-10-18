@@ -25,6 +25,7 @@ export function CheckInRow({
   slug,
   person,
   delayOptions,
+  durationMinutes,
   failed,
   onMark,
 }: {
@@ -32,6 +33,8 @@ export function CheckInRow({
   person: PersonRow;
   /** The meeting's delay choices, offered when marked Late. */
   delayOptions: number[];
+  /** The meeting's length, which a Late check-in's minutes stay under. */
+  durationMinutes: number;
   /** Why the last tap didn't save, or null. */
   failed: ApiErrorCode | null;
   onMark: (actual: Mark["actual"] | null, lateMinutes: number | null) => void;
@@ -92,6 +95,7 @@ export function CheckInRow({
           inviteeId={person.inviteeId}
           name={person.fullName}
           options={delayOptions}
+          durationMinutes={durationMinutes}
           value={person.mark.lateMinutes}
           onChange={(minutes) => onMark("late", minutes)}
         />

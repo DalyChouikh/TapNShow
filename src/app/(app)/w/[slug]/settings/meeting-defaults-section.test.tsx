@@ -20,8 +20,11 @@ const defaults = {
   reminderGoingHours: 2,
 };
 
-function setup(workspace = workspaceFixture) {
-  let current = { ...defaults };
+function setup(
+  workspace = workspaceFixture,
+  initial: Partial<typeof defaults> = {},
+) {
+  let current = { ...defaults, ...initial };
   const fetchMock = routeFetch({
     [`GET ${path}`]: () => new Response(JSON.stringify(current)),
     [`PATCH ${path}`]: (init) => {
@@ -29,7 +32,9 @@ function setup(workspace = workspaceFixture) {
       return new Response(JSON.stringify({ ok: true }));
     },
   });
-  renderWithProviders(<MeetingDefaultsSection workspace={workspace} />);
+  renderWithProviders(<MeetingDefaultsSection workspace={workspace} />, {
+    toaster: true,
+  });
   const patches = () =>
     fetchMock.mock.calls
       .filter(([, init]) => init?.method === "PATCH")
@@ -44,6 +49,55 @@ describe("MeetingDefaultsSection", () => {
       await screen.findByRole("button", { name: "20 min" }),
     );
     expect(patches()).toEqual([{ delayOptions: [5, 10, 15, 20, 30] }]);
+  });
+
+  describe("late choices shorter than the default length (#400)", () => {
+    const lateBy = async () => screen.findByRole("group", { name: "Late by" });
+    const lengths = () =>
+      screen.getByRole("group", { name: "Default duration" });
+
+    it("offers only the late choices shorter than the default length", async () => {
+      setup(workspaceFixture, {
+        durationMinutes: 30,
+        delayOptions: [5, 10, 15],
+      });
+      const group = await lateBy();
+      for (const minutes of [5, 10, 15, 20]) {
+        expect(
+          within(group).getByRole("button", { name: `${minutes} min` }),
+        ).toBeInTheDocument();
+      }
+      for (const minutes of [30, 45, 60]) {
+        expect(
+          within(group).queryByRole("button", { name: `${minutes} min` }),
+        ).toBeNull();
+      }
+    });
+
+    it("a shorter default length saves the late choices that fit in the same change, and says so", async () => {
+      const patches = setup();
+      await lateBy();
+      await userEvent.click(
+        within(lengths()).getByRole("button", { name: "30 min" }),
+      );
+      expect(patches()).toEqual([
+        { durationMinutes: 30, delayOptions: [5, 10, 15] },
+      ]);
+      expect(
+        await screen.findByText(
+          "Removed the late choice 30 min: a late time must be shorter than the meeting.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("saves only the length when every late choice still fits", async () => {
+      const patches = setup();
+      await lateBy();
+      await userEvent.click(
+        within(lengths()).getByRole("button", { name: "2 h" }),
+      );
+      expect(patches()).toEqual([{ durationMinutes: 120 }]);
+    });
   });
 
   it("hides delays outside attendance mode", async () => {

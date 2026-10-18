@@ -44,6 +44,31 @@ describe("fromDatabaseError", () => {
     expect(JSON.stringify(await unknown.json())).not.toContain("10.0.0.1");
   });
 
+  it("names a late time that isn't shorter than the meeting (#400), whichever table refused it", async () => {
+    for (const constraint of [
+      "meetings_delays_fit",
+      "workspaces_default_delays_fit",
+    ]) {
+      const response = fromDatabaseError({
+        code: "23514",
+        message: `new row for relation "x" violates check constraint "${constraint}"`,
+      });
+      expect(response.status).toBe(409);
+      expect(await response.json()).toEqual({
+        error: { code: "late_too_long" },
+      });
+    }
+  });
+
+  it("keeps other check constraints as invalid_input", async () => {
+    const response = fromDatabaseError({
+      code: "23514",
+      message:
+        'new row for relation "meetings" violates check constraint "meetings_duration_minutes_check"',
+    });
+    expect(await response.json()).toEqual({ error: { code: "invalid_input" } });
+  });
+
   it("maps an untranslatable character (22P05) to invalid_input", async () => {
     const response = fromDatabaseError({
       code: "22P05",

@@ -14,6 +14,7 @@ import {
   DELAY_OPTIONS_MAX,
   FOOTER_NOTE_MAX,
 } from "@/config/meetings";
+import { delayChoices } from "@/lib/meetings/late";
 import {
   REMINDER_GOING_CHOICES,
   REMINDER_GOING_DEFAULT,
@@ -28,6 +29,7 @@ import {
   type ResponsesErrors,
   type ResponsesValues,
 } from "./responses-form";
+import { StepSaveError } from "./step-save-error";
 import { WizardFooter } from "./wizard-footer";
 import { stepAfter, stepBefore, type WizardStepProps } from "./wizard-steps";
 
@@ -61,6 +63,7 @@ export function ResponsesStep({
     deadlineDate: deadline?.date ?? null,
     deadlineTime: deadline?.time ?? null,
     timezone: meeting.timezone,
+    durationMinutes: meeting.durationMinutes,
     reminderPendingHours: meeting.reminderPendingHours,
     reminderGoingHours: meeting.reminderGoingHours,
   });
@@ -103,6 +106,10 @@ export function ResponsesStep({
     ? utcToZonedParts(meeting.startsAt, meeting.timezone).date
     : undefined;
   const answers = values.responseMode !== "announcement";
+  // Only late choices shorter than the meeting (#400); none for a meeting that short.
+  const choices = delayChoices(meeting.durationMinutes);
+  const delaysError =
+    choices.length === 0 ? "tooShortForLate" : errors.delayOptions;
   return (
     <div className="flex flex-col gap-5">
       <SegmentedControl
@@ -130,22 +137,26 @@ export function ResponsesStep({
           aria-describedby="delays-hint"
         >
           <legend className="text-sm font-bold">{t("responses.delays")}</legend>
-          <div className="flex flex-wrap gap-2">
-            {DELAY_OPTION_CHOICES.map((minutes) => (
-              <Chip
-                key={minutes}
-                disabled={editing}
-                pressed={values.delayOptions.includes(minutes)}
-                onPressedChange={() => toggleDelay(minutes)}
-              >
-                {t("details.minutes", { count: minutes })}
-              </Chip>
-            ))}
-          </div>
+          {choices.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {choices.map((minutes) => (
+                <Chip
+                  key={minutes}
+                  disabled={editing}
+                  pressed={values.delayOptions.includes(minutes)}
+                  onPressedChange={() => toggleDelay(minutes)}
+                >
+                  {t("details.minutes", { count: minutes })}
+                </Chip>
+              ))}
+            </div>
+          ) : null}
           <p id="delays-hint" className="text-sm text-muted-ink">
-            {errors.delayOptions ? (
+            {delaysError ? (
               <strong className="text-ink">
-                {t(`errors.${errors.delayOptions}`)}
+                {t(`errors.${delaysError}`, {
+                  minutes: DELAY_OPTION_CHOICES[0],
+                })}
               </strong>
             ) : (
               t("responses.delaysHint", { max: DELAY_OPTIONS_MAX })
@@ -233,11 +244,7 @@ export function ResponsesStep({
           />
         </>
       ) : null}
-      {saver.failed ? (
-        <p role="alert" className="font-bold">
-          {t("errors.saveFailed")}
-        </p>
-      ) : null}
+      <StepSaveError error={saver.error} />
       <WizardFooter
         backLabel={t("back")}
         onBack={back}

@@ -60,6 +60,7 @@ export const API_ERROR_CODES = [
   "workspace_seats_limit_reached",
   "platform_owner",
   "sending_suspended",
+  "late_too_long",
 ] as const;
 
 /** An API error code. */
@@ -125,6 +126,7 @@ export const API_ERROR_STATUS: Record<ApiErrorCode, number> = {
   workspace_seats_limit_reached: 409,
   platform_owner: 409,
   sending_suspended: 409,
+  late_too_long: 409,
 };
 
 /** Body of every non-2xx API response. */

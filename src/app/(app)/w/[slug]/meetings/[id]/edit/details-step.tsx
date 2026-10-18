@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { useState } from "react";
 import { Chip } from "@/components/ui/chip";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -23,17 +23,27 @@ import {
 import { durationText, utcToZonedParts } from "@/lib/meetings/format";
 import { locationModeSchema } from "@/shared/api/meeting-settings";
 import {
+  delaysRemoved,
   detailsPatch,
   validateDetails,
   type DetailsErrors,
   type DetailsValues,
 } from "./details-form";
+import { StepSaveError } from "./step-save-error";
 import { WizardFooter } from "./wizard-footer";
 import { stepAfter, type WizardStepProps } from "./wizard-steps";
 
 /** Step 1: title, when, duration, where, agenda (spec §7.2). */
-export function DetailsStep({ meeting, steps, goTo, saver }: WizardStepProps) {
+export function DetailsStep({
+  meeting,
+  steps,
+  goTo,
+  mode,
+  saver,
+}: WizardStepProps) {
   const t = useTranslations("Wizard");
+  const format = useFormatter();
+  const editing = mode === "edit";
   const after = stepAfter(steps, "details");
   const parts = meeting.startsAt
     ? utcToZonedParts(meeting.startsAt, meeting.timezone)
@@ -58,17 +68,29 @@ export function DetailsStep({ meeting, steps, goTo, saver }: WizardStepProps) {
     key: K,
     value: DetailsValues[K],
   ) => setValues((current) => ({ ...current, [key]: value }));
-  const saveQuietly = () => saver.save(detailsPatch(values));
+  // A late time is shorter than the meeting (#400): a draft drops the late choices a shorter
+  // length leaves out; a sent meeting's are fixed, so its length can't go below them.
+  const draftDelays = editing ? [] : meeting.delayOptions;
+  const lockedDelays = editing ? meeting.delayOptions : [];
+  const saveQuietly = () => saver.save(detailsPatch(values, draftDelays));
   const next = () => {
-    const found = validateDetails(values, new Date());
+    const found = validateDetails(values, new Date(), lockedDelays);
     setErrors(found);
     if (Object.keys(found).length === 0 && after) {
-      saver.save(detailsPatch(values), () => goTo(after));
+      saver.save(detailsPatch(values, draftDelays), () => goTo(after));
     }
   };
+  const removed =
+    meeting.responseMode === "attendance"
+      ? delaysRemoved(values, draftDelays)
+      : [];
   const today = utcToZonedParts(new Date().toISOString(), values.timezone).date;
   const error = (key: keyof DetailsErrors) =>
-    errors[key] ? t(`errors.${errors[key]}`) : undefined;
+    errors[key]
+      ? t(`errors.${errors[key]}`, {
+          minutes: Math.max(0, ...lockedDelays),
+        })
+      : undefined;
   const hoursLabel = (minutes: number) =>
     durationText(minutes, {
       minutes: (count) => t("details.minutes", { count }),
@@ -162,6 +184,23 @@ export function DetailsStep({ meeting, steps, goTo, saver }: WizardStepProps) {
             }
           />
         ) : null}
+        {!customDuration && errors.durationMinutes ? (
+          <p role="alert" className="text-sm font-bold">
+            {error("durationMinutes")}
+          </p>
+        ) : null}
+        {removed.length > 0 ? (
+          <p className="text-sm text-muted-ink">
+            {t("details.delaysRemoved", {
+              count: removed.length,
+              list: format.list(
+                removed.map((minutes) =>
+                  t("details.minutes", { count: minutes }),
+                ),
+              ),
+            })}
+          </p>
+        ) : null}
       </fieldset>
       <SegmentedControl
         label={t("details.where")}
@@ -221,11 +260,7 @@ export function DetailsStep({ meeting, steps, goTo, saver }: WizardStepProps) {
         onChange={(agenda) => set("agendaMd", agenda)}
         onBlur={saveQuietly}
       />
-      {saver.failed ? (
-        <p role="alert" className="font-bold">
-          {t("errors.saveFailed")}
-        </p>
-      ) : null}
+      <StepSaveError error={saver.error} />
       <WizardFooter
         backLabel={t("cancel")}
         onBack={() => {

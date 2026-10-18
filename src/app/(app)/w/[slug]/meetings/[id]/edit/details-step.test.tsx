@@ -6,6 +6,7 @@ import { workspaceFixture } from "@/test/fixtures/me";
 import { meetingFixture } from "@/test/fixtures/meetings";
 import { renderWithProviders } from "@/test/render";
 import { StepHarness } from "@/test/wizard";
+import type { Meeting } from "@/shared/api/meetings";
 import { DetailsStep } from "./details-step";
 import { EDIT_STEPS, WIZARD_STEPS } from "./wizard-steps";
 
@@ -15,7 +16,10 @@ const path = `/api/workspaces/robotics-cd34/meetings/${meetingFixture.id}`;
 const blank = { ...meetingFixture, title: "", startsAt: null };
 const sent = { ...meetingFixture, status: "scheduled" as const };
 
-function setup(mode: "draft" | "edit" = "draft") {
+function setup(
+  mode: "draft" | "edit" = "draft",
+  meeting: Meeting = mode === "edit" ? sent : blank,
+) {
   const fetchMock = routeFetch({
     [`PATCH ${path}`]: (init) =>
       new Response(
@@ -28,7 +32,7 @@ function setup(mode: "draft" | "edit" = "draft") {
     <StepHarness
       Step={DetailsStep}
       slug="robotics-cd34"
-      meeting={mode === "edit" ? sent : blank}
+      meeting={meeting}
       mode={mode}
       workspace={workspaceFixture}
       steps={mode === "edit" ? EDIT_STEPS : WIZARD_STEPS}
@@ -102,5 +106,56 @@ describe("DetailsStep", () => {
       JSON.parse(sessionStorage.getItem(`tn:edit:${sent.id}`) ?? "null"),
     ).toEqual({ title: "Weekly sync, room change" });
     sessionStorage.clear();
+  });
+
+  describe("the length and the late choices (#400)", () => {
+    const next = (step: string) =>
+      userEvent.click(screen.getByRole("button", { name: `Next: ${step}` }));
+
+    it("a shorter draft says which late choices go, and saves only the ones that fit", async () => {
+      const { goTo, patches } = setup("draft", meetingFixture);
+      expect(screen.queryByText(/Removes the late/)).toBeNull();
+      await userEvent.click(screen.getByRole("button", { name: "30 min" }));
+      expect(
+        screen.getByText(
+          "Removes the late choice 30 min: a late time must be shorter than the meeting.",
+        ),
+      ).toBeInTheDocument();
+      await next("Audience");
+      await vi.waitFor(() => expect(goTo).toHaveBeenCalledWith("audience"));
+      expect(patches().at(-1)).toMatchObject({
+        durationMinutes: 30,
+        delayOptions: [5, 10, 15],
+      });
+    });
+
+    it("names several late choices in one sentence", async () => {
+      setup("draft", { ...meetingFixture, delayOptions: [5, 30, 45] });
+      await userEvent.click(screen.getByRole("button", { name: "30 min" }));
+      expect(
+        screen.getByText(
+          "Removes the late choices 30 min and 45 min: a late time must be shorter than the meeting.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("says nothing for a meeting without late answers", async () => {
+      setup("draft", { ...meetingFixture, responseMode: "rsvp" });
+      await userEvent.click(screen.getByRole("button", { name: "30 min" }));
+      expect(screen.queryByText(/Removes the late/)).toBeNull();
+    });
+
+    it("refuses a sent meeting's length its fixed late choices don't fit, and keeps it", async () => {
+      const { goTo } = setup("edit");
+      await userEvent.click(screen.getByRole("button", { name: "30 min" }));
+      await next("Answers");
+      expect(
+        screen.getByText(
+          "Must be longer than 30 min: the late choices go up to 30 min and can't change once sent.",
+        ),
+      ).toBeInTheDocument();
+      expect(goTo).not.toHaveBeenCalled();
+      sessionStorage.clear();
+    });
   });
 });

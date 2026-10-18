@@ -66,7 +66,7 @@ describe("ResponsesStep", () => {
   });
 
   it("needs a delay, and ignores a seventh one", async () => {
-    setup();
+    setup("draft", { ...meetingFixture, durationMinutes: 90 });
     await userEvent.click(screen.getByRole("button", { name: "20 min" }));
     await userEvent.click(screen.getByRole("button", { name: "45 min" }));
     const sixty = screen.getByRole("button", { name: "60 min" });
@@ -79,6 +79,42 @@ describe("ResponsesStep", () => {
     }
     await next();
     expect(screen.getByText("Pick at least one delay.")).toBeInTheDocument();
+  });
+
+  it("offers only late choices shorter than the meeting (#400)", () => {
+    setup("draft", {
+      ...meetingFixture,
+      durationMinutes: 30,
+      delayOptions: [5, 10, 15],
+    });
+    for (const minutes of [5, 10, 15, 20]) {
+      expect(
+        screen.getByRole("button", { name: `${minutes} min` }),
+      ).toBeInTheDocument();
+    }
+    for (const minutes of [30, 45, 60]) {
+      expect(
+        screen.queryByRole("button", { name: `${minutes} min` }),
+      ).toBeNull();
+    }
+    expect(
+      screen.getByText("Pick up to 6. Each is shorter than the meeting."),
+    ).toBeInTheDocument();
+  });
+
+  it("says a meeting too short for any late choice needs to be longer, and saves nothing", async () => {
+    const { patches } = setup("draft", {
+      ...meetingFixture,
+      durationMinutes: 5,
+      delayOptions: [],
+    });
+    const message =
+      "Too short for late answers: make the meeting longer than 5 min, or pick Going / not.";
+    expect(screen.getByText(message)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "5 min" })).toBeNull();
+    await next();
+    expect(screen.getByText(message)).toBeInTheDocument();
+    expect(patches()).toEqual([]);
   });
 
   it("keeps the deadline before the start, on the time field", async () => {

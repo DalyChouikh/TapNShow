@@ -285,7 +285,8 @@
     "reminders_unavailable": "Reminders aren't available right now.",
     "workspace_seats_limit_reached": "You're in the most workspaces allowed. Leave one to join this one.",
     "platform_owner": "You run TapNShow's admin area. Hand that role to someone else before deleting your account.",
-    "sending_suspended": "Sending is paused while TapNShow reviews reports about this workspace."
+    "sending_suspended": "Sending is paused while TapNShow reviews reports about this workspace.",
+    "late_too_long": "A late time must be shorter than the meeting."
   },
   "Auth": {
     "title": "Sign in to {appName}",
@@ -514,7 +515,8 @@
       "reminders": "Reminders",
       "remindersValue": "{pending} · {going}",
       "remindPendingValue": "{hours, select, off {No reminder before the deadline} other {{hours} h before the deadline}}",
-      "remindGoingValue": "{hours, select, off {no reminder before the start} other {{hours} h before the start}}"
+      "remindGoingValue": "{hours, select, off {no reminder before the start} other {{hours} h before the start}}",
+      "delaysRemoved": "{count, plural, one {Removed the late choice {list}} other {Removed the late choices {list}}}: a late time must be shorter than the meeting."
     }
   },
   "WorkspaceHome": {
@@ -1012,7 +1014,8 @@
       "agenda": "Agenda (optional)",
       "agendaHint": "Markdown: **bold**, *italic*, - lists, [links](https://…)",
       "onlinePlace": "Where online?",
-      "onlinePlacePlaceholder": "Club Discord, Meetings voice channel"
+      "onlinePlacePlaceholder": "Club Discord, Meetings voice channel",
+      "delaysRemoved": "{count, plural, one {Removes the late choice {list}} other {Removes the late choices {list}}}: a late time must be shorter than the meeting."
     },
     "responses": {
       "mode": "How do people answer?",
@@ -1021,7 +1024,7 @@
       "attendance": "Going / late / absent",
       "announcementHint": "An announcement: the email has no answer buttons.",
       "delays": "Late by",
-      "delaysHint": "Pick up to {max}.",
+      "delaysHint": "Pick up to {max}. Each is shorter than the meeting.",
       "reasonRequired": "Ask for a reason",
       "reasonRequiredRsvp": "Ask for a reason when not going",
       "comments": "Allow a comment",
@@ -1047,7 +1050,9 @@
       "delaysRequired": "Pick at least one delay.",
       "deadlineAfterStart": "Must be before the meeting starts.",
       "saveFailed": "Couldn't save. Check your connection and try again.",
-      "onlineRequired": "Say where online, or add a link."
+      "onlineRequired": "Say where online, or add a link.",
+      "tooShortForLate": "Too short for late answers: make the meeting longer than {minutes} min, or pick Going / not.",
+      "lateLongerThanMeeting": "Must be longer than {minutes} min: the late choices go up to {minutes} min and can't change once sent."
     },
     "review": {
       "details": "Details",
@@ -1279,7 +1284,7 @@
       "lateChip": "{minutes} min",
       "lateOther": "Other",
       "lateCustom": "Minutes late",
-      "lateInvalid": "Enter 1 to 240 minutes."
+      "lateInvalid": "Enter 1 to {max} minutes."
     },
     "pausedSuspended": "Sending is paused while TapNShow reviews reports about this workspace."
   },

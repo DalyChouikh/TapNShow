@@ -22,13 +22,13 @@ export function useStepSaver(
         onSaved?.();
       },
       pending: false,
-      failed: false,
+      error: null,
     };
   }
   return {
     save: (patch, onSaved) =>
       update.mutate(patch, { onSuccess: () => onSaved?.() }),
     pending: update.isPending,
-    failed: update.isError,
+    error: update.error,
   };
 }
