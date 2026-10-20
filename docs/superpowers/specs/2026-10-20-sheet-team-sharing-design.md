@@ -119,6 +119,23 @@ Google account as the sheet's account; the Owner's Outlook test inbox as a non-G
    decides whether removal must come before revocation, which this design assumes either way).
 4. The exact text and sender of Google's share email.
 
+**Spike results (2026-10-20, Owner-approved, on the platform owner's production test sheet, removed
+afterwards; script `.superpowers/scripts/spike-sheet-share.ts`):**
+
+| Call | Google's answer |
+|---|---|
+| `permissions.list` with `drive.file` | works (the file listed only its owner) |
+| `permissions.create` (reader) for the Owner's non-Gmail test address | 200, a `user` permission, listed afterwards |
+| `permissions.create` again for the same address | 200 with **the same permission id** (no duplicate), but **Google emailed the person a second time** (the Owner received 2 emails) |
+| `permissions.delete` | 204 |
+| `permissions.delete` of an already removed permission | 404 `notFound` |
+
+So: TapNShow never calls `permissions.create` for an address `permissions.list` already shows; it
+writes its intent before calling Google, so a crash between Google and the database is recovered by
+adopting the listed permission, not by sharing again; a 404 on delete means already removed. Whether a
+person without a Google account can open a shared file wasn't tested (the share was removed at once);
+the wording never promises it.
+
 ## 5. How it works (decided parts)
 
 **Desired state, one rule in one place:** a SQL function gives, for a workspace with a sheet, the
