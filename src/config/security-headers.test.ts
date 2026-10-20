@@ -111,8 +111,8 @@ describe("contentSecurityPolicy (spec §11 M9)", () => {
     );
   });
 
-  it("is report-only until the launch task enforces it", () => {
-    expect(CSP_HEADER).toBe("Content-Security-Policy-Report-Only");
+  it("is enforced (spec §11 M9: the launch task, after 3 clean days of report-only)", () => {
+    expect(CSP_HEADER).toBe("Content-Security-Policy");
   });
 });
 
