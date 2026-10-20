@@ -1,6 +1,8 @@
+import { CSP_HEADER } from "../src/config/security-headers";
 import { expect, test } from "./helpers/test";
 
-const CSP = "content-security-policy-report-only";
+/** Playwright reports header names in lower case. */
+const CSP = CSP_HEADER.toLowerCase();
 
 test("pages carry a fresh nonce CSP and the static headers", async ({
   request,

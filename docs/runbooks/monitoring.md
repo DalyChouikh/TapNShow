@@ -83,10 +83,9 @@ already in every browser that opens the app).
 
 - Every page gets a fresh nonce from `src/proxy.ts`; the policy is built in
   `src/config/security-headers.ts` (`contentSecurityPolicy`).
-- Mode: `CSP_HEADER` in `src/config/security-headers.ts`.
+- Mode: `CSP_HEADER` in `src/config/security-headers.ts`, **enforced since 2026-10-20**.
+  - `Content-Security-Policy`: violations are blocked (and reported). This is the mode now.
   - `Content-Security-Policy-Report-Only`: violations are reported, nothing is blocked.
-  - `Content-Security-Policy`: violations are blocked (and reported).
-  - Going back to report-only is that one line, then a deploy.
 - Reports go to Sentry's security endpoint for the project (built from `NEXT_PUBLIC_SENTRY_DSN` by
   `sentrySecurityEndpoint`). Chromium uses `report-to` + the `Reporting-Endpoints` header
   (batched, up to about a minute late); Firefox and Safari use `report-uri`.
@@ -108,14 +107,25 @@ events a month) they could crowd out real errors. In Sentry → the project → 
 Check: send a report whose `blocked-uri` is `chrome-extension://abc` to the security endpoint; it
 must not appear in Sentry.
 
-### Before enforcing (M9 launch task)
+### If a page breaks because of the CSP
+
+1. Set `CSP_HEADER` back to `"Content-Security-Policy-Report-Only"` (and its pin in
+   `src/config/security-headers.test.ts`), then merge: production stops blocking at the next
+   deploy.
+2. Read the reports in Sentry (Issues, `event.type:csp`) and fix the cause.
+3. Enforce again with the same bar as the first time (below).
+
+### The bar for enforcing
 
 - e2e is clean on every page (the e2e console guard fails on any violation).
 - Preview and production have run report-only for at least 3 days with zero reports in Sentry
-  (count them per source first).
-- A report found restarts the 3 days after its fix is live. 2026-10-16: the manifest on a
-  deployment's own URL (behind Vercel's login) was refused; fixed by linking it with credentials
-  (`src/app/layout.tsx`); the 3 days run from 2026-10-16 19:46 UTC.
+  (count them per source first, and check Sentry's dropped events for CSP reports).
+- A report found restarts the 3 days after its fix is live.
+
+How it went the first time (M9): report-only from 2026-10-15 22:50 UTC. One report on 2026-10-16:
+the manifest on a deployment's own URL (behind Vercel's login) was refused; fixed by linking it
+with credentials (`src/app/layout.tsx`), live at 19:46 UTC. Checked 2026-10-20 ~10:35 UTC: zero
+CSP reports since then on production and preview, and none dropped. Enforced 2026-10-20.
 
 ## Firewall rate limit (Vercel WAF, the outer guard)
 

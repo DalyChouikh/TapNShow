@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { describe, expect, it, vi } from "vitest";
+import { CSP_HEADER } from "@/config/security-headers";
 
 const forwarded = vi.hoisted(() => ({ headers: null as Headers | null }));
 vi.mock("@/server/supabase/proxy-session", async () => {
@@ -21,10 +22,10 @@ describe("proxy (CSP nonce)", () => {
     const nonceB = forwarded.headers?.get("x-nonce");
     expect(nonceA).toMatch(/^[A-Za-z0-9+/=]{24,}$/);
     expect(nonceB).not.toBe(nonceA);
-    const policy = first.headers.get("Content-Security-Policy-Report-Only");
+    const policy = first.headers.get(CSP_HEADER);
     expect(policy).toContain(`'nonce-${nonceA}'`);
-    expect(forwarded.headers?.get("Content-Security-Policy-Report-Only")).toBe(
-      second.headers.get("Content-Security-Policy-Report-Only"),
+    expect(forwarded.headers?.get(CSP_HEADER)).toBe(
+      second.headers.get(CSP_HEADER),
     );
     // No DSN in tests: no report address, so no report directives and no Reporting-Endpoints.
     expect(policy).not.toContain("report-");
