@@ -20,6 +20,26 @@ export const SHEET_RETRYABLE_REASONS: ReadonlySet<SheetPauseReason> = new Set([
   "drive_full",
 ]);
 
+/** Where one person's share stands (`sheet_shares.state`). Twin: `public.sheet_share_state`. */
+export const SHEET_SHARE_STATES = [
+  "pending",
+  "sharing",
+  "shared",
+  "external",
+  "refused",
+] as const;
+/** Where one person's share stands. */
+export type SheetShareState = (typeof SHEET_SHARE_STATES)[number];
+
+/** Why someone can't open the sheet (`sheet_shares.reason`). Twin: `public.sheet_share_reason`. */
+export const SHEET_SHARE_REASONS = [
+  "refused",
+  "too_many",
+  "removed_in_drive",
+] as const;
+/** Why someone can't open the sheet. */
+export type SheetShareReason = (typeof SHEET_SHARE_REASONS)[number];
+
 /** One TapNShow tab, for links that open a meeting's year (`sheet_tabs`). */
 export const sheetTabSchema = z.object({
   year: z.number().int(),
