@@ -23,6 +23,40 @@ describe.each([
 });
 
 describe("privacy policy", () => {
+  const section = (id: string) =>
+    privacyPolicy.sections.find((candidate) => candidate.id === id)?.body ?? "";
+
+  it("says with whom Google data is shared, right after what Google data is used for (Google's review, 2026-10-20)", () => {
+    const ids = privacyPolicy.sections.map((candidate) => candidate.id);
+    expect(ids.indexOf("google-sharing")).toBe(ids.indexOf("google") + 1);
+    const body = section("google-sharing");
+    expect(body).toContain(
+      "We don't sell, rent or trade Google data, and we don't transfer or disclose it to anyone else, except:",
+    );
+    for (const recipient of [
+      "**People in your groups:**",
+      "**Our team:**",
+      "**The services that run TapNShow:**",
+      "**Google:**",
+      "**When the law requires it:**",
+      "**A new owner:**",
+    ]) {
+      expect(body).toContain(recipient);
+    }
+  });
+
+  it("affirms that Google Workspace data never trains AI or ML models", () => {
+    expect(section("google")).toContain(
+      "TapNShow does not use Google Workspace APIs (Gmail, Google Drive, Google Sheets), or any data received from them, to develop, improve or train AI or ML models, personalized or not.",
+    );
+  });
+
+  it("says how long a Google connection is kept and that Google is asked to remove access", () => {
+    expect(section("retention")).toContain(
+      "- Gmail and Google Sheets connections: until no workspace uses them any more. We then delete them and ask Google to remove TapNShow's access, unless someone else still uses that Google account in TapNShow.",
+    );
+  });
+
   it("states that Google data follows the Limited Use requirements", () => {
     const text = JSON.stringify(privacyPolicy);
     expect(text).toContain(
