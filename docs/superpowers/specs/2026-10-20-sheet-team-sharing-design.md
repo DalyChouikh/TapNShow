@@ -155,6 +155,18 @@ mark the workspace's shares as due. Every path that changes the team (create wor
 invite, role change, remove, leave, transfer, account deletion, workspace deletion) goes through
 these tables, so no route has to remember to call anything.
 
+**Per-person rules (the worker's planner; "listed" = in Drive's `permissions.list`):**
+
+- Wanted and listed: kept as is when TapNShow already holds that permission or it was a hand share
+  (`external`); adopted as TapNShow's when TapNShow had tried this address (`sharing`, `refused`), so
+  a crash between Google and the database never leads to a second share or a second email.
+- Wanted and not listed: shared (within the cap and the run's budget), except when TapNShow's own
+  share or a hand share has disappeared (`removed_in_drive`: removed by hand in Drive, never shared
+  again automatically) or a refusal's retry time hasn't come (at most once a day).
+- Not wanted (left the team, or became the sheet's account): TapNShow's own share is removed, then
+  the row is forgotten; hand shares are never removed.
+- Past the cap (`sheet_team_shares_max`): `too_many`, never shared.
+
 **Speed:** pg_cron calls `private.kick_dispatcher()` every minute (`tn-dispatch`), which starts a run
 when work is due; share work must count as due there and in the worker's claim, which is what makes
 "within about a minute" true. Routes that change the team may also call `scheduleWorkers(["sheets"])`

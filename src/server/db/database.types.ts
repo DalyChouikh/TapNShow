@@ -540,15 +540,34 @@ isOneToOne: false
       referencedColumns: ["workspace_id"]
     }
                   ]
-                },"sheet_syncs": {
+                },"sheet_shares": {
                   Row: {
-                    "alerted_at": string | null,"attempts": number,"connection_id": string | null,"create_key": string,"created_at": string,"created_by": string | null,"google_email": string,"google_sub": string,"last_error": string | null,"locked_until": string | null,"paused_at": string | null,"paused_reason": Database["public"]['Enums']["sheet_pause_reason"] | null,"retry_at": string,"run_id": string | null,"spreadsheet_id": string | null,"status": Database["public"]['Enums']["sheet_status"],"synced_at": string | null,"updated_at": string,"workspace_id": string
+                    "email": string,"id": string,"next_try_at": string | null,"permission_id": string | null,"reason": Database["public"]['Enums']["sheet_share_reason"] | null,"state": Database["public"]['Enums']["sheet_share_state"],"updated_at": string,"user_id": string | null,"workspace_id": string
                   }
                   Insert: {
-                    "alerted_at"?: string | null,"attempts"?: number,"connection_id"?: string | null,"create_key"?: string,"created_at"?: string,"created_by"?: string | null,"google_email": string,"google_sub": string,"last_error"?: string | null,"locked_until"?: string | null,"paused_at"?: string | null,"paused_reason"?: Database["public"]['Enums']["sheet_pause_reason"] | null,"retry_at"?: string,"run_id"?: string | null,"spreadsheet_id"?: string | null,"status"?: Database["public"]['Enums']["sheet_status"],"synced_at"?: string | null,"updated_at"?: string,"workspace_id": string
+                    "email": string,"id"?: string,"next_try_at"?: string | null,"permission_id"?: string | null,"reason"?: Database["public"]['Enums']["sheet_share_reason"] | null,"state"?: Database["public"]['Enums']["sheet_share_state"],"updated_at"?: string,"user_id"?: string | null,"workspace_id": string
                   }
                   Update: {
-                    "alerted_at"?: string | null,"attempts"?: number,"connection_id"?: string | null,"create_key"?: string,"created_at"?: string,"created_by"?: string | null,"google_email"?: string,"google_sub"?: string,"last_error"?: string | null,"locked_until"?: string | null,"paused_at"?: string | null,"paused_reason"?: Database["public"]['Enums']["sheet_pause_reason"] | null,"retry_at"?: string,"run_id"?: string | null,"spreadsheet_id"?: string | null,"status"?: Database["public"]['Enums']["sheet_status"],"synced_at"?: string | null,"updated_at"?: string,"workspace_id"?: string
+                    "email"?: string,"id"?: string,"next_try_at"?: string | null,"permission_id"?: string | null,"reason"?: Database["public"]['Enums']["sheet_share_reason"] | null,"state"?: Database["public"]['Enums']["sheet_share_state"],"updated_at"?: string,"user_id"?: string | null,"workspace_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "sheet_shares_workspace_id_fkey"
+      columns: ["workspace_id"]
+isOneToOne: false
+      referencedRelation: "sheet_syncs"
+      referencedColumns: ["workspace_id"]
+    }
+                  ]
+                },"sheet_syncs": {
+                  Row: {
+                    "alerted_at": string | null,"attempts": number,"connection_id": string | null,"create_key": string,"created_at": string,"created_by": string | null,"google_email": string,"google_sub": string,"last_error": string | null,"locked_until": string | null,"paused_at": string | null,"paused_reason": Database["public"]['Enums']["sheet_pause_reason"] | null,"retry_at": string,"run_id": string | null,"shares_due_at": string | null,"shares_locked_until": string | null,"shares_run_id": string | null,"shares_version": number,"spreadsheet_id": string | null,"status": Database["public"]['Enums']["sheet_status"],"synced_at": string | null,"updated_at": string,"workspace_id": string
+                  }
+                  Insert: {
+                    "alerted_at"?: string | null,"attempts"?: number,"connection_id"?: string | null,"create_key"?: string,"created_at"?: string,"created_by"?: string | null,"google_email": string,"google_sub": string,"last_error"?: string | null,"locked_until"?: string | null,"paused_at"?: string | null,"paused_reason"?: Database["public"]['Enums']["sheet_pause_reason"] | null,"retry_at"?: string,"run_id"?: string | null,"shares_due_at"?: string | null,"shares_locked_until"?: string | null,"shares_run_id"?: string | null,"shares_version"?: number,"spreadsheet_id"?: string | null,"status"?: Database["public"]['Enums']["sheet_status"],"synced_at"?: string | null,"updated_at"?: string,"workspace_id": string
+                  }
+                  Update: {
+                    "alerted_at"?: string | null,"attempts"?: number,"connection_id"?: string | null,"create_key"?: string,"created_at"?: string,"created_by"?: string | null,"google_email"?: string,"google_sub"?: string,"last_error"?: string | null,"locked_until"?: string | null,"paused_at"?: string | null,"paused_reason"?: Database["public"]['Enums']["sheet_pause_reason"] | null,"retry_at"?: string,"run_id"?: string | null,"shares_due_at"?: string | null,"shares_locked_until"?: string | null,"shares_run_id"?: string | null,"shares_version"?: number,"spreadsheet_id"?: string | null,"status"?: Database["public"]['Enums']["sheet_status"],"synced_at"?: string | null,"updated_at"?: string,"workspace_id"?: string
                   }
                   Relationships: [
                     {
@@ -1031,7 +1050,7 @@ isOneToOne: false
                            }
           }
           Enums: {
-            "attendance_actual": "present"|"late"|"absent","audience_mode": "include"|"exclude","calendar_state": "none"|"added","connection_status": "active"|"broken","invitee_email_status": "queued"|"sent"|"skipped"|"failed"|"unknown","job_kind": "invite"|"calendar_confirm"|"update"|"cancel"|"reminder","job_status": "pending"|"processing"|"done"|"failed"|"paused","location_mode": "in_person"|"online"|"hybrid","meeting_change_kind": "edit"|"cancel","meeting_status": "draft"|"scheduled"|"cancelled","platform_event_kind": "auto_suspended"|"suspended"|"lifted"|"report"|"report_reviewed"|"admin_invited"|"admin_joined"|"admin_removed"|"invite_revoked"|"owner_set"|"platform_email_cap"|"worker_failing","platform_role": "owner"|"admin","push_kind": "invite"|"update"|"cancel"|"reminder","response_mode": "announcement"|"rsvp"|"attendance","response_status": "attending"|"late"|"absent"|"not_attending","sheet_pause_reason": "trashed"|"deleted"|"access_lost"|"full"|"drive_full","sheet_status": "active"|"paused","suspension_reason": "auto_reports"|"platform_admin","unsubscribe_via": "link"|"report","workspace_role": "owner"|"admin"|"viewer"
+            "attendance_actual": "present"|"late"|"absent","audience_mode": "include"|"exclude","calendar_state": "none"|"added","connection_status": "active"|"broken","invitee_email_status": "queued"|"sent"|"skipped"|"failed"|"unknown","job_kind": "invite"|"calendar_confirm"|"update"|"cancel"|"reminder","job_status": "pending"|"processing"|"done"|"failed"|"paused","location_mode": "in_person"|"online"|"hybrid","meeting_change_kind": "edit"|"cancel","meeting_status": "draft"|"scheduled"|"cancelled","platform_event_kind": "auto_suspended"|"suspended"|"lifted"|"report"|"report_reviewed"|"admin_invited"|"admin_joined"|"admin_removed"|"invite_revoked"|"owner_set"|"platform_email_cap"|"worker_failing","platform_role": "owner"|"admin","push_kind": "invite"|"update"|"cancel"|"reminder","response_mode": "announcement"|"rsvp"|"attendance","response_status": "attending"|"late"|"absent"|"not_attending","sheet_pause_reason": "trashed"|"deleted"|"access_lost"|"full"|"drive_full","sheet_share_reason": "refused"|"too_many"|"removed_in_drive","sheet_share_state": "pending"|"sharing"|"shared"|"external"|"refused","sheet_status": "active"|"paused","suspension_reason": "auto_reports"|"platform_admin","unsubscribe_via": "link"|"report","workspace_role": "owner"|"admin"|"viewer"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -1147,7 +1166,7 @@ export type CompositeTypes<
 export const Constants = {
   "public": {
           Enums: {
-            "attendance_actual": ["present", "late", "absent"],"audience_mode": ["include", "exclude"],"calendar_state": ["none", "added"],"connection_status": ["active", "broken"],"invitee_email_status": ["queued", "sent", "skipped", "failed", "unknown"],"job_kind": ["invite", "calendar_confirm", "update", "cancel", "reminder"],"job_status": ["pending", "processing", "done", "failed", "paused"],"location_mode": ["in_person", "online", "hybrid"],"meeting_change_kind": ["edit", "cancel"],"meeting_status": ["draft", "scheduled", "cancelled"],"platform_event_kind": ["auto_suspended", "suspended", "lifted", "report", "report_reviewed", "admin_invited", "admin_joined", "admin_removed", "invite_revoked", "owner_set", "platform_email_cap", "worker_failing"],"platform_role": ["owner", "admin"],"push_kind": ["invite", "update", "cancel", "reminder"],"response_mode": ["announcement", "rsvp", "attendance"],"response_status": ["attending", "late", "absent", "not_attending"],"sheet_pause_reason": ["trashed", "deleted", "access_lost", "full", "drive_full"],"sheet_status": ["active", "paused"],"suspension_reason": ["auto_reports", "platform_admin"],"unsubscribe_via": ["link", "report"],"workspace_role": ["owner", "admin", "viewer"]
+            "attendance_actual": ["present", "late", "absent"],"audience_mode": ["include", "exclude"],"calendar_state": ["none", "added"],"connection_status": ["active", "broken"],"invitee_email_status": ["queued", "sent", "skipped", "failed", "unknown"],"job_kind": ["invite", "calendar_confirm", "update", "cancel", "reminder"],"job_status": ["pending", "processing", "done", "failed", "paused"],"location_mode": ["in_person", "online", "hybrid"],"meeting_change_kind": ["edit", "cancel"],"meeting_status": ["draft", "scheduled", "cancelled"],"platform_event_kind": ["auto_suspended", "suspended", "lifted", "report", "report_reviewed", "admin_invited", "admin_joined", "admin_removed", "invite_revoked", "owner_set", "platform_email_cap", "worker_failing"],"platform_role": ["owner", "admin"],"push_kind": ["invite", "update", "cancel", "reminder"],"response_mode": ["announcement", "rsvp", "attendance"],"response_status": ["attending", "late", "absent", "not_attending"],"sheet_pause_reason": ["trashed", "deleted", "access_lost", "full", "drive_full"],"sheet_share_reason": ["refused", "too_many", "removed_in_drive"],"sheet_share_state": ["pending", "sharing", "shared", "external", "refused"],"sheet_status": ["active", "paused"],"suspension_reason": ["auto_reports", "platform_admin"],"unsubscribe_via": ["link", "report"],"workspace_role": ["owner", "admin", "viewer"]
           }
         }
 } as const
