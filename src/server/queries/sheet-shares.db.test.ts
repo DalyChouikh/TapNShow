@@ -297,7 +297,7 @@ describe("removing the team's access before letting go", () => {
       {
         permissionIds: ["perm1", "perm2"],
         emails: [],
-        revokeAfter: false,
+        releaseAfter: true,
         connectionId: connection.id,
         tokenUserId: owner.id,
         hasToken: true,
@@ -401,7 +401,7 @@ describe("removing the team's access before letting go", () => {
       {
         permissionIds: ["perm1"],
         emails: [],
-        revokeAfter: true,
+        releaseAfter: true,
         connectionId: null,
         tokenUserId: admin.id,
         hasToken: true,
@@ -412,6 +412,86 @@ describe("removing the team's access before letting go", () => {
 
 describe("finishing a cleanup", () => {
   const run = () => crypto.randomUUID();
+  const finishedSchema = z.object({
+    released: z
+      .object({ google_sub: z.string(), user_id: z.uuid() })
+      .loose()
+      .nullable(),
+    alert: z
+      .object({
+        email: z.string(),
+        workspace_name: z.string().nullable(),
+        account_email: z.string(),
+        left: z.number(),
+      })
+      .loose()
+      .nullable(),
+  });
+
+  /** Makes the workspace's one cleanup due, claims it and finishes it with `left` people left. */
+  async function finishCleanup(left: number) {
+    parkAllCleanups();
+    runLocalSql(
+      `update public.sheet_share_cleanups set retry_at = now() where workspace_id = '${workspace.id}'`,
+    );
+    const runId = run();
+    const [claimed] = z
+      .array(z.object({ id: z.uuid() }).loose())
+      .length(1)
+      .parse(
+        await serviceRpc("sheet_share_cleanup_claim", {
+          p_run: runId,
+          p_limit: 5,
+          p_lease_seconds: 60,
+        }),
+      );
+    return finishedSchema.parse(
+      await serviceRpc("sheet_share_cleanup_finish", {
+        p_id: claimed.id,
+        p_run: runId,
+        p_left: left,
+      }),
+    );
+  }
+
+  it("never releases the Google account of someone other than the person who turned the sheet off", async () => {
+    // The sheet stayed on the previous Owner's (now an Admin's) Google account.
+    const connection = await seedSharedSheet("admin-drive@example.test", admin);
+    await seedShare(workspace.id, {
+      userId: viewer.id,
+      email: viewer.email,
+      state: "shared",
+      permissionId: "perm1",
+    });
+    await owner.client.rpc("turn_off_sheet", { p_workspace: workspace.id });
+    expect((await cleanupsOf(workspace.id))[0].releaseAfter).toBe(false);
+    const finished = await finishCleanup(0);
+    expect(finished.released).toBeNull();
+    expect(await connectionExists(connection.id)).toBe(true);
+  });
+
+  it("revokes the token when its person deletes their account while the cleanup still runs", async () => {
+    const connection = await seedSharedSheet("admin-drive@example.test", admin);
+    await seedShare(workspace.id, {
+      userId: viewer.id,
+      email: viewer.email,
+      state: "shared",
+      permissionId: "perm1",
+    });
+    await owner.client.rpc("turn_off_sheet", { p_workspace: workspace.id });
+    const gone = await admin.client.rpc("delete_account", {
+      p_confirm: "confirm",
+    });
+    expect(gone.error).toBeNull();
+    expect(
+      (await adminClient().auth.admin.deleteUser(admin.id)).error,
+    ).toBeNull();
+    const finished = await finishCleanup(0);
+    expect(finished.released).toMatchObject({
+      google_sub: connection.sub,
+      user_id: admin.id,
+    });
+  });
 
   it("forgets the token, releases the Google account and returns what to revoke", async () => {
     const connection = await seedSharedSheet();
@@ -422,37 +502,9 @@ describe("finishing a cleanup", () => {
       permissionId: "perm1",
     });
     await owner.client.rpc("turn_off_sheet", { p_workspace: workspace.id });
-    parkAllCleanups();
-    runLocalSql(
-      `update public.sheet_share_cleanups set retry_at = now() where workspace_id = '${workspace.id}'`,
-    );
-    const runId = run();
-    const claimed = z
-      .array(
-        z.object({ id: z.uuid(), permission_ids: z.array(z.string()) }).loose(),
-      )
-      .parse(
-        await serviceRpc("sheet_share_cleanup_claim", {
-          p_run: runId,
-          p_limit: 5,
-          p_lease_seconds: 60,
-        }),
-      );
-    expect(claimed).toHaveLength(1);
-    expect(claimed[0].permission_ids).toEqual(["perm1"]);
-    const finished = z
-      .object({
-        released: z.object({ google_sub: z.string() }).loose().nullable(),
-        alert: z.null(),
-      })
-      .parse(
-        await serviceRpc("sheet_share_cleanup_finish", {
-          p_id: claimed[0].id,
-          p_run: runId,
-          p_left: 0,
-        }),
-      );
+    const finished = await finishCleanup(0);
     expect(finished.released?.google_sub).toBe(connection.sub);
+    expect(finished.alert).toBeNull();
     expect(await cleanupsOf(workspace.id)).toEqual([]);
     expect(await connectionExists(connection.id)).toBe(false);
   });
@@ -466,37 +518,7 @@ describe("finishing a cleanup", () => {
       permissionId: "perm1",
     });
     await owner.client.rpc("turn_off_sheet", { p_workspace: workspace.id });
-    parkAllCleanups();
-    runLocalSql(
-      `update public.sheet_share_cleanups set retry_at = now() where workspace_id = '${workspace.id}'`,
-    );
-    const runId = run();
-    const [claimed] = z.array(z.object({ id: z.uuid() }).loose()).parse(
-      await serviceRpc("sheet_share_cleanup_claim", {
-        p_run: runId,
-        p_limit: 5,
-        p_lease_seconds: 60,
-      }),
-    );
-    const finished = z
-      .object({
-        alert: z
-          .object({
-            email: z.string(),
-            workspace_name: z.string(),
-            account_email: z.string(),
-            left: z.number(),
-          })
-          .loose(),
-      })
-      .loose()
-      .parse(
-        await serviceRpc("sheet_share_cleanup_finish", {
-          p_id: claimed.id,
-          p_run: runId,
-          p_left: 2,
-        }),
-      );
+    const finished = await finishCleanup(2);
     expect(finished.alert).toMatchObject({
       email: owner.email,
       workspace_name: workspace.name,

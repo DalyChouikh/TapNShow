@@ -112,7 +112,7 @@ export async function cleanupsOf(workspaceId: string): Promise<
   Array<{
     permissionIds: string[];
     emails: string[];
-    revokeAfter: boolean;
+    releaseAfter: boolean;
     connectionId: string | null;
     tokenUserId: string;
     hasToken: boolean;
@@ -121,7 +121,7 @@ export async function cleanupsOf(workspaceId: string): Promise<
   const { data, error } = await adminClient()
     .from("sheet_share_cleanups")
     .select(
-      "permission_ids, emails, revoke_after, connection_id, token_user_id, refresh_token_encrypted",
+      "permission_ids, emails, release_after, connection_id, token_user_id, refresh_token_encrypted",
     )
     .eq("workspace_id", workspaceId)
     .order("created_at");
@@ -131,7 +131,7 @@ export async function cleanupsOf(workspaceId: string): Promise<
   return data.map((row) => ({
     permissionIds: [...row.permission_ids].sort(),
     emails: [...row.emails].sort(),
-    revokeAfter: row.revoke_after,
+    releaseAfter: row.release_after,
     connectionId: row.connection_id,
     tokenUserId: row.token_user_id,
     hasToken: row.refresh_token_encrypted.length > 0,

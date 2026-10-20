@@ -542,13 +542,13 @@ isOneToOne: false
                   ]
                 },"sheet_share_cleanups": {
                   Row: {
-                    "attempts": number,"connection_id": string | null,"created_at": string,"emails": (string)[],"give_up_at": string,"google_email": string,"google_sub": string,"id": string,"locked_until": string | null,"owner_user_id": string | null,"permission_ids": (string)[],"refresh_token_encrypted": string,"retry_at": string,"revoke_after": boolean,"run_id": string | null,"spreadsheet_id": string,"token_user_id": string,"workspace_id": string,"workspace_name": string | null
+                    "attempts": number,"connection_id": string | null,"created_at": string,"emails": (string)[],"give_up_at": string,"google_email": string,"google_sub": string,"id": string,"locked_until": string | null,"owner_user_id": string | null,"permission_ids": (string)[],"refresh_token_encrypted": string,"release_after": boolean,"retry_at": string,"run_id": string | null,"spreadsheet_id": string,"token_user_id": string,"workspace_id": string,"workspace_name": string | null
                   }
                   Insert: {
-                    "attempts"?: number,"connection_id"?: string | null,"created_at"?: string,"emails"?: (string)[],"give_up_at": string,"google_email": string,"google_sub": string,"id"?: string,"locked_until"?: string | null,"owner_user_id"?: string | null,"permission_ids"?: (string)[],"refresh_token_encrypted": string,"retry_at"?: string,"revoke_after": boolean,"run_id"?: string | null,"spreadsheet_id": string,"token_user_id": string,"workspace_id": string,"workspace_name"?: string | null
+                    "attempts"?: number,"connection_id"?: string | null,"created_at"?: string,"emails"?: (string)[],"give_up_at": string,"google_email": string,"google_sub": string,"id"?: string,"locked_until"?: string | null,"owner_user_id"?: string | null,"permission_ids"?: (string)[],"refresh_token_encrypted": string,"release_after"?: boolean,"retry_at"?: string,"run_id"?: string | null,"spreadsheet_id": string,"token_user_id": string,"workspace_id": string,"workspace_name"?: string | null
                   }
                   Update: {
-                    "attempts"?: number,"connection_id"?: string | null,"created_at"?: string,"emails"?: (string)[],"give_up_at"?: string,"google_email"?: string,"google_sub"?: string,"id"?: string,"locked_until"?: string | null,"owner_user_id"?: string | null,"permission_ids"?: (string)[],"refresh_token_encrypted"?: string,"retry_at"?: string,"revoke_after"?: boolean,"run_id"?: string | null,"spreadsheet_id"?: string,"token_user_id"?: string,"workspace_id"?: string,"workspace_name"?: string | null
+                    "attempts"?: number,"connection_id"?: string | null,"created_at"?: string,"emails"?: (string)[],"give_up_at"?: string,"google_email"?: string,"google_sub"?: string,"id"?: string,"locked_until"?: string | null,"owner_user_id"?: string | null,"permission_ids"?: (string)[],"refresh_token_encrypted"?: string,"release_after"?: boolean,"retry_at"?: string,"run_id"?: string | null,"spreadsheet_id"?: string,"token_user_id"?: string,"workspace_id"?: string,"workspace_name"?: string | null
                   }
                   Relationships: [
                     {

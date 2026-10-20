@@ -16,7 +16,8 @@ insert into private.app_limits (name, value) values ('sheet_share_cleanup_max_ho
 
 -- Access to remove from a file TapNShow is letting go of. No foreign key to the workspace or the
 -- sheet: it outlives both. It keeps its own sealed token copy (the connection can be deleted with
--- an account) until the removal is done, then the row and the copy go together.
+-- an account) until the removal is done, then the row and the copy go together. release_after:
+-- the connection's own user let it go (release_connection marks it), so finishing releases it.
 create table public.sheet_share_cleanups (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null,
@@ -30,7 +31,7 @@ create table public.sheet_share_cleanups (
   refresh_token_encrypted text not null,
   permission_ids text[] not null default '{}',
   emails text[] not null default '{}',
-  revoke_after boolean not null,
+  release_after boolean not null default false,
   attempts integer not null default 0 check (attempts >= 0),
   retry_at timestamptz not null default now(),
   give_up_at timestamptz not null,
@@ -48,9 +49,9 @@ grant all on table public.sheet_share_cleanups to service_role;
 
 -- Keeps the access TapNShow gave on a workspace's file to remove (its own shares, and addresses
 -- whose share Google may have made before the run recorded it), then forgets them on the sheet so
--- a later reconnect shares again. p_revoke: the connection is going (account deletion), so the
--- cleanup revokes the token when it is done.
-create function private.sheet_shares_retire(p_workspace uuid, p_revoke boolean)
+-- a later reconnect shares again. Whether the Google account is released afterwards is decided
+-- by release_connection alone (its own user's action), never here.
+create function private.sheet_shares_retire(p_workspace uuid)
 returns void
 language plpgsql
 security definer
@@ -80,13 +81,13 @@ begin
   end if;
   insert into public.sheet_share_cleanups (
     workspace_id, workspace_name, owner_user_id, spreadsheet_id, google_email, connection_id, google_sub,
-    token_user_id, refresh_token_encrypted, permission_ids, emails, revoke_after, give_up_at)
+    token_user_id, refresh_token_encrypted, permission_ids, emails, give_up_at)
   values (
     p_workspace,
     (select w.name from public.workspaces w where w.id = p_workspace),
     (select r.user_id from public.workspace_roles r where r.workspace_id = p_workspace and r.role = 'owner'),
     v_sheet.spreadsheet_id, v_sheet.google_email, v_conn.id, v_conn.google_sub, v_conn.user_id,
-    v_conn.refresh_token_encrypted, v_ids, v_emails, p_revoke,
+    v_conn.refresh_token_encrypted, v_ids, v_emails,
     pg_catalog.now() + pg_catalog.make_interval(hours => private.app_limit('sheet_share_cleanup_max_hours')));
   update public.sheet_shares sh
   set state = 'pending', permission_id = null, reason = null, next_try_at = null, updated_at = pg_catalog.now()
@@ -102,7 +103,7 @@ security definer
 set search_path = ''
 as $$
 begin
-  perform private.sheet_shares_retire(old.workspace_id, false);
+  perform private.sheet_shares_retire(old.workspace_id);
   return old;
 end;
 $$;
@@ -120,6 +121,42 @@ as $$
   select exists (select 1 from public.workspaces w where w.sender_connection_id = p_connection)
     or exists (select 1 from public.sheet_syncs s where s.connection_id = p_connection)
     or exists (select 1 from public.sheet_share_cleanups k where k.connection_id = p_connection)
+$$;
+
+-- Latest body: release_connection from 20261011164257_m7_final_review.sql. Still the only place a
+-- connection is let go, by its own user only (security review M7). New (#413): a cleanup still
+-- holding the connection is marked when its own user lets it go, so the cleanup releases it once
+-- the team's access is removed; someone else's action (a new Owner turning the sheet off) never
+-- marks it.
+create or replace function private.release_connection(p_connection uuid, p_actor uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_released jsonb;
+begin
+  if p_connection is null then
+    return null;
+  end if;
+  update public.sheet_share_cleanups k set release_after = true
+  where k.connection_id = p_connection and not k.release_after
+    and exists (select 1 from public.google_connections c where c.id = p_connection and c.user_id = p_actor);
+  if private.connection_in_use(p_connection) then
+    return null;
+  end if;
+  delete from public.google_connections c
+  where c.id = p_connection and c.user_id = p_actor
+  returning pg_catalog.jsonb_build_object(
+    'refresh_token_encrypted', c.refresh_token_encrypted, 'google_sub', c.google_sub, 'user_id', c.user_id)
+  into v_released;
+  -- Any row left on this Google account is another person's (one per user and account).
+  if exists (select 1 from public.google_connections o where o.google_sub = v_released ->> 'google_sub') then
+    return null;
+  end if;
+  return v_released;
+end;
 $$;
 
 create or replace function private.delete_workspace(p_workspace uuid, p_confirm_name text)
@@ -147,7 +184,7 @@ begin
   where x.id is not null;
   -- While the workspace's name is still visible: the access TapNShow gave to the team is kept to
   -- remove, and the sheet's Google account stays held until it is (#413).
-  perform private.sheet_shares_retire(p_workspace, false);
+  perform private.sheet_shares_retire(p_workspace);
   delete from public.workspaces where id = p_workspace;
   -- Accounts nothing else uses are released; the synced Google Sheet stays in Drive (spec §7.11).
   return pg_catalog.jsonb_build_object('released', coalesce((
@@ -213,8 +250,9 @@ begin
   select coalesce(pg_catalog.array_agg(s.id), '{}') into v_senders from stopped s;
 
   -- The team's access TapNShow gave on a sheet held by this person's Google account is removed
-  -- before the account goes; the cleanup keeps its own token copy and revokes it after (#413).
-  perform private.sheet_shares_retire(s.workspace_id, true)
+  -- before the account goes: the cleanup keeps its own token copy, and release_connection below
+  -- marks it (and any older cleanup on these accounts) to revoke it when done (#413).
+  perform private.sheet_shares_retire(s.workspace_id)
   from public.sheet_syncs s where s.connection_id = any (v_connections);
 
   -- The sheet keeps its account (google_sub/email) for "Pick that account"; only the link goes.
@@ -517,9 +555,12 @@ begin
   if v_row.id is null then
     return null;
   end if;
-  if v_row.connection_id is not null then
+  -- Only when the connection's own user let it go (release_connection marked the row): the
+  -- connection is released by that same person's rule, or, when it went with their account, the
+  -- token copy is revoked unless another person's connection shares the Google account.
+  if v_row.release_after and v_row.connection_id is not null then
     v_released := private.release_connection(v_row.connection_id, v_row.token_user_id);
-  elsif v_row.revoke_after
+  elsif v_row.release_after
     and not exists (select 1 from public.google_connections o where o.google_sub = v_row.google_sub) then
     v_released := pg_catalog.jsonb_build_object(
       'refresh_token_encrypted', v_row.refresh_token_encrypted, 'google_sub', v_row.google_sub,
@@ -576,7 +617,7 @@ as $$
 $$;
 
 revoke execute on function
-  private.sheet_shares_retire(uuid, boolean), private.sheet_syncs_retire(), private.sheet_pause_apply(uuid, public.sheet_pause_reason),
+  private.sheet_shares_retire(uuid), private.sheet_syncs_retire(), private.sheet_pause_apply(uuid, public.sheet_pause_reason),
   private.sheet_share_pause(uuid, uuid, public.sheet_pause_reason), private.sheet_shares_leased(uuid, uuid),
   private.sheet_share_cleanup_finish(uuid, uuid, integer)
 from public, anon, authenticated;
