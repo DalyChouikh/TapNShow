@@ -161,7 +161,9 @@ TZ=UTC bun run test:e2e && bun scripts/check-build-log.ts .e2e-build.log        
 ```
 
 CI runs the same steps. The `quality` job runs lint, format, typecheck and unit tests. The `db`
-job runs the advisors, the database tests and the e2e suite on a fresh Supabase stack.
+job runs the advisors, the database tests and the e2e suite on a fresh Supabase stack. A change to
+documentation only (files under `docs/` and `*.md` files, `scripts/docs-only.sh`) runs only the
+format check, and Vercel skips its build.
 
 **About `.env.local` and e2e:** Playwright sets the variables the tests need (`playwright.config.ts`,
 `webServer.env`). Anything it doesn't set falls back to `.env.local` on your machine, and CI has no
