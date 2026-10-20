@@ -62,6 +62,10 @@ Google's email (to the Owner) asked for:
 | 4 | "The scopes requested by your app or manifest must exactly match the scopes configured and submitted" | the code asks for exactly the table above (checked 2026-10-20); Data access must list exactly those | the Owner checks Data access |
 | 5 | Reply to Google's email once fixed, or the review doesn't continue | the reply below | the Owner |
 
+**Answered 2026-10-20** (the Owner): #407 merged (`/privacy` section 5); the new video uploaded Unlisted
+(both recordings spliced by `.superpowers/scripts/demo-video/cuts/round2.py`, private details blurred); Data access
+checked; the justification below and the video link pasted; resubmitted; the reply below sent. Waiting for Google.
+
 The email named no scope. `gmail.send` is the only sensitive one, so round 2 is about it (Owner,
 2026-10-20). "Show all services" isn't described on Google's help pages (checked 2026-10-20): the
 likely cause is that the test account had already granted TapNShow access, so Google folded those
