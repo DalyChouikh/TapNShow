@@ -7,7 +7,7 @@ import type { LegalDocument } from "./types";
  */
 export const privacyPolicy: LegalDocument = {
   title: "Privacy Policy",
-  updated: "2026-10-16",
+  updated: "2026-10-20",
   summary: [
     "TapNShow helps groups invite people to meetings and see who's coming. A group decides whom it invites; we keep that data for the group.",
     "We ask Google only to send email from the organizer's own Gmail and to keep the one spreadsheet TapNShow creates. We never read anyone's email.",
@@ -45,12 +45,28 @@ export const privacyPolicy: LegalDocument = {
       body: [
         "TapNShow asks Google for two permissions, only when an organizer chooses to connect:",
         "",
-        "- **Send email on your behalf (gmail.send):** to send the group's invites, updates and reminders from the organizer's own Gmail. TapNShow cannot read, search or delete any email.",
+        "- **Send email on your behalf (gmail.send):** to send the group's meeting emails (invites, calendar invites, updates, cancellations and reminders) from the organizer's own Gmail. TapNShow cannot read, search or delete any email.",
         "- **Files TapNShow creates (drive.file):** to create and update the one Google Sheet that follows a workspace's answers. Besides writing that file, TapNShow only checks whether it's in the trash and reads its own tabs. It cannot see any other file.",
         "",
-        "Signing in with Google gives us your name, email address and profile picture address. We use Google data only to provide these features, never for ads, and never let anyone read it.",
+        "Signing in with Google gives us your name, email address and profile picture address. We use Google data only to provide these features and never for ads. Who can see it is in the next section.",
+        "",
+        "TapNShow does not use Google Workspace APIs (Gmail, Google Drive, Google Sheets), or any data received from them, to develop, improve or train AI or ML models, personalized or not.",
         "",
         "TapNShow's use and transfer to any other app of information received from Google APIs will adhere to [Google API Services User Data Policy](https://developers.google.com/terms/api-services-user-data-policy), including the Limited Use requirements.",
+      ].join("\n"),
+    },
+    {
+      id: "google-sharing",
+      title: "Who we share Google data with",
+      body: [
+        "We don't sell, rent or trade Google data, and we don't transfer or disclose it to anyone else, except:",
+        "",
+        "- **People in your groups:** everyone on a workspace's team (Owner, Admins, Viewers) sees the team's names and email addresses, the Google addresses that send the group's emails and hold its Google Sheet, and who connected them. People a group invites see its Gmail address as the sender of its emails.",
+        "- **Our team:** TapNShow's admins see each workspace Owner's name and email address, to run TapNShow and look into reports of abuse.",
+        "- **The services that run TapNShow:** Supabase stores it and Vercel runs the app that uses it, both in Frankfurt, Germany; Sentry receives error reports, with personal links, secrets and IP addresses removed. They process it only for TapNShow, under their own terms (see [Services we use](#services)).",
+        "- **Google:** the group's emails go out through the connected Gmail, and its answers go into the Google Sheet in the connected account's Drive.",
+        "- **When the law requires it:** if Tunisian law or a court orders us to, or to protect people from abuse of TapNShow.",
+        "- **A new owner:** if TapNShow is ever passed to another person or company, we will ask for your consent before your Google data goes with it.",
       ].join("\n"),
     },
     {
@@ -87,6 +103,7 @@ export const privacyPolicy: LegalDocument = {
       title: "How long we keep data",
       body: [
         "- Your account and your workspaces' data stay until you or the workspace's Owner delete them.",
+        "- Gmail and Google Sheets connections: until no workspace uses them any more. We then delete them and ask Google to remove TapNShow's access, unless someone else still uses that Google account in TapNShow.",
         "- Records of sent emails: 30 days.",
         "- Abuse counters (including IP addresses): 2 days.",
         "- Reminder devices you haven't used for 90 days are removed.",
