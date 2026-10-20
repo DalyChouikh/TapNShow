@@ -45,7 +45,8 @@ export const test = base.extend<Fixtures>({
         });
       };
       const watchContext = async (watched: BrowserContext) => {
-        // Report-only violations still fire this event; the console guard then fails the test.
+        // Violations fire this event whether the CSP is enforced or report-only; the console
+        // guard then fails the test.
         await watched.addInitScript(() => {
           document.addEventListener("securitypolicyviolation", (event) => {
             // Runs in the page: the browser console is the channel this guard reads.

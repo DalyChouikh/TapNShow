@@ -38,10 +38,10 @@ export const serviceWorkerHeaders: HeaderRule[] = [
 ];
 
 /**
- * The CSP header the app sends. Report-only first (spec §11 M9); the launch task enforces it once
- * preview and production have run 3 days with zero reports. Going back is this one line.
+ * The CSP header the app sends. Enforced since 2026-10-20 (spec §11 M9). To go back to report-only,
+ * set this back to `"Content-Security-Policy-Report-Only"` (runbook `docs/runbooks/monitoring.md`).
  */
-export const CSP_HEADER = "Content-Security-Policy-Report-Only" as const;
+export const CSP_HEADER = "Content-Security-Policy" as const;
 
 /** The Reporting API group `report-to` names (Sentry's documented name). */
 export const CSP_REPORT_GROUP = "csp-endpoint";
