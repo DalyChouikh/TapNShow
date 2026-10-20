@@ -17,9 +17,9 @@ import type { PlannedTab } from "@/lib/sheets/types";
 import { sheetWords } from "@/lib/sheets/words";
 import { sheetYear } from "@/lib/sheets/year";
 import { EXPORT_HEADER_ROWS } from "@/lib/export/theme";
+import { budgetedGoogle, type Late } from "@/server/google/budgeted-call";
+import type { GoogleFailure } from "@/server/google/google-call";
 import type {
-  GoogleFailure,
-  GoogleResult,
   GoogleSheetsClient,
   SheetTabMeta,
 } from "@/server/google/sheets-client";
@@ -72,10 +72,6 @@ export type SheetSyncSummary = {
   paused: number;
   retried: number;
 };
-
-/** A Google call not made because the run's budget is spent: the sheet waits for the next run. */
-type Late = { kind: "late" };
-const LATE: Late = { kind: "late" };
 
 const cellsOf = (rows: number) =>
   (EXPORT_HEADER_ROWS + Math.max(rows, 1)) * SHEET_COLUMNS;
@@ -267,28 +263,12 @@ async function syncSheet(
   if ((await refresh()) === "stop") {
     return;
   }
-  /**
-   * One Google call, only with `minLeftMs` of the budget left (spec §8); a 401 gets one fresh token
-   * and one more try.
-   */
-  const google = async <T>(
-    call: (token: string) => Promise<GoogleResult<T>>,
-  ): Promise<GoogleResult<T> | Late> => {
-    if (!canCall()) {
-      return LATE;
-    }
-    const first = await call(token ?? "");
-    if (first.kind !== "unauthorized") {
-      return first;
-    }
-    if (!canCall()) {
-      return LATE;
-    }
-    if ((await refresh()) === "stop") {
-      return first;
-    }
-    return canCall() ? call(token ?? "") : LATE;
-  };
+  /** One Google call, only with `minLeftMs` of the budget left (spec §8). */
+  const google = budgetedGoogle({
+    canCall,
+    refresh,
+    token: () => token ?? "",
+  });
 
   let spreadsheetId = claim.spreadsheetId;
   if (!spreadsheetId) {

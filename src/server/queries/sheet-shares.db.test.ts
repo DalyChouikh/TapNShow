@@ -18,6 +18,7 @@ import { explainCall, planUsesIndex } from "@/test/db/plans";
 import { parkAllWork } from "@/test/db/workers";
 import { queryLocalSql, runLocalSql } from "@/test/db/sql";
 import { SHEET_SHARE_REASONS, SHEET_SHARE_STATES } from "@/shared/api/sheets";
+import { createShareStore } from "./sheet-shares";
 import {
   addMember,
   createWorkspaceAs,
@@ -771,5 +772,69 @@ describe("twins", () => {
       ).map((row) => row.v);
     expect(values("sheet_share_state")).toEqual([...SHEET_SHARE_STATES]);
     expect(values("sheet_share_reason")).toEqual([...SHEET_SHARE_REASONS]);
+  });
+});
+
+describe("the share store (real database)", () => {
+  let restore: () => void = () => undefined;
+  afterEach(() => restore());
+
+  it("reads a share claim and a cleanup claim as the worker expects", async () => {
+    restore = setSheetTeamSharing(true);
+    await seedSharedSheet();
+    await seedShare(workspace.id, {
+      userId: admin.id,
+      email: admin.email,
+      state: "refused",
+      reason: "refused",
+    });
+    parkAllShares();
+    runLocalSql(
+      `select private.sheet_shares_mark(array['${workspace.id}'::uuid])`,
+    );
+    const store = createShareStore(adminClient());
+    const run = crypto.randomUUID();
+    const [claim] = await store.claim(run, 5, 60);
+    expect(claim).toMatchObject({ workspaceId: workspace.id, cap: 500 });
+    expect(claim.connection?.scopes).toContain(DRIVE_FILE);
+    expect(claim.shares).toEqual([
+      {
+        email: admin.email,
+        state: "refused",
+        permissionId: null,
+        reason: "refused",
+        nextTryAt: null,
+      },
+    ]);
+    expect(
+      await store.save(workspace.id, run, {
+        email: admin.email,
+        userId: admin.id,
+        state: "shared",
+        permissionId: "perm1",
+        reason: null,
+        nextTryAt: null,
+      }),
+    ).toBe(true);
+    await store.release(workspace.id, run, claim.version, null);
+    await owner.client.rpc("turn_off_sheet", { p_workspace: workspace.id });
+    parkAllCleanups();
+    runLocalSql(
+      `update public.sheet_share_cleanups set retry_at = now() where workspace_id = '${workspace.id}'`,
+    );
+    const cleanupRun = crypto.randomUUID();
+    const [cleanup] = await store.cleanupClaim(cleanupRun, 5, 60);
+    expect(cleanup).toMatchObject({
+      permissionIds: ["perm1"],
+      emails: [],
+      tokenUserId: owner.id,
+    });
+    const finished = await store.cleanupFinish(cleanup.id, cleanupRun, 1);
+    expect(finished?.alert).toMatchObject({
+      email: owner.email,
+      left: 1,
+      accountEmail: "club@example.test",
+    });
+    expect(finished?.released?.userId).toBe(owner.id);
   });
 });

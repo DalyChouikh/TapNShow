@@ -59,4 +59,18 @@ describe("sendOwnerAlert", () => {
       expect(email.html).not.toContain("/settings");
     }
   });
+
+  it("links the Google Sheet itself when people may still have access to it", async () => {
+    const email = await sent({
+      kind: "sheetAccessLeft",
+      left: 2,
+      workspaceName: "Robotics Club",
+      accountEmail: "club@example.test",
+      spreadsheetId: "file-000001abc",
+    });
+    expect(email.html).toContain(
+      'href="https://docs.google.com/spreadsheets/d/file-000001abc/edit"',
+    );
+    expect(email.html).not.toContain("/settings");
+  });
 });

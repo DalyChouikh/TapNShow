@@ -210,6 +210,14 @@
       "button": "Open Settings",
       "fallback": "If the button doesn't work, copy this link:"
     },
+    "sheetAccessLeft": {
+      "subject": "People may still have access to a Google Sheet",
+      "preview": "{appName} couldn't take back access to the Google Sheet in {account}'s Drive.",
+      "heading": "People may still have access to a Google Sheet",
+      "body": "{appName} couldn't remove {left, plural, one {1 person} other {# people}} from the Google Sheet in {account}'s Drive{known, select, yes { (from {workspace})} other {}}. Open it, choose Share, and remove anyone who shouldn't see it.",
+      "button": "Open the Google Sheet",
+      "fallback": "If the button doesn't work, copy this link:"
+    },
     "sendingSuspended": {
       "subject": "Meeting emails from {workspace} are paused",
       "preview": "{appName} paused {workspace}'s meeting emails while it looks at reports.",

@@ -1,9 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  classifyGoogleResponse,
-  createGoogleSheetsClient,
-  type FetchLike,
-} from "./sheets-client";
+import { classifyGoogleResponse, type FetchLike } from "./google-call";
+import { createGoogleSheetsClient } from "./sheets-client";
 
 const error = (code: number, reason: string, status = "", message = "x") =>
   JSON.stringify({

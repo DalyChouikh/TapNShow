@@ -3,6 +3,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   runDispatch: vi.fn(async () => ({})),
   runSheetSync: vi.fn(async () => ({})),
+  order: [] as string[],
+  runSheetShares: vi.fn<
+    (
+      deps: object,
+      options: { startedAt: number; budgetMs: number },
+    ) => Promise<object>
+  >(async () => ({})),
+  runShareCleanups: vi.fn<
+    (
+      deps: object,
+      options: { startedAt: number; budgetMs: number },
+    ) => Promise<object>
+  >(async () => ({})),
   logError: vi.fn(),
   pending: [] as Promise<void>[],
   runPush: vi.fn<
@@ -44,6 +57,13 @@ vi.mock("@/server/sheets/run-sheets", () => ({
 vi.mock("@/server/sheets/sheets-deps", () => ({
   createSheetsDeps: () => ({}),
 }));
+vi.mock("@/server/sheets/run-sheet-shares", () => ({
+  runSheetShares: mocks.runSheetShares,
+  runShareCleanups: mocks.runShareCleanups,
+}));
+vi.mock("@/server/sheets/sheet-shares-deps", () => ({
+  createSheetSharesDeps: () => ({}),
+}));
 vi.mock("@/server/platform/run-platform-events", () => ({
   runPlatformEvents: mocks.runPlatformEvents,
 }));
@@ -66,10 +86,56 @@ const settle = () => Promise.all(mocks.pending);
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.pending = [];
+  mocks.order = [];
   mocks.configured = true;
 });
 
 describe("scheduleWorkers", () => {
+  it("runs the share steps after the redraw, in the sheets lane's one budget", async () => {
+    mocks.runSheetSync.mockImplementationOnce(async () => {
+      mocks.order.push("sync");
+      return {};
+    });
+    mocks.runSheetShares.mockImplementationOnce(async () => {
+      mocks.order.push("shares");
+      return {};
+    });
+    mocks.runShareCleanups.mockImplementationOnce(async () => {
+      mocks.order.push("cleanups");
+      return {};
+    });
+    scheduleWorkers(["sheets"]);
+    await settle();
+    expect(mocks.order).toEqual(["sync", "shares", "cleanups"]);
+    const [, shareOptions] = mocks.runSheetShares.mock.calls[0];
+    const [, cleanupOptions] = mocks.runShareCleanups.mock.calls[0];
+    expect(shareOptions.startedAt).toBe(cleanupOptions.startedAt);
+    expect(shareOptions.budgetMs).toBe(cleanupOptions.budgetMs);
+  });
+
+  it("still shares and cleans up when the redraw throws, and records the lane once", async () => {
+    mocks.runSheetSync.mockRejectedValueOnce(new Error("boom"));
+    scheduleWorkers(["sheets"]);
+    await settle();
+    expect(mocks.runSheetShares).toHaveBeenCalledTimes(1);
+    expect(mocks.runShareCleanups).toHaveBeenCalledTimes(1);
+    expect(mocks.recordWorkerFailure).toHaveBeenCalledExactlyOnceWith(
+      {},
+      "sheets",
+    );
+    expect(mocks.logError).toHaveBeenCalledTimes(1);
+  });
+
+  it("logs each failed step of the sheets lane once", async () => {
+    mocks.runSheetSync.mockRejectedValueOnce(new Error("boom"));
+    mocks.runShareCleanups.mockRejectedValueOnce(new Error("bang"));
+    scheduleWorkers(["sheets"]);
+    await settle();
+    expect(mocks.runSheetShares).toHaveBeenCalledTimes(1);
+    expect(mocks.logError).toHaveBeenCalledTimes(2);
+    expect(mocks.recordWorkerFailure).toHaveBeenCalledTimes(1);
+  });
+
   it("runs every worker by default (emails, sheets, platform events)", async () => {
     scheduleWorkers();
     await settle();

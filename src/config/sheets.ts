@@ -52,3 +52,21 @@ export const SHEET_FORMAT_VERSION = 1;
 
 /** How often Settings polls while a sheet is being created. */
 export const SHEET_STATUS_POLL_MS = 3_000;
+
+/**
+ * Sharing the sheet with the team (#413, design §5): how long a person Google refused waits before
+ * one more try (never more than once a day, so Google never emails anyone twice in a day).
+ */
+export const SHEET_SHARE_REFUSED_RETRY_MS = 24 * 60 * 60 * 1000;
+
+/** Shares created per sheet per run; the rest waits for the next run (the sheet stays due). */
+export const SHEET_SHARES_PER_RUN = 25;
+
+/** Sheets whose shares are leased per claim (`sheet_share_claim`'s `p_limit`). */
+export const SHEET_SHARE_CLAIM_BATCH = 5;
+
+/** Cleanups leased per claim (`sheet_share_cleanup_claim`'s `p_limit`). */
+export const SHEET_SHARE_CLEANUP_BATCH = 5;
+
+/** Drive `permissions.list` page size (Drive allows up to 100); every page is followed. */
+export const DRIVE_PERMISSIONS_PAGE_SIZE = 100;

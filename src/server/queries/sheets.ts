@@ -301,7 +301,8 @@ const sheetRowsSchema = z.array(
     })),
 );
 
-const pausedSchema = z
+/** `sheet_pause`'s answer: who to tell, or null when already told today (shared with the share step). */
+export const sheetPausedAlertSchema = z
   .object({
     email: z.string(),
     workspace_name: z.string(),
@@ -424,7 +425,7 @@ export function createSheetStore(admin: Client): SheetStore {
       );
     },
     pause: async (workspaceId, run, reason) =>
-      pausedSchema.parse(
+      sheetPausedAlertSchema.parse(
         check(
           "sheet_pause",
           await admin.rpc("sheet_pause", {
