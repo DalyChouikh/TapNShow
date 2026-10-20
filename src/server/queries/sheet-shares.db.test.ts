@@ -1,18 +1,23 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { adminClient, createTestUser, type TestUser } from "@/test/db/clients";
-import { parkAllJobs } from "@/test/db/outbox";
-import { parkAllPlatformEvents } from "@/test/db/platform";
+import { serviceRpc } from "@/test/db/outbox";
 import { seedConnection } from "@/test/db/sender";
 import {
+  cleanupsOf,
+  parkAllCleanups,
   parkAllShares,
+  seedShare,
   setSheetTeamSharing,
   shareTargetsOf,
   sharesDueOf,
   sharesOf,
 } from "@/test/db/sheet-shares";
 import { seedSheet } from "@/test/db/sheets";
+import { explainCall, planUsesIndex } from "@/test/db/plans";
+import { parkAllWork } from "@/test/db/workers";
 import { queryLocalSql, runLocalSql } from "@/test/db/sql";
+import { SHEET_SHARE_REASONS, SHEET_SHARE_STATES } from "@/shared/api/sheets";
 import {
   addMember,
   createWorkspaceAs,
@@ -159,13 +164,7 @@ describe("the switch", () => {
 
   it("is due only while the switch is on, the sheet is active and has a file", async () => {
     await seedSharedSheet();
-    parkAllJobs();
-    parkAllPlatformEvents();
-    runLocalSql(
-      "update public.sheet_syncs set retry_at = now() + interval '1 day'",
-    );
-    runLocalSql("delete from public.push_deliveries");
-    parkAllShares();
+    parkAllWork();
     runLocalSql(
       `select private.sheet_shares_mark(array['${workspace.id}'::uuid])`,
     );
@@ -260,5 +259,495 @@ describe("share rows", () => {
       email: "Mixed@Example.test",
     });
     expect(error).not.toBeNull();
+  });
+});
+
+const connectionExists = async (id: string) => {
+  const { data, error } = await adminClient()
+    .from("google_connections")
+    .select("id")
+    .eq("id", id);
+  if (error) {
+    throw error;
+  }
+  return data.length === 1;
+};
+
+describe("removing the team's access before letting go", () => {
+  it("keeps the team's shares to remove when the sheet is turned off, and holds the Google account until they are", async () => {
+    const connection = await seedSharedSheet();
+    await seedShare(workspace.id, {
+      userId: admin.id,
+      email: admin.email,
+      state: "shared",
+      permissionId: "perm1",
+    });
+    await seedShare(workspace.id, {
+      userId: viewer.id,
+      email: viewer.email,
+      state: "shared",
+      permissionId: "perm2",
+    });
+    const off = await owner.client.rpc("turn_off_sheet", {
+      p_workspace: workspace.id,
+    });
+    expect(off.error).toBeNull();
+    expect(off.data).toEqual({ released: null });
+    expect(await cleanupsOf(workspace.id)).toEqual([
+      {
+        permissionIds: ["perm1", "perm2"],
+        emails: [],
+        revokeAfter: false,
+        connectionId: connection.id,
+        tokenUserId: owner.id,
+        hasToken: true,
+      },
+    ]);
+    expect(await connectionExists(connection.id)).toBe(true);
+  });
+
+  it("looks up a share Google may have made when the run never recorded it", async () => {
+    await seedSharedSheet();
+    await seedShare(workspace.id, {
+      userId: admin.id,
+      email: admin.email,
+      state: "sharing",
+    });
+    await owner.client.rpc("turn_off_sheet", { p_workspace: workspace.id });
+    expect((await cleanupsOf(workspace.id))[0]).toMatchObject({
+      permissionIds: [],
+      emails: [admin.email],
+    });
+  });
+
+  it("leaves nothing to clean up when TapNShow shared nothing", async () => {
+    await seedSharedSheet();
+    await seedShare(workspace.id, {
+      userId: viewer.id,
+      email: viewer.email,
+      state: "external",
+    });
+    const off = await owner.client.rpc("turn_off_sheet", {
+      p_workspace: workspace.id,
+    });
+    expect(off.data).not.toEqual({ released: null });
+    expect(await cleanupsOf(workspace.id)).toEqual([]);
+  });
+
+  it("keeps the old file's shares to remove when the Owner creates a new sheet", async () => {
+    await seedSharedSheet();
+    await seedShare(workspace.id, {
+      userId: admin.id,
+      email: admin.email,
+      state: "shared",
+      permissionId: "perm1",
+    });
+    const next = await seedConnection(owner.id, { scopes: [DRIVE_FILE] });
+    const started = await adminClient().rpc("start_sheet", {
+      p_user: owner.id,
+      p_workspace: workspace.id,
+      p_connection: next.id,
+      p_replace: true,
+    });
+    expect(started.error).toBeNull();
+    expect(await cleanupsOf(workspace.id)).toHaveLength(1);
+    expect(await sharesOf(workspace.id)).toEqual([]);
+    expect((await sharesDueOf(workspace.id)).dueAt).not.toBeNull();
+  });
+
+  it("keeps the shares to remove when the workspace is deleted", async () => {
+    const connection = await seedSharedSheet();
+    await seedShare(workspace.id, {
+      userId: admin.id,
+      email: admin.email,
+      state: "shared",
+      permissionId: "perm1",
+    });
+    const deleted = await owner.client.rpc("delete_workspace", {
+      p_workspace: workspace.id,
+      p_confirm_name: workspace.name,
+    });
+    expect(deleted.error).toBeNull();
+    expect(deleted.data).toEqual({ released: [] });
+    expect(await cleanupsOf(workspace.id)).toHaveLength(1);
+    expect(await connectionExists(connection.id)).toBe(true);
+  });
+
+  it("keeps the shares to remove when the person whose Google account holds the sheet deletes their account", async () => {
+    const connection = await seedSharedSheet("admin-drive@example.test", admin);
+    await seedShare(workspace.id, {
+      userId: viewer.id,
+      email: viewer.email,
+      state: "shared",
+      permissionId: "perm1",
+    });
+    const gone = await admin.client.rpc("delete_account", {
+      p_confirm: "confirm",
+    });
+    expect(gone.error).toBeNull();
+    expect(gone.data).toMatchObject({ released: [] });
+    expect(await sharesOf(workspace.id)).toEqual([
+      {
+        email: viewer.email,
+        state: "pending",
+        permissionId: null,
+        reason: null,
+      },
+    ]);
+    const removed = await adminClient().auth.admin.deleteUser(admin.id);
+    expect(removed.error).toBeNull();
+    expect(await connectionExists(connection.id)).toBe(false);
+    expect(await cleanupsOf(workspace.id)).toEqual([
+      {
+        permissionIds: ["perm1"],
+        emails: [],
+        revokeAfter: true,
+        connectionId: null,
+        tokenUserId: admin.id,
+        hasToken: true,
+      },
+    ]);
+  });
+});
+
+describe("finishing a cleanup", () => {
+  const run = () => crypto.randomUUID();
+
+  it("forgets the token, releases the Google account and returns what to revoke", async () => {
+    const connection = await seedSharedSheet();
+    await seedShare(workspace.id, {
+      userId: admin.id,
+      email: admin.email,
+      state: "shared",
+      permissionId: "perm1",
+    });
+    await owner.client.rpc("turn_off_sheet", { p_workspace: workspace.id });
+    parkAllCleanups();
+    runLocalSql(
+      `update public.sheet_share_cleanups set retry_at = now() where workspace_id = '${workspace.id}'`,
+    );
+    const runId = run();
+    const claimed = z
+      .array(
+        z.object({ id: z.uuid(), permission_ids: z.array(z.string()) }).loose(),
+      )
+      .parse(
+        await serviceRpc("sheet_share_cleanup_claim", {
+          p_run: runId,
+          p_limit: 5,
+          p_lease_seconds: 60,
+        }),
+      );
+    expect(claimed).toHaveLength(1);
+    expect(claimed[0].permission_ids).toEqual(["perm1"]);
+    const finished = z
+      .object({
+        released: z.object({ google_sub: z.string() }).loose().nullable(),
+        alert: z.null(),
+      })
+      .parse(
+        await serviceRpc("sheet_share_cleanup_finish", {
+          p_id: claimed[0].id,
+          p_run: runId,
+          p_left: 0,
+        }),
+      );
+    expect(finished.released?.google_sub).toBe(connection.sub);
+    expect(await cleanupsOf(workspace.id)).toEqual([]);
+    expect(await connectionExists(connection.id)).toBe(false);
+  });
+
+  it("returns the alert when people may still have access", async () => {
+    await seedSharedSheet();
+    await seedShare(workspace.id, {
+      userId: admin.id,
+      email: admin.email,
+      state: "shared",
+      permissionId: "perm1",
+    });
+    await owner.client.rpc("turn_off_sheet", { p_workspace: workspace.id });
+    parkAllCleanups();
+    runLocalSql(
+      `update public.sheet_share_cleanups set retry_at = now() where workspace_id = '${workspace.id}'`,
+    );
+    const runId = run();
+    const [claimed] = z.array(z.object({ id: z.uuid() }).loose()).parse(
+      await serviceRpc("sheet_share_cleanup_claim", {
+        p_run: runId,
+        p_limit: 5,
+        p_lease_seconds: 60,
+      }),
+    );
+    const finished = z
+      .object({
+        alert: z
+          .object({
+            email: z.string(),
+            workspace_name: z.string(),
+            account_email: z.string(),
+            left: z.number(),
+          })
+          .loose(),
+      })
+      .loose()
+      .parse(
+        await serviceRpc("sheet_share_cleanup_finish", {
+          p_id: claimed.id,
+          p_run: runId,
+          p_left: 2,
+        }),
+      );
+    expect(finished.alert).toMatchObject({
+      email: owner.email,
+      workspace_name: workspace.name,
+      account_email: "club@example.test",
+      left: 2,
+    });
+  });
+
+  it("lets only the run holding a cleanup finish or retry it", async () => {
+    await seedSharedSheet();
+    await seedShare(workspace.id, {
+      userId: admin.id,
+      email: admin.email,
+      state: "shared",
+      permissionId: "perm1",
+    });
+    await owner.client.rpc("turn_off_sheet", { p_workspace: workspace.id });
+    parkAllCleanups();
+    runLocalSql(
+      `update public.sheet_share_cleanups set retry_at = now() where workspace_id = '${workspace.id}'`,
+    );
+    const [claimed] = z.array(z.object({ id: z.uuid() }).loose()).parse(
+      await serviceRpc("sheet_share_cleanup_claim", {
+        p_run: run(),
+        p_limit: 5,
+        p_lease_seconds: 60,
+      }),
+    );
+    expect(
+      await serviceRpc("sheet_share_cleanup_finish", {
+        p_id: claimed.id,
+        p_run: run(),
+        p_left: 0,
+      }),
+    ).toBeNull();
+    expect(await cleanupsOf(workspace.id)).toHaveLength(1);
+  });
+});
+
+describe("the share run's calls", () => {
+  let restore: () => void = () => undefined;
+  beforeEach(async () => {
+    restore = setSheetTeamSharing(true);
+    await seedSharedSheet();
+    parkAllShares();
+    runLocalSql(
+      `select private.sheet_shares_mark(array['${workspace.id}'::uuid])`,
+    );
+  });
+  afterEach(() => restore());
+
+  const claimSchema = z.array(
+    z
+      .object({
+        workspace_id: z.uuid(),
+        version: z.number().int(),
+        cap: z.number().int(),
+        targets: z.array(
+          z.object({ email: z.string(), position: z.number().int() }).loose(),
+        ),
+        shares: z.array(z.object({ email: z.string() }).loose()),
+      })
+      .loose(),
+  );
+  const claim = async (runId: string) =>
+    claimSchema.parse(
+      await serviceRpc("sheet_share_claim", {
+        p_run: runId,
+        p_limit: 5,
+        p_lease_seconds: 60,
+      }),
+    );
+
+  it("gives a due sheet's team and records to one run at a time", async () => {
+    await seedShare(workspace.id, {
+      userId: admin.id,
+      email: admin.email,
+      state: "shared",
+      permissionId: "perm1",
+    });
+    const first = await claim(crypto.randomUUID());
+    expect(first).toHaveLength(1);
+    expect(first[0]).toMatchObject({ workspace_id: workspace.id, cap: 500 });
+    expect(first[0].targets.map((t) => t.email)).toEqual([
+      owner.email,
+      admin.email,
+      viewer.email,
+    ]);
+    expect(first[0].shares.map((s) => s.email)).toEqual([admin.email]);
+    expect(await claim(crypto.randomUUID())).toEqual([]);
+  });
+
+  it("claims nothing while the switch is off", async () => {
+    setSheetTeamSharing(false);
+    expect(await claim(crypto.randomUUID())).toEqual([]);
+  });
+
+  it("keeps a sheet due when the team changed during the run", async () => {
+    const runId = crypto.randomUUID();
+    const [claimed] = await claim(runId);
+    const newcomer = await createTestUser();
+    await addMember(workspace.id, newcomer.id, "viewer");
+    await serviceRpc("sheet_share_release", {
+      p_workspace: workspace.id,
+      p_run: runId,
+      p_version: claimed.version,
+      p_next_due: null,
+    });
+    expect((await sharesDueOf(workspace.id)).dueAt).not.toBeNull();
+  });
+
+  it("clears the mark when nothing changed during the run", async () => {
+    const runId = crypto.randomUUID();
+    const [claimed] = await claim(runId);
+    await serviceRpc("sheet_share_release", {
+      p_workspace: workspace.id,
+      p_run: runId,
+      p_version: claimed.version,
+      p_next_due: null,
+    });
+    expect((await sharesDueOf(workspace.id)).dueAt).toBeNull();
+  });
+
+  it("records an intent, an outcome and a forgotten person while holding the lease", async () => {
+    const runId = crypto.randomUUID();
+    await claim(runId);
+    expect(
+      await serviceRpc("sheet_share_intend", {
+        p_workspace: workspace.id,
+        p_run: runId,
+        p_email: admin.email,
+        p_user: admin.id,
+      }),
+    ).toBe(true);
+    expect(await sharesOf(workspace.id)).toEqual([
+      {
+        email: admin.email,
+        state: "sharing",
+        permissionId: null,
+        reason: null,
+      },
+    ]);
+    expect(
+      await serviceRpc("sheet_share_save", {
+        p_workspace: workspace.id,
+        p_run: runId,
+        p_email: admin.email,
+        p_user: admin.id,
+        p_state: "shared",
+        p_permission_id: "perm9",
+        p_reason: null,
+        p_next_try_at: null,
+      }),
+    ).toBe(true);
+    expect(await sharesOf(workspace.id)).toEqual([
+      {
+        email: admin.email,
+        state: "shared",
+        permissionId: "perm9",
+        reason: null,
+      },
+    ]);
+    expect(
+      await serviceRpc("sheet_share_forget", {
+        p_workspace: workspace.id,
+        p_run: runId,
+        p_emails: [admin.email],
+      }),
+    ).toBe(true);
+    expect(await sharesOf(workspace.id)).toEqual([]);
+  });
+
+  it("writes nothing without the lease", async () => {
+    await claim(crypto.randomUUID());
+    const other = crypto.randomUUID();
+    expect(
+      await serviceRpc("sheet_share_intend", {
+        p_workspace: workspace.id,
+        p_run: other,
+        p_email: admin.email,
+        p_user: admin.id,
+      }),
+    ).toBe(false);
+    expect(
+      await serviceRpc("sheet_share_forget", {
+        p_workspace: workspace.id,
+        p_run: other,
+        p_emails: [admin.email],
+      }),
+    ).toBe(false);
+    expect(await sharesOf(workspace.id)).toEqual([]);
+  });
+
+  it("backs off the sheet's shares after a Google error", async () => {
+    const runId = crypto.randomUUID();
+    await claim(runId);
+    await serviceRpc("sheet_share_retry", {
+      p_workspace: workspace.id,
+      p_run: runId,
+    });
+    const due = await sharesDueOf(workspace.id);
+    expect(Date.parse(due.dueAt ?? "")).toBeGreaterThan(Date.now());
+    expect(await claim(crypto.randomUUID())).toEqual([]);
+  });
+
+  it("pauses the sheet when Google access is lost, telling the Owner", async () => {
+    const runId = crypto.randomUUID();
+    await claim(runId);
+    const paused = z
+      .object({ email: z.string(), reason: z.string() })
+      .loose()
+      .parse(
+        await serviceRpc("sheet_share_pause", {
+          p_workspace: workspace.id,
+          p_run: runId,
+          p_reason: "access_lost",
+        }),
+      );
+    expect(paused).toMatchObject({ email: owner.email, reason: "access_lost" });
+    const { data } = await adminClient()
+      .from("sheet_syncs")
+      .select("status")
+      .eq("workspace_id", workspace.id)
+      .single();
+    expect(data?.status).toBe("paused");
+  });
+});
+
+describe("performance", () => {
+  it("finds due shares through their index, in the wake-up and in the claim", () => {
+    for (const [call, role] of [
+      ["private.workers_due()", "postgres"],
+      [
+        `public.sheet_share_claim('${crypto.randomUUID()}', 5, 120)`,
+        "service_role",
+      ],
+    ] as const) {
+      const plan = explainCall(call, owner.id, role, ["enable_seqscan = off"]);
+      expect(planUsesIndex(plan, "sheet_syncs_shares_due_idx")).toBe(true);
+    }
+  });
+});
+
+describe("twins", () => {
+  it("keeps SHEET_SHARE_STATES and SHEET_SHARE_REASONS equal to the database enums", () => {
+    const values = (type: string) =>
+      queryLocalSql(
+        `select pg_catalog.unnest(pg_catalog.enum_range(null::public.${type}))::text as v`,
+        z.array(z.object({ v: z.string() })),
+      ).map((row) => row.v);
+    expect(values("sheet_share_state")).toEqual([...SHEET_SHARE_STATES]);
+    expect(values("sheet_share_reason")).toEqual([...SHEET_SHARE_REASONS]);
   });
 });

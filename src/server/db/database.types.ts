@@ -540,6 +540,25 @@ isOneToOne: false
       referencedColumns: ["workspace_id"]
     }
                   ]
+                },"sheet_share_cleanups": {
+                  Row: {
+                    "attempts": number,"connection_id": string | null,"created_at": string,"emails": (string)[],"give_up_at": string,"google_email": string,"google_sub": string,"id": string,"locked_until": string | null,"owner_user_id": string | null,"permission_ids": (string)[],"refresh_token_encrypted": string,"retry_at": string,"revoke_after": boolean,"run_id": string | null,"spreadsheet_id": string,"token_user_id": string,"workspace_id": string,"workspace_name": string | null
+                  }
+                  Insert: {
+                    "attempts"?: number,"connection_id"?: string | null,"created_at"?: string,"emails"?: (string)[],"give_up_at": string,"google_email": string,"google_sub": string,"id"?: string,"locked_until"?: string | null,"owner_user_id"?: string | null,"permission_ids"?: (string)[],"refresh_token_encrypted": string,"retry_at"?: string,"revoke_after": boolean,"run_id"?: string | null,"spreadsheet_id": string,"token_user_id": string,"workspace_id": string,"workspace_name"?: string | null
+                  }
+                  Update: {
+                    "attempts"?: number,"connection_id"?: string | null,"created_at"?: string,"emails"?: (string)[],"give_up_at"?: string,"google_email"?: string,"google_sub"?: string,"id"?: string,"locked_until"?: string | null,"owner_user_id"?: string | null,"permission_ids"?: (string)[],"refresh_token_encrypted"?: string,"retry_at"?: string,"revoke_after"?: boolean,"run_id"?: string | null,"spreadsheet_id"?: string,"token_user_id"?: string,"workspace_id"?: string,"workspace_name"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "sheet_share_cleanups_connection_id_fkey"
+      columns: ["connection_id"]
+isOneToOne: false
+      referencedRelation: "google_connections"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"sheet_shares": {
                   Row: {
                     "email": string,"id": string,"next_try_at": string | null,"permission_id": string | null,"reason": Database["public"]['Enums']["sheet_share_reason"] | null,"state": Database["public"]['Enums']["sheet_share_state"],"updated_at": string,"user_id": string | null,"workspace_id": string
@@ -561,13 +580,13 @@ isOneToOne: false
                   ]
                 },"sheet_syncs": {
                   Row: {
-                    "alerted_at": string | null,"attempts": number,"connection_id": string | null,"create_key": string,"created_at": string,"created_by": string | null,"google_email": string,"google_sub": string,"last_error": string | null,"locked_until": string | null,"paused_at": string | null,"paused_reason": Database["public"]['Enums']["sheet_pause_reason"] | null,"retry_at": string,"run_id": string | null,"shares_due_at": string | null,"shares_locked_until": string | null,"shares_run_id": string | null,"shares_version": number,"spreadsheet_id": string | null,"status": Database["public"]['Enums']["sheet_status"],"synced_at": string | null,"updated_at": string,"workspace_id": string
+                    "alerted_at": string | null,"attempts": number,"connection_id": string | null,"create_key": string,"created_at": string,"created_by": string | null,"google_email": string,"google_sub": string,"last_error": string | null,"locked_until": string | null,"paused_at": string | null,"paused_reason": Database["public"]['Enums']["sheet_pause_reason"] | null,"retry_at": string,"run_id": string | null,"shares_attempts": number,"shares_due_at": string | null,"shares_locked_until": string | null,"shares_run_id": string | null,"shares_version": number,"spreadsheet_id": string | null,"status": Database["public"]['Enums']["sheet_status"],"synced_at": string | null,"updated_at": string,"workspace_id": string
                   }
                   Insert: {
-                    "alerted_at"?: string | null,"attempts"?: number,"connection_id"?: string | null,"create_key"?: string,"created_at"?: string,"created_by"?: string | null,"google_email": string,"google_sub": string,"last_error"?: string | null,"locked_until"?: string | null,"paused_at"?: string | null,"paused_reason"?: Database["public"]['Enums']["sheet_pause_reason"] | null,"retry_at"?: string,"run_id"?: string | null,"shares_due_at"?: string | null,"shares_locked_until"?: string | null,"shares_run_id"?: string | null,"shares_version"?: number,"spreadsheet_id"?: string | null,"status"?: Database["public"]['Enums']["sheet_status"],"synced_at"?: string | null,"updated_at"?: string,"workspace_id": string
+                    "alerted_at"?: string | null,"attempts"?: number,"connection_id"?: string | null,"create_key"?: string,"created_at"?: string,"created_by"?: string | null,"google_email": string,"google_sub": string,"last_error"?: string | null,"locked_until"?: string | null,"paused_at"?: string | null,"paused_reason"?: Database["public"]['Enums']["sheet_pause_reason"] | null,"retry_at"?: string,"run_id"?: string | null,"shares_attempts"?: number,"shares_due_at"?: string | null,"shares_locked_until"?: string | null,"shares_run_id"?: string | null,"shares_version"?: number,"spreadsheet_id"?: string | null,"status"?: Database["public"]['Enums']["sheet_status"],"synced_at"?: string | null,"updated_at"?: string,"workspace_id": string
                   }
                   Update: {
-                    "alerted_at"?: string | null,"attempts"?: number,"connection_id"?: string | null,"create_key"?: string,"created_at"?: string,"created_by"?: string | null,"google_email"?: string,"google_sub"?: string,"last_error"?: string | null,"locked_until"?: string | null,"paused_at"?: string | null,"paused_reason"?: Database["public"]['Enums']["sheet_pause_reason"] | null,"retry_at"?: string,"run_id"?: string | null,"shares_due_at"?: string | null,"shares_locked_until"?: string | null,"shares_run_id"?: string | null,"shares_version"?: number,"spreadsheet_id"?: string | null,"status"?: Database["public"]['Enums']["sheet_status"],"synced_at"?: string | null,"updated_at"?: string,"workspace_id"?: string
+                    "alerted_at"?: string | null,"attempts"?: number,"connection_id"?: string | null,"create_key"?: string,"created_at"?: string,"created_by"?: string | null,"google_email"?: string,"google_sub"?: string,"last_error"?: string | null,"locked_until"?: string | null,"paused_at"?: string | null,"paused_reason"?: Database["public"]['Enums']["sheet_pause_reason"] | null,"retry_at"?: string,"run_id"?: string | null,"shares_attempts"?: number,"shares_due_at"?: string | null,"shares_locked_until"?: string | null,"shares_run_id"?: string | null,"shares_version"?: number,"spreadsheet_id"?: string | null,"status"?: Database["public"]['Enums']["sheet_status"],"synced_at"?: string | null,"updated_at"?: string,"workspace_id"?: string
                   }
                   Relationships: [
                     {
@@ -1008,6 +1027,36 @@ isOneToOne: false
                            },
 "sheet_save_tab":
 { Args: { "p_run": string,"p_tab": Json,"p_workspace": string }; Returns: boolean
+                           },
+"sheet_share_claim":
+{ Args: { "p_lease_seconds": number,"p_limit": number,"p_run": string }; Returns: Json
+                           },
+"sheet_share_cleanup_claim":
+{ Args: { "p_lease_seconds": number,"p_limit": number,"p_run": string }; Returns: Json
+                           },
+"sheet_share_cleanup_finish":
+{ Args: { "p_id": string,"p_left": number,"p_run": string }; Returns: Json
+                           },
+"sheet_share_cleanup_retry":
+{ Args: { "p_id": string,"p_run": string }; Returns: undefined
+                           },
+"sheet_share_forget":
+{ Args: { "p_emails": (string)[],"p_run": string,"p_workspace": string }; Returns: boolean
+                           },
+"sheet_share_intend":
+{ Args: { "p_email": string,"p_run": string,"p_user": string,"p_workspace": string }; Returns: boolean
+                           },
+"sheet_share_pause":
+{ Args: { "p_reason": Database["public"]['Enums']["sheet_pause_reason"],"p_run": string,"p_workspace": string }; Returns: Json
+                           },
+"sheet_share_release":
+{ Args: { "p_next_due": string,"p_run": string,"p_version": number,"p_workspace": string }; Returns: undefined
+                           },
+"sheet_share_retry":
+{ Args: { "p_run": string,"p_workspace": string }; Returns: undefined
+                           },
+"sheet_share_save":
+{ Args: { "p_email": string,"p_next_try_at": string,"p_permission_id": string,"p_reason": Database["public"]['Enums']["sheet_share_reason"],"p_run": string,"p_state": Database["public"]['Enums']["sheet_share_state"],"p_user": string,"p_workspace": string }; Returns: boolean
                            },
 "start_sheet":
 { Args: { "p_connection": string,"p_replace": boolean,"p_user": string,"p_workspace": string }; Returns: Json

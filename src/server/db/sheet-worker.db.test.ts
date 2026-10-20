@@ -4,8 +4,6 @@ import { z } from "zod";
 import { adminClient, createTestUser, type TestUser } from "@/test/db/clients";
 import { seedInvitee } from "@/test/db/invitees";
 import { addToList, seedMeeting } from "@/test/db/meetings";
-import { parkAllJobs } from "@/test/db/outbox";
-import { parkAllPlatformEvents } from "@/test/db/platform";
 import { explainCall, planUsesIndex } from "@/test/db/plans";
 import { seedContacts, seedList } from "@/test/db/roster";
 import { seedConnection } from "@/test/db/sender";
@@ -16,6 +14,7 @@ import {
   seedSheet,
   unparkSheet,
 } from "@/test/db/sheets";
+import { parkAllWork } from "@/test/db/workers";
 import { queryLocalSql, runLocalSql } from "@/test/db/sql";
 import { createWorkspaceAs, type TestWorkspace } from "@/test/db/workspaces";
 
@@ -594,9 +593,7 @@ describe("sheet_rows", () => {
 
 describe("workers_due (the per-minute wake-up)", () => {
   beforeEach(() => {
-    parkAllJobs();
-    parkAllSheets();
-    parkAllPlatformEvents();
+    parkAllWork();
   });
 
   const job = (kind: "invite" | "update", inviteeId: string) =>

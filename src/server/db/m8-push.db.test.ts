@@ -9,13 +9,13 @@ import {
 import { hoursFromNow } from "@/test/db/meetings";
 import { seedAnswer, seedContact, seedInviteFor } from "@/test/db/members";
 import { overrideLimit, parkAllJobs, serviceRpc } from "@/test/db/outbox";
-import { parkAllPlatformEvents } from "@/test/db/platform";
 import { explainCall, planUsesIndex } from "@/test/db/plans";
 import {
   allowFakePushHost,
   fakeSubscription,
   processingJob,
 } from "@/test/db/push";
+import { parkAllWork } from "@/test/db/workers";
 import { queryLocalSql, runLocalSql } from "@/test/db/sql";
 import { createWorkspaceAs } from "@/test/db/workspaces";
 
@@ -581,11 +581,7 @@ describe("push_claim and results (spec §8 Push worker)", () => {
   });
 
   it("wakes the dispatcher only while a delivery is due", async () => {
-    parkAllJobs();
-    parkAllPlatformEvents();
-    runLocalSql(
-      "update public.sheet_syncs set retry_at = now() + interval '1 day'",
-    );
+    parkAllWork();
     await queued();
     const due = () =>
       queryLocalSql(

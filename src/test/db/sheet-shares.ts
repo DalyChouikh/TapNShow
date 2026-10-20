@@ -80,3 +80,67 @@ export function shareTargetsOf(
     z.array(z.object({ email: z.string(), position: z.number().int() })),
   );
 }
+
+/** Inserts one share row (service role), as a share run would have left it. */
+export async function seedShare(
+  workspaceId: string,
+  row: {
+    userId?: string | null;
+    email: string;
+    state: "pending" | "sharing" | "shared" | "external" | "refused";
+    permissionId?: string | null;
+    reason?: "refused" | "too_many" | "removed_in_drive" | null;
+  },
+): Promise<void> {
+  const { error } = await adminClient()
+    .from("sheet_shares")
+    .insert({
+      workspace_id: workspaceId,
+      user_id: row.userId ?? null,
+      email: row.email,
+      state: row.state,
+      permission_id: row.permissionId ?? null,
+      reason: row.reason ?? null,
+    });
+  if (error) {
+    throw error;
+  }
+}
+
+/** The cleanups left for a workspace's files (service role), oldest first. */
+export async function cleanupsOf(workspaceId: string): Promise<
+  Array<{
+    permissionIds: string[];
+    emails: string[];
+    revokeAfter: boolean;
+    connectionId: string | null;
+    tokenUserId: string;
+    hasToken: boolean;
+  }>
+> {
+  const { data, error } = await adminClient()
+    .from("sheet_share_cleanups")
+    .select(
+      "permission_ids, emails, revoke_after, connection_id, token_user_id, refresh_token_encrypted",
+    )
+    .eq("workspace_id", workspaceId)
+    .order("created_at");
+  if (error) {
+    throw error;
+  }
+  return data.map((row) => ({
+    permissionIds: [...row.permission_ids].sort(),
+    emails: [...row.emails].sort(),
+    revokeAfter: row.revoke_after,
+    connectionId: row.connection_id,
+    tokenUserId: row.token_user_id,
+    hasToken: row.refresh_token_encrypted.length > 0,
+  }));
+}
+
+/** Parks every cleanup and frees its lease (the cleanup claim is global). */
+export function parkAllCleanups(): void {
+  runLocalSql(
+    "update public.sheet_share_cleanups set retry_at = now() + interval '1 day', run_id = null, locked_until = null",
+  );
+}
