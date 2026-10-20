@@ -4,16 +4,37 @@ The main address is **https://www.tapnshow.tn** (Owner, 2026-10-17; spec §7.18)
 redirects to it in Vercel; `tapnshow.vercel.app`'s pages redirect to it from the app
 (`legacyHostRedirects`, `src/config/site.ts`), while its `/api/` and `/serwist/` keep answering.
 
-## DNS (registrar: tunet.tn; Vercel doesn't host the zone)
+## DNS (registrar: tunet.tn, the Ooredoo business panel; zone: Vercel DNS)
+
+The .tn registry delegates `tapnshow.tn` to `ns1.vercel-dns.com` and `ns2.vercel-dns.com` since
+2026-10-20, 16:14 UTC. Before that the zone was on tunet's nameservers (`dns1/dns2.tunet.tn`).
+From 12:08 UTC that day they failed most lookups from outside Tunisia, for tunet.tn's own domain
+too, and the uptime monitor reported `dns_error` (monitoring runbook, "Reading a `dns_error`").
 
 | Name | Type | Value | Why |
 |---|---|---|---|
-| `tapnshow.tn` | A | `216.198.79.1` | Vercel's address for the apex (the value Vercel's domain card gave) |
-| `www.tapnshow.tn` | CNAME | the `*.vercel-dns-017.com` target Vercel's domain card gave | the main address |
-| `tapnshow.tn` | TXT | `google-site-verification=…` (Search Console gives it) | the Search Console Domain property, which covers `www` and the apex |
+| `tapnshow.tn` | ALIAS | Vercel's default, created by itself | the apex (redirects to `www`) |
+| `*` | ALIAS | Vercel's default, created by itself | `www` and any other subdomain |
+| `tapnshow.tn` | CAA | Vercel's defaults (Let's Encrypt, Sectigo, Google Trust Services) | who may issue certificates |
+| `tapnshow.tn` | TXT | `google-site-verification=…` (Search Console gives it), added by hand | the Search Console Domain property, which covers `www` and the apex |
 
-Vercel issues and renews the certificates (Let's Encrypt) by itself. Check with
-`vercel domains inspect tapnshow.tn` and `curl -sI https://tapnshow.tn/` (expect 308 to `www`).
+No MX: the domain has no email. Vercel issues and renews the certificates (Let's Encrypt) by itself.
+
+- **Records:** Vercel → the team → Domains → `tapnshow.tn`, or `vercel dns ls tapnshow.tn` and
+  `vercel dns add tapnshow.tn <name> <type> <value>`.
+- **Nameservers:** Ooredoo business panel → Mes domaines → `tapnshow.tn` → **Serveurs DNS** (the
+  registry's entry; it took effect within minutes). "Gestion DNS" there edits the records on
+  tunet's servers, which nothing reads any more. Never pick "Utiliser les serveurs de nom par
+  défaut": it hands the domain back to tunet.
+- tunet's old records stay until 2026-10-22: resolvers may remember the old nameservers for a day
+  (the registry's TTL). Deleting them after that is optional.
+
+```bash
+dig @ns1.ati.tn tapnshow.tn NS +norec | grep NS   # the registry: ns1/ns2.vercel-dns.com
+dig @ns1.vercel-dns.com www.tapnshow.tn A +short   # Vercel's answer
+vercel domains inspect tapnshow.tn                 # Intended and Current nameservers match
+curl -sI https://tapnshow.tn/                      # 308 to www
+```
 
 ## Moving the app address (done once, in this order)
 

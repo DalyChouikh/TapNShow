@@ -23,6 +23,34 @@ Sentry's two default rules ("high priority issues", "pull requests are ready") w
 - Created 2026-10-15 as "TapNShow /api/health" (3 failed checks open an uptime issue, 1 success
   resolves it), with the alert "TapNShow: uptime (production)" for opened, reopened and resolved.
 
+### Reading a `dns_error`
+
+Sentry's checker asks for the IPv4 address first, then for IPv6 when that fails, and reports only
+the last error (its resolver's default order). Vercel gives the site no IPv6 address, so the
+message says "no record found … AAAA" even when the IPv4 lookup is what failed. Look at the
+nameservers before the app: a lookup for a made-up name can't come from a cache, so it tests them.
+
+```bash
+curl -s "https://dns.google/resolve?name=probe$RANDOM.tapnshow.tn&type=A"   # "Status": 2 = they failed
+```
+
+On 2026-10-20 this showed tunet's nameservers failing (domain runbook, DNS); the zone moved to
+Vercel DNS the same day.
+
+## Vercel storage (Hobby)
+
+Every retained deployment keeps its function bundles: about 49 MB in Frankfurt, plus the
+middleware in 8 regions. The Hobby team includes 10 GB of Functions Storage, counted in GB-months.
+On 2026-10-20 it reached 100% after 505 deployments in 16 days (Vercel emailed "Your site is
+growing!"); 4 deployments were left that day.
+
+- Retention: 1 day for canceled, errored, pre-production and production (team policy applied to
+  every project, 2026-10-20). Vercel still keeps the live deployment and the last 3 production
+  ones, so there is always something to roll back to.
+- A documentation-only change (`scripts/docs-only.sh`) skips the Vercel build; it shows as
+  Canceled and builds no function bundles.
+- Check: Vercel → the team → Usage → Deployment Storage → Functions Storage → Projects.
+
 ## After 2026-10-17 (end of the Business trial)
 
 The free Developer plan lists "alerts via email"; third-party integrations are a Team feature.
