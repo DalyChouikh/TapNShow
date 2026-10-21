@@ -11,22 +11,54 @@ import { errorCodeOf } from "@/lib/api-client";
 import { formatTime } from "@/lib/meetings/format";
 import type { Meeting } from "@/shared/api/meetings";
 import type { MeetingResults } from "@/shared/api/responses";
+import { googleConnectHref } from "@/shared/api/google-connect";
+
+/**
+ * Why reminders can't go out without a working Gmail, as the reader can act on it (#420): the
+ * Owner gets the way to connect or reconnect it (back to Settings, which shows how it went, like
+ * Needs attention's button); an Admin is told to ask the Owner.
+ */
+function SenderNeeded({
+  slug,
+  canConnect,
+  broken,
+  ownerName,
+}: {
+  slug: string;
+  canConnect: boolean;
+  broken: boolean;
+  ownerName: string;
+}) {
+  const t = useTranslations("MeetingPage.nudge");
+  return canConnect ? (
+    <Button asChild tone="surface" className="justify-center text-center">
+      <a href={googleConnectHref(slug, "sending")}>
+        {t(broken ? "reconnect" : "connect")}
+      </a>
+    </Button>
+  ) : (
+    <p className="text-sm font-bold">{t("askOwner", { owner: ownerName })}</p>
+  );
+}
 
 /**
  * "Remind N who haven't answered" (spec §7.6 Nudge): once every 12 hours, after a confirm dialog.
  * The dialog's open state can be held by the page (`confirming`/`onConfirmingChange`), so it
- * survives the button remounting (Home's cards when the screen crosses lg, #417).
+ * survives the button remounting (Home's cards when the screen crosses lg, #417). `canConnect`:
+ * the reader is the Owner, who connects the workspace's Gmail.
  */
 export function NudgeButton({
   slug,
   meeting,
   results,
+  canConnect,
   confirming: heldConfirming,
   onConfirmingChange,
 }: {
   slug: string;
   meeting: Meeting;
   results: MeetingResults;
+  canConnect: boolean;
   confirming?: boolean;
   onConfirmingChange?: (open: boolean) => void;
 }) {
@@ -64,15 +96,27 @@ export function NudgeButton({
   }
   const connection = sender.data?.sender ?? null;
   const usable = connection?.status === "active";
+  const ownerName = sender.data?.ownerName ?? "";
   const refusal = (error: Error) => {
     const code = errorCodeOf(error);
     if (code === "sender_not_connected" || code === "sender_broken") {
-      return t("askOwner", { owner: sender.data?.ownerName ?? "" });
+      return (
+        <SenderNeeded
+          slug={slug}
+          canConnect={canConnect}
+          broken={code === "sender_broken"}
+          ownerName={ownerName}
+        />
+      );
     }
-    return code === "nothing_to_send" ? t("nothingToSend") : tErrors(code);
+    return (
+      <p className="font-bold">
+        {code === "nothing_to_send" ? t("nothingToSend") : tErrors(code)}
+      </p>
+    );
   };
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-2">
       <Button
         className="justify-center"
         disabled={!usable}
@@ -84,9 +128,12 @@ export function NudgeButton({
         {t("action", { count })}
       </Button>
       {!usable && sender.data ? (
-        <p className="text-sm font-bold">
-          {t("askOwner", { owner: sender.data.ownerName })}
-        </p>
+        <SenderNeeded
+          slug={slug}
+          canConnect={canConnect}
+          broken={connection?.status === "broken"}
+          ownerName={ownerName}
+        />
       ) : null}
       {connection ? (
         <ConfirmDialog
@@ -106,9 +153,9 @@ export function NudgeButton({
           }
         >
           {nudge.error ? (
-            <p role="alert" className="font-bold">
+            <div role="alert" className="flex flex-col">
               {refusal(nudge.error)}
-            </p>
+            </div>
           ) : null}
         </ConfirmDialog>
       ) : null}

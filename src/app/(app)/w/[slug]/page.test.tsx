@@ -393,4 +393,15 @@ describe("Workspace Home", () => {
       ),
     ).toBeInTheDocument();
   });
+
+  it("offers the Owner to connect Gmail from the next meeting's reminder (#420)", async () => {
+    serve({ sender: false });
+    renderWithProviders(<WorkspaceHomePage />);
+    expect(
+      await screen.findByRole("link", {
+        name: "Connect Gmail to send reminders",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/^Ask .* to connect Gmail/)).toBeNull();
+  });
 });

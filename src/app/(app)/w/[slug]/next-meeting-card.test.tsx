@@ -108,6 +108,7 @@ const card = (
   <NextMeetingCard
     slug="club-ab12"
     canManage={props.canManage ?? true}
+    canConnect={false}
     now={props.now ?? NOW}
     sendingSuspended={props.suspended ?? false}
   />

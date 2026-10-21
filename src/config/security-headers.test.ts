@@ -117,11 +117,16 @@ describe("contentSecurityPolicy (spec §11 M9)", () => {
 });
 
 describe("staticSecurityHeaders", () => {
-  it("applies nosniff, a strict referrer and no camera, microphone or location to everything", () => {
+  it("applies HSTS for every subdomain, nosniff, a strict referrer and no camera, microphone or location to everything", () => {
     expect(staticSecurityHeaders).toEqual([
       {
         source: "/:path*",
         headers: [
+          // Two years like Vercel's default, every subdomain, never preload (#422).
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=63072000; includeSubDomains",
+          },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           {
