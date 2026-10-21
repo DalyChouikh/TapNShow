@@ -27,6 +27,7 @@ import { ShowMore } from "@/components/ui/show-more";
 import { membersQueryKey, useMembersPage } from "@/hooks/use-members";
 import { apiRequest, errorCodeOf } from "@/lib/api-client";
 import { memberActions, type MemberAction } from "@/lib/member-actions";
+import { cn } from "@/lib/utils";
 import { okSchema } from "@/shared/api/common";
 import type { Member } from "@/shared/api/members";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
@@ -120,20 +121,23 @@ export function PeopleSection({
                 : (member.displayName ?? member.email);
             const actions = memberActions(workspace.myRole, myId, member);
             return (
-              <li key={member.userId} className="flex items-center gap-3">
+              <li
+                key={member.userId}
+                className={cn(
+                  "grid items-center gap-x-3",
+                  actions.length > 0
+                    ? "grid-cols-[auto_minmax(0,1fr)_auto_auto]"
+                    : "grid-cols-[auto_minmax(0,1fr)_auto]",
+                )}
+              >
                 <Avatar name={member.displayName} email={member.email} />
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0">
                   <p className="truncate font-bold">{name}</p>
                   <p className="truncate text-sm text-muted-ink">
                     {member.email}
                   </p>
                   {member.canCheckIn ? (
                     <p className="text-xs font-bold">{t("checkIn")}</p>
-                  ) : null}
-                  {member.sheetAccess === "cant_open" ? (
-                    <p className="mt-1">
-                      <Pill tone="warning">{t("cantOpenSheet")}</Pill>
-                    </p>
                   ) : null}
                 </div>
                 <RoleBadge role={member.role} />
@@ -156,6 +160,14 @@ export function PeopleSection({
                       ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
+                ) : null}
+                {/* Its own row under the address, as wide as the row allows: one piece at 320 px. */}
+                {member.sheetAccess === "cant_open" ? (
+                  <p className="col-[2/-1] mt-1">
+                    <Pill tone="warning" className="whitespace-nowrap">
+                      {t("cantOpenSheet")}
+                    </Pill>
+                  </p>
                 ) : null}
               </li>
             );
