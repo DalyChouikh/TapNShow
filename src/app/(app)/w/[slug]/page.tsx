@@ -63,6 +63,7 @@ function WorkspaceHome({ workspace }: { workspace: WorkspaceResponse }) {
       key="next"
       slug={workspace.slug}
       canManage={canManage}
+      canConnect={workspace.myRole === "owner"}
       now={now}
       sendingSuspended={Boolean(workspace.sendingSuspension)}
       remindFor={remindFor}

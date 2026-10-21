@@ -48,6 +48,7 @@ const CardSkeleton = () => <Skeleton className="h-64 w-full" />;
 export function NextMeetingCard({
   slug,
   canManage,
+  canConnect,
   now,
   sendingSuspended,
   remindFor = null,
@@ -55,6 +56,8 @@ export function NextMeetingCard({
 }: {
   slug: string;
   canManage: boolean;
+  /** The reader is the Owner, who connects the workspace's Gmail. */
+  canConnect: boolean;
   now: Date;
   sendingSuspended: boolean;
   /** The meeting whose Remind dialog is open (held by Home, so it survives crossing lg). */
@@ -78,6 +81,7 @@ export function NextMeetingCard({
       slug={slug}
       id={item.id}
       canManage={canManage}
+      canConnect={canConnect}
       now={now}
       sendingSuspended={sendingSuspended}
       refetchList={next.query.refetch}
@@ -93,6 +97,7 @@ function NextMeeting({
   slug,
   id,
   canManage,
+  canConnect,
   now,
   sendingSuspended,
   refetchList,
@@ -102,6 +107,7 @@ function NextMeeting({
   slug: string;
   id: string;
   canManage: boolean;
+  canConnect: boolean;
   now: Date;
   sendingSuspended: boolean;
   /** The upcoming list's own (stable) refetch. */
@@ -178,6 +184,7 @@ function NextMeeting({
             slug={slug}
             meeting={meeting.data}
             results={results.data}
+            canConnect={canConnect}
             confirming={onReminding ? reminding : undefined}
             onConfirmingChange={onReminding}
           />
