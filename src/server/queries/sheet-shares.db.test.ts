@@ -415,8 +415,11 @@ describe("finishing a cleanup", () => {
   const run = () => crypto.randomUUID();
   const finishedSchema = z.object({
     released: z
-      .object({ google_sub: z.string(), user_id: z.uuid() })
-      .loose()
+      .object({
+        google_sub: z.string(),
+        user_id: z.uuid(),
+        refresh_token_encrypted: z.string(),
+      })
       .nullable(),
     alert: z
       .object({
@@ -429,15 +432,17 @@ describe("finishing a cleanup", () => {
       .nullable(),
   });
 
-  /** Makes the workspace's one cleanup due, claims it and finishes it with `left` people left. */
-  async function finishCleanup(left: number) {
+  /** Makes the workspace's one cleanup due and claims it for a new run. */
+  async function claimCleanup() {
     parkAllCleanups();
     runLocalSql(
       `update public.sheet_share_cleanups set retry_at = now() where workspace_id = '${workspace.id}'`,
     );
     const runId = run();
     const [claimed] = z
-      .array(z.object({ id: z.uuid() }).loose())
+      .array(
+        z.object({ id: z.uuid(), refresh_token_encrypted: z.string() }).loose(),
+      )
       .length(1)
       .parse(
         await serviceRpc("sheet_share_cleanup_claim", {
@@ -446,14 +451,80 @@ describe("finishing a cleanup", () => {
           p_lease_seconds: 60,
         }),
       );
+    return { id: claimed.id, token: claimed.refresh_token_encrypted, runId };
+  }
+
+  /** Claims the workspace's one cleanup and finishes it with `left` people left. */
+  async function finishCleanup(left: number) {
+    const claimed = await claimCleanup();
     return finishedSchema.parse(
       await serviceRpc("sheet_share_cleanup_finish", {
         p_id: claimed.id,
-        p_run: runId,
+        p_run: claimed.runId,
         p_left: left,
       }),
     );
   }
+
+  const NEW_TOKEN = "v1.new.new.new";
+  /** The person connects the same Google account again: Google gives TapNShow a new token. */
+  const connectAgain = (user: TestUser, sub: string) =>
+    serviceRpc("save_google_connection", {
+      p_user: user.id,
+      p_google_sub: sub,
+      p_google_email: "again@example.test",
+      p_scopes: [DRIVE_FILE],
+      p_token_encrypted: NEW_TOKEN,
+    });
+
+  it("keeps a Google account its person connected again while the cleanup ran", async () => {
+    const connection = await seedSharedSheet();
+    await seedShare(workspace.id, {
+      userId: admin.id,
+      email: admin.email,
+      state: "shared",
+      permissionId: "perm1",
+    });
+    await owner.client.rpc("turn_off_sheet", { p_workspace: workspace.id });
+    await connectAgain(owner, connection.sub);
+    const finished = await finishCleanup(0);
+    expect(finished.released).toBeNull();
+    expect(await connectionExists(connection.id)).toBe(true);
+  });
+
+  it("removes the shares with the account's newest token while it is connected", async () => {
+    const connection = await seedSharedSheet();
+    await seedShare(workspace.id, {
+      userId: admin.id,
+      email: admin.email,
+      state: "shared",
+      permissionId: "perm1",
+    });
+    await owner.client.rpc("turn_off_sheet", { p_workspace: workspace.id });
+    await connectAgain(owner, connection.sub);
+    expect((await claimCleanup()).token).toBe(NEW_TOKEN);
+  });
+
+  it("revokes the newest token when its person connected again, then deleted their account", async () => {
+    const connection = await seedSharedSheet("admin-drive@example.test", admin);
+    await seedShare(workspace.id, {
+      userId: viewer.id,
+      email: viewer.email,
+      state: "shared",
+      permissionId: "perm1",
+    });
+    await owner.client.rpc("turn_off_sheet", { p_workspace: workspace.id });
+    await connectAgain(admin, connection.sub);
+    expect(
+      (await admin.client.rpc("delete_account", { p_confirm: "confirm" }))
+        .error,
+    ).toBeNull();
+    expect(
+      (await adminClient().auth.admin.deleteUser(admin.id)).error,
+    ).toBeNull();
+    const finished = await finishCleanup(0);
+    expect(finished.released?.refresh_token_encrypted).toBe(NEW_TOKEN);
+  });
 
   it("never releases the Google account of someone other than the person who turned the sheet off", async () => {
     // The sheet stayed on the previous Owner's (now an Admin's) Google account.

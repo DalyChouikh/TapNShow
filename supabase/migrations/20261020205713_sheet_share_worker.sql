@@ -17,7 +17,8 @@ insert into private.app_limits (name, value) values ('sheet_share_cleanup_max_ho
 -- Access to remove from a file TapNShow is letting go of. No foreign key to the workspace or the
 -- sheet: it outlives both. It keeps its own sealed token copy (the connection can be deleted with
 -- an account) until the removal is done, then the row and the copy go together. release_after:
--- the connection's own user let it go (release_connection marks it), so finishing releases it.
+-- the connection's own user let it go (release_connection marks it and refreshes the copy), so
+-- finishing releases it, unless they connected that account again since.
 create table public.sheet_share_cleanups (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null,
@@ -127,7 +128,9 @@ $$;
 -- connection is let go, by its own user only (security review M7). New (#413): a cleanup still
 -- holding the connection is marked when its own user lets it go, so the cleanup releases it once
 -- the team's access is removed; someone else's action (a new Owner turning the sheet off) never
--- marks it.
+-- marks it. The mark takes the token as it is now: finishing can tell whether the person
+-- connected that account again since (that new consent is never released), and an account
+-- deletion revokes the newest token.
 create or replace function private.release_connection(p_connection uuid, p_actor uuid)
 returns jsonb
 language plpgsql
@@ -140,9 +143,10 @@ begin
   if p_connection is null then
     return null;
   end if;
-  update public.sheet_share_cleanups k set release_after = true
-  where k.connection_id = p_connection and not k.release_after
-    and exists (select 1 from public.google_connections c where c.id = p_connection and c.user_id = p_actor);
+  update public.sheet_share_cleanups k
+  set release_after = true, refresh_token_encrypted = c.refresh_token_encrypted
+  from public.google_connections c
+  where k.connection_id = p_connection and c.id = p_connection and c.user_id = p_actor;
   if private.connection_in_use(p_connection) then
     return null;
   end if;
@@ -513,12 +517,15 @@ begin
     from picked where k.id = picked.id
     returning k.*
   )
+  -- The connection's current token while it exists (its person may have connected again since),
+  -- else the cleanup's own copy.
   select coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
     'id', l.id, 'spreadsheet_id', l.spreadsheet_id, 'google_sub', l.google_sub, 'token_user_id', l.token_user_id,
-    'refresh_token_encrypted', l.refresh_token_encrypted, 'permission_ids', l.permission_ids, 'emails', l.emails,
-    'give_up_at', l.give_up_at)), '[]'::jsonb)
+    'refresh_token_encrypted', coalesce(c.refresh_token_encrypted, l.refresh_token_encrypted),
+    'permission_ids', l.permission_ids, 'emails', l.emails, 'give_up_at', l.give_up_at)), '[]'::jsonb)
   into v_rows
-  from leased l;
+  from leased l
+  left join public.google_connections c on c.id = l.connection_id;
   return v_rows;
 end;
 $$;
@@ -556,10 +563,16 @@ begin
     return null;
   end if;
   -- Only when the connection's own user let it go (release_connection marked the row): the
-  -- connection is released by that same person's rule, or, when it went with their account, the
-  -- token copy is revoked unless another person's connection shares the Google account.
+  -- connection is released by that same person's rule unless they connected that account again
+  -- since (the token changed), or, when it went with their account, the token copy is revoked
+  -- unless another person's connection shares the Google account.
   if v_row.release_after and v_row.connection_id is not null then
-    v_released := private.release_connection(v_row.connection_id, v_row.token_user_id);
+    if exists (
+      select 1 from public.google_connections c
+      where c.id = v_row.connection_id and c.refresh_token_encrypted = v_row.refresh_token_encrypted
+    ) then
+      v_released := private.release_connection(v_row.connection_id, v_row.token_user_id);
+    end if;
   elsif v_row.release_after
     and not exists (select 1 from public.google_connections o where o.google_sub = v_row.google_sub) then
     v_released := pg_catalog.jsonb_build_object(

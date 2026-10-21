@@ -199,8 +199,9 @@ shares "to remove" instead of forgetting them, and the Google connection stays h
 then releases and revokes the connection as today, under the same rule: only when the connection's
 own user let it go (`private.release_connection` marks the cleanup `release_after`), so a new
 Owner turning off a sheet held by someone else's Google account never releases it, and that
-person deleting their account while a removal is still running still revokes the token copy
-(security review, 2026-10-20). The UI does not wait: the section shows the sheet
+person deleting their account while a removal is still running still revokes the token copy.
+The removal uses the account's newest token, and a person who connects that account again
+before the removal finishes keeps that new connection (security review, 2026-10-20). The UI does not wait: the section shows the sheet
 as off at once; removal happens in the background within about a minute. If TapNShow's access is
 already lost (the account removed TapNShow, or Google refuses), removal is impossible: the rows are
 dropped, the connection is released, and the Owner gets the existing "sheet" alert email naming how
