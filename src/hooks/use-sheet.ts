@@ -36,12 +36,12 @@ const sharingInProgress = (sharing: SheetStatus["sharing"]) =>
 
 /**
  * The workspace's Google Sheet (spec §7.17). Polls only while it matters: while the file is being
- * created, after Try again (`following`) until the sheet is up to date, and more slowly while the
- * team's sharing is in progress (#413).
+ * created, after Try again (`following`) until the sheet is up to date, and, where the sharing is
+ * shown (`followSharing`, Settings), more slowly while it is in progress (#413).
  */
 export function useWorkspaceSheet(
   slug: string,
-  options: { following?: boolean } = {},
+  options: { following?: boolean; followSharing?: boolean } = {},
 ) {
   return useQuery({
     ...sheetQueryOptions(slug),
@@ -53,7 +53,9 @@ export function useWorkspaceSheet(
       ) {
         return SHEET_STATUS_POLL_MS;
       }
-      return data?.state === "on" && sharingInProgress(data.sharing)
+      return options.followSharing === true &&
+        data?.state === "on" &&
+        sharingInProgress(data.sharing)
         ? SHEET_SHARING_POLL_MS
         : false;
     },

@@ -95,14 +95,15 @@ describe("useWorkspaceSheet while the team's sharing is in progress (#413)", () 
     myEmail: null,
     ...over,
   });
-  const follow = async (replies: SheetStatus[]) => {
+  const follow = async (replies: SheetStatus[], followSharing = true) => {
     const fetchMock = routeFetch({
       [`GET ${PATH}`]: () =>
         new Response(JSON.stringify(replies.shift() ?? status())),
     });
-    const { result } = renderHook(() => useWorkspaceSheet("club-ab12"), {
-      wrapper: wrapperWith(client()),
-    });
+    const { result } = renderHook(
+      () => useWorkspaceSheet("club-ab12", { followSharing }),
+      { wrapper: wrapperWith(client()) },
+    );
     await waitFor(() => expect(result.current.data).toBeDefined());
     return { fetchMock, result };
   };
@@ -116,6 +117,17 @@ describe("useWorkspaceSheet while the team's sharing is in progress (#413)", () 
     await act(() => vi.advanceTimersByTimeAsync(10_000));
     await waitFor(() =>
       expect(result.current.data?.sharing?.inProgress).toBe(0),
+    );
+    const calls = fetchMock.mock.calls.length;
+    await act(() => vi.advanceTimersByTimeAsync(30_000));
+    expect(fetchMock.mock.calls.length).toBe(calls);
+  });
+
+  it("doesn't follow the sharing where it isn't shown (Home)", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { fetchMock } = await follow(
+      [status({ sharing: sharing({}) })],
+      false,
     );
     const calls = fetchMock.mock.calls.length;
     await act(() => vi.advanceTimersByTimeAsync(30_000));

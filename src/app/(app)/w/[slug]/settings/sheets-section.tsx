@@ -61,7 +61,10 @@ export function SheetsSection({
   const returning = params.get(GOOGLE_RESULT_PARAMS.purpose) === "sheets";
   // After Try again, follow the status until the sheet is up to date.
   const [following, setFollowing] = useState(false);
-  const sheet = useWorkspaceSheet(workspace.slug, { following });
+  const sheet = useWorkspaceSheet(workspace.slug, {
+    following,
+    followSharing: true,
+  });
   const turnOff = useTurnOffSheet(workspace.slug);
   const retry = useRetrySheet(workspace.slug);
   const [pending, setPending] = useState<Pending>(null);

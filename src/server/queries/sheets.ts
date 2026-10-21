@@ -38,6 +38,7 @@ const dbSheetSchema = z
         starts_to: z.string().nullable(),
       }),
     ),
+    // Missing before the #413 migration reaches a database (a deploy or preview can go first).
     sharing: z
       .object({
         team_count: z.number(),
@@ -48,7 +49,7 @@ const dbSheetSchema = z
         mine: z.string().nullable(),
         my_email: z.string().nullable(),
       })
-      .nullable(),
+      .nullish(),
   })
   .transform((db): SheetStatus =>
     sheetStatusSchema.parse({
@@ -67,15 +68,17 @@ const dbSheetSchema = z
         startsFrom: tab.starts_from,
         startsTo: tab.starts_to,
       })),
-      sharing: db.sharing && {
-        teamCount: db.sharing.team_count,
-        total: db.sharing.total,
-        canView: db.sharing.can_view,
-        cantOpen: db.sharing.cant_open,
-        inProgress: db.sharing.in_progress,
-        mine: db.sharing.mine,
-        myEmail: db.sharing.my_email,
-      },
+      sharing: db.sharing
+        ? {
+            teamCount: db.sharing.team_count,
+            total: db.sharing.total,
+            canView: db.sharing.can_view,
+            cantOpen: db.sharing.cant_open,
+            inProgress: db.sharing.in_progress,
+            mine: db.sharing.mine,
+            myEmail: db.sharing.my_email,
+          }
+        : null,
     }),
   );
 
