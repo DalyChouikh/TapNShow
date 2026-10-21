@@ -9,7 +9,8 @@ concurrency:
 # quality and db are required checks, so they always run: a path filter would leave them pending
 # and block the merge. A documentation-only change (scripts/docs-only.sh) skips their heavy steps
 # instead; a step skipped by `if` keeps the job green. quality still checks formatting, because
-# Prettier covers the root *.md files.
+# Prettier covers the root *.md files. In db, a pull request runs only the database tests its change
+# can reach (scripts/db-test-scope.ts); main runs them all.
 jobs:
   quality:
     runs-on: ubuntu-latest
@@ -69,8 +70,11 @@ jobs:
         run: supabase start -x studio,edge-runtime,logflare,vector,imgproxy,realtime,storage-api,supavisor
       - if: steps.scope.outputs.docs_only != 'true'
         run: supabase db advisors --local
+      # No base on main: everything runs there, the safety net after each merge.
       - if: steps.scope.outputs.docs_only != 'true'
-        run: bun run test:db
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+        run: bun scripts/db-test-scope.ts "$BASE" HEAD
       - if: steps.scope.outputs.docs_only != 'true'
         run: bunx playwright install --with-deps chromium
       # Next's build cache (https://nextjs.org/docs/app/guides/ci-build-caching): faster e2e builds.

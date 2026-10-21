@@ -1,15 +1,9 @@
 import { spawnSync } from "node:child_process";
-import {
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
-import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
+import { createGitRepo, type GitRepo } from "@/test/git-repo";
 
 const DOCS_ONLY = resolve("scripts/docs-only.sh");
 const VERCEL_IGNORE = resolve("scripts/vercel-ignore-build.sh");
@@ -18,63 +12,30 @@ const UNKNOWN_SHA = "0000000000000000000000000000000000000000";
 const SKIP = 0;
 const RUN = 1;
 
-let repo = "";
-
-function env(extra: Record<string, string> = {}): NodeJS.ProcessEnv {
-  return {
-    NODE_ENV: "test",
-    PATH: process.env.PATH ?? "",
-    HOME: repo,
-    GIT_CONFIG_NOSYSTEM: "1",
-    GIT_AUTHOR_NAME: "Test",
-    GIT_AUTHOR_EMAIL: "test@example.test",
-    GIT_COMMITTER_NAME: "Test",
-    GIT_COMMITTER_EMAIL: "test@example.test",
-    ...extra,
-  };
-}
-
-function git(...args: string[]): string {
-  const result = spawnSync("git", args, {
-    cwd: repo,
-    env: env(),
-    encoding: "utf8",
-  });
-  if (result.status !== 0) throw new Error(result.stderr);
-  return result.stdout.trim();
-}
-
-/** Writes the files (null deletes one), commits, and returns the new commit. */
-function commit(files: Record<string, string | null>): string {
-  for (const [path, content] of Object.entries(files)) {
-    if (content === null) {
-      git("rm", "-q", path);
-    } else {
-      mkdirSync(dirname(join(repo, path)), { recursive: true });
-      writeFileSync(join(repo, path), content);
-      git("add", path);
-    }
-  }
-  git("commit", "-q", "-m", "change");
-  return git("rev-parse", "HEAD");
-}
+let repo: GitRepo;
+const git = (...args: string[]) => repo.git(...args);
+const commit = (files: Record<string, string | null>) => repo.commit(files);
 
 function docsOnly(base: string, head: string): number | null {
-  return spawnSync("sh", [DOCS_ONLY, base, head], { cwd: repo, env: env() })
-    .status;
+  return spawnSync("sh", [DOCS_ONLY, base, head], {
+    cwd: repo.path,
+    env: repo.env(),
+  }).status;
 }
 
 function vercelIgnore(vars: Record<string, string>): number | null {
-  return spawnSync("sh", [VERCEL_IGNORE], { cwd: repo, env: env(vars) }).status;
+  return spawnSync("sh", [VERCEL_IGNORE], {
+    cwd: repo.path,
+    env: repo.env(vars),
+  }).status;
 }
 
 beforeEach(() => {
-  repo = mkdtempSync(join(tmpdir(), "docs-only-"));
-  git("init", "-q", "-b", "main");
+  repo = createGitRepo("docs-only-");
 });
 
 afterEach(() => {
-  rmSync(repo, { recursive: true, force: true });
+  repo.remove();
 });
 
 describe("docs-only.sh", () => {
@@ -179,6 +140,16 @@ describe("wiring", () => {
   }
 
   const GATE = "if: steps.scope.outputs.docs_only != 'true'";
+
+  it("runs the database tests a pull request can reach, and all of them on main (#426)", () => {
+    const tests = steps("db").filter((step) => step.includes("db-test-scope"));
+    expect(tests).toHaveLength(1);
+    expect(tests[0]).toContain('bun scripts/db-test-scope.ts "$BASE" HEAD');
+    expect(tests[0]).toContain(
+      "BASE: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}",
+    );
+    expect(ci).not.toContain("run: bun run test:db");
+  });
 
   it("has no path filter: a skipped required workflow leaves its checks pending", () => {
     const triggers = ci.slice(ci.indexOf("\non:"), ci.indexOf("\njobs:"));
