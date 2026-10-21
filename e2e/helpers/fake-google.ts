@@ -38,6 +38,14 @@ export type FakeTab = {
   slicerIds: number[];
 };
 
+/** One person a fake file is shared with (a Drive `permissions` entry). */
+export type FakePermission = {
+  id: string;
+  type: "user";
+  role: "owner" | "reader";
+  emailAddress: string;
+};
+
 /** One spreadsheet the app created in the fake Drive. */
 export type FakeSheetFile = {
   id: string;
@@ -46,6 +54,10 @@ export type FakeSheetFile = {
   createKey: string;
   trashed: boolean;
   tabs: FakeTab[];
+  /** Who can open it, the account that owns it first (Drive lists them all). */
+  permissions: FakePermission[];
+  /** The address of each email Google sent about a share, in order. */
+  shareEmails: string[];
 };
 
 const createSchema = z.object({
@@ -100,6 +112,11 @@ const requestSchema = z.object({
   deleteEmbeddedObject: z.object({ objectId: z.number().int() }).optional(),
 });
 const batchSchema = z.object({ requests: z.array(requestSchema) });
+const shareSchema = z.object({
+  type: z.literal("user"),
+  role: z.literal("reader"),
+  emailAddress: z.string(),
+});
 
 /** A new file's only tab, as Google creates it. */
 const firstTab = (): FakeTab => ({
@@ -180,13 +197,19 @@ function apply(
  *   `POST /gmail/v1/users/me/messages/send` (stores the message, threads like Gmail);
  * - Drive `files` create / find by `tapnshow_create_key` / `?fields=trashed`, and Sheets
  *   `spreadsheets.get` (tabs, rule counts, slicers) / `batchUpdate` (applied to the stored file);
- * - for assertions: `GET /__messages`, `GET /__sheets`, and `POST /__sheets/trash/<id>` (flips the
- *   file between the trash and Drive).
+ * - Drive `permissions` list (paged by `pageSize` / `pageToken`), create and delete, like the
+ *   #413 spike: sharing an address that already has access returns the same id and emails it
+ *   again; deleting a permission that is gone answers 404;
+ * - for assertions: `GET /__messages`, `GET /__sheets`, `POST /__sheets/trash/<id>` (flips the
+ *   file between the trash and Drive), and `POST /__sheets/refuse` (Google refuses to share with
+ *   that address from now on, as for an address that isn't a Google account).
  */
 export function startFakeGoogle(): Promise<Server> {
   const messages: FakeGmailMessage[] = [];
   const files: FakeSheetFile[] = [];
+  const refused = new Set<string>();
   let threads = 0;
+  let permissions = 0;
   const server = createServer((request, response) => {
     let body = "";
     request.on("data", (chunk: Buffer) => {
@@ -254,6 +277,15 @@ export function startFakeGoogle(): Promise<Server> {
       if (route === "GET /__messages") {
         return reply(200, messages);
       }
+      if (route === "POST /__sheets/refuse") {
+        refused.add(
+          z
+            .object({ email: z.string() })
+            .parse(JSON.parse(body))
+            .email.toLowerCase(),
+        );
+        return reply(200, {});
+      }
       if (route === "POST /drive/v3/files") {
         const created = createSchema.parse(JSON.parse(body));
         // Shaped like a Drive id (the database checks 10+ of [A-Za-z0-9_-]).
@@ -264,6 +296,15 @@ export function startFakeGoogle(): Promise<Server> {
           createKey: created.appProperties.tapnshow_create_key,
           trashed: false,
           tabs: [firstTab()],
+          permissions: [
+            {
+              id: "owner",
+              type: "user",
+              role: "owner",
+              emailAddress: FAKE_GOOGLE_ACCOUNT.email,
+            },
+          ],
+          shareEmails: [],
         });
         return reply(200, { id });
       }
@@ -303,6 +344,60 @@ export function startFakeGoogle(): Promise<Server> {
         }
         return reply(200, {});
       }
+      if (route === `GET /drive/v3/files/${file.id}/permissions`) {
+        const size = Number(url.searchParams.get("pageSize") ?? "100");
+        const from = Number(url.searchParams.get("pageToken") ?? "0");
+        const next = from + size;
+        return reply(200, {
+          permissions: file.permissions.slice(from, next),
+          ...(next < file.permissions.length
+            ? { nextPageToken: String(next) }
+            : {}),
+        });
+      }
+      if (route === `POST /drive/v3/files/${file.id}/permissions`) {
+        const email = shareSchema
+          .parse(JSON.parse(body))
+          .emailAddress.toLowerCase();
+        if (refused.has(email)) {
+          return reply(400, {
+            error: {
+              code: 400,
+              message: "Bad Request",
+              errors: [{ reason: "invalidSharingRequest" }],
+            },
+          });
+        }
+        const existing = file.permissions.find(
+          (each) => each.emailAddress === email,
+        );
+        const permission: FakePermission = existing ?? {
+          id: `perm-${(permissions += 1)}`,
+          type: "user",
+          role: "reader",
+          emailAddress: email,
+        };
+        if (!existing) {
+          file.permissions.push(permission);
+        }
+        file.shareEmails.push(email);
+        return reply(200, { id: permission.id });
+      }
+      const permissionId = new RegExp(
+        `^/drive/v3/files/${file.id}/permissions/([^/]+)$`,
+      ).exec(url.pathname)?.[1];
+      if (request.method === "DELETE" && permissionId) {
+        const left = file.permissions.filter(
+          (each) => each.id !== permissionId,
+        );
+        if (left.length === file.permissions.length) {
+          return notFound();
+        }
+        file.permissions = left;
+        response.writeHead(204);
+        response.end();
+        return;
+      }
       if (route === `POST /__sheets/trash/${file.id}`) {
         file.trashed = !file.trashed;
         return reply(200, file);
@@ -334,5 +429,16 @@ export async function toggleTrash(fileId: string): Promise<void> {
   });
   if (!response.ok) {
     throw new Error(`no fake file ${fileId}`);
+  }
+}
+
+/** From now on, the fake Google refuses to share any file with `email` (not a Google account). */
+export async function refuseShares(email: string): Promise<void> {
+  const response = await fetch(`${FAKE_GOOGLE_URL}/__sheets/refuse`, {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+  if (!response.ok) {
+    throw new Error("the fake Google refused the refusal");
   }
 }
