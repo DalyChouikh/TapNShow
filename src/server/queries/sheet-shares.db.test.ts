@@ -161,7 +161,7 @@ describe("the switch", () => {
   let restore: () => void = () => undefined;
   afterEach(() => restore());
 
-  it("is due only while the switch is on and the sheet has a file it can reach", async () => {
+  it("is due only while the switch is on", async () => {
     await seedSharedSheet();
     parkAllWork();
     makeSharesDue(workspace.id);
@@ -171,20 +171,30 @@ describe("the switch", () => {
     setSheetTeamSharing(true);
     expect(sharesDueNow(workspace.id)).toBe(true);
     expect(workersDue()).toBe(true);
-    // Owner, 2026-10-21: paused while TapNShow can still reach the file, people who leave are
-    // still removed (the worker adds nobody until it resumes).
-    for (const [reason, due] of [
-      ["trashed", true],
-      ["full", true],
-      ["drive_full", true],
-      ["deleted", false],
-      ["access_lost", false],
-    ] as const) {
-      runLocalSql(
-        `update public.sheet_syncs set status = 'paused', paused_reason = '${reason}' where workspace_id = '${workspace.id}'`,
-      );
-      expect(sharesDueNow(workspace.id), reason).toBe(due);
-    }
+  });
+
+  it("stays due while paused only with its file still in reach", async () => {
+    await seedSharedSheet();
+    makeSharesDue(workspace.id);
+    restore = setSheetTeamSharing(true);
+    // Owner, 2026-10-21: people who leave are still removed (the worker adds nobody until it
+    // resumes). One query: the same predicate on the sheet's row paused for each reason.
+    expect(
+      queryLocalSql(
+        `select r.reason, private.sheet_shares_due(pg_catalog.jsonb_populate_record(s,
+           pg_catalog.jsonb_build_object('status', 'paused', 'paused_reason', r.reason))) as due
+         from public.sheet_syncs s,
+           unnest(array['trashed', 'full', 'drive_full', 'deleted', 'access_lost']) as r(reason)
+         where s.workspace_id = '${workspace.id}' order by r.reason`,
+        z.array(z.object({ reason: z.string(), due: z.boolean() })),
+      ),
+    ).toEqual([
+      { reason: "access_lost", due: false },
+      { reason: "deleted", due: false },
+      { reason: "drive_full", due: true },
+      { reason: "full", due: true },
+      { reason: "trashed", due: true },
+    ]);
   });
 });
 

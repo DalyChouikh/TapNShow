@@ -1,5 +1,5 @@
 import type { TestUser } from "./clients";
-import { runLocalSql } from "./sql";
+import { runLocalScript, runLocalSql } from "./sql";
 
 /** Makes `user` the platform owner or an admin directly (test setup; the product uses the script and invites). */
 export function makePlatformAdmin(
@@ -21,7 +21,9 @@ export function clearPlatformAdmins(): void {
 
 /** Marks every waiting platform event as handled (tests of the wake-up that need nothing due). */
 export function parkAllPlatformEvents(): void {
-  runLocalSql(
-    "update public.platform_events set notified_at = now() where notified_at is null",
-  );
+  runLocalScript(PARK_ALL_PLATFORM_EVENTS_SQL);
 }
+
+/** `parkAllPlatformEvents` as SQL, for `parkAllWork`'s single call. */
+export const PARK_ALL_PLATFORM_EVENTS_SQL =
+  "update public.platform_events set notified_at = now() where notified_at is null;";

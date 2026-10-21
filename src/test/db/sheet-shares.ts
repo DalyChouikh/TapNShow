@@ -3,7 +3,7 @@ import { DRIVE_FILE_SCOPE } from "@/config/sheets";
 import { adminClient } from "./clients";
 import { seedConnection } from "./sender";
 import { seedSheet } from "./sheets";
-import { queryLocalSql, runLocalSql } from "./sql";
+import { queryLocalSql, runLocalScript, runLocalSql } from "./sql";
 
 /**
  * Seeds a workspace's active Google Sheet with a file, held by `holderId`'s Google account whose
@@ -50,10 +50,12 @@ export function setSheetTeamSharing(enabled: boolean): () => void {
  * test that claims or wakes must not see sheets other test files left due.
  */
 export function parkAllShares(): void {
-  runLocalSql(
-    "update public.sheet_syncs set shares_due_at = null, shares_run_id = null, shares_locked_until = null",
-  );
+  runLocalScript(PARK_ALL_SHARES_SQL);
 }
+
+/** `parkAllShares` as SQL, for `parkAllWork` and `makeSharesDue`. */
+export const PARK_ALL_SHARES_SQL =
+  "update public.sheet_syncs set shares_due_at = null, shares_run_id = null, shares_locked_until = null;";
 
 /** A workspace's share rows, by address (service role). */
 export async function sharesOf(workspaceId: string): Promise<
@@ -164,10 +166,12 @@ export async function cleanupsOf(workspaceId: string): Promise<
 
 /** Parks every cleanup and frees its lease (the cleanup claim is global). */
 export function parkAllCleanups(): void {
-  runLocalSql(
-    "update public.sheet_share_cleanups set retry_at = now() + interval '1 day', run_id = null, locked_until = null",
-  );
+  runLocalScript(PARK_ALL_CLEANUPS_SQL);
 }
+
+/** `parkAllCleanups` as SQL, for `parkAllWork` and `makeCleanupsDue`. */
+export const PARK_ALL_CLEANUPS_SQL =
+  "update public.sheet_share_cleanups set retry_at = now() + interval '1 day', run_id = null, locked_until = null;";
 
 /**
  * Parks every sheet's shares, then marks this workspace's due as `private.sheet_shares_mark` does,
@@ -175,19 +179,13 @@ export function parkAllCleanups(): void {
  * not be due yet for a claim made right after. Like `makeDue` for the redraw.
  */
 export function makeSharesDue(workspaceId: string): void {
-  parkAllShares();
-  runLocalSql(
-    `select private.sheet_shares_mark(array['${workspaceId}'::uuid])`,
-  );
-  runLocalSql(
-    `update public.sheet_syncs set shares_due_at = now() - interval '1 minute' where workspace_id = '${workspaceId}'`,
-  );
+  runLocalScript(`${PARK_ALL_SHARES_SQL}
+    select private.sheet_shares_mark(array['${workspaceId}'::uuid]);
+    update public.sheet_syncs set shares_due_at = now() - interval '1 minute' where workspace_id = '${workspaceId}';`);
 }
 
 /** Parks every cleanup, then makes this workspace's due a minute back (see `makeSharesDue`). */
 export function makeCleanupsDue(workspaceId: string): void {
-  parkAllCleanups();
-  runLocalSql(
-    `update public.sheet_share_cleanups set retry_at = now() - interval '1 minute' where workspace_id = '${workspaceId}'`,
-  );
+  runLocalScript(`${PARK_ALL_CLEANUPS_SQL}
+    update public.sheet_share_cleanups set retry_at = now() - interval '1 minute' where workspace_id = '${workspaceId}';`);
 }
