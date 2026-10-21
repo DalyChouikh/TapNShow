@@ -23,10 +23,13 @@ const row = (email: string, over: Partial<ShareRow> = {}): ShareRow => ({
   nextTryAt: null,
   ...over,
 });
-const listed = (email: string, id = `p-${email}`): DrivePermission => ({
-  id,
-  email,
-});
+const listed = (
+  email: string,
+  id = `p-${email}`,
+  viewOnly = true,
+): DrivePermission => ({ id, email, viewOnly });
+/** A hand share that gives more than view (editor or commenter). */
+const editor = (email: string) => listed(email, `p-${email}`, false);
 
 function plan(input: {
   targets?: ShareTarget[];
@@ -68,16 +71,40 @@ describe("planShareChanges: wanted and listed", () => {
     ).toEqual(EMPTY);
   });
 
-  it("keeps a hand share as it is", () => {
+  it("keeps a hand share that gives more than view as it is", () => {
     const sara = target("sara@example.test");
     expect(
       plan({
         targets: [sara],
         shares: [row(sara.email, { state: "external" })],
-        permissions: [listed(sara.email)],
+        permissions: [editor(sara.email)],
       }),
     ).toEqual(EMPTY);
   });
+
+  // Owner, 2026-10-21: a team member's view-only share made by hand, at their account's own
+  // address, becomes TapNShow's, so it goes when they leave or the sheet is turned off.
+  it.each([
+    ["no row", []],
+    ["a pending row", [row("sara@example.test")]],
+    ["an external row", [row("sara@example.test", { state: "external" })]],
+    [
+      "a too-many row",
+      [row("sara@example.test", { state: "refused", reason: "too_many" })],
+    ],
+  ] as const)(
+    "takes over a team member's view-only hand share at their own address (%s)",
+    (_name, shares) => {
+      const sara = target("sara@example.test");
+      expect(
+        plan({
+          targets: [sara],
+          shares: [...shares],
+          permissions: [listed("Sara@Example.test", "p9")],
+        }),
+      ).toEqual({ ...EMPTY, adopt: [{ target: sara, permissionId: "p9" }] });
+    },
+  );
 
   it.each(["sharing", "refused"] as const)(
     "adopts the listed permission when TapNShow had tried this address (%s)",
@@ -98,13 +125,13 @@ describe("planShareChanges: wanted and listed", () => {
     },
   );
 
-  it("records an address never tried (too many) that Drive lists as a hand share", () => {
+  it("records an address never tried (too many) that Drive lists as an editor's hand share", () => {
     const sara = target("sara@example.test");
     expect(
       plan({
         targets: [sara],
         shares: [row(sara.email, { state: "refused", reason: "too_many" })],
-        permissions: [listed(sara.email, "p9")],
+        permissions: [editor(sara.email)],
       }),
     ).toEqual({ ...EMPTY, external: [sara] });
   });
@@ -135,14 +162,14 @@ describe("planShareChanges: wanted and listed", () => {
     ["no row", []],
     ["a pending row", [row("sara@example.test")]],
   ] as const)(
-    "records a hand share made before TapNShow (%s)",
+    "records an editor or commenter shared by hand before TapNShow (%s)",
     (_name, shares) => {
       const sara = target("sara@example.test");
       expect(
         plan({
           targets: [sara],
           shares: [...shares],
-          permissions: [listed(sara.email)],
+          permissions: [editor(sara.email)],
         }),
       ).toEqual({ ...EMPTY, external: [sara] });
     },

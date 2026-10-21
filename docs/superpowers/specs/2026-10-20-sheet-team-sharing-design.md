@@ -33,7 +33,10 @@ Non-goals:
   team only.**
 - Choosing per person who gets access (Owner chose automatic, team only).
 - Editing rights. Members get view access; TapNShow overwrites edits anyway.
-- Touching access the Owner gave by hand in Drive.
+- Touching access the Owner gave by hand in Drive, with one exception (Owner, 2026-10-21): a team
+  member's view-only share made by hand at their own account's address (exact, ignoring case) is
+  taken over by TapNShow, so it goes when they leave or the sheet is turned off. Another address of
+  theirs, anyone outside the team, and anyone given more than view are never touched.
 
 Anti-goals (a failure even if it "works"):
 - A person who left the team keeps access because a Google call failed, a run timed out, or
@@ -63,21 +66,22 @@ one block:
   the sheet status API, not from the paged members list (my call);
 - when the desired set is empty (the Owner alone, holding the sheet in their own account): "Only you
   so far. People who join the team get access." (my call; not in the mockups);
-- only when some can't: one sentence with the count, never a list: "Google couldn't share it with
-  {count, plural, one {1 person} other {# people}}, usually because the address isn't a Google
-  account. You can share it with them by hand from Google Sheets. They're marked in People." ("They're
-  marked in People." links to the People section);
+- only when some can't: one sentence with the count, never a list: "{count, plural, one {1 person on
+  your team can't open it} other {# people on your team can't open it}}. You can share it with them
+  by hand from Google Sheets. They're marked in People." ("They're marked in People." links to the
+  People section). Owner, 2026-10-21: no guessed reason (the spike showed Google accepting a
+  non-Google address), and true for every case: refused, past the cap, removed by hand in Drive;
 - "People who join or leave the team get or lose access within a minute."
 
 **Owner, Settings → People:** a small yellow tag **Can't open the sheet** under the address of each
-team member Google couldn't share with (under "Can check in" when both show). Owner only: Admins and
+team member who can't open the sheet (under "Can check in" when both show). Owner only: Admins and
 Viewers see People without the tag (only the Owner can share by hand).
 
 **Each team member (Admin, Viewer), Settings → Google Sheets, sheet on:** one line about their own
 address, replacing today's "If Google says you need access, ask {owner}…":
 - shared: "You can view it with {email}."
-- couldn't share: "Google couldn't share it with {email}. Ask {owner}, the Owner, to share it with
-  your Google address."
+- can't open it: "You can't open it with {email}. Ask {owner}, the Owner, to share it with your
+  Google address." (Owner, 2026-10-21)
 - in progress: "Sharing it with you…"
 - the sheet is in their own Google account (for example the club's account is an Admin): "It's in
   your Google Drive." (my call)
@@ -153,8 +157,8 @@ capped at `SHEET_TEAM_SHARES_MAX` (§6). Nothing else decides who gets access.
 **Actual state:** a table of the shares TapNShow made, one row per (sheet file, person): the Drive
 permission id, the state (to add, shared, couldn't share, to remove), the reason Google gave,
 attempts and next try. RLS: the Owner reads the workspace's rows; each member reads their own row;
-no direct writes for `authenticated`. Only rows TapNShow created are ever removed, so hand shares
-are never touched.
+no direct writes for `authenticated`. Only shares TapNShow created or took over are ever removed, so
+other hand shares are never touched.
 
 **Change detection:** statement-level triggers on `workspace_roles` (insert, update, delete) and on
 `sheet_syncs` (a new file, a replaced file, turned off), like `private.sheet_memberships_changed`,
@@ -164,12 +168,14 @@ these tables, so no route has to remember to call anything.
 
 **Per-person rules (the worker's planner; "listed" = in Drive's `permissions.list`):**
 
-- Wanted and listed: kept as is when TapNShow already holds that permission or it was a hand share
-  (`external`, including an address never tried because it was past the cap); adopted as
-  TapNShow's when TapNShow had tried this address (`sharing`, `refused`), so a crash between Google
-  and the database never leads to a second share or a second email. TapNShow's own share is found
-  by its recorded permission id first, then by address (Drive may list an account under another
-  address than the one used to sign in); the file's owner permission is never touched.
+- Wanted and listed: kept as is when TapNShow already holds that permission; adopted as TapNShow's
+  when TapNShow had tried this address (`sharing`, `refused`), so a crash between Google and the
+  database never leads to a second share or a second email, and when it is a view-only share made
+  by hand at the member's own address (Owner, 2026-10-21; no email, it already exists); an editor
+  or commenter shared by hand stays a hand share (`external`). TapNShow's own share is found by its
+  recorded permission id first, then by address (Drive may list an account under another address
+  than the one used to sign in); hand shares only at the exact address; the file's owner permission
+  is never touched.
 - Wanted and not listed: shared (within the cap and the run's budget), except when TapNShow's own
   share or a hand share has disappeared (`removed_in_drive`: removed by hand in Drive, never shared
   again automatically) or a refusal's retry time hasn't come (at most once a day).
@@ -184,8 +190,12 @@ when work is due; share work must count as due there and in the worker's claim, 
 "within about a minute" true. Routes that change the team may also call `scheduleWorkers(["sheets"])`
 after commit to start sooner, but correctness never depends on it.
 
-**Paused sheets:** while a sheet is paused (trashed, deleted, access lost, full), its shares wait;
-they are reconciled when it resumes (my call). Removal on turn-off still applies (§5 below).
+**Paused sheets (Owner, 2026-10-21):** while a sheet is paused but TapNShow can still reach the file
+(trashed, full, Drive full), people who leave are still removed within a minute; nobody is added
+until it resumes, which marks it due again. When the file is deleted nobody has access; when Google
+access is lost nothing can be removed (the Owner already has the "stopped updating" email), and a
+paused sheet is never paused again nor emailed about twice. Removal on turn-off still applies (§5
+below).
 
 **Account emails:** TapNShow has no way to change an account's email today (no email-change path in
 the code, checked 2026-10-20); if one is added later, it must mark shares due.

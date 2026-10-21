@@ -381,6 +381,7 @@ begin
 
   select coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
     'workspace_id', s.workspace_id, 'spreadsheet_id', s.spreadsheet_id, 'version', (x.e ->> 'version')::bigint,
+    'paused', s.status = 'paused',
     'cap', private.app_limit('sheet_team_shares_max'),
     'connection', case when c.id is null then null else pg_catalog.jsonb_build_object(
       'id', c.id, 'user_id', c.user_id, 'google_sub', c.google_sub,

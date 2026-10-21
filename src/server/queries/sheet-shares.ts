@@ -26,6 +26,8 @@ export type ShareClaim = {
   spreadsheetId: string;
   /** The mark's version at claim time (`sheet_share_release` compares it). */
   version: number;
+  /** Paused with its file still in reach: only removals run (Owner, 2026-10-21). */
+  paused: boolean;
   cap: number;
   connection: {
     id: string;
@@ -122,6 +124,7 @@ const claimsSchema = z.array(
       workspace_id: z.uuid(),
       spreadsheet_id: z.string(),
       version: z.number().int(),
+      paused: z.boolean(),
       cap: z.number().int().positive(),
       connection: z
         .object({
@@ -153,6 +156,7 @@ const claimsSchema = z.array(
       workspaceId: db.workspace_id,
       spreadsheetId: db.spreadsheet_id,
       version: db.version,
+      paused: db.paused,
       cap: db.cap,
       connection: db.connection && {
         id: db.connection.id,

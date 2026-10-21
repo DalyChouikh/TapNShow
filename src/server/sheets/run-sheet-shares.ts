@@ -143,6 +143,11 @@ async function shareSheet(
   const workspace = claim.workspaceId;
   const file = claim.spreadsheetId;
   const pause = async (reason: SheetPauseReason) => {
+    if (claim.paused) {
+      // Already paused: nothing more to do until it resumes (which marks it due again); no second
+      // pause, no second email.
+      return deps.store.release(workspace, run, claim.version, null);
+    }
     summary.paused += 1;
     const alert = await deps.store.pause(workspace, run, reason);
     if (alert) {
@@ -219,7 +224,7 @@ async function shareSheet(
   if (listed.kind !== "ok") {
     return fail(listed, "share-list");
   }
-  const plan = planShareChanges({
+  const planned = planShareChanges({
     targets: claim.targets,
     shares: claim.shares,
     permissions: listed.value,
@@ -227,6 +232,19 @@ async function shareSheet(
     now: deps.now(),
     createBudget: options.sharesPerRun,
   });
+  // Paused with its file still in reach (Owner, 2026-10-21): people who left are removed; nobody is
+  // added until the sheet resumes, which marks it due again.
+  const plan = claim.paused
+    ? {
+        ...planned,
+        create: [],
+        adopt: [],
+        external: [],
+        removedInDrive: [],
+        tooMany: [],
+        nextDue: null,
+      }
+    : planned;
   const save = (
     target: ShareTarget,
     outcome: {

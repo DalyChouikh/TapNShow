@@ -145,8 +145,9 @@ create trigger sheet_file_updated after update of spreadsheet_id, google_email, 
     or old.status is distinct from new.status)
   execute function private.sheet_file_changed();
 
--- A sheet's shares are due: the switch is on, the sheet is active with a file, the mark's time
--- has come and no share run holds it. The share claim and workers_due use this one predicate.
+-- A sheet's shares are due: the switch is on, the sheet has a file it can reach (active, or paused
+-- with the file still in reach), the mark's time has come and no share run holds it. The share
+-- claim and workers_due use this one predicate.
 create function private.sheet_shares_due(p_sheet public.sheet_syncs)
 returns boolean
 language sql
@@ -154,7 +155,10 @@ stable
 set search_path = ''
 as $$
   select private.app_flag('sheet_team_sharing')
-    and p_sheet.status = 'active'
+    -- Paused while TapNShow can still reach the file (Owner, 2026-10-21): people who leave are
+    -- still removed; the worker adds nobody until the sheet resumes, which marks it due again.
+    and (p_sheet.status = 'active'
+      or (p_sheet.status = 'paused' and p_sheet.paused_reason in ('trashed', 'full', 'drive_full')))
     and p_sheet.spreadsheet_id is not null
     and p_sheet.shares_due_at is not null and p_sheet.shares_due_at <= pg_catalog.now()
     and (p_sheet.shares_locked_until is null or p_sheet.shares_locked_until < pg_catalog.now())

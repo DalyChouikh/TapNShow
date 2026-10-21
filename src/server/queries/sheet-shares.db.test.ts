@@ -161,7 +161,7 @@ describe("the switch", () => {
   let restore: () => void = () => undefined;
   afterEach(() => restore());
 
-  it("is due only while the switch is on, the sheet is active and has a file", async () => {
+  it("is due only while the switch is on and the sheet has a file it can reach", async () => {
     await seedSharedSheet();
     parkAllWork();
     makeSharesDue(workspace.id);
@@ -171,10 +171,20 @@ describe("the switch", () => {
     setSheetTeamSharing(true);
     expect(sharesDueNow(workspace.id)).toBe(true);
     expect(workersDue()).toBe(true);
-    runLocalSql(
-      `update public.sheet_syncs set status = 'paused', paused_reason = 'trashed' where workspace_id = '${workspace.id}'`,
-    );
-    expect(sharesDueNow(workspace.id)).toBe(false);
+    // Owner, 2026-10-21: paused while TapNShow can still reach the file, people who leave are
+    // still removed (the worker adds nobody until it resumes).
+    for (const [reason, due] of [
+      ["trashed", true],
+      ["full", true],
+      ["drive_full", true],
+      ["deleted", false],
+      ["access_lost", false],
+    ] as const) {
+      runLocalSql(
+        `update public.sheet_syncs set status = 'paused', paused_reason = '${reason}' where workspace_id = '${workspace.id}'`,
+      );
+      expect(sharesDueNow(workspace.id), reason).toBe(due);
+    }
   });
 });
 
@@ -708,6 +718,14 @@ describe("the share run's calls", () => {
       }),
     );
 
+  it("says when the sheet it hands out is paused", async () => {
+    runLocalSql(
+      `update public.sheet_syncs set status = 'paused', paused_reason = 'drive_full' where workspace_id = '${workspace.id}'`,
+    );
+    const [paused] = await claim(crypto.randomUUID());
+    expect(paused).toMatchObject({ workspace_id: workspace.id, paused: true });
+  });
+
   it("gives a due sheet's team and records to one run at a time", async () => {
     await seedShare(workspace.id, {
       userId: admin.id,
@@ -717,7 +735,11 @@ describe("the share run's calls", () => {
     });
     const first = await claim(crypto.randomUUID());
     expect(first).toHaveLength(1);
-    expect(first[0]).toMatchObject({ workspace_id: workspace.id, cap: 500 });
+    expect(first[0]).toMatchObject({
+      workspace_id: workspace.id,
+      cap: 500,
+      paused: false,
+    });
     expect(first[0].targets.map((t) => t.email)).toEqual([
       owner.email,
       admin.email,

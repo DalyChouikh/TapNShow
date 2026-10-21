@@ -20,7 +20,7 @@ describe("SheetMyAccess", () => {
     ["sharing", "Sharing it with you…"],
     [
       "refused",
-      "Google couldn't share it with ali@example.test. Ask Sara, the Owner, to share it with your Google address.",
+      "You can't open it with ali@example.test. Ask Sara, the Owner, to share it with your Google address.",
     ],
     ["sheet_account", "It's in your Google Drive."],
   ] as const)("says where %s stands", (mine, text) => {

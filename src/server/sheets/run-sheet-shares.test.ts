@@ -42,6 +42,7 @@ const claimOf = (over: Partial<ShareClaim> = {}): ShareClaim => ({
   workspaceId: "w1",
   spreadsheetId: "file-000001",
   version: 3,
+  paused: false,
   cap: 500,
   connection: {
     id: "c1",
@@ -138,7 +139,7 @@ function fakeStore(input: {
 
 /** A file's permissions in memory; `fail` queues a failure for the next call of one method. */
 function fakeDrive(initial: DrivePermission[] = [], refuse: string[] = []) {
-  const people = new Map(initial.map((p) => [p.email, p.id]));
+  const people = new Map(initial.map((p) => [p.email, p]));
   const calls: string[] = [];
   const failures: Partial<
     Record<keyof DrivePermissionsClient, GoogleFailure[]>
@@ -151,7 +152,7 @@ function fakeDrive(initial: DrivePermission[] = [], refuse: string[] = []) {
       return (
         failure ?? {
           kind: "ok",
-          value: [...people].map(([email, id]) => ({ id, email })),
+          value: [...people.values()],
         }
       );
     },
@@ -165,7 +166,7 @@ function fakeDrive(initial: DrivePermission[] = [], refuse: string[] = []) {
         return { kind: "refused", unexpected: null };
       }
       const id = `p${(ids += 1)}`;
-      people.set(email, id);
+      people.set(email, { id, email, viewOnly: true });
       return { kind: "ok", value: id };
     },
     remove: async (_t, _f, permissionId) => {
@@ -174,8 +175,8 @@ function fakeDrive(initial: DrivePermission[] = [], refuse: string[] = []) {
       if (failure) {
         return failure;
       }
-      for (const [email, id] of people) {
-        if (id === permissionId) {
+      for (const [email, permission] of people) {
+        if (permission.id === permissionId) {
           people.delete(email);
         }
       }
@@ -250,7 +251,9 @@ describe("runSheetShares", () => {
       ],
     });
     const { store, saved } = fakeStore({ claims: [claim] });
-    const { drive, calls } = fakeDrive([{ id: "p7", email: SARA.email }]);
+    const { drive, calls } = fakeDrive([
+      { id: "p7", email: SARA.email, viewOnly: true },
+    ]);
     const { deps } = depsOf(store, drive);
     await runSheetShares(deps, OPTIONS);
     expect(calls).toEqual(["list"]);
@@ -278,13 +281,51 @@ describe("runSheetShares", () => {
       claims: [claimOf({ targets: [], shares: [left] })],
     });
     const { drive, calls: driveCalls } = fakeDrive([
-      { id: "p1", email: ALI.email },
+      { id: "p1", email: ALI.email, viewOnly: true },
     ]);
     const { deps } = depsOf(store, drive);
     await runSheetShares(deps, OPTIONS);
     expect(driveCalls).toEqual(["list", "remove:p1"]);
     expect(calls).toEqual([`forget:${ALI.email}`, "release:3:none"]);
   });
+
+  it("only removes people who left, and adds nobody, while the sheet is paused", async () => {
+    const left: ShareRow = {
+      email: ALI.email,
+      state: "shared",
+      permissionId: "p1",
+      reason: null,
+      nextTryAt: null,
+    };
+    const { store, calls } = fakeStore({
+      claims: [claimOf({ paused: true, targets: [SARA], shares: [left] })],
+    });
+    const { drive, calls: driveCalls } = fakeDrive([
+      { id: "p1", email: ALI.email, viewOnly: true },
+    ]);
+    const { deps } = depsOf(store, drive);
+    await runSheetShares(deps, OPTIONS);
+    expect(driveCalls).toEqual(["list", "remove:p1"]);
+    expect(calls).toEqual([`forget:${ALI.email}`, "release:3:none"]);
+  });
+
+  it.each([
+    ["the file is gone", "not_found"],
+    ["Google access is lost", "access_lost"],
+  ] as const)(
+    "stops quietly when %s while the sheet is paused (no second pause, no email)",
+    async (_name, kind) => {
+      const { store, calls } = fakeStore({
+        claims: [claimOf({ paused: true })],
+      });
+      const { drive, failures } = fakeDrive();
+      failures.list = [{ kind }];
+      const { deps, alerts } = depsOf(store, drive);
+      await runSheetShares(deps, OPTIONS);
+      expect(calls).toEqual(["release:3:none"]);
+      expect(alerts.paused).toEqual([]);
+    },
+  );
 
   it("marks one refusal without pausing the sheet", async () => {
     const { store, calls, saved } = fakeStore({
@@ -413,8 +454,8 @@ describe("runShareCleanups", () => {
       cleanups: [cleanupOf({ permissionIds: ["p1"], emails: [SARA.email] })],
     });
     const { drive, calls: driveCalls } = fakeDrive([
-      { id: "p1", email: ALI.email },
-      { id: "p2", email: SARA.email },
+      { id: "p1", email: ALI.email, viewOnly: true },
+      { id: "p2", email: SARA.email, viewOnly: true },
     ]);
     const { deps, alerts } = depsOf(store, drive);
     const summary = await runShareCleanups(deps, OPTIONS);

@@ -118,8 +118,8 @@ describe("createDrivePermissionsClient", () => {
     expect(await drive.list("t", "file1")).toEqual({
       kind: "ok",
       value: [
-        { id: "p1", email: "sara@example.test" },
-        { id: "p4", email: "ali@example.test" },
+        { id: "p1", email: "sara@example.test", viewOnly: true },
+        { id: "p4", email: "ali@example.test", viewOnly: false },
       ],
     });
     expect(fetchImpl).toHaveBeenCalledTimes(2);

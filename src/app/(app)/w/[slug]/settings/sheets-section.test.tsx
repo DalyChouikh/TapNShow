@@ -328,7 +328,7 @@ describe("SheetsSection while the sheet is shared with the team (#413)", () => {
       await screen.findByText("Your team can view it · 3 of 4 people"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/^Google couldn't share it with 1 person/),
+      screen.getByText(/^1 person on your team can't open it\./),
     ).toBeInTheDocument();
     expect(
       screen.getByText("Changes made in the sheet are replaced by TapNShow."),

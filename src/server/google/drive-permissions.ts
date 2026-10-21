@@ -144,6 +144,7 @@ export function createDrivePermissionsClient(input: {
             people.push({
               id: permission.id,
               email: permission.emailAddress.toLowerCase(),
+              viewOnly: permission.role === "reader",
             });
           }
         }

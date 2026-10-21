@@ -12,8 +12,11 @@ export type ShareRow = {
   nextTryAt: string | null;
 };
 
-/** One person Drive lists on the file (`permissions.list`, user permissions only). */
-export type DrivePermission = { id: string; email: string };
+/**
+ * One person Drive lists on the file (`permissions.list`, people other than the owner); `viewOnly`
+ * when Drive's role is `reader`.
+ */
+export type DrivePermission = { id: string; email: string; viewOnly: boolean };
 
 /** What a share run does, person by person (design §5). */
 export type SharePlan = {
@@ -43,9 +46,10 @@ const triedByTapNShow = (row: ShareRow) =>
 /**
  * Decides every person's share from the wanted team, TapNShow's records and what Drive lists
  * (design §5, the plan's Task 3 table). Never shares an address Drive already lists (Google would
- * email the person again), never removes a share TapNShow didn't make, and never shares again what
- * was removed by hand in Drive. Creates stop at `cap` (people past it are `tooMany`) and at
- * `createBudget` per run (the rest waits for the next run).
+ * email the person again), never removes a share TapNShow didn't make or take over (a team member's
+ * view-only hand share at their own address), and never shares again what was removed by hand in
+ * Drive. Creates stop at `cap` (people past it are `tooMany`) and at `createBudget` per claim (the
+ * rest waits for the next claim).
  */
 export function planShareChanges(input: {
   targets: ShareTarget[];
@@ -55,18 +59,22 @@ export function planShareChanges(input: {
   now: number;
   createBudget: number;
 }): SharePlan {
-  const ids = new Set(input.permissions.map((permission) => permission.id));
+  const byId = new Map(
+    input.permissions.map((permission) => [permission.id, permission]),
+  );
   const byEmail = new Map(
     input.permissions.map((permission) => [
       keyOf(permission.email),
-      permission.id,
+      permission,
     ]),
   );
-  /** Drive may list an account under another address than the one used here: TapNShow's own share by its id first. */
+  /**
+   * Drive may list an account under another address than the one used here: TapNShow's own share
+   * by its id first, anything else only at the person's exact address.
+   */
   const listedFor = (email: string, row: ShareRow | undefined) =>
-    row?.permissionId && ids.has(row.permissionId)
-      ? row.permissionId
-      : byEmail.get(keyOf(email));
+    (row?.permissionId ? byId.get(row.permissionId) : undefined) ??
+    byEmail.get(keyOf(email));
   const rows = new Map(input.shares.map((row) => [keyOf(row.email), row]));
   const wanted = new Set(input.targets.map((target) => keyOf(target.email)));
   const plan: SharePlan = {
@@ -87,18 +95,20 @@ export function planShareChanges(input: {
     (a, b) => a.position - b.position,
   )) {
     const row = rows.get(keyOf(target.email));
-    const permissionId = listedFor(target.email, row);
-    if (permissionId !== undefined) {
+    const permission = listedFor(target.email, row);
+    if (permission !== undefined) {
       holding += 1;
-      if (!row || !triedByTapNShow(row)) {
-        // Never asked by TapNShow (an external row stays as it is): someone shared it by hand.
-        if (row?.state !== "external") {
-          plan.external.push(target);
+      if (row && triedByTapNShow(row)) {
+        if (!(row.state === "shared" && row.permissionId === permission.id)) {
+          plan.adopt.push({ target, permissionId: permission.id });
         }
-      } else if (!(
-        row.state === "shared" && row.permissionId === permissionId
-      )) {
-        plan.adopt.push({ target, permissionId });
+      } else if (permission.viewOnly) {
+        // Owner, 2026-10-21: a team member's view-only share made by hand at their own address
+        // becomes TapNShow's, so it goes when they leave or the sheet is turned off.
+        plan.adopt.push({ target, permissionId: permission.id });
+      } else if (row?.state !== "external") {
+        // An editor or commenter shared by hand keeps what the Owner gave them.
+        plan.external.push(target);
       }
       continue;
     }
@@ -139,9 +149,9 @@ export function planShareChanges(input: {
     if (wanted.has(keyOf(row.email))) {
       continue;
     }
-    const permissionId = listedFor(row.email, row);
-    if (permissionId !== undefined && triedByTapNShow(row)) {
-      plan.remove.push({ email: row.email, permissionId });
+    const permission = listedFor(row.email, row);
+    if (permission !== undefined && triedByTapNShow(row)) {
+      plan.remove.push({ email: row.email, permissionId: permission.id });
     } else {
       plan.forget.push(row.email);
     }

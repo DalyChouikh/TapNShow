@@ -142,7 +142,7 @@ test("one address Google refuses doesn't stop the sheet", async ({
   await page.reload();
   await openSettingsSection(page, "Google Sheets");
   await expect(
-    page.getByText(/^Google couldn't share it with 1 person,/),
+    page.getByText(/^1 person on your team can't open it\./),
   ).toBeVisible();
   await page.getByRole("link", { name: "They're marked in People." }).click();
   await expect(page.getByText("Can't open the sheet")).toBeVisible();

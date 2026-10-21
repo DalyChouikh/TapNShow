@@ -25,7 +25,7 @@ describe("SheetTeamAccess", () => {
       screen.getByText("Your team can view it · 5 of 5 people"),
     ).toBeInTheDocument();
     expect(screen.getByText(FOLLOWS)).toBeInTheDocument();
-    expect(screen.queryByText(/Google couldn't share/)).toBeNull();
+    expect(screen.queryByText(/can't open it/)).toBeNull();
   });
 
   it("says it is still sharing while some people wait", () => {
@@ -38,14 +38,14 @@ describe("SheetTeamAccess", () => {
     ).toBeInTheDocument();
   });
 
-  it("counts who Google couldn't share with, never naming anyone, and points to People", () => {
+  it("counts who can't open it, never naming anyone, and points to People", () => {
     const { rerender } = renderWithProviders(
       <SheetTeamAccess sharing={sharing({ canView: 4, cantOpen: 1 })} />,
     );
     expect(screen.getByText("Shared")).toHaveClass("bg-fill-warning");
     expect(
       screen.getByText(
-        "Google couldn't share it with 1 person, usually because the address isn't a Google account. You can share it with them by hand from Google Sheets.",
+        "1 person on your team can't open it. You can share it with them by hand from Google Sheets.",
       ),
     ).toBeInTheDocument();
     expect(
@@ -55,7 +55,7 @@ describe("SheetTeamAccess", () => {
       <SheetTeamAccess sharing={sharing({ canView: 0, cantOpen: 5 })} />,
     );
     expect(
-      screen.getByText(/^Google couldn't share it with 5 people,/),
+      screen.getByText(/^5 people on your team can't open it\./),
     ).toBeInTheDocument();
   });
 
