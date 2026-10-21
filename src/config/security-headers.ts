@@ -99,11 +99,20 @@ export function contentSecurityPolicy(input: {
     .join("; ");
 }
 
-/** Headers for every response (spec §11 M9). HSTS comes from Vercel itself. */
+/**
+ * HTTPS only, remembered for two years (Vercel's own `max-age`) and for every subdomain (#422):
+ * Vercel's default covers only the name that sends it ("Encryption and TLS", which also says a
+ * project's own header replaces it). Every subdomain resolves to Vercel, which serves HTTPS only.
+ * Never `preload`: hstspreload.org says inclusion can't easily be undone (Owner, 2026-10-21).
+ */
+export const STRICT_TRANSPORT_SECURITY = "max-age=63072000; includeSubDomains";
+
+/** Headers for every response (spec §11 M9). */
 export const staticSecurityHeaders: HeaderRule[] = [
   {
     source: "/:path*",
     headers: [
+      { key: "Strict-Transport-Security", value: STRICT_TRANSPORT_SECURITY },
       { key: "X-Content-Type-Options", value: "nosniff" },
       { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
       {
