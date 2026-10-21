@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { SHEET_BUDGET_MS, SHEET_SHARE_BUDGET_MS } from "@/config/sheets";
 
 const mocks = vi.hoisted(() => ({
   runDispatch: vi.fn(async () => ({})),
-  runSheetSync: vi.fn(async () => ({})),
+  runSheetSync: vi.fn<
+    (deps: object, options: { budgetMs: number }) => Promise<object>
+  >(async () => ({})),
   order: [] as string[],
   runSheetShares: vi.fn<
     (
@@ -91,26 +94,39 @@ beforeEach(() => {
 });
 
 describe("scheduleWorkers", () => {
-  it("runs the share steps after the redraw, in the sheets lane's one budget", async () => {
-    mocks.runSheetSync.mockImplementationOnce(async () => {
-      mocks.order.push("sync");
-      return {};
-    });
-    mocks.runSheetShares.mockImplementationOnce(async () => {
-      mocks.order.push("shares");
-      return {};
-    });
+  it("runs the cleanups and the shares first, in their slice, then the redraw in what is left", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    const start = Date.parse("2026-10-21T10:00:00.000Z");
+    vi.setSystemTime(start);
     mocks.runShareCleanups.mockImplementationOnce(async () => {
       mocks.order.push("cleanups");
       return {};
     });
+    mocks.runSheetShares.mockImplementationOnce(async () => {
+      mocks.order.push("shares");
+      vi.setSystemTime(start + 7_000);
+      return {};
+    });
+    mocks.runSheetSync.mockImplementationOnce(async () => {
+      mocks.order.push("sync");
+      return {};
+    });
     scheduleWorkers(["sheets"]);
     await settle();
-    expect(mocks.order).toEqual(["sync", "shares", "cleanups"]);
+    vi.useRealTimers();
+    expect(mocks.order).toEqual(["cleanups", "shares", "sync"]);
     const [, shareOptions] = mocks.runSheetShares.mock.calls[0];
     const [, cleanupOptions] = mocks.runShareCleanups.mock.calls[0];
-    expect(shareOptions.startedAt).toBe(cleanupOptions.startedAt);
-    expect(shareOptions.budgetMs).toBe(cleanupOptions.budgetMs);
+    const [, syncOptions] = mocks.runSheetSync.mock.calls[0];
+    expect(shareOptions).toMatchObject({
+      startedAt: start,
+      budgetMs: SHEET_SHARE_BUDGET_MS,
+    });
+    expect(cleanupOptions).toMatchObject({
+      startedAt: start,
+      budgetMs: SHEET_SHARE_BUDGET_MS,
+    });
+    expect(syncOptions.budgetMs).toBe(SHEET_BUDGET_MS - 7_000);
   });
 
   it("still shares and cleans up when the redraw throws, and records the lane once", async () => {

@@ -65,8 +65,18 @@ export const SHEET_SHARING_POLL_MS = 10_000;
  */
 export const SHEET_SHARE_REFUSED_RETRY_MS = 24 * 60 * 60 * 1000;
 
-/** Shares created per sheet per run; the rest waits for the next run (the sheet stays due). */
+/**
+ * Shares created per sheet per claim; a sheet with more is released due at once and claimed again
+ * while the run has time, else in the next run.
+ */
 export const SHEET_SHARES_PER_RUN = 25;
+
+/**
+ * The slice of the Sheet lane the cleanups and the team's shares (#413) run in, first: they start
+ * Google calls only in its first 10 s (`SHEET_MIN_LEFT_MS` stays for the last call), so a busy
+ * redraw never holds back access that must end, and they never take more than that from the redraw.
+ */
+export const SHEET_SHARE_BUDGET_MS = SHEET_MIN_LEFT_MS + 10_000;
 
 /** Sheets whose shares are leased per claim (`sheet_share_claim`'s `p_limit`). */
 export const SHEET_SHARE_CLAIM_BATCH = 5;
