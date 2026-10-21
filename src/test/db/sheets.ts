@@ -8,6 +8,8 @@ export async function seedSheet(
   connectionId: string,
   options: {
     googleSub: string;
+    /** The address of the Google account holding the file. */
+    googleEmail?: string;
     spreadsheetId?: string | null;
     status?: "active" | "paused";
     pausedReason?: SheetPauseReason | null;
@@ -19,7 +21,7 @@ export async function seedSheet(
       workspace_id: workspaceId,
       connection_id: connectionId,
       google_sub: options.googleSub,
-      google_email: "sheets@example.test",
+      google_email: options.googleEmail ?? "sheets@example.test",
       spreadsheet_id: options.spreadsheetId ?? null,
       status: options.status ?? "active",
       paused_reason: options.pausedReason ?? null,

@@ -1,13 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
+import { DRIVE_FILE_SCOPE } from "@/config/sheets";
 import { adminClient, createTestUser, type TestUser } from "@/test/db/clients";
 import { serviceRpc } from "@/test/db/outbox";
 import { seedConnection } from "@/test/db/sender";
 import {
   cleanupsOf,
-  parkAllCleanups,
-  parkAllShares,
+  makeCleanupsDue,
+  makeSharesDue,
   seedShare,
+  seedSharedSheet as seedTeamSheet,
   setSheetTeamSharing,
   shareTargetsOf,
   sharesDueOf,
@@ -25,30 +27,26 @@ import {
   type TestWorkspace,
 } from "@/test/db/workspaces";
 
-const DRIVE_FILE = "https://www.googleapis.com/auth/drive.file";
 let owner: TestUser;
 let admin: TestUser;
 let viewer: TestUser;
 let workspace: TestWorkspace;
 
 /** Seeds an active sheet with a file, held by `holder`'s Google account (the Owner's by default). */
-async function seedSharedSheet(
+const seedSharedSheet = (
   googleEmail = "club@example.test",
   holder: TestUser = owner,
-) {
-  const connection = await seedConnection(holder.id, { scopes: [DRIVE_FILE] });
-  await seedSheet(workspace.id, connection.id, {
-    googleSub: connection.sub,
-    spreadsheetId: `file-${crypto.randomUUID().slice(0, 12)}`,
+) => seedTeamSheet(workspace.id, holder.id, googleEmail);
+
+/** The Owner turns the sheet off; the test stops at once if the database refused. */
+async function turnOff() {
+  const { data, error } = await owner.client.rpc("turn_off_sheet", {
+    p_workspace: workspace.id,
   });
-  const { error } = await adminClient()
-    .from("sheet_syncs")
-    .update({ google_email: googleEmail })
-    .eq("workspace_id", workspace.id);
   if (error) {
     throw error;
   }
-  return connection;
+  return data;
 }
 
 const sharesDueNow = (workspaceId: string) =>
@@ -128,7 +126,7 @@ describe("when a sheet's shares are due", () => {
 
   it("marks shares due when the sheet gets its file or resumes", async () => {
     const connection = await seedConnection(owner.id, {
-      scopes: [DRIVE_FILE],
+      scopes: [DRIVE_FILE_SCOPE],
     });
     await seedSheet(workspace.id, connection.id, { googleSub: connection.sub });
     const start = await sharesDueOf(workspace.id);
@@ -166,9 +164,7 @@ describe("the switch", () => {
   it("is due only while the switch is on, the sheet is active and has a file", async () => {
     await seedSharedSheet();
     parkAllWork();
-    runLocalSql(
-      `select private.sheet_shares_mark(array['${workspace.id}'::uuid])`,
-    );
+    makeSharesDue(workspace.id);
     restore = setSheetTeamSharing(false);
     expect(sharesDueNow(workspace.id)).toBe(false);
     expect(workersDue()).toBe(false);
@@ -314,7 +310,7 @@ describe("removing the team's access before letting go", () => {
       email: admin.email,
       state: "sharing",
     });
-    await owner.client.rpc("turn_off_sheet", { p_workspace: workspace.id });
+    await turnOff();
     expect((await cleanupsOf(workspace.id))[0]).toMatchObject({
       permissionIds: [],
       emails: [admin.email],
@@ -343,7 +339,7 @@ describe("removing the team's access before letting go", () => {
       state: "shared",
       permissionId: "perm1",
     });
-    const next = await seedConnection(owner.id, { scopes: [DRIVE_FILE] });
+    const next = await seedConnection(owner.id, { scopes: [DRIVE_FILE_SCOPE] });
     const started = await adminClient().rpc("start_sheet", {
       p_user: owner.id,
       p_workspace: workspace.id,
@@ -434,10 +430,7 @@ describe("finishing a cleanup", () => {
 
   /** Makes the workspace's one cleanup due and claims it for a new run. */
   async function claimCleanup() {
-    parkAllCleanups();
-    runLocalSql(
-      `update public.sheet_share_cleanups set retry_at = now() where workspace_id = '${workspace.id}'`,
-    );
+    makeCleanupsDue(workspace.id);
     const runId = run();
     const [claimed] = z
       .array(
@@ -473,7 +466,7 @@ describe("finishing a cleanup", () => {
       p_user: user.id,
       p_google_sub: sub,
       p_google_email: "again@example.test",
-      p_scopes: [DRIVE_FILE],
+      p_scopes: [DRIVE_FILE_SCOPE],
       p_token_encrypted: NEW_TOKEN,
     });
 
@@ -485,7 +478,7 @@ describe("finishing a cleanup", () => {
       state: "shared",
       permissionId: "perm1",
     });
-    await owner.client.rpc("turn_off_sheet", { p_workspace: workspace.id });
+    await turnOff();
     await connectAgain(owner, connection.sub);
     const finished = await finishCleanup(0);
     expect(finished.released).toBeNull();
@@ -500,7 +493,7 @@ describe("finishing a cleanup", () => {
       state: "shared",
       permissionId: "perm1",
     });
-    await owner.client.rpc("turn_off_sheet", { p_workspace: workspace.id });
+    await turnOff();
     await connectAgain(owner, connection.sub);
     expect((await claimCleanup()).token).toBe(NEW_TOKEN);
   });
@@ -513,7 +506,7 @@ describe("finishing a cleanup", () => {
       state: "shared",
       permissionId: "perm1",
     });
-    await owner.client.rpc("turn_off_sheet", { p_workspace: workspace.id });
+    await turnOff();
     await connectAgain(admin, connection.sub);
     expect(
       (await admin.client.rpc("delete_account", { p_confirm: "confirm" }))
@@ -535,7 +528,7 @@ describe("finishing a cleanup", () => {
       state: "shared",
       permissionId: "perm1",
     });
-    await owner.client.rpc("turn_off_sheet", { p_workspace: workspace.id });
+    await turnOff();
     expect((await cleanupsOf(workspace.id))[0].releaseAfter).toBe(false);
     const finished = await finishCleanup(0);
     expect(finished.released).toBeNull();
@@ -550,7 +543,7 @@ describe("finishing a cleanup", () => {
       state: "shared",
       permissionId: "perm1",
     });
-    await owner.client.rpc("turn_off_sheet", { p_workspace: workspace.id });
+    await turnOff();
     const gone = await admin.client.rpc("delete_account", {
       p_confirm: "confirm",
     });
@@ -573,7 +566,7 @@ describe("finishing a cleanup", () => {
       state: "shared",
       permissionId: "perm1",
     });
-    await owner.client.rpc("turn_off_sheet", { p_workspace: workspace.id });
+    await turnOff();
     const finished = await finishCleanup(0);
     expect(finished.released?.google_sub).toBe(connection.sub);
     expect(finished.alert).toBeNull();
@@ -589,7 +582,7 @@ describe("finishing a cleanup", () => {
       state: "shared",
       permissionId: "perm1",
     });
-    await owner.client.rpc("turn_off_sheet", { p_workspace: workspace.id });
+    await turnOff();
     const finished = await finishCleanup(2);
     expect(finished.alert).toMatchObject({
       email: owner.email,
@@ -607,11 +600,8 @@ describe("finishing a cleanup", () => {
       state: "shared",
       permissionId: "perm1",
     });
-    await owner.client.rpc("turn_off_sheet", { p_workspace: workspace.id });
-    parkAllCleanups();
-    runLocalSql(
-      `update public.sheet_share_cleanups set retry_at = now() where workspace_id = '${workspace.id}'`,
-    );
+    await turnOff();
+    makeCleanupsDue(workspace.id);
     const [claimed] = z.array(z.object({ id: z.uuid() }).loose()).parse(
       await serviceRpc("sheet_share_cleanup_claim", {
         p_run: run(),
@@ -635,10 +625,7 @@ describe("the share run's calls", () => {
   beforeEach(async () => {
     restore = setSheetTeamSharing(true);
     await seedSharedSheet();
-    parkAllShares();
-    runLocalSql(
-      `select private.sheet_shares_mark(array['${workspace.id}'::uuid])`,
-    );
+    makeSharesDue(workspace.id);
   });
   afterEach(() => restore());
 
@@ -859,15 +846,12 @@ describe("the share store (real database)", () => {
       state: "refused",
       reason: "refused",
     });
-    parkAllShares();
-    runLocalSql(
-      `select private.sheet_shares_mark(array['${workspace.id}'::uuid])`,
-    );
+    makeSharesDue(workspace.id);
     const store = createShareStore(adminClient());
     const run = crypto.randomUUID();
     const [claim] = await store.claim(run, 5, 60);
     expect(claim).toMatchObject({ workspaceId: workspace.id, cap: 500 });
-    expect(claim.connection?.scopes).toContain(DRIVE_FILE);
+    expect(claim.connection?.scopes).toContain(DRIVE_FILE_SCOPE);
     expect(claim.shares).toEqual([
       {
         email: admin.email,
@@ -888,11 +872,8 @@ describe("the share store (real database)", () => {
       }),
     ).toBe(true);
     await store.release(workspace.id, run, claim.version, null);
-    await owner.client.rpc("turn_off_sheet", { p_workspace: workspace.id });
-    parkAllCleanups();
-    runLocalSql(
-      `update public.sheet_share_cleanups set retry_at = now() where workspace_id = '${workspace.id}'`,
-    );
+    await turnOff();
+    makeCleanupsDue(workspace.id);
     const cleanupRun = crypto.randomUUID();
     const [cleanup] = await store.cleanupClaim(cleanupRun, 5, 60);
     expect(cleanup).toMatchObject({

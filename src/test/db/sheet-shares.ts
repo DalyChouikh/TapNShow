@@ -1,6 +1,30 @@
 import { z } from "zod";
+import { DRIVE_FILE_SCOPE } from "@/config/sheets";
 import { adminClient } from "./clients";
+import { seedConnection } from "./sender";
+import { seedSheet } from "./sheets";
 import { queryLocalSql, runLocalSql } from "./sql";
+
+/**
+ * Seeds a workspace's active Google Sheet with a file, held by `holderId`'s Google account whose
+ * address is `googleEmail` (a team member with that address owns the file and isn't shared with).
+ * Returns the connection.
+ */
+export async function seedSharedSheet(
+  workspaceId: string,
+  holderId: string,
+  googleEmail = "club@example.test",
+): Promise<{ id: string; sub: string }> {
+  const connection = await seedConnection(holderId, {
+    scopes: [DRIVE_FILE_SCOPE],
+  });
+  await seedSheet(workspaceId, connection.id, {
+    googleSub: connection.sub,
+    googleEmail,
+    spreadsheetId: `file-${crypto.randomUUID().slice(0, 12)}`,
+  });
+  return connection;
+}
 
 /**
  * Switches sharing the Google Sheet with the team on or off (`private.app_flags`) and returns the
@@ -142,5 +166,28 @@ export async function cleanupsOf(workspaceId: string): Promise<
 export function parkAllCleanups(): void {
   runLocalSql(
     "update public.sheet_share_cleanups set retry_at = now() + interval '1 day', run_id = null, locked_until = null",
+  );
+}
+
+/**
+ * Parks every sheet's shares, then marks this workspace's due as `private.sheet_shares_mark` does,
+ * a minute back: the local clock can step back (WSL2 time sync), and a mark at `now()` would then
+ * not be due yet for a claim made right after. Like `makeDue` for the redraw.
+ */
+export function makeSharesDue(workspaceId: string): void {
+  parkAllShares();
+  runLocalSql(
+    `select private.sheet_shares_mark(array['${workspaceId}'::uuid])`,
+  );
+  runLocalSql(
+    `update public.sheet_syncs set shares_due_at = now() - interval '1 minute' where workspace_id = '${workspaceId}'`,
+  );
+}
+
+/** Parks every cleanup, then makes this workspace's due a minute back (see `makeSharesDue`). */
+export function makeCleanupsDue(workspaceId: string): void {
+  parkAllCleanups();
+  runLocalSql(
+    `update public.sheet_share_cleanups set retry_at = now() - interval '1 minute' where workspace_id = '${workspaceId}'`,
   );
 }
