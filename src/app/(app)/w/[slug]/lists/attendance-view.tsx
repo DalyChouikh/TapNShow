@@ -10,6 +10,7 @@ import { ROSTER_GRID_MEDIA } from "@/config/roster";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useAttendance } from "@/hooks/use-results";
 import { useExportSheetLink } from "@/hooks/use-sheet";
+import type { PeriodChoice } from "@/lib/responses/periods";
 import { usePeriod } from "@/lib/responses/use-period";
 import { filterContacts, type ListFilter } from "@/lib/roster/filter-contacts";
 import { cn } from "@/lib/utils";
@@ -49,14 +50,17 @@ export function AttendanceView({
   workspace,
   roster,
   onOpenContact,
+  initialPeriod,
 }: {
   workspace: WorkspaceDetails;
   roster: Roster;
   onOpenContact: (contact: Contact) => void;
+  /** The period to start on (a link from Home carries Home's, #417). */
+  initialPeriod?: PeriodChoice;
 }) {
   const t = useTranslations("Attendance");
   const wide = useMediaQuery(ROSTER_GRID_MEDIA);
-  const period = usePeriod(workspace.timezone);
+  const period = usePeriod(workspace.timezone, initialPeriod);
   const summary = useAttendance(workspace.slug, period.range);
   // Attendance spans years, so the link opens the newest tab.
   const sheet = useExportSheetLink(workspace.slug);

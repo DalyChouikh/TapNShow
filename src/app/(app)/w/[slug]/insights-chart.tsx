@@ -28,6 +28,9 @@ const PLOT_TOP = 8;
 const PLOT_HEIGHT = 150;
 const LABEL_HEIGHT = 22;
 const HEIGHT = PLOT_TOP + PLOT_HEIGHT + LABEL_HEIGHT;
+/** The keyboard focus ring's line, and its gap above the tallest bar and below the axis. */
+const FOCUS_RING_STROKE = 3;
+const FOCUS_RING_GAP = 4;
 const BAR_SHARE = 0.6;
 const BAR_MAX_WIDTH = 32;
 /** Until the first measurement (or where the browser can't measure). */
@@ -70,7 +73,8 @@ export function InsightsChart({
   const t = useTranslations("WorkspaceHome.howItsGoing.chart");
   const [measure, measured] = useElementWidth<HTMLDivElement>();
   const touch = useMediaQuery(COARSE_POINTER_MEDIA);
-  const hatchId = `hatch-${useId().replace(/[^\w-]/g, "")}`;
+  const chartId = useId().replace(/[^\w-]/g, "");
+  const hatchId = `hatch-${chartId}`;
   const width = measured ?? FALLBACK_WIDTH;
   // The tallest bar sets the scale (at least 1, so an all-empty period still draws an axis).
   const tallest = Math.max(1, ...meetings.map(total));
@@ -178,13 +182,17 @@ export function InsightsChart({
                 </g>
               );
             });
+            // Named once, by the tooltip (`aria-labelledby`): a title that names isn't read again as
+            // the description (#417).
+            const titleId = `${chartId}-bar-${index}`;
             return linked ? (
               <Link
                 key={meeting.id}
                 href={`/w/${slug}/meetings/${meeting.id}`}
-                aria-label={label}
+                aria-labelledby={titleId}
+                className="group outline-none"
               >
-                <title>{label}</title>
+                <title id={titleId}>{label}</title>
                 {/* The whole column is the tap target, not just the bar. */}
                 <rect
                   x={left}
@@ -194,10 +202,22 @@ export function InsightsChart({
                   fill="transparent"
                 />
                 {segments}
+                {/* Keyboard focus, drawn: SVG links get no outline in Safari. */}
+                <rect
+                  data-focus-ring
+                  x={left + FOCUS_RING_STROKE / 2}
+                  y={PLOT_TOP - FOCUS_RING_GAP - FOCUS_RING_STROKE / 2}
+                  width={slot - FOCUS_RING_STROKE}
+                  height={PLOT_HEIGHT + 2 * FOCUS_RING_GAP + FOCUS_RING_STROKE}
+                  rx="4"
+                  fill="none"
+                  strokeWidth={FOCUS_RING_STROKE}
+                  className="stroke-outline opacity-0 group-focus-visible:opacity-100"
+                />
               </Link>
             ) : (
-              <g key={meeting.id} role="img" aria-label={label}>
-                <title>{label}</title>
+              <g key={meeting.id} role="img" aria-labelledby={titleId}>
+                <title id={titleId}>{label}</title>
                 {segments}
               </g>
             );

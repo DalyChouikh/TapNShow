@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { PeriodChoice } from "@/lib/responses/use-period";
+import type { PeriodChoice } from "@/lib/responses/periods";
 
 /** The person Home opens the history of. */
 export type HistoryPerson = { contactId: string; fullName: string };

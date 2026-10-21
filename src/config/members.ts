@@ -8,7 +8,7 @@ export const DEVICE_KEYS = {
   remindersHiddenUntil: "tn.reminders.hiddenUntil",
   /** When this device last re-sent its reminders subscription (ISO instant). */
   remindersCheckedInAt: "tn.reminders.checkedInAt",
-  /** Until when "Not now" hides Home's Google Sheets tip (ISO instant). */
+  /** Until when "Not now" hides Home's Google Sheets tip (ISO instant), per workspace (`scopedDeviceKey`). */
   sheetsTipHiddenUntil: "tn.home.sheetsTipHiddenUntil",
 } as const;
 

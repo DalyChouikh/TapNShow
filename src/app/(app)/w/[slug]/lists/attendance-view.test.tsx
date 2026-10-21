@@ -103,7 +103,10 @@ const detail = {
   },
 };
 
-function setup(data: object = summary) {
+function setup(
+  data: object = summary,
+  initialPeriod?: { period: "30d" | "3m" | "year" | "all" | "custom" },
+) {
   routeFetch(
     new Proxy(
       {},
@@ -125,6 +128,7 @@ function setup(data: object = summary) {
       workspace={workspaceFixture}
       roster={roster}
       onOpenContact={onOpen}
+      initialPeriod={initialPeriod}
     />,
   );
   return onOpen;
@@ -134,6 +138,13 @@ beforeEach(() => vi.clearAllMocks());
 afterEach(() => setWideViewport(false));
 
 describe("AttendanceView", () => {
+  it("starts on the period it was opened with (Home's, #417)", async () => {
+    setup(summary, { period: "30d" });
+    expect(
+      await screen.findByRole("button", { name: "Last 30 days" }),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
   it("sorts by No reply first and opens a person", async () => {
     const onOpen = setup();
     expect(

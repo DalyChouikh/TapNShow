@@ -5,8 +5,39 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ProgressBar } from "@/components/ui/progress-bar";
+import {
+  type PauseReason,
+  type SendState,
+  sendState,
+} from "@/lib/meetings/send-state";
 import type { MeetingResults } from "@/shared/api/responses";
 import { googleConnectHref } from "@/shared/api/google-connect";
+
+const PAUSE_MESSAGES = {
+  suspended: "pausedSuspended",
+  broken: "pausedBroken",
+  missing: "pausedMissing",
+} as const satisfies Record<PauseReason, string>;
+
+/**
+ * The caption of sending that is held, for the meeting page and Home: paused (and why), or queued
+ * until Gmail's limit lets it resume. Null while invites go out or once they're sent.
+ */
+export function useHeldCaption(): (
+  state: SendState,
+  queued: number,
+) => string | null {
+  const t = useTranslations("MeetingPage");
+  return (state, queued) =>
+    state.kind === "paused"
+      ? t(PAUSE_MESSAGES[state.why])
+      : state.kind === "waiting"
+        ? t("queuedResume", {
+            count: queued,
+            time: format(new Date(state.resumesAt), "HH:mm"),
+          })
+        : null;
+}
 
 /**
  * Live send progress (spec §7.2): a bar, one caption for the current state, the bounce note. While
@@ -25,37 +56,27 @@ export function SendProgress({
   suspended: boolean;
 }) {
   const t = useTranslations("MeetingPage");
-  const progress = results;
+  const heldCaption = useHeldCaption();
   const counts = results.emails;
   const done = counts.total - counts.queued;
-  // Paused for review only matters to emails still waiting; a fully sent meeting reads as sent.
-  const held = suspended && (counts.queued > 0 || progress.paused > 0);
-  const paused = held || progress.paused > 0 || progress.senderState !== "ok";
-  const caption = held
-    ? t("pausedSuspended")
-    : paused
-      ? progress.senderState === "broken"
-        ? t("pausedBroken")
-        : t("pausedMissing")
-      : progress.resumesAt
-        ? t("queuedResume", {
-            count: counts.queued,
-            time: format(new Date(progress.resumesAt), "HH:mm"),
+  const state = sendState(results, suspended);
+  const paused = state.kind === "paused";
+  const caption =
+    heldCaption(state, counts.queued) ??
+    (state.kind === "sending"
+      ? t("sending", { done, total: counts.total })
+      : counts.failed + counts.unknown > 0
+        ? t("doneWithIssues", {
+            sent: counts.sent,
+            failed: counts.failed,
+            unknown: counts.unknown,
           })
-        : counts.queued > 0
-          ? t("sending", { done, total: counts.total })
-          : counts.failed + counts.unknown > 0
-            ? t("doneWithIssues", {
-                sent: counts.sent,
-                failed: counts.failed,
-                unknown: counts.unknown,
-              })
-            : t("done", { count: counts.sent });
+        : t("done", { count: counts.sent }));
   const tone = paused
     ? "bg-fill-warning"
-    : counts.queued > 0
-      ? "bg-fill-info"
-      : "bg-fill-success";
+    : state.kind === "sent"
+      ? "bg-fill-success"
+      : "bg-fill-info";
   return (
     <Card
       as="section"
@@ -70,10 +91,10 @@ export function SendProgress({
       </div>
       <ProgressBar label={t("progressTitle")} value={done} max={counts.total} />
       <p className="font-bold">{caption}</p>
-      {counts.queued > 0 && !paused ? (
+      {state.kind === "sending" || state.kind === "waiting" ? (
         <p className="text-sm">{t("leave")}</p>
       ) : null}
-      {paused && canConnect && !suspended ? (
+      {paused && state.why !== "suspended" && canConnect ? (
         <Button asChild tone="primary">
           <a href={googleConnectHref(slug, "sending")}>{t("connect")}</a>
         </Button>

@@ -1,6 +1,6 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { addMinutes } from "date-fns";
+import { addMinutes, format } from "date-fns";
 import { describe, expect, it } from "vitest";
 import { formatDeadline, formatMeetingWhen } from "@/lib/meetings/format";
 import type { Meeting, MeetingSummary } from "@/shared/api/meetings";
@@ -102,11 +102,14 @@ function serve(
   });
 }
 
-const card = (props: { canManage?: boolean; now?: Date } = {}) => (
+const card = (
+  props: { canManage?: boolean; now?: Date; suspended?: boolean } = {},
+) => (
   <NextMeetingCard
     slug="club-ab12"
     canManage={props.canManage ?? true}
     now={props.now ?? NOW}
+    sendingSuspended={props.suspended ?? false}
   />
 );
 
@@ -324,5 +327,81 @@ describe("NextMeetingCard", () => {
         screen.getByRole("link", { name: "Weekly sync" }),
       ).toBeInTheDocument(),
     );
+  });
+
+  it("says sending is paused instead of Sending invites (#417)", async () => {
+    const queued = {
+      total: 30,
+      queued: 18,
+      sent: 12,
+      skipped: 0,
+      failed: 0,
+      unknown: 0,
+    };
+    serve(meeting(), {
+      results: results({ emails: queued, paused: 18, senderState: "broken" }),
+    });
+    const { unmount } = renderWithProviders(card());
+    expect(
+      await screen.findByText("Paused: Gmail needs reconnecting."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Sending invites/)).toBeNull();
+    unmount();
+
+    serve(meeting(), { results: results({ emails: queued }) });
+    const suspended = renderWithProviders(card({ suspended: true }));
+    expect(
+      await screen.findByText(
+        "Sending is paused while TapNShow reviews reports about this workspace.",
+      ),
+    ).toBeInTheDocument();
+    suspended.unmount();
+
+    const resumesAt = addMinutes(NOW, 40);
+    serve(meeting(), {
+      results: results({ emails: queued, resumesAt: resumesAt.toISOString() }),
+    });
+    renderWithProviders(card());
+    expect(
+      await screen.findByText(
+        `18 queued, resumes about ${format(resumesAt, "HH:mm")}`,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps a meeting someone made longer on another device (#417)", async () => {
+    const current = meeting({ startsAt: at(-30), durationMinutes: 60 });
+    let detailCalls = 0;
+    routeFetch({
+      [LIST]: page(current),
+      [`GET ${base}/sender`]: json(senderFixture()),
+      [`GET ${base}/meetings/${current.id}`]: () => {
+        detailCalls += 1;
+        return new Response(
+          JSON.stringify(
+            detailCalls === 1 ? current : { ...current, durationMinutes: 120 },
+          ),
+        );
+      },
+      [`GET ${base}/meetings/${current.id}/results`]: json(results()),
+    });
+    const { rerender } = renderWithProviders(card());
+    expect(await screen.findByText("Now")).toBeInTheDocument();
+    // Its first end has passed here, but the server still lists it: it was made longer.
+    rerender(card({ now: addMinutes(NOW, 31) }));
+    await waitFor(() => expect(detailCalls).toBe(2));
+    expect(
+      await screen.findByRole("link", { name: current.title }),
+    ).toBeInTheDocument();
+  });
+
+  it("turns to Now when the meeting starts while Home is open (#417)", async () => {
+    const soon = meeting({ startsAt: at(5) });
+    serve(soon);
+    const { rerender } = renderWithProviders(card());
+    expect(await screen.findByText("in 5 minutes")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Remind/ })).toBeInTheDocument();
+    rerender(card({ now: addMinutes(NOW, 6) }));
+    expect(await screen.findByText("Now")).toBeInTheDocument();
   });
 });

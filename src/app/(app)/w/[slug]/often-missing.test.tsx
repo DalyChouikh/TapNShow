@@ -16,12 +16,27 @@ const base = "/api/workspaces/club-ab12";
 const range = periodRange(HISTORY_DEFAULT_PERIOD, NOW, "Africa/Tunis");
 const from = new URLSearchParams({ from: range.from ?? "" }).toString();
 const INSIGHTS = `GET ${base}/insights?${from}`;
+const range30 = periodRange("30d", NOW, "Africa/Tunis");
+const INSIGHTS_30D = `GET ${base}/insights?${new URLSearchParams({ from: range30.from ?? "" }).toString()}`;
 
 const onOpen = vi.fn<(person: HistoryPerson) => void>();
 
 function Home() {
   const period = usePeriod("Africa/Tunis");
   return <OftenMissing slug="club-ab12" period={period} onOpen={onOpen} />;
+}
+
+/** Home with a way to pick another period (How it's going's chips, in the app). */
+function HomeWithChips() {
+  const period = usePeriod("Africa/Tunis");
+  return (
+    <>
+      <button type="button" onClick={() => period.setPeriod("30d")}>
+        Last 30 days
+      </button>
+      <OftenMissing slug="club-ab12" period={period} onOpen={onOpen} />
+    </>
+  );
 }
 
 const people: MissingMember[] = [
@@ -63,6 +78,20 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe("OftenMissing", () => {
+  it("dims the last period's people while the next one loads (#417)", async () => {
+    routeFetch({
+      [INSIGHTS]: json(insights(people)),
+      [INSIGHTS_30D]: () => new Promise<Response>(() => undefined),
+    });
+    renderWithProviders(<HomeWithChips />);
+    const list = await screen.findByRole("list");
+    expect(list.closest("[aria-busy='true']")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Last 30 days" }));
+    expect(
+      (await screen.findByRole("list")).closest("[aria-busy='true']"),
+    ).toHaveClass("opacity-60");
+  });
+
   it("lists up to 3 with Missed X of Y and the split", async () => {
     routeFetch({ [INSIGHTS]: json(insights(people)) });
     renderWithProviders(<Home />);
@@ -115,6 +144,6 @@ describe("OftenMissing", () => {
     renderWithProviders(<Home />);
     expect(
       await screen.findByRole("link", { name: "See everyone's attendance" }),
-    ).toHaveAttribute("href", "/w/club-ab12/lists?view=attendance");
+    ).toHaveAttribute("href", "/w/club-ab12/lists?view=attendance&period=3m");
   });
 });

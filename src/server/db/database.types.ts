@@ -54,6 +54,12 @@ isOneToOne: true
       referencedRelation: "meeting_invitees"
       referencedColumns: ["id"]
     },{
+      foreignKeyName: "attendance_marks_invitee_meeting_fkey"
+      columns: ["meeting_id","workspace_id","invitee_id"]
+isOneToOne: false
+      referencedRelation: "meeting_invitees"
+      referencedColumns: ["meeting_id","workspace_id","id"]
+    },{
       foreignKeyName: "attendance_marks_meeting_id_workspace_id_fkey"
       columns: ["meeting_id","workspace_id"]
 isOneToOne: false
@@ -475,6 +481,12 @@ isOneToOne: false
 isOneToOne: true
       referencedRelation: "meeting_invitees"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "responses_invitee_meeting_fkey"
+      columns: ["meeting_id","workspace_id","invitee_id"]
+isOneToOne: false
+      referencedRelation: "meeting_invitees"
+      referencedColumns: ["meeting_id","workspace_id","id"]
     },{
       foreignKeyName: "responses_meeting_id_workspace_id_fkey"
       columns: ["meeting_id","workspace_id"]

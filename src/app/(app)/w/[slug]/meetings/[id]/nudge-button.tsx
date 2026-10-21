@@ -12,21 +12,31 @@ import { formatTime } from "@/lib/meetings/format";
 import type { Meeting } from "@/shared/api/meetings";
 import type { MeetingResults } from "@/shared/api/responses";
 
-/** "Remind N who haven't answered" (spec §7.6 Nudge): once every 12 hours, after a confirm dialog. */
+/**
+ * "Remind N who haven't answered" (spec §7.6 Nudge): once every 12 hours, after a confirm dialog.
+ * The dialog's open state can be held by the page (`confirming`/`onConfirmingChange`), so it
+ * survives the button remounting (Home's cards when the screen crosses lg, #417).
+ */
 export function NudgeButton({
   slug,
   meeting,
   results,
+  confirming: heldConfirming,
+  onConfirmingChange,
 }: {
   slug: string;
   meeting: Meeting;
   results: MeetingResults;
+  confirming?: boolean;
+  onConfirmingChange?: (open: boolean) => void;
 }) {
   const t = useTranslations("MeetingPage.nudge");
   const tErrors = useTranslations("ApiErrors");
   const sender = useWorkspaceSender(slug);
   const nudge = useNudgeMeeting(slug, meeting.id);
-  const [confirming, setConfirming] = useState(false);
+  const [ownConfirming, setOwnConfirming] = useState(false);
+  const confirming = heldConfirming ?? ownConfirming;
+  const setConfirming = onConfirmingChange ?? setOwnConfirming;
   const started =
     meeting.startsAt !== null && new Date(meeting.startsAt) <= new Date();
   if (

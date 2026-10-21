@@ -575,3 +575,54 @@ describe("workspace_insights (Home, spec §3.1)", () => {
     expect(error?.code).toBe("42501");
   });
 });
+
+describe("answers and check-ins stay with their invitee's meeting (#417)", () => {
+  it("refuses an answer or a check-in filed under another meeting", async () => {
+    const meetingId = await pastMeeting(3);
+    const otherMeeting = await pastMeeting(2);
+    const [inviteeId] = await invite(
+      meetingId,
+      await seedContacts(workspaceId, 1, "reachable"),
+    );
+    const admin = adminClient();
+    const elsewhere = {
+      workspace_id: workspaceId,
+      meeting_id: otherMeeting,
+      invitee_id: inviteeId,
+    };
+    expect(
+      (
+        await admin
+          .from("responses")
+          .insert({ ...elsewhere, status: "attending" })
+      ).error?.code,
+    ).toBe("23503");
+    expect(
+      (
+        await admin
+          .from("attendance_marks")
+          .insert({ ...elsewhere, actual: "present" })
+      ).error?.code,
+    ).toBe("23503");
+
+    // Filed under the right meeting, neither can move to another one.
+    await answer(meetingId, inviteeId, "attending");
+    await mark(meetingId, inviteeId, "present");
+    expect(
+      (
+        await admin
+          .from("responses")
+          .update({ meeting_id: otherMeeting })
+          .eq("invitee_id", inviteeId)
+      ).error?.code,
+    ).toBe("23503");
+    expect(
+      (
+        await admin
+          .from("attendance_marks")
+          .update({ meeting_id: otherMeeting })
+          .eq("invitee_id", inviteeId)
+      ).error?.code,
+    ).toBe("23503");
+  });
+});

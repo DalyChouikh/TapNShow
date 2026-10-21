@@ -15,11 +15,13 @@ import { useMeeting, useMeetingsPage } from "@/hooks/use-meetings";
 import { useMeetingResults } from "@/hooks/use-results";
 import { useWorkspaceSender } from "@/hooks/use-sender";
 import { formatDeadline, formatMeetingWhen } from "@/lib/meetings/format";
+import { sendState } from "@/lib/meetings/send-state";
 import { isLive } from "@/lib/responses/live-window";
 import type { Meeting } from "@/shared/api/meetings";
 import type { MeetingResults } from "@/shared/api/responses";
 import { NudgeButton } from "./meetings/[id]/nudge-button";
 import { ResultTiles } from "./meetings/[id]/result-tiles";
+import { useHeldCaption } from "./meetings/[id]/send-progress";
 
 /** The card's frame: "Next meeting" and what follows. */
 function Frame({ children }: { children: ReactNode }) {
@@ -41,16 +43,23 @@ const CardSkeleton = () => <Skeleton className="h-64 w-full" />;
  * Home's first card (design §2.2): the first meeting of the Meetings "upcoming" tab, which keeps
  * a meeting in progress until it ends. Owners and Admins can remind who hasn't answered; with
  * nothing coming up, they can start a new meeting. `now` drives "in 2 days", "Now" and moving
- * on once the meeting ends.
+ * on once the meeting ends; `sendingSuspended` is the workspace's pause for review.
  */
 export function NextMeetingCard({
   slug,
   canManage,
   now,
+  sendingSuspended,
+  remindFor = null,
+  onRemindFor,
 }: {
   slug: string;
   canManage: boolean;
   now: Date;
+  sendingSuspended: boolean;
+  /** The meeting whose Remind dialog is open (held by Home, so it survives crossing lg). */
+  remindFor?: string | null;
+  onRemindFor?: (meetingId: string | null) => void;
 }) {
   const next = useMeetingsPage(slug, "upcoming", 1);
   const item = next.items[0];
@@ -70,7 +79,12 @@ export function NextMeetingCard({
       id={item.id}
       canManage={canManage}
       now={now}
+      sendingSuspended={sendingSuspended}
       refetchList={next.query.refetch}
+      reminding={remindFor === item.id}
+      onReminding={
+        onRemindFor && ((open: boolean) => onRemindFor(open ? item.id : null))
+      }
     />
   );
 }
@@ -80,31 +94,40 @@ function NextMeeting({
   id,
   canManage,
   now,
+  sendingSuspended,
   refetchList,
+  reminding,
+  onReminding,
 }: {
   slug: string;
   id: string;
   canManage: boolean;
   now: Date;
+  sendingSuspended: boolean;
   /** The upcoming list's own (stable) refetch. */
   refetchList: ReturnType<typeof useMeetingsPage>["query"]["refetch"];
+  reminding: boolean;
+  onReminding?: (open: boolean) => void;
 }) {
   const t = useTranslations("WorkspaceHome.nextMeeting");
   const meeting = useMeeting(slug, id);
   const startsAt = meeting.data?.startsAt ?? null;
   const live = meeting.data !== undefined && isLive(meeting.data, now);
-  const results = useMeetingResults(slug, id, live);
+  const results = useMeetingResults(slug, id, live, sendingSuspended);
   const ended =
     meeting.data !== undefined &&
     startsAt !== null &&
     now >= addMinutes(new Date(startsAt), meeting.data.durationMinutes);
+  const refetchMeeting = meeting.refetch;
   // The list keeps a meeting until it ends; then ask again (every tick, in case the server's
-  // clock is a little behind) and the next one takes this card.
+  // clock is a little behind) and the next one takes this card. Its details too: someone may
+  // have made it longer on another device, and then the list keeps it (#417).
   useEffect(() => {
     if (ended) {
       void refetchList();
+      void refetchMeeting();
     }
-  }, [ended, now, refetchList]);
+  }, [ended, now, refetchList, refetchMeeting]);
   if (
     (meeting.isError && !meeting.data) ||
     (results.isError && !results.data)
@@ -143,13 +166,20 @@ function NextMeeting({
       </p>
       <Place meeting={meeting.data} />
       <ResultTiles results={results.data} />
-      <AnswerLine meeting={meeting.data} results={results.data} now={now} />
+      <AnswerLine
+        meeting={meeting.data}
+        results={results.data}
+        suspended={sendingSuspended}
+        now={now}
+      />
       <div className="flex flex-wrap items-start gap-2">
         {canManage ? (
           <NudgeButton
             slug={slug}
             meeting={meeting.data}
             results={results.data}
+            confirming={onReminding ? reminding : undefined}
+            onConfirmingChange={onReminding}
           />
         ) : null}
         <Button asChild tone={inProgress ? "primary" : "surface"}>
@@ -181,20 +211,25 @@ function Place({ meeting }: { meeting: Meeting }) {
 
 /**
  * "24 of 30 answered" with a bar and the deadline, or the send progress while invites are still
- * going out. Answers are what people said; check-ins count on the meeting page.
+ * going out (or why they're held, as on the meeting page). Answers are what people said;
+ * check-ins count on the meeting page.
  */
 function AnswerLine({
   meeting,
   results,
+  suspended,
   now,
 }: {
   meeting: Meeting;
   results: MeetingResults;
+  suspended: boolean;
   now: Date;
 }) {
   const t = useTranslations("WorkspaceHome.nextMeeting");
+  const heldCaption = useHeldCaption();
   const { emails, answers } = results;
-  if (emails.queued > 0) {
+  const state = sendState(results, suspended);
+  if (state.kind !== "sent") {
     const done = emails.total - emails.queued;
     return (
       <div className="flex flex-col gap-1">
@@ -204,7 +239,8 @@ function AnswerLine({
           max={emails.total}
         />
         <p className="text-sm font-bold">
-          {t("sending", { done, total: emails.total })}
+          {heldCaption(state, emails.queued) ??
+            t("sending", { done, total: emails.total })}
         </p>
       </div>
     );

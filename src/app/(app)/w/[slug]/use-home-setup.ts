@@ -19,7 +19,12 @@ export type SetupStepKey = (typeof SETUP_STEPS)[number]["key"];
 /** Where the workspace's setup stands, once its roster, sender and sheet have loaded. */
 export type HomeSetup =
   | { state: "loading" }
-  | { state: "error"; retry: () => void }
+  | {
+      state: "error";
+      retry: () => void;
+      /** The sender or the sheet failed, not only the insights (How it's going shows those). */
+      ownFailure: boolean;
+    }
   | {
       state: "ready";
       done: Record<SetupStepKey, boolean>;
@@ -47,6 +52,7 @@ export function useHomeSetup(slug: string, range: PeriodRange): HomeSetup {
               void query.refetch();
             }
           },
+          ownFailure: failed.some((query) => query !== insights),
         }
       : { state: "loading" };
   }

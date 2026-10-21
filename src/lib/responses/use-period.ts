@@ -4,13 +4,7 @@ import { TZDate } from "@date-fns/tz";
 import { format, subDays } from "date-fns";
 import { useState } from "react";
 import { HISTORY_DEFAULT_PERIOD } from "@/config/responses";
-import { type HistoryPeriod, periodRange } from "./periods";
-
-/** A chosen period: the chip, and the days of "From…" (`yyyy-MM-dd`, workspace zone). */
-export type PeriodChoice = {
-  period: HistoryPeriod;
-  custom: { from: string; to: string };
-};
+import { type HistoryPeriod, type PeriodChoice, periodRange } from "./periods";
 
 /**
  * Period chip state for history screens, starting on `initial` (another screen's choice) or the

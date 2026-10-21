@@ -3,6 +3,17 @@ import type { DeviceKey } from "@/config/members";
 
 const PREFIX = "tn.";
 
+/** A device key for one thing (a workspace): still under `tn.`, so sign-out clears it too. */
+export type ScopedDeviceKey = `${DeviceKey}.${string}`;
+
+/** `key` for one `scope` (e.g. a workspace id), so a choice made there stays there (#417). */
+export function scopedDeviceKey(
+  key: DeviceKey,
+  scope: string,
+): ScopedDeviceKey {
+  return `${key}.${scope}`;
+}
+
 function storage(): Storage | null {
   try {
     return typeof window === "undefined" ? null : window.localStorage;
@@ -14,7 +25,7 @@ function storage(): Storage | null {
 
 /** A value TapNShow saved on this device, or null when missing or not what `schema` expects. */
 export function readDeviceValue<T>(
-  key: DeviceKey,
+  key: DeviceKey | ScopedDeviceKey,
   schema: z.ZodType<T>,
 ): T | null {
   const raw = storage()?.getItem(key) ?? null;
@@ -23,7 +34,10 @@ export function readDeviceValue<T>(
 }
 
 /** Saves a value on this device (silently skipped when storage is unavailable or full). */
-export function writeDeviceValue(key: DeviceKey, value: string): void {
+export function writeDeviceValue(
+  key: DeviceKey | ScopedDeviceKey,
+  value: string,
+): void {
   try {
     storage()?.setItem(key, value);
   } catch {
