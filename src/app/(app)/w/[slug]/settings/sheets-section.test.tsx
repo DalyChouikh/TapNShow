@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { sheetUrl } from "@/lib/sheets/url";
 import { googleConnectHref } from "@/shared/api/google-connect";
-import type { SheetStatus } from "@/shared/api/sheets";
+import type { SheetSharing, SheetStatus } from "@/shared/api/sheets";
 import { json, routeFetch } from "@/test/fetch";
 import { workspaceFixture } from "@/test/fixtures/me";
 import { renderWithProviders } from "@/test/render";
@@ -30,6 +30,7 @@ const status = (over: Partial<SheetStatus> = {}): SheetStatus => ({
   accountEmail: "club@gmail.com",
   ownerName: "Amira Ben Ali",
   tabs: [{ year: 2026, googleSheetId: 11, startsFrom: null, startsTo: null }],
+  sharing: null,
   ...over,
 });
 const off = status({
@@ -305,5 +306,163 @@ describe("SheetsSection", () => {
       await screen.findByText("The Google Sheet is paused."),
     ).toBeInTheDocument();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
+});
+
+describe("SheetsSection while the sheet is shared with the team (#413)", () => {
+  const sharing = (over: Partial<SheetSharing> = {}): SheetSharing => ({
+    teamCount: 3,
+    total: 4,
+    canView: 3,
+    cantOpen: 1,
+    inProgress: 0,
+    mine: null,
+    myEmail: null,
+    ...over,
+  });
+
+  it("Owner, on: the team block, and the tip without sharing by hand", async () => {
+    routeFetch({ [`GET ${PATH}`]: json(status({ sharing: sharing() })) });
+    renderWithProviders(<SheetsSection workspace={workspaceFixture} />);
+    expect(
+      await screen.findByText("Your team can view it · 3 of 4 people"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/^Google couldn't share it with 1 person/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Changes made in the sheet are replaced by TapNShow."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/To share it, open it/)).toBeNull();
+  });
+
+  it("Owner, on, switched off: no team block, and the full tip", async () => {
+    routeFetch({ [`GET ${PATH}`]: json(status()) });
+    renderWithProviders(<SheetsSection workspace={workspaceFixture} />);
+    expect(
+      await screen.findByText(
+        "To share it, open it and use Share in Google Sheets. Changes made in the sheet are replaced by TapNShow.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Your team can view it/)).toBeNull();
+  });
+
+  it("Owner, paused: no team block (the counts wait for the sheet)", async () => {
+    routeFetch({
+      [`GET ${PATH}`]: json(
+        status({
+          state: "paused",
+          pausedReason: "trashed",
+          sharing: sharing(),
+        }),
+      ),
+    });
+    renderWithProviders(<SheetsSection workspace={workspaceFixture} />);
+    expect(await screen.findByText(/moved to the trash/)).toBeInTheDocument();
+    expect(screen.queryByText(/Your team can view it/)).toBeNull();
+  });
+
+  it("Viewer, on: their own line replaces asking the Owner", async () => {
+    routeFetch({
+      [`GET ${PATH}`]: json(
+        status({
+          accountEmail: null,
+          sharing: sharing({ mine: "shared", myEmail: "ali@example.test" }),
+        }),
+      ),
+    });
+    renderWithProviders(<SheetsSection workspace={viewer} />);
+    expect(
+      await screen.findByText("You can view it with ali@example.test."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/If Google says you need access/)).toBeNull();
+  });
+
+  it("Owner, off: the connect dialog says who gets a link, and the intro says the team can view it", async () => {
+    routeFetch({
+      [`GET ${PATH}`]: json({
+        ...off,
+        sharing: sharing({ total: 0, canView: 0, cantOpen: 0 }),
+      }),
+    });
+    renderWithProviders(<SheetsSection workspace={workspaceFixture} />);
+    expect(
+      await screen.findByText(
+        "Keep a live copy of every answer in a Google Sheet, one tab per year. Your team can view it.",
+      ),
+    ).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Connect Google Sheets" }),
+    );
+    expect(
+      dialog().getByText(
+        "Your team (3 people) can view it: Google emails each of them a link.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("Owner alone, off: the connect dialog says people who join will see it", async () => {
+    routeFetch({
+      [`GET ${PATH}`]: json({
+        ...off,
+        sharing: sharing({ teamCount: 0, total: 0, canView: 0, cantOpen: 0 }),
+      }),
+    });
+    renderWithProviders(<SheetsSection workspace={workspaceFixture} />);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Connect Google Sheets" }),
+    );
+    expect(
+      dialog().getByText("People who join your team will be able to view it."),
+    ).toBeInTheDocument();
+  });
+
+  it("Owner: turning off and replacing say the team loses access", async () => {
+    routeFetch({
+      [`GET ${PATH}`]: json(
+        status({
+          state: "paused",
+          pausedReason: "deleted",
+          sharing: sharing(),
+        }),
+      ),
+    });
+    renderWithProviders(<SheetsSection workspace={workspaceFixture} />);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Turn off the Google Sheet" }),
+    );
+    expect(
+      dialog().getByText(
+        "The sheet stops updating and your team loses access to it. It stays in club@gmail.com's Drive.",
+      ),
+    ).toBeInTheDocument();
+    await userEvent.click(dialog().getByRole("button", { name: "Cancel" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Create a new sheet" }),
+    );
+    expect(
+      dialog().getByText(
+        "The old sheet stops updating. Your team moves to the new one and loses access to the old one.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("Owner alone, on: the dialogs keep today's words", async () => {
+    routeFetch({
+      [`GET ${PATH}`]: json(
+        status({
+          sharing: sharing({ teamCount: 0, total: 0, canView: 0, cantOpen: 0 }),
+        }),
+      ),
+    });
+    renderWithProviders(<SheetsSection workspace={workspaceFixture} />);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Turn off the Google Sheet" }),
+    );
+    expect(
+      dialog().getByText(
+        "The sheet stops updating. It stays in club@gmail.com's Drive.",
+      ),
+    ).toBeInTheDocument();
   });
 });

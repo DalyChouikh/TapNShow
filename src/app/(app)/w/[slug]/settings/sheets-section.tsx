@@ -26,6 +26,8 @@ import { SHEET_RETRYABLE_REASONS, type SheetStatus } from "@/shared/api/sheets";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
 import { GoogleConnectResult } from "./google-connect-result";
 import { SettingsSection } from "./settings-section";
+import { SheetMyAccess } from "./sheet-my-access";
+import { SheetTeamAccess } from "./sheet-team-access";
 import { Pill } from "@/components/ui/pill";
 import { RELATIVE_TIME_TICK_MS } from "@/config/query";
 import { copyText } from "@/lib/clipboard";
@@ -68,6 +70,9 @@ export function SheetsSection({
     return <Skeleton className="h-40 w-full" />;
   }
   const status = sheet.data;
+  // Sharing with the team (#413): null while switched off, so every line below keeps today's words.
+  const sharing = status.sharing;
+  const teamShared = sharing !== null && sharing.total > 0;
   const connectHref = googleConnectHref(workspace.slug, "sheets");
   const href = status.spreadsheetId ? sheetUrl(status.spreadsheetId) : null;
   const when = status.syncedAt
@@ -122,15 +127,19 @@ export function SheetsSection({
             <>
               <p>{t("viewerOn", { when: when ?? t("neverUpdated") })}</p>
               {openLink(href)}
-              <p className="text-sm text-muted-ink">
-                {t("viewerAccess", { owner: status.ownerName })}
-              </p>
+              {sharing ? (
+                <SheetMyAccess sharing={sharing} ownerName={status.ownerName} />
+              ) : (
+                <p className="text-sm text-muted-ink">
+                  {t("viewerAccess", { owner: status.ownerName })}
+                </p>
+              )}
             </>
           )}
         </div>
       ) : status.state === "off" ? (
         <div className="flex flex-col gap-2">
-          <p>{t("offBody")}</p>
+          <p>{t(sharing ? "offBodyTeam" : "offBody")}</p>
           <Button tone="primary" onClick={() => setPending("connect")}>
             {t("connect")}
           </Button>
@@ -213,9 +222,13 @@ export function SheetsSection({
             </>
           ) : href ? (
             <>
+              {sharing ? <SheetTeamAccess sharing={sharing} /> : null}
               {openLink(href)}
               <Button onClick={() => void copy(href)}>{t("copy")}</Button>
-              <p className="text-sm text-muted-ink">{t("shareTip")}</p>
+              <p className="text-sm text-muted-ink">
+                {sharing ? null : <>{t("shareTip")} </>}
+                {t("replacedTip")}
+              </p>
             </>
           ) : null}
           {turnOffButton}
@@ -229,13 +242,20 @@ export function SheetsSection({
         confirmLabel={t("continue")}
         onConfirm={() => goTo(connectHref)}
       >
+        {sharing ? (
+          <p className="text-sm">
+            {sharing.teamCount > 0
+              ? t("team.connect", { count: sharing.teamCount })
+              : t("team.connectNone")}
+          </p>
+        ) : null}
         <p className="text-sm text-muted-ink">{t("connectNote")}</p>
       </ConfirmDialog>
       <ConfirmDialog
         open={pending === "recreate"}
         onOpenChange={(open) => !open && setPending(null)}
         title={t("recreateTitle")}
-        description={t("recreateBody")}
+        description={t(teamShared ? "team.recreate" : "recreateBody")}
         confirmLabel={t("continue")}
         onConfirm={() =>
           goTo(googleConnectHref(workspace.slug, "sheets", { replace: true }))
@@ -247,7 +267,7 @@ export function SheetsSection({
         open={pending === "turnOff"}
         onOpenChange={(open) => !open && setPending(null)}
         title={t("turnOffTitle")}
-        description={t("turnOffBody", {
+        description={t(teamShared ? "team.turnOff" : "turnOffBody", {
           account: status.accountEmail ?? "",
         })}
         confirmLabel={t("turnOff")}

@@ -54,6 +54,12 @@ export const SHEET_FORMAT_VERSION = 1;
 export const SHEET_STATUS_POLL_MS = 3_000;
 
 /**
+ * How often Settings follows the team's sharing while some of it is in progress (#413): the share
+ * step runs about once a minute, so a slower poll than the creation's still shows it within seconds.
+ */
+export const SHEET_SHARING_POLL_MS = 10_000;
+
+/**
  * Sharing the sheet with the team (#413, design §5): how long a person Google refused waits before
  * one more try (never more than once a day, so Google never emails anyone twice in a day).
  */

@@ -396,6 +396,7 @@
       "title": "People",
       "you": "You",
       "checkIn": "Can check in",
+      "cantOpenSheet": "Can't open the sheet",
       "actionsFor": "Actions for {name}",
       "makeAdmin": "Make Admin",
       "makeViewer": "Make Viewer",
@@ -461,6 +462,7 @@
     "sheets": {
       "title": "Google Sheets",
       "offBody": "Keep a live copy of every answer in a Google Sheet, one tab per year. Share it with your committee from Google Sheets.",
+      "offBodyTeam": "Keep a live copy of every answer in a Google Sheet, one tab per year. Your team can view it.",
       "connect": "Connect Google Sheets",
       "tipGroup": "Tip: use your group's own Google account (for example the club's), so the sheet stays with the group.",
       "connectTitle": "Create a Google Sheet for {workspace}?",
@@ -477,7 +479,8 @@
       "open": "Open the Google Sheet",
       "copy": "Copy link",
       "copied": "Link copied",
-      "shareTip": "To share it, open it and use Share in Google Sheets. Changes made in the sheet are replaced by TapNShow.",
+      "shareTip": "To share it, open it and use Share in Google Sheets.",
+      "replacedTip": "Changes made in the sheet are replaced by TapNShow.",
       "turnOff": "Turn off the Google Sheet",
       "turnOffTitle": "Turn off the Google Sheet?",
       "turnOffBody": "The sheet stops updating. It stays in {account}'s Drive.",
@@ -510,7 +513,24 @@
         "rate_limited": "Too many tries. Wait a few minutes, then connect again.",
         "sheet_wrong_account": "This sheet is in {account}'s Drive. Pick that account, or create a new sheet."
       },
-      "anotherAccount": "another Google account"
+      "anotherAccount": "another Google account",
+      "team": {
+        "shared": "Shared",
+        "sharing": "Sharing…",
+        "summary": "Your team can view it · {canView} of {total, plural, one {# person} other {# people}}",
+        "cantOpen": "Google couldn't share it with {count, plural, one {1 person} other {# people}}, usually because the address isn't a Google account. You can share it with them by hand from Google Sheets.",
+        "markedInPeople": "They're marked in People.",
+        "follows": "People who join or leave the team get or lose access within a minute.",
+        "alone": "Only you so far. People who join the team get access.",
+        "mineShared": "You can view it with {email}.",
+        "mineSharing": "Sharing it with you…",
+        "mineRefused": "Google couldn't share it with {email}. Ask {owner}, the Owner, to share it with your Google address.",
+        "mineAccount": "It's in your Google Drive.",
+        "connect": "{count, plural, one {Your team (1 person) can view it: Google emails them a link.} other {Your team (# people) can view it: Google emails each of them a link.}}",
+        "connectNone": "People who join your team will be able to view it.",
+        "turnOff": "The sheet stops updating and your team loses access to it. It stays in {account}'s Drive.",
+        "recreate": "The old sheet stops updating. Your team moves to the new one and loses access to the old one."
+      }
     },
     "defaults": {
       "title": "Meeting defaults",

@@ -21,6 +21,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Pill } from "@/components/ui/pill";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ShowMore } from "@/components/ui/show-more";
 import { membersQueryKey, useMembersPage } from "@/hooks/use-members";
@@ -128,6 +129,11 @@ export function PeopleSection({
                   </p>
                   {member.canCheckIn ? (
                     <p className="text-xs font-bold">{t("checkIn")}</p>
+                  ) : null}
+                  {member.sheetAccess === "cant_open" ? (
+                    <p className="mt-1">
+                      <Pill tone="warning">{t("cantOpenSheet")}</Pill>
+                    </p>
                   ) : null}
                 </div>
                 <RoleBadge role={member.role} />

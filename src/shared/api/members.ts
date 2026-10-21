@@ -2,6 +2,13 @@ import { z } from "zod";
 import { workspaceRoleSchema } from "./me";
 import { pageSchema } from "./pagination";
 
+/** Whether a team member can open the Google Sheet (`members_page.sheet_access`). */
+export const MEMBER_SHEET_ACCESS = [
+  "can_view",
+  "cant_open",
+  "pending",
+] as const;
+
 /** One row of `GET /api/workspaces/[slug]/members`. */
 export const memberSchema = z.object({
   userId: z.uuid(),
@@ -11,6 +18,8 @@ export const memberSchema = z.object({
   avatarUrl: z.string().nullable(),
   email: z.string(),
   joinedAt: z.string(),
+  /** Whether they can open the Google Sheet (#413); the Owner's view only, else null. */
+  sheetAccess: z.enum(MEMBER_SHEET_ACCESS).nullable(),
 });
 
 /** A workspace member as shown in Settings > People. */

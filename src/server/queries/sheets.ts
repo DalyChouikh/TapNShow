@@ -38,6 +38,17 @@ const dbSheetSchema = z
         starts_to: z.string().nullable(),
       }),
     ),
+    sharing: z
+      .object({
+        team_count: z.number(),
+        total: z.number(),
+        can_view: z.number(),
+        cant_open: z.number(),
+        in_progress: z.number(),
+        mine: z.string().nullable(),
+        my_email: z.string().nullable(),
+      })
+      .nullable(),
   })
   .transform((db): SheetStatus =>
     sheetStatusSchema.parse({
@@ -56,6 +67,15 @@ const dbSheetSchema = z
         startsFrom: tab.starts_from,
         startsTo: tab.starts_to,
       })),
+      sharing: db.sharing && {
+        teamCount: db.sharing.team_count,
+        total: db.sharing.total,
+        canView: db.sharing.can_view,
+        cantOpen: db.sharing.cant_open,
+        inProgress: db.sharing.in_progress,
+        mine: db.sharing.mine,
+        myEmail: db.sharing.my_email,
+      },
     }),
   );
 

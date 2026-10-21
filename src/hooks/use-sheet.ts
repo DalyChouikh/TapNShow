@@ -7,13 +7,13 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import type { ExportSheetLink } from "@/components/forms/export-menu";
-import { SHEET_STATUS_POLL_MS } from "@/config/sheets";
+import { SHEET_SHARING_POLL_MS, SHEET_STATUS_POLL_MS } from "@/config/sheets";
 import { senderQueryKey } from "@/hooks/use-sender";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { apiRequest } from "@/lib/api-client";
 import { sheetUrl, tabForMeeting } from "@/lib/sheets/url";
 import { okSchema } from "@/shared/api/common";
-import { sheetStatusSchema } from "@/shared/api/sheets";
+import { type SheetStatus, sheetStatusSchema } from "@/shared/api/sheets";
 import { settingsPath } from "@/lib/with-query";
 
 /** Query key of a workspace's Google Sheet status. */
@@ -29,9 +29,15 @@ const sheetQueryOptions = (slug: string) =>
     queryFn: () => apiRequest(path(slug), { schema: sheetStatusSchema }),
   });
 
+/** Whether someone's share is still in progress: a member's own, or anyone's for the Owner. */
+const sharingInProgress = (sharing: SheetStatus["sharing"]) =>
+  sharing !== null &&
+  (sharing.mine === null ? sharing.inProgress > 0 : sharing.mine === "sharing");
+
 /**
  * The workspace's Google Sheet (spec §7.17). Polls only while it matters: while the file is being
- * created, and after Try again (`following`) until the sheet is up to date.
+ * created, after Try again (`following`) until the sheet is up to date, and more slowly while the
+ * team's sharing is in progress (#413).
  */
 export function useWorkspaceSheet(
   slug: string,
@@ -41,10 +47,15 @@ export function useWorkspaceSheet(
     ...sheetQueryOptions(slug),
     refetchInterval: (query) => {
       const data = query.state.data;
-      const live =
+      if (
         data?.state === "creating" ||
-        (options.following === true && data?.behind === true);
-      return live ? SHEET_STATUS_POLL_MS : false;
+        (options.following === true && data?.behind === true)
+      ) {
+        return SHEET_STATUS_POLL_MS;
+      }
+      return data?.state === "on" && sharingInProgress(data.sharing)
+        ? SHEET_SHARING_POLL_MS
+        : false;
     },
   });
 }

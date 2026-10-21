@@ -3,7 +3,12 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { json, routeFetch } from "@/test/fetch";
 import { workspaceFixture } from "@/test/fixtures/me";
-import { membersFixture, ownerId, viewerId } from "@/test/fixtures/members";
+import {
+  adminId,
+  membersFixture,
+  ownerId,
+  viewerId,
+} from "@/test/fixtures/members";
 import { renderWithProviders } from "@/test/render";
 import { PeopleSection } from "./people-section";
 
@@ -73,5 +78,29 @@ describe("PeopleSection", () => {
         ),
       ).toHaveLength(2),
     );
+  });
+
+  it("marks who can't open the Google Sheet, and no one else", async () => {
+    routeFetch({
+      [`GET ${membersUrl}?limit=50`]: json({
+        items: membersFixture.map((member) => ({
+          ...member,
+          sheetAccess:
+            member.userId === viewerId
+              ? "cant_open"
+              : member.userId === adminId
+                ? "can_view"
+                : "pending",
+        })),
+        nextCursor: null,
+      }),
+    });
+    renderWithProviders(
+      <PeopleSection workspace={workspaceFixture} myId={ownerId} />,
+    );
+    expect(await screen.findByText("Viewer Person")).toBeInTheDocument();
+    const tags = screen.getAllByText("Can't open the sheet");
+    expect(tags).toHaveLength(1);
+    expect(tags[0].closest("li")).toHaveTextContent("Viewer Person");
   });
 });

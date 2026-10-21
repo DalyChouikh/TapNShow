@@ -85,6 +85,13 @@ address, replacing today's "If Google says you need access, ask {owner}…":
 **Google's own email** goes to each person shared with (Google sends it from the sheet's account;
 TapNShow doesn't write it). Owner: keep it on.
 
+Also my calls (built 2026-10-21, shown in "Looks right?"): while sharing is on, the Off text reads
+"Keep a live copy of every answer in a Google Sheet, one tab per year. Your team can view it.", and
+the On tip keeps only "Changes made in the sheet are replaced by TapNShow." (mockup A); the
+turn-off and replace dialogs keep today's words when nobody is shared with (the Owner alone); the
+team block shows only while the sheet is on (not paused); the tag says "Sharing…" while anyone is
+in progress; Settings follows the counts every 10 s while a share is in progress.
+
 All new words go through next-intl (`messages/en.json`); screens checked at 390 light, 320 dark and
 1024, labelled with who sees them, before merge.
 

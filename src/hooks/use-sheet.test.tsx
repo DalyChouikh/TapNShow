@@ -38,6 +38,7 @@ const status = (over: Partial<SheetStatus> = {}): SheetStatus => ({
       startsTo: "2025-12-01T17:00:00.000Z",
     },
   ],
+  sharing: null,
   ...over,
 });
 
@@ -77,6 +78,57 @@ describe("useWorkspaceSheet", () => {
     await waitFor(() => expect(result.current.data?.state).toBe("on"));
     const calls = fetchMock.mock.calls.length;
     await act(() => vi.advanceTimersByTimeAsync(9_000));
+    expect(fetchMock.mock.calls.length).toBe(calls);
+  });
+});
+
+describe("useWorkspaceSheet while the team's sharing is in progress (#413)", () => {
+  const sharing = (
+    over: Partial<NonNullable<SheetStatus["sharing"]>>,
+  ): SheetStatus["sharing"] => ({
+    teamCount: 2,
+    total: 2,
+    canView: 0,
+    cantOpen: 0,
+    inProgress: 2,
+    mine: null,
+    myEmail: null,
+    ...over,
+  });
+  const follow = async (replies: SheetStatus[]) => {
+    const fetchMock = routeFetch({
+      [`GET ${PATH}`]: () =>
+        new Response(JSON.stringify(replies.shift() ?? status())),
+    });
+    const { result } = renderHook(() => useWorkspaceSheet("club-ab12"), {
+      wrapper: wrapperWith(client()),
+    });
+    await waitFor(() => expect(result.current.data).toBeDefined());
+    return { fetchMock, result };
+  };
+
+  it("follows the Owner's counts every 10 s until nobody is waiting", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { fetchMock, result } = await follow([
+      status({ sharing: sharing({}) }),
+      status({ sharing: sharing({ canView: 2, inProgress: 0 }) }),
+    ]);
+    await act(() => vi.advanceTimersByTimeAsync(10_000));
+    await waitFor(() =>
+      expect(result.current.data?.sharing?.inProgress).toBe(0),
+    );
+    const calls = fetchMock.mock.calls.length;
+    await act(() => vi.advanceTimersByTimeAsync(30_000));
+    expect(fetchMock.mock.calls.length).toBe(calls);
+  });
+
+  it("follows a member only while their own share is in progress", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { fetchMock } = await follow([
+      status({ sharing: sharing({ mine: "shared", myEmail: "a@x.test" }) }),
+    ]);
+    const calls = fetchMock.mock.calls.length;
+    await act(() => vi.advanceTimersByTimeAsync(30_000));
     expect(fetchMock.mock.calls.length).toBe(calls);
   });
 });

@@ -11,6 +11,7 @@ const base = {
   accountEmail: null,
   ownerName: "Daly",
   tabs: [{ year: 2026, googleSheetId: 11, startsFrom: null, startsTo: null }],
+  sharing: null,
 };
 
 describe("sheetStatusSchema", () => {
