@@ -3,7 +3,7 @@ import { withSentryConfig } from "@sentry/nextjs/config";
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 import { parsePublicEnv } from "./src/config/public-env-schema";
-import { legacyHostRedirects } from "./src/config/site";
+import { apexRedirects, legacyHostRedirects } from "./src/config/site";
 import {
   noIndexHeaders,
   serviceWorkerCsp,
@@ -17,8 +17,12 @@ import {
 const publicEnv = parsePublicEnv(process.env);
 
 const nextConfig: NextConfig = {
-  // The old address's pages move to the app address for good (spec §7.18, 2026-10-17).
-  redirects: async () => legacyHostRedirects(publicEnv.NEXT_PUBLIC_APP_URL),
+  // The old address's pages move to the app address for good (spec §7.18, 2026-10-17), and the
+  // apex sends everything to www with the app's headers (#422).
+  redirects: async () => [
+    ...apexRedirects(publicEnv.NEXT_PUBLIC_APP_URL),
+    ...legacyHostRedirects(publicEnv.NEXT_PUBLIC_APP_URL),
+  ],
   // Later rules win for the same header: the token pages' no-referrer overrides the default.
   headers: async () => [
     ...staticSecurityHeaders,

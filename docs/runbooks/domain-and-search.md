@@ -1,8 +1,11 @@
 # Domain and search engines runbook
 
 The main address is **https://www.tapnshow.tn** (Owner, 2026-10-17; spec §7.18). `tapnshow.tn`
-redirects to it in Vercel; `tapnshow.vercel.app`'s pages redirect to it from the app
-(`legacyHostRedirects`, `src/config/site.ts`), while its `/api/` and `/serwist/` keep answering.
+redirects every path to it from the app (`apexRedirects`, #422), so the redirect carries the app's
+headers; in Vercel → Project → Settings → Domains, `tapnshow.tn` is connected to Production, not
+set to redirect (Vercel's own redirect sends Vercel's HSTS default). `tapnshow.vercel.app`'s pages
+redirect to it from the app too (`legacyHostRedirects`, `src/config/site.ts`), while its `/api/` and
+`/serwist/` keep answering.
 
 ## DNS (registrar: tunet.tn, the Ooredoo business panel; zone: Vercel DNS)
 
@@ -13,7 +16,7 @@ too, and the uptime monitor reported `dns_error` (monitoring runbook, "Reading a
 
 | Name | Type | Value | Why |
 |---|---|---|---|
-| `tapnshow.tn` | ALIAS | Vercel's default, created by itself | the apex (redirects to `www`) |
+| `tapnshow.tn` | ALIAS | Vercel's default, created by itself | the apex (the app redirects it to `www`) |
 | `*` | ALIAS | Vercel's default, created by itself | `www` and any other subdomain |
 | `tapnshow.tn` | CAA | Vercel's defaults (Let's Encrypt, Sectigo, Google Trust Services) | who may issue certificates |
 | `tapnshow.tn` | TXT | `google-site-verification=…` (Search Console gives it), added by hand | the Search Console Domain property, which covers `www` and the apex |

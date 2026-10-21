@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 /**
  * Production's public address (Owner, 2026-10-17: `www.tapnshow.tn` is the main address; the apex
- * redirects to it in Vercel). Links that must outlive a preview use it (the emails' privacy link,
+ * redirects to it, from the app since #422: `apexRedirects`). Links that must outlive a preview use it (the emails' privacy link,
  * Supabase Auth's site URL). A deployment's own address is `NEXT_PUBLIC_APP_URL`.
  */
 export const PRODUCTION_URL = "https://www.tapnshow.tn";
@@ -45,4 +45,28 @@ export function legacyHostRedirects(appUrl: string): Redirect[] {
     destination: `${target.origin}/:path`,
     permanent: true,
   }));
+}
+
+const WWW = "www.";
+
+/**
+ * A permanent (308) redirect from the apex to a `www.` app address, every path and the query kept
+ * (#422). Made by the app rather than Vercel's domain settings, so it carries the app's headers:
+ * HSTS with `includeSubDomains` only covers the subdomains when the apex sends it, and Vercel's
+ * domain redirect sends its own default (measured 2026-10-21: the app's redirects carry the app's
+ * headers, the domain redirect doesn't). None when the app address isn't a `www.` address.
+ */
+export function apexRedirects(appUrl: string): Redirect[] {
+  const target = new URL(appUrl);
+  if (!target.host.startsWith(WWW)) {
+    return [];
+  }
+  return [
+    {
+      source: "/:path*",
+      has: [{ type: "host", value: exactly(target.host.slice(WWW.length)) }],
+      destination: `${target.origin}/:path*`,
+      permanent: true,
+    },
+  ];
 }
