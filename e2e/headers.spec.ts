@@ -1,4 +1,7 @@
-import { CSP_HEADER } from "../src/config/security-headers";
+import {
+  CSP_HEADER,
+  STRICT_TRANSPORT_SECURITY,
+} from "../src/config/security-headers";
 import { expect, test } from "./helpers/test";
 
 /** Playwright reports header names in lower case. */
@@ -15,6 +18,9 @@ test("pages carry a fresh nonce CSP and the static headers", async ({
   expect(nonceOf(first.headers()[CSP])).toBeTruthy();
   expect(nonceOf(first.headers()[CSP])).not.toBe(
     nonceOf(second.headers()[CSP]),
+  );
+  expect(first.headers()["strict-transport-security"]).toBe(
+    STRICT_TRANSPORT_SECURITY,
   );
   expect(first.headers()["x-content-type-options"]).toBe("nosniff");
   expect(first.headers()["referrer-policy"]).toBe(
@@ -44,6 +50,9 @@ test("token pages send no referrer and are never indexed", async ({
   const api = await request.get("/api/health");
   expect(api.headers()["x-robots-tag"]).toBe("noindex, nofollow");
   expect(api.headers()["x-content-type-options"]).toBe("nosniff");
+  expect(api.headers()["strict-transport-security"]).toBe(
+    STRICT_TRANSPORT_SECURITY,
+  );
 });
 
 test("the service worker has its own same-origin policy", async ({

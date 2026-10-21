@@ -20,6 +20,12 @@ too, and the uptime monitor reported `dns_error` (monitoring runbook, "Reading a
 
 No MX: the domain has no email. Vercel issues and renews the certificates (Let's Encrypt) by itself.
 
+**HTTPS only, every subdomain (#422):** the app sends `Strict-Transport-Security: max-age=63072000;
+includeSubDomains` (no `preload`; spec §11). A browser that has seen the apex's answer refuses plain
+HTTP on every name under `tapnshow.tn` for two years, so any subdomain added later (an email
+link-tracking domain, for example) must serve HTTPS. Check: `curl -sI https://tapnshow.tn/ | grep -i
+strict` shows `includeSubDomains`.
+
 - **Records:** Vercel → the team → Domains → `tapnshow.tn`, or `vercel dns ls tapnshow.tn` and
   `vercel dns add tapnshow.tn <name> <type> <value>`.
 - **Nameservers:** Ooredoo business panel → Mes domaines → `tapnshow.tn` → **Serveurs DNS** (the
