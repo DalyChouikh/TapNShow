@@ -3,9 +3,8 @@ import { z } from "zod";
 import { DRIVE_FILE_SCOPE } from "@/config/sheets";
 import { SHEET_RULE_COUNT } from "@/lib/sheets/requests";
 import type { SheetSourceRow, SheetsRequest } from "@/lib/sheets/types";
+import type { GoogleFailure, GoogleResult } from "@/server/google/google-call";
 import type {
-  GoogleFailure,
-  GoogleResult,
   GoogleSheetsClient,
   SheetTabMeta,
 } from "@/server/google/sheets-client";

@@ -52,3 +52,37 @@ export const SHEET_FORMAT_VERSION = 1;
 
 /** How often Settings polls while a sheet is being created. */
 export const SHEET_STATUS_POLL_MS = 3_000;
+
+/**
+ * How often Settings follows the team's sharing while some of it is in progress (#413): the share
+ * step runs about once a minute, so a slower poll than the creation's still shows it within seconds.
+ */
+export const SHEET_SHARING_POLL_MS = 10_000;
+
+/**
+ * Sharing the sheet with the team (#413, design §5): how long a person Google refused waits before
+ * one more try (never more than once a day, so Google never emails anyone twice in a day).
+ */
+export const SHEET_SHARE_REFUSED_RETRY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Shares created per sheet per claim; a sheet with more is released due at once and claimed again
+ * while the run has time, else in the next run.
+ */
+export const SHEET_SHARES_PER_RUN = 25;
+
+/**
+ * The slice of the Sheet lane the cleanups and the team's shares (#413) run in, first: they start
+ * Google calls only in its first 10 s (`SHEET_MIN_LEFT_MS` stays for the last call), so a busy
+ * redraw never holds back access that must end, and they never take more than that from the redraw.
+ */
+export const SHEET_SHARE_BUDGET_MS = SHEET_MIN_LEFT_MS + 10_000;
+
+/** Sheets whose shares are leased per claim (`sheet_share_claim`'s `p_limit`). */
+export const SHEET_SHARE_CLAIM_BATCH = 5;
+
+/** Cleanups leased per claim (`sheet_share_cleanup_claim`'s `p_limit`). */
+export const SHEET_SHARE_CLEANUP_BATCH = 5;
+
+/** Drive `permissions.list` page size (Drive allows up to 100); every page is followed. */
+export const DRIVE_PERMISSIONS_PAGE_SIZE = 100;

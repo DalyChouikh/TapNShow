@@ -2,7 +2,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
 import { renderWithProviders } from "@/test/render";
-import { SettingsSection } from "./settings-section";
+import { SettingsSection, SettingsSectionLink } from "./settings-section";
 
 afterEach(() => window.history.replaceState(null, "", "/"));
 
@@ -41,6 +41,25 @@ describe("SettingsSection", () => {
       </SettingsSection>,
     );
     window.history.pushState(null, "", "/w/x/settings#people");
+    expect(await screen.findByText("Members")).toBeInTheDocument();
+  });
+
+  it("opens from an in-page link, also when the link was already followed", async () => {
+    renderWithProviders(
+      <>
+        <SettingsSectionLink section="people">Go to People</SettingsSectionLink>
+        <SettingsSection id="people" title="People" defaultOpen={false}>
+          <p>Members</p>
+        </SettingsSection>
+      </>,
+    );
+    const link = screen.getByRole("link", { name: "Go to People" });
+    expect(link).toHaveAttribute("href", "#people");
+    await userEvent.click(link);
+    expect(await screen.findByText("Members")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "People" }));
+    expect(screen.queryByText("Members")).toBeNull();
+    await userEvent.click(link);
     expect(await screen.findByText("Members")).toBeInTheDocument();
   });
 });

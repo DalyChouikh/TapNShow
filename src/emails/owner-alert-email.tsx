@@ -21,6 +21,14 @@ export type OwnerAlertEmailProps =
       kind: "sendingSuspended" | "sendingResumed";
       workspaceName: string;
       linkUrl: string;
+    }
+  | {
+      kind: "sheetAccessLeft";
+      left: number;
+      /** Null when the workspace no longer exists. */
+      workspaceName: string | null;
+      accountEmail: string;
+      linkUrl: string;
     };
 
 type AlertCopy = {
@@ -35,7 +43,16 @@ type AlertCopy = {
 /** The words of one alert, from `Email.<kind>` (a paused sheet's body depends on the reason). */
 function alertCopy(props: OwnerAlertEmailProps): AlertCopy {
   const tr = getEmailTranslator();
-  const values = { workspace: props.workspaceName, appName: APP_NAME };
+  const values: Record<string, string | number> =
+    props.kind === "sheetAccessLeft"
+      ? {
+          workspace: props.workspaceName ?? "",
+          known: props.workspaceName === null ? "no" : "yes",
+          account: props.accountEmail,
+          left: props.left,
+          appName: APP_NAME,
+        }
+      : { workspace: props.workspaceName, appName: APP_NAME };
   const { kind } = props;
   return {
     subject: tr(`${kind}.subject`, values),
@@ -53,8 +70,9 @@ function alertCopy(props: OwnerAlertEmailProps): AlertCopy {
 /**
  * Tells an Owner that something of their workspace needs them (spec §8): its Gmail needs
  * reconnecting, its sending (and maybe its Google Sheet) stopped because the account was removed,
- * its Google Sheet stopped updating, or its meeting emails are paused for review or can go out
- * again (spec §7.12). Sent by the platform sender.
+ * its Google Sheet stopped updating, its meeting emails are paused for review or can go out again
+ * (spec §7.12), or people may still have access to a Google Sheet TapNShow let go of (#413). Sent
+ * by the platform sender.
  */
 export function OwnerAlertEmail({
   copy,

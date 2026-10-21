@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { PLATFORM_EVENT_KINDS } from "@/lib/discord/platform-events";
 import { adminClient, createTestUser } from "@/test/db/clients";
-import { parkAllJobs } from "@/test/db/outbox";
 import { parkAllPlatformEvents } from "@/test/db/platform";
+import { parkAllWork } from "@/test/db/workers";
 import { queryLocalSql, runLocalSql } from "@/test/db/sql";
 import { createWorkspaceAs } from "@/test/db/workspaces";
 
@@ -124,11 +124,7 @@ describe("platform events lane", () => {
         "select private.workers_due() as due",
         z.array(z.object({ due: z.boolean() })).length(1),
       )[0].due;
-    parkAllJobs();
-    runLocalSql(
-      "update public.sheet_syncs set retry_at = now() + interval '1 day'",
-    );
-    runLocalSql("delete from public.push_deliveries");
+    parkAllWork();
     expect(due()).toBe(false);
     runLocalSql(
       `select private.record_platform_event('worker_failing', null, null, '{"lane":"emails"}')`,

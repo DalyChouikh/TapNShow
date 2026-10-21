@@ -48,6 +48,7 @@ const sheet = (state: "off" | "on" | "paused") => ({
   accountEmail: null,
   ownerName: "Amira Ben Ali",
   tabs: [],
+  sharing: null,
 });
 
 function setup(

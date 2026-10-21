@@ -9,7 +9,7 @@ import {
 } from "@/server/google/release";
 import { encodeCursor } from "@/server/http/pagination";
 import { type WorkspaceRole, workspaceRoleSchema } from "@/shared/api/me";
-import type { Member } from "@/shared/api/members";
+import { MEMBER_SHEET_ACCESS, type Member } from "@/shared/api/members";
 import type { Page } from "@/shared/api/pagination";
 import type { DbError } from "./roster";
 
@@ -24,6 +24,8 @@ const memberRowSchema = z.object({
   email: z.string(),
   joined_at: z.string(),
   sort_name: z.string(),
+  // Missing before the #413 migration reaches a database (a deploy or preview can go first).
+  sheet_access: z.enum(MEMBER_SHEET_ACCESS).nullish(),
 });
 
 /** Keyset of the members list: role, lower-cased name, user id. */
@@ -66,6 +68,7 @@ export async function listMembersPage(
         avatarUrl: row.avatar_url,
         email: row.email,
         joinedAt: row.joined_at,
+        sheetAccess: row.sheet_access ?? null,
       })),
       nextCursor:
         parsed.has_more && last

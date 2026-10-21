@@ -13,5 +13,6 @@ export function sheetFixture(state: SheetStatus["state"] = "off"): SheetStatus {
     accountEmail: null,
     ownerName: "Daly",
     tabs: [],
+    sharing: null,
   };
 }

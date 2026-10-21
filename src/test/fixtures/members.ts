@@ -17,6 +17,7 @@ const member = (
   avatarUrl: null,
   email: `${displayName.split(" ")[0].toLowerCase()}@example.test`,
   joinedAt: "2026-10-05T00:00:00Z",
+  sheetAccess: null,
 });
 
 /** Owner (me), one Admin, one Viewer. */

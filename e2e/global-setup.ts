@@ -47,6 +47,25 @@ function setAppLimit(name: string, value: number): void {
   );
 }
 
+/** Reads, or sets, the switch for sharing the Google Sheet with the team (#413). */
+function sheetTeamSharing(enabled?: boolean): boolean {
+  if (enabled !== undefined) {
+    localSql(
+      `update private.app_flags set enabled = ${enabled} where name = 'sheet_team_sharing'`,
+    );
+  }
+  return z
+    .array(z.object({ enabled: z.boolean() }))
+    .length(1)
+    .parse(
+      JSON.parse(
+        localSql(
+          "select enabled from private.app_flags where name = 'sheet_team_sharing'",
+        ),
+      ),
+    )[0].enabled;
+}
+
 /**
  * Locally every request has the IP "unknown", so a whole e2e run shares one per-IP bucket for each
  * pre-sign-in route. Raise those limits for the run (and clear old counters), then restore the
@@ -57,11 +76,13 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
     (name) => [name, appLimit(name)] as const,
   );
   const calendarDelay = appLimit("calendar_confirm_delay_seconds");
+  const sharing = sheetTeamSharing();
   const restore = () => {
     for (const [name, value] of originals) {
       setAppLimit(name, value);
     }
     setAppLimit("calendar_confirm_delay_seconds", calendarDelay);
+    sheetTeamSharing(sharing);
   };
   try {
     localSql("delete from private.rate_limit_events");
@@ -72,6 +93,9 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
     // limits table allows), then the story runs the dispatcher itself, as cron would. Set once for
     // the whole run (parallel workers would race a per-file before/after).
     setAppLimit("calendar_confirm_delay_seconds", 1);
+    // Every story runs with the Google Sheet shared with the team (#413), switched on once for the
+    // whole run for the same reason; the flag-off screens are pinned by unit and database tests.
+    sheetTeamSharing(true);
     // Fake Google (token, revoke, Gmail, Drive, Sheets): no e2e call reaches Google.
     const fakeGoogle = await startFakeGoogle();
     // Fake push service (HTTPS, like every real one): no e2e push reaches a browser vendor.

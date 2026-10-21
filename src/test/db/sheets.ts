@@ -1,6 +1,6 @@
 import type { SheetPauseReason } from "@/shared/api/sheets";
 import { adminClient } from "./clients";
-import { runLocalSql } from "./sql";
+import { runLocalScript, runLocalSql } from "./sql";
 
 /** A sheet row as the callback would create it (service role); returns nothing. */
 export async function seedSheet(
@@ -8,6 +8,8 @@ export async function seedSheet(
   connectionId: string,
   options: {
     googleSub: string;
+    /** The address of the Google account holding the file. */
+    googleEmail?: string;
     spreadsheetId?: string | null;
     status?: "active" | "paused";
     pausedReason?: SheetPauseReason | null;
@@ -19,7 +21,7 @@ export async function seedSheet(
       workspace_id: workspaceId,
       connection_id: connectionId,
       google_sub: options.googleSub,
-      google_email: "sheets@example.test",
+      google_email: options.googleEmail ?? "sheets@example.test",
       spreadsheet_id: options.spreadsheetId ?? null,
       status: options.status ?? "active",
       paused_reason: options.pausedReason ?? null,
@@ -56,10 +58,12 @@ export function makeDue(workspaceId: string): void {
  * test that claims must not see sheets other test files left behind.
  */
 export function parkAllSheets(): void {
-  runLocalSql(
-    "update public.sheet_syncs set retry_at = now() + interval '1 day', run_id = null, locked_until = null",
-  );
+  runLocalScript(PARK_ALL_SHEETS_SQL);
 }
+
+/** `parkAllSheets` as SQL, for `parkAllWork`'s single call. */
+export const PARK_ALL_SHEETS_SQL =
+  "update public.sheet_syncs set retry_at = now() + interval '1 day', run_id = null, locked_until = null;";
 
 /** Makes one workspace's sheet claimable again after `parkAllSheets` (retry time now). */
 export function unparkSheet(workspaceId: string): void {

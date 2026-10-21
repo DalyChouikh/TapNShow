@@ -2,21 +2,12 @@ import "server-only";
 import { z } from "zod";
 import { SPREADSHEET_MIME_TYPE } from "@/config/sheets";
 import type { SheetsRequest } from "@/lib/sheets/types";
-
-/** Why a Google call failed, for the worker (spec §8 errors). */
-export type GoogleFailure =
-  | { kind: "retry"; status: number }
-  | { kind: "unauthorized" }
-  | { kind: "access_lost" }
-  | { kind: "not_found" }
-  /** The file passed Google's cell limit (the Owner's own tabs count too). */
-  | { kind: "full" }
-  /** The Drive holding the file is out of storage. */
-  | { kind: "drive_full" }
-  | { kind: "bug"; status: number; reason: string };
-
-/** A Google call's value, or why it failed. */
-export type GoogleResult<T> = { kind: "ok"; value: T } | GoogleFailure;
+import {
+  classifyGoogleResponse,
+  type FetchLike,
+  type GoogleResult,
+  googleCall,
+} from "./google-call";
 
 /** One tab as Google describes it (what a redraw must check). */
 export type SheetTabMeta = {
@@ -26,68 +17,6 @@ export type SheetTabMeta = {
   conditionalFormats: number;
   slicerIds: number[];
 };
-
-const errorSchema = z.object({
-  error: z.object({
-    message: z.string().default(""),
-    status: z.string().default(""),
-    errors: z.array(z.object({ reason: z.string().optional() })).default([]),
-    details: z.array(z.object({ reason: z.string().optional() })).default([]),
-  }),
-});
-const RATE_LIMIT = new Set(["rateLimitExceeded", "userRateLimitExceeded"]);
-/** Google's wording when a write would pass a spreadsheet's cell limit (the number may change). */
-const CELL_LIMIT = /above the limit of [\d,]+ cells/i;
-const DISABLED = new Set(["accessNotConfigured", "SERVICE_DISABLED"]);
-
-/**
- * Maps a non-2xx Sheets or Drive response (Google's "Resolve errors" guides; S6). Drive reports
- * rate limits as 403, and a disabled API is our setup, not the Owner's, so neither pauses a sheet; a
- * full Drive or a file past the cell limit pauses it with its own plain line (#291).
- */
-export function classifyGoogleResponse(
-  status: number,
-  body: string,
-): GoogleFailure {
-  let reasons: string[] = [];
-  let message = "";
-  try {
-    const parsed = errorSchema.safeParse(JSON.parse(body));
-    if (parsed.success) {
-      reasons = [...parsed.data.error.errors, ...parsed.data.error.details]
-        .map((entry) => entry.reason ?? "")
-        .filter(Boolean);
-      message = parsed.data.error.message;
-    }
-  } catch {
-    reasons = [];
-  }
-  if (status === 401) {
-    return { kind: "unauthorized" };
-  }
-  if (status === 403) {
-    if (reasons.some((reason) => RATE_LIMIT.has(reason))) {
-      return { kind: "retry", status };
-    }
-    if (reasons.includes("storageQuotaExceeded")) {
-      return { kind: "drive_full" };
-    }
-    const disabled = reasons.find((reason) => DISABLED.has(reason));
-    return disabled
-      ? { kind: "bug", status, reason: disabled }
-      : { kind: "access_lost" };
-  }
-  if (status === 404) {
-    return { kind: "not_found" };
-  }
-  if (status === 400) {
-    if (CELL_LIMIT.test(message)) {
-      return { kind: "full" };
-    }
-    return { kind: "bug", status, reason: reasons[0] ?? "bad_request" };
-  }
-  return { kind: "retry", status };
-}
 
 const idSchema = z.object({ id: z.string().min(1) });
 const filesSchema = z.object({ files: z.array(idSchema) });
@@ -131,9 +60,6 @@ export type GoogleSheetsClient = {
   ): Promise<GoogleResult<null>>;
 };
 
-/** The part of `fetch` the client uses (tests pass a fake). */
-export type FetchLike = (url: string, init: RequestInit) => Promise<Response>;
-
 /** A client for one run; never throws (a network failure or a timeout is a retry). */
 export function createGoogleSheetsClient(input: {
   sheetsBaseUrl: string;
@@ -143,38 +69,22 @@ export function createGoogleSheetsClient(input: {
 }): GoogleSheetsClient {
   const fetchImpl: FetchLike =
     input.fetchImpl ?? ((url, init) => fetch(url, init));
-  async function call<T>(
+  const call = <T>(
     token: string,
     url: string,
     init: { method: "GET" | "POST"; body?: object },
     schema: z.ZodType<T>,
-  ): Promise<GoogleResult<T>> {
-    try {
-      const response = await fetchImpl(url, {
-        method: init.method,
-        headers: {
-          authorization: `Bearer ${token}`,
-          ...(init.body ? { "content-type": "application/json" } : {}),
-        },
-        body: init.body ? JSON.stringify(init.body) : undefined,
-        signal: AbortSignal.timeout(input.timeoutMs),
-      });
-      const text = await response.text();
-      if (!response.ok) {
-        return classifyGoogleResponse(response.status, text);
-      }
-      const parsed = schema.safeParse(text ? JSON.parse(text) : {});
-      return parsed.success
-        ? { kind: "ok", value: parsed.data }
-        : {
-            kind: "bug",
-            status: response.status,
-            reason: "unexpected_response",
-          };
-    } catch {
-      return { kind: "retry", status: 0 };
-    }
-  }
+  ): Promise<GoogleResult<T>> =>
+    googleCall({
+      fetchImpl,
+      timeoutMs: input.timeoutMs,
+      token,
+      url,
+      method: init.method,
+      body: init.body,
+      schema,
+      classify: classifyGoogleResponse,
+    });
   const map = <A, B>(
     result: GoogleResult<A>,
     f: (value: A) => B,

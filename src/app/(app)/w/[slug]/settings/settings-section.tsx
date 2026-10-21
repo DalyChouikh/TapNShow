@@ -78,3 +78,29 @@ export function SettingsSection({
     </Card>
   );
 }
+
+/**
+ * A link to another Settings section on this page: it opens and scrolls to it, also when the hash
+ * already points there (the browser fires no `hashchange` for the same hash).
+ */
+export function SettingsSectionLink({
+  section,
+  children,
+}: {
+  section: SettingsSectionId;
+  children: ReactNode;
+}) {
+  return (
+    <a
+      href={`#${section}`}
+      className="inline-flex min-h-11 items-center self-start text-sm font-bold underline underline-offset-4"
+      onClick={() => {
+        if (pointsAt(section)) {
+          window.dispatchEvent(new HashChangeEvent("hashchange"));
+        }
+      }}
+    >
+      {children}
+    </a>
+  );
+}

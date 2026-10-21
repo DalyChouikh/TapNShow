@@ -1,11 +1,11 @@
 import { z } from "zod";
 import { adminClient } from "./clients";
-import { queryLocalSql, runLocalSql } from "./sql";
+import { queryLocalSql, runLocalScript, runLocalSql } from "./sql";
 
 /** Calls a dispatcher RPC as the service role and returns its JSON (throws on error). */
 export async function serviceRpc(
   name: string,
-  args: Record<string, string | number | string[] | null>,
+  args: Record<string, string | number | boolean | string[] | null>,
 ) {
   const { data, error } = await adminClient().rpc(name as never, args as never);
   if (error) {
@@ -20,12 +20,14 @@ export async function serviceRpc(
  * not see work other test files left behind.
  */
 export function parkAllJobs(): void {
-  runLocalSql(
-    "update public.outbox_jobs set status = 'done' where status in ('pending', 'processing', 'paused')",
-  );
-  runLocalSql("delete from public.sender_leases");
-  runLocalSql("delete from public.push_deliveries");
+  runLocalScript(PARK_ALL_JOBS_SQL);
 }
+
+/** `parkAllJobs` as SQL, for `parkAllWork`'s single call. */
+export const PARK_ALL_JOBS_SQL = `
+  update public.outbox_jobs set status = 'done' where status in ('pending', 'processing', 'paused');
+  delete from public.sender_leases;
+  delete from public.push_deliveries;`;
 
 /** Sets a numeric limit for one test and returns a function restoring the original value. */
 export function overrideLimit(name: string, value: number): () => void {

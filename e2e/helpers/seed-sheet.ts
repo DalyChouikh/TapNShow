@@ -1,4 +1,6 @@
+import { type APIRequestContext, expect } from "@playwright/test";
 import { adminClient } from "./admin";
+import { runWorkers } from "./meetings";
 
 /**
  * Makes a workspace's changed years due now, as if the 1-minute quiet time had passed. Twin:
@@ -42,4 +44,25 @@ export async function moveMeetingStart(
   if (error) {
     throw error;
   }
+}
+
+/**
+ * Runs the workers as cron would, with the 1-minute quiet time skipped, until `check` holds (the
+ * workers finish after the route answers, so each check sees the run before).
+ */
+export async function syncSheetUntil(
+  request: APIRequestContext,
+  workspaceId: string,
+  check: () => Promise<boolean>,
+): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        await makeSheetDue(workspaceId);
+        await runWorkers(request);
+        return check();
+      },
+      { timeout: 30_000, intervals: [1_500] },
+    )
+    .toBe(true);
 }

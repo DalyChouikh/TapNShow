@@ -122,4 +122,36 @@ describe("renderOwnerAlertEmail", () => {
       "except for meetings that have already started",
     );
   });
+
+  it("says how many people may still have access, and where the sheet is", async () => {
+    const link = "https://docs.google.com/spreadsheets/d/file-000001abc/edit";
+    const email = await renderOwnerAlertEmail({
+      kind: "sheetAccessLeft",
+      left: 2,
+      workspaceName: "Robotics Club",
+      accountEmail: "club@example.test",
+      linkUrl: link,
+    });
+    expect(email.subject).toBe(
+      "People may still have access to a Google Sheet",
+    );
+    expect(email.text).toContain("couldn't remove 2 people");
+    expect(email.text).toContain("club@example.test's Drive");
+    expect(email.text).toContain("Robotics Club");
+    expect(email.html).toContain(`href="${link}"`);
+    expect(email.html).not.toMatch(/token|scope|API|permission/i);
+    expect(email.html).not.toMatch(EMOJI);
+  });
+
+  it("leaves the workspace out when it no longer exists", async () => {
+    const email = await renderOwnerAlertEmail({
+      kind: "sheetAccessLeft",
+      left: 1,
+      workspaceName: null,
+      accountEmail: "club@example.test",
+      linkUrl: "https://docs.google.com/spreadsheets/d/x/edit",
+    });
+    expect(email.text).toContain("couldn't remove 1 person");
+    expect(email.text).not.toContain("null");
+  });
 });

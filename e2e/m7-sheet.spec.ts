@@ -1,4 +1,3 @@
-import { type APIRequestContext } from "@playwright/test";
 import { expect, test } from "./helpers/test";
 import { DETAIL_COLUMNS } from "../src/lib/export/columns";
 import { type FakeTab, sheetFiles, toggleTrash } from "./helpers/fake-google";
@@ -8,17 +7,16 @@ import {
   createWorkspace,
   markAtDoor,
   messagesFor,
-  runWorkers,
   sendMeetingThroughUi,
 } from "./helpers/meetings";
 import { seedMember } from "./helpers/seed";
 import { ownerEmailOf, workspaceIdOf } from "./helpers/admin";
 import {
-  makeSheetDue,
   moveMeetingStart,
   sheetStatus,
+  syncSheetUntil,
 } from "./helpers/seed-sheet";
-import { openSettingsSection } from "./helpers/settings";
+import { connectGoogleSheet, openSettingsSection } from "./helpers/settings";
 import { signInWithCode } from "./helpers/sign-in";
 
 // Local times show in the sheet; the meeting is two days ahead so no reminder falls due mid-story.
@@ -40,27 +38,6 @@ async function tabOf(fileName: string): Promise<FakeTab | undefined> {
 const rowOf = (tab: FakeTab | undefined, fullName: string) =>
   tab?.values.slice(FIRST_ROW).find((row) => row[column("name")] === fullName);
 
-/**
- * Runs the workers as cron would, with the 1-minute quiet time skipped, until `check` holds (the
- * workers finish after the route answers, so each check sees the run before).
- */
-async function syncUntil(
-  request: APIRequestContext,
-  workspaceId: string,
-  check: () => Promise<boolean>,
-): Promise<void> {
-  await expect
-    .poll(
-      async () => {
-        await makeSheetDue(workspaceId);
-        await runWorkers(request);
-        return check();
-      },
-      { timeout: 30_000, intervals: [1_500] },
-    )
-    .toBe(true);
-}
-
 // A long story that waits on the sheet worker several times (25 to 30 s on a laptop): the default
 // 30 s budget left no room, as for the other worker stories.
 test.describe.configure({ timeout: 180_000 });
@@ -79,18 +56,7 @@ test("the Owner connects a Google Sheet that follows answers and check-ins, paus
   const viewer = await seedMember(slug, "viewer", "Sheet Viewer");
 
   // The Owner connects through Google's consent screen (the fake agrees at once).
-  await page.goto(`/w/${slug}/settings`);
-  await openSettingsSection(page, "Google Sheets");
-  await page.getByRole("button", { name: "Connect Google Sheets" }).click();
-  await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "Continue to Google" })
-    .click();
-  await expect(
-    page.getByText("Google Sheet connected. It fills in within a minute."),
-  ).toBeVisible();
-  // The banner then clears the result from the URL; a reload or click before that would race it.
-  await expect(page).toHaveURL(/\/settings#sheets$/);
+  await connectGoogleSheet(page, slug);
 
   const people = ["Amira", "Bilel", "Chiraz"].map((first) => ({
     fullName: `${first} ${stamp}`,
@@ -104,7 +70,7 @@ test("the Owner connects a Google Sheet that follows answers and check-ins, paus
   });
 
   // The first runs create the file and draw this year's tab in the app's look.
-  await syncUntil(
+  await syncSheetUntil(
     request,
     workspaceId,
     async () => rowOf(await tabOf(fileName), people[2].fullName) !== undefined,
@@ -133,7 +99,7 @@ test("the Owner connects a Google Sheet that follows answers and check-ins, paus
   await member.getByLabel("Reason").fill("Bus from campus");
   await member.getByRole("button", { name: "Confirm: late by 15 min" }).click();
   await expect(member.getByText("CONFIRMED")).toBeVisible();
-  await syncUntil(request, workspaceId, async () => {
+  await syncSheetUntil(request, workspaceId, async () => {
     const row = rowOf(await tabOf(fileName), bilel.fullName);
     return (
       row?.[column("answer")] === "Late by 15 min" &&
@@ -181,7 +147,7 @@ test("the Owner connects a Google Sheet that follows answers and check-ins, paus
   await member.getByRole("radio", { name: "I can't come" }).click();
   await member.getByRole("button", { name: "Confirm: I can't come" }).click();
   await expect(member.getByText("CONFIRMED")).toBeVisible();
-  await syncUntil(
+  await syncSheetUntil(
     request,
     workspaceId,
     async () => (await sheetStatus(workspaceId)) === "paused",
@@ -202,7 +168,7 @@ test("the Owner connects a Google Sheet that follows answers and check-ins, paus
   // Restored, Try again catches up with the answer it missed.
   await toggleTrash(fileId);
   await page.getByRole("button", { name: "Try again" }).click();
-  await syncUntil(request, workspaceId, async () => {
+  await syncSheetUntil(request, workspaceId, async () => {
     const answer = rowOf(await tabOf(fileName), bilel.fullName)?.[
       column("answer")
     ];
@@ -220,7 +186,7 @@ test("the Owner connects a Google Sheet that follows answers and check-ins, paus
   await page.goto(meetingPath);
   await page.getByRole("radio", { name: "Check-in" }).click();
   await markAtDoor(page, people[0].fullName, "Present");
-  await syncUntil(
+  await syncSheetUntil(
     request,
     workspaceId,
     async () =>

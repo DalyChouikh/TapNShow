@@ -10,6 +10,7 @@ const member = (userId: string, role: Member["role"]): Member => ({
   avatarUrl: null,
   email: `${userId}@example.test`,
   joinedAt: "2026-10-05T00:00:00Z",
+  sheetAccess: null,
 });
 
 describe("memberActions", () => {

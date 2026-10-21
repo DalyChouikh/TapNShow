@@ -24,6 +24,12 @@ import {
 } from "@/server/queries/platform";
 import { createSheetsDeps } from "@/server/sheets/sheets-deps";
 import { runSheetSync } from "@/server/sheets/run-sheets";
+import {
+  runShareCleanups,
+  runSheetShares,
+  type SheetSharesDeps,
+} from "@/server/sheets/run-sheet-shares";
+import { createSheetSharesDeps } from "@/server/sheets/sheet-shares-deps";
 import { createSupabaseAdminClient } from "@/server/supabase/admin-client";
 
 /** A background worker the internal route can start. */
@@ -45,6 +51,11 @@ export const WORKER_OPTIONS = {
     tabRowsMax: sheets.SHEET_TAB_ROWS_MAX,
     cellsMax: sheets.SHEET_CELLS_MAX,
     formatVersion: sheets.SHEET_FORMAT_VERSION,
+    shareBudgetMs: sheets.SHEET_SHARE_BUDGET_MS,
+    sharesPerRun: sheets.SHEET_SHARES_PER_RUN,
+    shareBatchSize: sheets.SHEET_SHARE_CLAIM_BATCH,
+    refusedRetryMs: sheets.SHEET_SHARE_REFUSED_RETRY_MS,
+    cleanupBatch: sheets.SHEET_SHARE_CLEANUP_BATCH,
   },
   platform: {
     budgetMs: platform.PLATFORM_BUDGET_MS,
@@ -90,9 +101,52 @@ export function scheduleWorkers(
       }
     }
     if (which.includes("sheets")) {
-      start("sheets", () =>
-        runSheetSync(createSheetsDeps(), WORKER_OPTIONS.sheets),
-      );
+      // The cleanups and the team's shares (#413) first, in their own slice of the lane: a busy
+      // redraw must never hold back access that must end, nor a cleanup still holding a Google
+      // account. The redraw then has what is left of the lane's one budget. Each step runs even
+      // when an earlier one threw; the first failure fails the lane (logged and recorded once
+      // below), a later one is logged on its own.
+      start("sheets", async () => {
+        const startedAt = Date.now();
+        const shareOptions = {
+          ...WORKER_OPTIONS.sheets,
+          startedAt,
+          budgetMs: WORKER_OPTIONS.sheets.shareBudgetMs,
+          batchSize: WORKER_OPTIONS.sheets.shareBatchSize,
+        };
+        let sharesDeps: SheetSharesDeps | undefined;
+        const shareDeps = () => (sharesDeps ??= createSheetSharesDeps());
+        const failures: Error[] = [];
+        const step = <T>(work: () => Promise<T>) =>
+          Promise.resolve()
+            .then(work)
+            .catch((error: Error) => {
+              if (failures.length > 0) {
+                logger.error(
+                  { err: error, lane: "sheets" },
+                  "worker run failed",
+                );
+              }
+              failures.push(error);
+              return null;
+            });
+        const cleanups = await step(() =>
+          runShareCleanups(shareDeps(), shareOptions),
+        );
+        const shares = await step(() =>
+          runSheetShares(shareDeps(), shareOptions),
+        );
+        const sync = await step(() =>
+          runSheetSync(createSheetsDeps(), {
+            ...WORKER_OPTIONS.sheets,
+            budgetMs: WORKER_OPTIONS.sheets.budgetMs - (Date.now() - startedAt),
+          }),
+        );
+        if (failures.length > 0) {
+          throw failures[0];
+        }
+        return { sync, shares, cleanups };
+      });
     }
     if (which.includes("platform")) {
       start("platform", () =>

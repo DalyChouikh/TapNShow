@@ -38,6 +38,18 @@ const dbSheetSchema = z
         starts_to: z.string().nullable(),
       }),
     ),
+    // Missing before the #413 migration reaches a database (a deploy or preview can go first).
+    sharing: z
+      .object({
+        team_count: z.number(),
+        total: z.number(),
+        can_view: z.number(),
+        cant_open: z.number(),
+        in_progress: z.number(),
+        mine: z.string().nullable(),
+        my_email: z.string().nullable(),
+      })
+      .nullish(),
   })
   .transform((db): SheetStatus =>
     sheetStatusSchema.parse({
@@ -56,6 +68,17 @@ const dbSheetSchema = z
         startsFrom: tab.starts_from,
         startsTo: tab.starts_to,
       })),
+      sharing: db.sharing
+        ? {
+            teamCount: db.sharing.team_count,
+            total: db.sharing.total,
+            canView: db.sharing.can_view,
+            cantOpen: db.sharing.cant_open,
+            inProgress: db.sharing.in_progress,
+            mine: db.sharing.mine,
+            myEmail: db.sharing.my_email,
+          }
+        : null,
     }),
   );
 
@@ -301,7 +324,8 @@ const sheetRowsSchema = z.array(
     })),
 );
 
-const pausedSchema = z
+/** `sheet_pause`'s answer: who to tell, or null when already told today (shared with the share step). */
+export const sheetPausedAlertSchema = z
   .object({
     email: z.string(),
     workspace_name: z.string(),
@@ -424,7 +448,7 @@ export function createSheetStore(admin: Client): SheetStore {
       );
     },
     pause: async (workspaceId, run, reason) =>
-      pausedSchema.parse(
+      sheetPausedAlertSchema.parse(
         check(
           "sheet_pause",
           await admin.rpc("sheet_pause", {
