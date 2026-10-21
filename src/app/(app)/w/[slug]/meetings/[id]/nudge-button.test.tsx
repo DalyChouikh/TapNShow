@@ -26,14 +26,28 @@ const withRemindable = (remindable: number, nudge = resultsFixture.nudge) => ({
   nudge,
 });
 
+type SenderState = "active" | "broken" | "missing";
+
+/** The workspace's sender in `state`, as the sender route returns it. */
+function senderIn(state: SenderState) {
+  const fixture = senderFixture(state !== "missing");
+  return fixture.sender
+    ? { ...fixture, sender: { ...fixture.sender, status: state } }
+    : fixture;
+}
+
 function setup(
   meeting: Meeting,
   results: MeetingResults,
-  connected = true,
-  refusal: string | null = null,
+  options: {
+    sender?: SenderState;
+    refusal?: string;
+    canConnect?: boolean;
+  } = {},
 ) {
+  const { refusal } = options;
   const fetchMock = routeFetch({
-    [`GET ${base}/sender`]: json(senderFixture(connected)),
+    [`GET ${base}/sender`]: json(senderIn(options.sender ?? "active")),
     [`POST ${meetingPath}/nudge`]: refusal
       ? () =>
           new Response(JSON.stringify({ error: { code: refusal } }), {
@@ -46,7 +60,12 @@ function setup(
     [`GET ${meetingPath}/results`]: json(results),
   });
   const view = renderWithProviders(
-    <NudgeButton slug="robotics-cd34" meeting={meeting} results={results} />,
+    <NudgeButton
+      slug="robotics-cd34"
+      meeting={meeting}
+      results={results}
+      canConnect={options.canConnect ?? false}
+    />,
     { toaster: true },
   );
   return { fetchMock, view };
@@ -63,7 +82,7 @@ describe("NudgeButton", () => {
   ])(
     "says in plain words why a %s nudge was refused (review)",
     async (code, text) => {
-      setup(scheduled, withRemindable(6), true, code);
+      setup(scheduled, withRemindable(6), { refusal: code });
       await userEvent.click(
         await screen.findByRole("button", {
           name: "Remind 6 who haven't answered",
@@ -135,7 +154,7 @@ describe("NudgeButton", () => {
   });
 
   it("asks for a connected Gmail first (Review Focus 4)", async () => {
-    setup(scheduled, withRemindable(6), false);
+    setup(scheduled, withRemindable(6), { sender: "missing" });
     expect(
       await screen.findByText("Ask Daly to connect Gmail to send reminders."),
     ).toBeInTheDocument();
@@ -143,4 +162,58 @@ describe("NudgeButton", () => {
       screen.getByRole("button", { name: "Remind 6 who haven't answered" }),
     ).toBeDisabled();
   });
+
+  const CONNECT_HREF =
+    "/api/integrations/google/connect?workspace=robotics-cd34&purpose=sending";
+
+  it.each([
+    ["missing", "Connect Gmail to send reminders"],
+    ["broken", "Reconnect Gmail to send reminders"],
+  ] as const)(
+    "offers the Owner to fix a %s Gmail instead of asking themselves (#420)",
+    async (sender, label) => {
+      setup(scheduled, withRemindable(6), { sender, canConnect: true });
+      expect(await screen.findByRole("link", { name: label })).toHaveAttribute(
+        "href",
+        CONNECT_HREF,
+      );
+      expect(screen.queryByText(/^Ask /)).toBeNull();
+      expect(
+        screen.getByRole("button", { name: "Remind 6 who haven't answered" }),
+      ).toBeDisabled();
+    },
+  );
+
+  it("asks an Admin to get the Owner to reconnect a broken Gmail (#420)", async () => {
+    setup(scheduled, withRemindable(6), { sender: "broken" });
+    expect(
+      await screen.findByText("Ask Daly to connect Gmail to send reminders."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("link")).toBeNull();
+  });
+
+  it.each([
+    ["sender_not_connected", "Connect Gmail to send reminders"],
+    ["sender_broken", "Reconnect Gmail to send reminders"],
+  ])(
+    "offers the Owner the fix when a %s refusal comes back (#420)",
+    async (refusal, label) => {
+      setup(scheduled, withRemindable(6), { refusal, canConnect: true });
+      await userEvent.click(
+        await screen.findByRole("button", {
+          name: "Remind 6 who haven't answered",
+        }),
+      );
+      const dialog = await screen.findByRole("dialog");
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: "Send reminders" }),
+      );
+      const alert = await within(dialog).findByRole("alert");
+      expect(within(alert).getByRole("link", { name: label })).toHaveAttribute(
+        "href",
+        CONNECT_HREF,
+      );
+      expect(alert).not.toHaveTextContent(/Ask /);
+    },
+  );
 });
