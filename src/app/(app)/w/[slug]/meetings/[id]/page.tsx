@@ -89,6 +89,7 @@ export default function MeetingPage() {
     return <Skeleton className="h-96 w-full" />;
   }
   const canEdit = workspace.data.myRole !== "viewer";
+  const isOwner = workspace.data.myRole === "owner";
   const started =
     meeting.data.startsAt !== null &&
     new Date(meeting.data.startsAt) <= new Date();
@@ -125,7 +126,7 @@ export default function MeetingPage() {
         <SendProgress
           slug={slug}
           results={results.data}
-          canConnect={workspace.data.myRole === "owner"}
+          canConnect={isOwner}
           suspended={suspended}
         />
       ) : (
@@ -178,6 +179,7 @@ export default function MeetingPage() {
           slug={slug}
           meeting={meeting.data}
           results={results.data}
+          canConnect={isOwner}
         />
       ) : null}
       {canEdit && meeting.data.status === "scheduled" && !started ? (
