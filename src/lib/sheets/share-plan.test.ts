@@ -98,6 +98,28 @@ describe("planShareChanges: wanted and listed", () => {
     },
   );
 
+  it("records an address never tried (too many) that Drive lists as a hand share", () => {
+    const sara = target("sara@example.test");
+    expect(
+      plan({
+        targets: [sara],
+        shares: [row(sara.email, { state: "refused", reason: "too_many" })],
+        permissions: [listed(sara.email, "p9")],
+      }),
+    ).toEqual({ ...EMPTY, external: [sara] });
+  });
+
+  it("keeps TapNShow's share when Drive lists the account under another address", () => {
+    const sara = target("sara@example.test");
+    expect(
+      plan({
+        targets: [sara],
+        shares: [row(sara.email, { state: "shared", permissionId: "p1" })],
+        permissions: [listed("s.ara@example.test", "p1")],
+      }),
+    ).toEqual(EMPTY);
+  });
+
   it("adopts the listed id when TapNShow's share now has another id", () => {
     const sara = target("sara@example.test");
     expect(
@@ -227,17 +249,52 @@ describe("planShareChanges: not wanted", () => {
     },
   );
 
-  it.each(["external", "refused", "pending"] as const)(
+  it.each([
+    ["external", null],
+    ["pending", null],
+    ["refused", "too_many"],
+  ] as const)(
     "leaves a listed permission alone and forgets the %s row of someone who left",
-    (state) => {
+    (state, reason) => {
       expect(
         plan({
-          shares: [row("ali@example.test", { state })],
+          shares: [row("ali@example.test", { state, reason })],
           permissions: [listed("ali@example.test")],
         }),
       ).toEqual({ ...EMPTY, forget: ["ali@example.test"] });
     },
   );
+
+  // Drive "Resolve errors": invalidSharingRequest also covers "the items were successfully shared
+  // but emails could not be sent", so an address Google refused can still have access.
+  it.each(["refused", "removed_in_drive"] as const)(
+    "removes the listed share of someone who left after TapNShow tried it (%s)",
+    (reason) => {
+      expect(
+        plan({
+          shares: [row("ali@example.test", { state: "refused", reason })],
+          permissions: [listed("ali@example.test", "p7")],
+        }),
+      ).toEqual({
+        ...EMPTY,
+        remove: [{ email: "ali@example.test", permissionId: "p7" }],
+      });
+    },
+  );
+
+  it("removes a leaver's share by its id when Drive lists the account under another address", () => {
+    expect(
+      plan({
+        shares: [
+          row("ali@example.test", { state: "shared", permissionId: "p1" }),
+        ],
+        permissions: [listed("a.li@example.test", "p1")],
+      }),
+    ).toEqual({
+      ...EMPTY,
+      remove: [{ email: "ali@example.test", permissionId: "p1" }],
+    });
+  });
 
   it("forgets anyone who left and isn't listed", () => {
     expect(

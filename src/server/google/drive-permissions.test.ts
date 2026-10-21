@@ -30,38 +30,88 @@ function client(responses: Response[]) {
 }
 
 describe("classifyShareResponse", () => {
+  const refused = { kind: "refused", unexpected: null };
   it.each([
-    [400, error(400, "invalidSharingRequest"), { kind: "refused" }],
-    [400, error(400, "invalid"), { kind: "refused" }],
+    [400, error(400, "invalidSharingRequest"), refused],
+    [400, error(400, "invalid"), refused],
+    [400, error(400, "badRequest"), refused],
+    [403, error(403, "forbidden"), refused],
     [
       403,
       error(403, "sharingRateLimitExceeded"),
       { kind: "retry", status: 403 },
     ],
     [403, error(403, "rateLimitExceeded"), { kind: "retry", status: 403 }],
+    [429, error(429, "rateLimitExceeded"), { kind: "retry", status: 429 }],
     [404, error(404, "notFound"), { kind: "not_found" }],
     [401, error(401, "authError"), { kind: "unauthorized" }],
-    [403, error(403, "insufficientFilePermissions"), { kind: "access_lost" }],
+    [
+      403,
+      error(403, "accessNotConfigured"),
+      { kind: "bug", status: 403, reason: "accessNotConfigured" },
+    ],
     [503, "", { kind: "retry", status: 503 }],
   ])("maps %i %s", (status, body, expected) => {
     expect(classifyShareResponse(status, body)).toEqual(expected);
   });
+
+  // The run listed this file's permissions with the same token just before: an unknown 400, 403 or
+  // other client error is about this address, never a reason to stop the whole sheet.
+  it.each([
+    [
+      403,
+      error(403, "insufficientFilePermissions"),
+      "insufficientFilePermissions",
+    ],
+    [400, error(400, "somethingNew"), "somethingNew"],
+    [409, error(409, "conflict"), "conflict"],
+    [400, "not json", "unknown"],
+  ])(
+    "refuses only that person on an unknown %i, and says so",
+    (status, body, reason) => {
+      expect(classifyShareResponse(status, body)).toEqual({
+        kind: "refused",
+        unexpected: { status, reason },
+      });
+    },
+  );
 });
 
 describe("createDrivePermissionsClient", () => {
-  it("lists every page and keeps only people, by lower-cased address", async () => {
+  it("lists every page and keeps only people other than the owner, by lower-cased address", async () => {
     const { drive, fetchImpl } = client([
       json(200, {
         nextPageToken: "page2",
         permissions: [
-          { id: "p1", type: "user", emailAddress: "Sara@Example.test" },
-          { id: "p2", type: "anyone" },
+          {
+            id: "p0",
+            type: "user",
+            role: "owner",
+            emailAddress: "club@example.test",
+          },
+          {
+            id: "p1",
+            type: "user",
+            role: "reader",
+            emailAddress: "Sara@Example.test",
+          },
+          { id: "p2", type: "anyone", role: "reader" },
         ],
       }),
       json(200, {
         permissions: [
-          { id: "p3", type: "group", emailAddress: "team@example.test" },
-          { id: "p4", type: "user", emailAddress: "ali@example.test" },
+          {
+            id: "p3",
+            type: "group",
+            role: "reader",
+            emailAddress: "team@example.test",
+          },
+          {
+            id: "p4",
+            type: "user",
+            role: "writer",
+            emailAddress: "ali@example.test",
+          },
         ],
       }),
     ]);
@@ -77,6 +127,9 @@ describe("createDrivePermissionsClient", () => {
     const [secondUrl] = fetchImpl.mock.calls[1];
     expect(firstUrl).toContain(`${DRIVE}/drive/v3/files/file1/permissions?`);
     expect(firstUrl).toContain("pageSize=2");
+    expect(new URL(firstUrl).searchParams.get("fields")).toBe(
+      "nextPageToken,permissions(id,type,role,emailAddress)",
+    );
     expect(secondUrl).toContain("pageToken=page2");
   });
 
@@ -100,6 +153,7 @@ describe("createDrivePermissionsClient", () => {
     const { drive } = client([json(400, error(400, "invalidSharingRequest"))]);
     expect(await drive.create("t", "file1", "x@example.test")).toEqual({
       kind: "refused",
+      unexpected: null,
     });
   });
 

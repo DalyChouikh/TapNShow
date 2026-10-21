@@ -125,8 +125,8 @@ function fakeStore(input: {
       cleanups = [];
       return out;
     },
-    cleanupRetry: async () => {
-      calls.push("cleanup-retry");
+    cleanupRetry: async (_id, _run, backoff) => {
+      calls.push(backoff ? "cleanup-retry" : "cleanup-later");
     },
     cleanupFinish: async (_id, _run, left) => {
       calls.push(`cleanup-finish:${left}`);
@@ -162,7 +162,7 @@ function fakeDrive(initial: DrivePermission[] = [], refuse: string[] = []) {
         return failure;
       }
       if (refuse.includes(email)) {
-        return { kind: "refused" };
+        return { kind: "refused", unexpected: null };
       }
       const id = `p${(ids += 1)}`;
       people.set(email, id);
@@ -302,9 +302,45 @@ describe("runSheetShares", () => {
       nextTryAt: new Date(NOW + OPTIONS.refusedRetryMs).toISOString(),
     });
     expect(saved.find((row) => row.email === ALI.email)?.state).toBe("shared");
-    expect(calls.at(-1)).toBe("release:3:none");
+    // The sheet comes back when the refusal's next try is due.
+    expect(calls.at(-1)).toBe(
+      `release:3:${new Date(NOW + OPTIONS.refusedRetryMs).toISOString()}`,
+    );
     expect(alerts.paused).toEqual([]);
     expect(summary).toMatchObject({ refused: 1, created: 1 });
+  });
+
+  it("reports a refusal outside Drive's known ones, and still marks only that person", async () => {
+    const { store, saved } = fakeStore({ claims: [claimOf()] });
+    const { drive } = fakeDrive();
+    drive.create = async () => ({
+      kind: "refused",
+      unexpected: { status: 409, reason: "conflict" },
+    });
+    const reportBug = vi.fn<SheetSharesDeps["reportBug"]>();
+    const { deps, alerts } = depsOf(store, drive, { reportBug });
+    await runSheetShares(deps, OPTIONS);
+    expect(reportBug).toHaveBeenCalledExactlyOnceWith({
+      where: "share-create",
+      status: 409,
+      reason: "conflict",
+    });
+    expect(saved.map((row) => row.state)).toEqual(["refused"]);
+    expect(alerts.paused).toEqual([]);
+  });
+
+  it("only backs off, never pauses, when a token refresh fails for a moment", async () => {
+    const { store, calls } = fakeStore({ claims: [claimOf()] });
+    const { drive, failures } = fakeDrive();
+    failures.list = [{ kind: "unauthorized" }];
+    const refresh = vi
+      .fn<SheetSharesDeps["refresh"]>()
+      .mockResolvedValueOnce({ kind: "ok", accessToken: "token" })
+      .mockResolvedValueOnce({ kind: "error", status: 503 });
+    const { deps, alerts } = depsOf(store, drive, { refresh });
+    await runSheetShares(deps, OPTIONS);
+    expect(calls).toEqual(["retry"]);
+    expect(alerts.paused).toEqual([]);
   });
 
   it("backs off the sheet's shares on a rate limit", async () => {
@@ -436,6 +472,60 @@ describe("runShareCleanups", () => {
     expect(alerts.revoked).toEqual([RELEASED]);
     expect(alerts.left).toEqual([alert]);
     expect(summary).toMatchObject({ gaveUp: 1 });
+  });
+
+  it("tries a cleanup again when a token refresh fails for a moment", async () => {
+    const { store, calls } = fakeStore({
+      cleanups: [cleanupOf({ permissionIds: ["p1"] })],
+    });
+    const { drive, failures } = fakeDrive();
+    failures.list = [{ kind: "unauthorized" }];
+    const refresh = vi
+      .fn<SheetSharesDeps["refresh"]>()
+      .mockResolvedValueOnce({ kind: "ok", accessToken: "token" })
+      .mockResolvedValueOnce({ kind: "error", status: 503 });
+    const { deps } = depsOf(store, drive, { refresh });
+    await runShareCleanups(deps, OPTIONS);
+    expect(calls).toEqual(["cleanup-retry"]);
+  });
+
+  it("waits for the next run without a backoff when only the time ran out", async () => {
+    let now = NOW;
+    const { store, calls } = fakeStore({
+      cleanups: [cleanupOf({ permissionIds: ["p1"] })],
+    });
+    const claim = store.cleanupClaim;
+    store.cleanupClaim = async (...args) => {
+      const out = await claim(...args);
+      now = NOW + 40_000;
+      return out;
+    };
+    const { drive, calls: driveCalls } = fakeDrive();
+    const { deps } = depsOf(store, drive, { now: () => now });
+    await runShareCleanups(deps, OPTIONS);
+    expect(driveCalls).toEqual([]);
+    expect(calls).toEqual(["cleanup-later"]);
+  });
+
+  it("finishes a cleanup that keeps failing once give_up_at has passed", async () => {
+    const { store, calls } = fakeStore({
+      cleanups: [
+        cleanupOf({
+          permissionIds: ["p1"],
+          emails: [SARA.email],
+          giveUpAt: new Date(NOW - 1).toISOString(),
+        }),
+      ],
+    });
+    const { drive } = fakeDrive();
+    const { deps, alerts } = depsOf(store, drive, {
+      openToken: () => {
+        throw new Error("the sealed copy can't be opened");
+      },
+    });
+    await runShareCleanups(deps, OPTIONS);
+    expect(calls).toEqual(["cleanup-finish:2"]);
+    expect(alerts.revoked).toEqual([RELEASED]);
   });
 
   it("finishes with everything left when Google access is gone", async () => {

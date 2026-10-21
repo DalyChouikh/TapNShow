@@ -1038,7 +1038,7 @@ isOneToOne: false
 { Args: { "p_id": string,"p_left": number,"p_run": string }; Returns: Json
                            },
 "sheet_share_cleanup_retry":
-{ Args: { "p_id": string,"p_run": string }; Returns: undefined
+{ Args: { "p_backoff": boolean,"p_id": string,"p_run": string }; Returns: undefined
                            },
 "sheet_share_forget":
 { Args: { "p_emails": (string)[],"p_run": string,"p_workspace": string }; Returns: boolean

@@ -165,13 +165,18 @@ these tables, so no route has to remember to call anything.
 **Per-person rules (the worker's planner; "listed" = in Drive's `permissions.list`):**
 
 - Wanted and listed: kept as is when TapNShow already holds that permission or it was a hand share
-  (`external`); adopted as TapNShow's when TapNShow had tried this address (`sharing`, `refused`), so
-  a crash between Google and the database never leads to a second share or a second email.
+  (`external`, including an address never tried because it was past the cap); adopted as
+  TapNShow's when TapNShow had tried this address (`sharing`, `refused`), so a crash between Google
+  and the database never leads to a second share or a second email. TapNShow's own share is found
+  by its recorded permission id first, then by address (Drive may list an account under another
+  address than the one used to sign in); the file's owner permission is never touched.
 - Wanted and not listed: shared (within the cap and the run's budget), except when TapNShow's own
   share or a hand share has disappeared (`removed_in_drive`: removed by hand in Drive, never shared
   again automatically) or a refusal's retry time hasn't come (at most once a day).
 - Not wanted (left the team, or became the sheet's account): TapNShow's own share is removed, then
-  the row is forgotten; hand shares are never removed.
+  the row is forgotten; that includes an address Google refused (its share may still have gone
+  through, §4) and one re-shared after a removal in Drive; hand shares are never removed. Turning
+  off, replacing and deleting look refused addresses up too.
 - Past the cap (`sheet_team_shares_max`): `too_many`, never shared.
 
 **Speed:** pg_cron calls `private.kick_dispatcher()` every minute (`tn-dispatch`), which starts a run
@@ -190,12 +195,15 @@ the redraws, spec §8): for a due workspace it lists the file's permissions once
 (`permissions.list`), adopts an existing permission for the same address instead of creating a
 second one, creates the missing ones (`permissions.create`, role `reader`, notification on), deletes
 the ones whose person left (`permissions.delete`), and records each outcome. Calls stop when the
-run's budget is spent; the rest waits for the next run. Sharing errors are classified per person
-and never pause the sheet:
-- refused for that person (`invalidSharingRequest`, "ACL change not allowed", an address Google
-  rejects): the row becomes "couldn't share" with the reason. When to try again is decided after
-  the spike (§4), within these bounds: at most once a day per person, and never a second Google
-  email to the same person for the same file;
+run's budget is spent; the rest waits for the next run. Each minute the cleanups and the shares run
+first, in their own slice (they start Google calls only in the first 10 s), then the redraw has
+what is left, so a busy redraw never holds back access that must end (final review, 2026-10-21).
+Sharing errors are classified per person and never pause the sheet:
+- refused for that person (`invalidSharingRequest`, "ACL change not allowed", `invalid`,
+  `badRequest`, `forbidden`, and any other client error on `permissions.create`, since
+  `permissions.list` has just answered for the file and token; unknown ones are reported): the row
+  becomes "couldn't share" and is tried again a day later (the sheet comes back when that try is
+  due), never a second Google email the same day;
 - rate limits (`sharingRateLimitExceeded`, `rateLimitExceeded`, `userRateLimitExceeded`) and 5xx:
   retried with the worker's backoff;
 - the file gone or TapNShow's access lost: handled by the existing sheet pause rules.

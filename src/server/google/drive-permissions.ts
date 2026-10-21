@@ -10,42 +10,74 @@ import {
   googleErrorReasons,
 } from "./google-call";
 
-/** Why sharing with one person failed: Google refused that person, or the usual failures. */
-export type ShareFailure = { kind: "refused" } | GoogleFailure;
+/**
+ * Google refused to share with one person. `unexpected` names an answer outside Drive's known
+ * refusals, reported so the mapping can grow (never an address: Google's reason code only).
+ */
+export type ShareRefusal = {
+  kind: "refused";
+  unexpected: { status: number; reason: string } | null;
+};
 
-/** Drive's answers that refuse one address (Drive "Resolve errors" guide, read 2026-10-20). */
-const REFUSED = new Set(["invalidSharingRequest", "invalid"]);
-const SHARING_RATE_LIMIT = "sharingRateLimitExceeded";
+/** Why sharing with one person failed: Google refused that person, or the usual failures. */
+export type ShareFailure = ShareRefusal | GoogleFailure;
 
 /**
- * Maps a non-2xx answer to `permissions.create` (design §5): a refusal for that address never
- * pauses the sheet; Drive's sharing rate limit (403, "often linked with an email limit") is a
- * retry; anything else is read like any Drive answer.
+ * Drive's answers that refuse one address (Drive "Resolve errors" guide, read 2026-10-20; the
+ * plan's Task 4): `invalidSharingRequest` (also "ACL change not allowed"), `invalid` and
+ * `badRequest` on the address (400), `forbidden` for that address (403).
+ */
+const REFUSED = new Set([
+  "invalidSharingRequest",
+  "invalid",
+  "badRequest",
+  "forbidden",
+]);
+const SHARING_RATE_LIMIT = "sharingRateLimitExceeded";
+/** Client errors Drive uses for the whole request, not the address: the token, a gone file, a timeout or a rate limit. */
+const WHOLE_REQUEST = new Set([401, 404, 408, 429]);
+
+/**
+ * Maps a non-2xx answer to `permissions.create` (design §5). A share is only tried right after
+ * `permissions.list` answered for this file and token, so a client error is about that address:
+ * it refuses that person only and never pauses the sheet (an unknown one is reported). Rate limits
+ * (Drive's sharing limit is a 403, "often linked with an email limit") retry; a stale token, a gone
+ * file, our own setup (a disabled API) and server errors are read like any Drive answer.
  */
 export function classifyShareResponse(
   status: number,
   body: string,
 ): ShareFailure {
   const { reasons } = googleErrorReasons(body);
-  if (status === 400 && reasons.some((reason) => REFUSED.has(reason))) {
-    return { kind: "refused" };
-  }
   if (status === 403 && reasons.includes(SHARING_RATE_LIMIT)) {
     return { kind: "retry", status };
   }
-  return classifyGoogleResponse(status, body);
+  const read = classifyGoogleResponse(status, body);
+  if (status < 400 || status >= 500 || WHOLE_REQUEST.has(status)) {
+    return read;
+  }
+  // A 403 rate limit, or our own setup (a disabled API).
+  if (status === 403 && (read.kind === "retry" || read.kind === "bug")) {
+    return read;
+  }
+  return reasons.some((reason) => REFUSED.has(reason))
+    ? { kind: "refused", unexpected: null }
+    : {
+        kind: "refused",
+        unexpected: { status, reason: reasons[0] ?? "unknown" },
+      };
 }
 
 /** The Drive calls the share step makes on one file (plain `fetch`, like the Sheets client). */
 export type DrivePermissionsClient = {
-  /** Everyone shared as a person, every page followed, by lower-cased address. */
+  /** Everyone shared as a person except the file's owner, every page followed, by lower-cased address. */
   list(token: string, fileId: string): Promise<GoogleResult<DrivePermission[]>>;
   /** Shares view only (Google's notification email stays on); Google's permission id. */
   create(
     token: string,
     fileId: string,
     email: string,
-  ): Promise<GoogleResult<string> | { kind: "refused" }>;
+  ): Promise<GoogleResult<string> | ShareRefusal>;
   /** Removes one permission; one that is already gone counts as removed (404, the spike). */
   remove(
     token: string,
@@ -61,6 +93,7 @@ const pageSchema = z.object({
       z.object({
         id: z.string().min(1),
         type: z.string(),
+        role: z.string().optional(),
         emailAddress: z.string().optional(),
       }),
     )
@@ -86,7 +119,7 @@ export function createDrivePermissionsClient(input: {
       do {
         const params = new URLSearchParams({
           pageSize: String(input.pageSize),
-          fields: "nextPageToken,permissions(id,type,emailAddress)",
+          fields: "nextPageToken,permissions(id,type,role,emailAddress)",
           ...(pageToken ? { pageToken } : {}),
         });
         const page = await googleCall({
@@ -102,7 +135,12 @@ export function createDrivePermissionsClient(input: {
           return page;
         }
         for (const permission of page.value.permissions) {
-          if (permission.type === "user" && permission.emailAddress) {
+          // The account that owns the file is never shared with nor removed.
+          if (
+            permission.type === "user" &&
+            permission.role !== "owner" &&
+            permission.emailAddress
+          ) {
             people.push({
               id: permission.id,
               email: permission.emailAddress.toLowerCase(),

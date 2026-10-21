@@ -66,6 +66,10 @@ export type ShareCleanupsSummary = {
   retried: number;
 };
 
+/** The earlier of two due times (`null` = never). */
+const earliest = (due: string | null, other: string): string =>
+  due !== null && Date.parse(due) <= Date.parse(other) ? due : other;
+
 /** A token for a run, or why there is none (`invalid_grant` = access lost for good). */
 async function accessToken(
   deps: SheetSharesDeps,
@@ -156,10 +160,16 @@ async function shareSheet(
       claim.version,
       new Date(deps.now()).toISOString(),
     );
+  // Set when a token refresh gave up: it has already paused or rescheduled the sheet.
+  let stopped = false;
   const fail = async (failure: GoogleFailure | Late, where: string) => {
     if (failure.kind === "late") {
       return later();
     }
+    if (failure.kind === "unauthorized" && stopped) {
+      return;
+    }
+    // A fresh token refused too (or access refused outright): Google access is gone.
     if (failure.kind === "access_lost" || failure.kind === "unauthorized") {
       return pause("access_lost");
     }
@@ -188,6 +198,7 @@ async function shareSheet(
       token = got.token;
       return "ok";
     }
+    stopped = true;
     if (got.kind === "lost") {
       await pause("access_lost");
     } else {
@@ -273,6 +284,8 @@ async function shareSheet(
     }
   }
   summary.adopted += plan.adopt.length;
+  // A refusal recorded below brings the sheet back when its next try is due.
+  let nextDue = plan.nextDue;
   for (const target of plan.create) {
     // No intent without the time for the call it announces.
     if (!canCall()) {
@@ -286,17 +299,22 @@ async function shareSheet(
     );
     if (created.kind === "refused") {
       summary.refused += 1;
+      if (created.unexpected) {
+        deps.reportBug({ where: "share-create", ...created.unexpected });
+      }
+      const nextTryAt = new Date(
+        deps.now() + options.refusedRetryMs,
+      ).toISOString();
       if (
         !(await save(target, {
           state: "refused",
           reason: "refused",
-          nextTryAt: new Date(
-            deps.now() + options.refusedRetryMs,
-          ).toISOString(),
+          nextTryAt,
         }))
       ) {
         return;
       }
+      nextDue = earliest(nextDue, nextTryAt);
       continue;
     }
     if (created.kind !== "ok") {
@@ -310,13 +328,14 @@ async function shareSheet(
       return;
     }
   }
-  await deps.store.release(workspace, run, claim.version, plan.nextDue);
+  await deps.store.release(workspace, run, claim.version, nextDue);
 }
 
 /**
  * Removes the access TapNShow gave on files it let go of (design §5), then releases and revokes
  * the held Google account and tells the Owner when people may still have access. Retries with
- * backoff until the cleanup's `giveUpAt`, then finishes with what is left. Never throws for one.
+ * backoff after a Google error until the cleanup's `giveUpAt`, then finishes with what is left;
+ * running out of time only waits for the next run. Never throws for one.
  */
 export async function runShareCleanups(
   deps: SheetSharesDeps,
@@ -347,13 +366,69 @@ export async function runShareCleanups(
         await cleanFile(deps, run, cleanup, canCall, summary);
       } catch (error) {
         logger.error({ err: error }, "share cleanup failed");
-        await deps.store.cleanupRetry(cleanup.id, run).catch(() => undefined);
-        summary.retried += 1;
+        await settleFailedCleanup(deps, run, cleanup, summary);
       }
     }
   }
   logger.info({ summary }, "share cleanup run finished");
   return summary;
+}
+
+/** The most people a cleanup can leave behind: every held share and every address in flight. */
+const mostLeft = (cleanup: CleanupClaim) =>
+  cleanup.permissionIds.length + cleanup.emails.length;
+
+/**
+ * Ends a cleanup with `left` people who may still have access: the store drops the row and its
+ * token copy, then the released account is revoked and the Owner told the count.
+ */
+async function finishCleanup(
+  deps: SheetSharesDeps,
+  run: string,
+  cleanup: CleanupClaim,
+  left: number,
+  summary: ShareCleanupsSummary,
+): Promise<void> {
+  const done = await deps.store.cleanupFinish(cleanup.id, run, left);
+  if (!done) {
+    return;
+  }
+  summary.finished += 1;
+  if (left > 0) {
+    summary.gaveUp += 1;
+  }
+  if (done.released) {
+    await deps.revoke([done.released]);
+  }
+  if (done.alert) {
+    await deps
+      .alertAccessLeft(done.alert)
+      .catch((error: Error) =>
+        logger.error({ err: error }, "access-left alert failed"),
+      );
+  }
+}
+
+/**
+ * A cleanup that threw: tried again later, but past its `giveUpAt` it ends anyway with everyone
+ * counted as left, so its token copy never outlives the bound (design §5).
+ */
+async function settleFailedCleanup(
+  deps: SheetSharesDeps,
+  run: string,
+  cleanup: CleanupClaim,
+  summary: ShareCleanupsSummary,
+): Promise<void> {
+  if (deps.now() >= Date.parse(cleanup.giveUpAt)) {
+    try {
+      await finishCleanup(deps, run, cleanup, mostLeft(cleanup), summary);
+      return;
+    } catch (error) {
+      logger.error({ err: error }, "share cleanup finish failed");
+    }
+  }
+  summary.retried += 1;
+  await deps.store.cleanupRetry(cleanup.id, run, true).catch(() => undefined);
 }
 
 async function cleanFile(
@@ -364,34 +439,17 @@ async function cleanFile(
   summary: ShareCleanupsSummary,
 ): Promise<void> {
   const givingUp = deps.now() >= Date.parse(cleanup.giveUpAt);
-  const most = cleanup.permissionIds.length + cleanup.emails.length;
-  const finish = async (left: number) => {
-    const done = await deps.store.cleanupFinish(cleanup.id, run, left);
-    if (!done) {
-      return;
-    }
-    summary.finished += 1;
-    if (left > 0) {
-      summary.gaveUp += 1;
-    }
-    if (done.released) {
-      await deps.revoke([done.released]);
-    }
-    if (done.alert) {
-      await deps
-        .alertAccessLeft(done.alert)
-        .catch((error: Error) =>
-          logger.error({ err: error }, "access-left alert failed"),
-        );
-    }
-  };
+  const finish = (left: number) =>
+    finishCleanup(deps, run, cleanup, left, summary);
   const retryOrGiveUp = async (left: number) => {
     if (givingUp) {
       return finish(left);
     }
     summary.retried += 1;
-    return deps.store.cleanupRetry(cleanup.id, run);
+    return deps.store.cleanupRetry(cleanup.id, run, true);
   };
+  // Out of time only: the next run carries on, with no backoff.
+  const later = () => deps.store.cleanupRetry(cleanup.id, run, false);
   const refreshToken = deps.openToken(
     cleanup.tokenEncrypted,
     cleanup.tokenUserId,
@@ -399,25 +457,30 @@ async function cleanFile(
   );
   let token = "";
   let lost = false;
+  let stopped = false;
   const refresh = async (): Promise<"ok" | "stop"> => {
     const got = await accessToken(deps, refreshToken);
     if (got.kind === "ok") {
       token = got.token;
       return "ok";
     }
+    stopped = true;
     lost = got.kind === "lost";
     return "stop";
   };
+  /** Google access is gone for good: a refused grant, or a fresh token refused too. */
+  const gone = (kind: string) =>
+    kind === "access_lost" || (kind === "unauthorized" && (lost || !stopped));
   if (!canCall()) {
-    return deps.store.cleanupRetry(cleanup.id, run);
+    return later();
   }
   if ((await refresh()) === "stop") {
-    return lost ? finish(most) : retryOrGiveUp(most);
+    return lost ? finish(mostLeft(cleanup)) : retryOrGiveUp(mostLeft(cleanup));
   }
   const google = budgetedGoogle({ canCall, refresh, token: () => token });
   const listed = await google((t) => deps.drive.list(t, cleanup.spreadsheetId));
   if (listed.kind === "late") {
-    return deps.store.cleanupRetry(cleanup.id, run);
+    return later();
   }
   if (listed.kind === "not_found") {
     return finish(0);
@@ -430,9 +493,9 @@ async function cleanFile(
         reason: listed.reason,
       });
     }
-    return listed.kind === "access_lost" || listed.kind === "unauthorized"
-      ? finish(most)
-      : retryOrGiveUp(most);
+    return gone(listed.kind)
+      ? finish(mostLeft(cleanup))
+      : retryOrGiveUp(mostLeft(cleanup));
   }
   const held = new Set(cleanup.permissionIds);
   const inFlight = new Set(cleanup.emails.map((email) => email.toLowerCase()));
@@ -447,12 +510,10 @@ async function cleanFile(
       deps.drive.remove(t, cleanup.spreadsheetId, permissionId),
     );
     if (removed.kind === "late") {
-      return deps.store.cleanupRetry(cleanup.id, run);
+      return later();
     }
     if (removed.kind !== "ok") {
-      return removed.kind === "access_lost" || removed.kind === "unauthorized"
-        ? finish(left)
-        : retryOrGiveUp(left);
+      return gone(removed.kind) ? finish(left) : retryOrGiveUp(left);
     }
     summary.removed += 1;
     left -= 1;

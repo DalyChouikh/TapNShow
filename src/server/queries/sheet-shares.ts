@@ -104,7 +104,8 @@ export type ShareStore = {
     limit: number,
     leaseSeconds: number,
   ): Promise<CleanupClaim[]>;
-  cleanupRetry(id: string, run: string): Promise<void>;
+  /** Frees the lease: with `backoff` after a Google error, or due again at once when only the run's time ran out. */
+  cleanupRetry(id: string, run: string, backoff: boolean): Promise<void>;
   cleanupFinish(
     id: string,
     run: string,
@@ -325,10 +326,14 @@ export function createShareStore(admin: Client): ShareStore {
           }),
         ),
       ),
-    cleanupRetry: async (id, run) => {
+    cleanupRetry: async (id, run, backoff) => {
       check(
         "sheet_share_cleanup_retry",
-        await admin.rpc("sheet_share_cleanup_retry", { p_id: id, p_run: run }),
+        await admin.rpc("sheet_share_cleanup_retry", {
+          p_id: id,
+          p_run: run,
+          p_backoff: backoff,
+        }),
       );
     },
     cleanupFinish: async (id, run, left) =>

@@ -317,6 +317,27 @@ describe("removing the team's access before letting go", () => {
     });
   });
 
+  it("looks up an address Google refused, whose share may still have gone through", async () => {
+    await seedSharedSheet();
+    await seedShare(workspace.id, {
+      userId: admin.id,
+      email: admin.email,
+      state: "refused",
+      reason: "refused",
+    });
+    await seedShare(workspace.id, {
+      userId: viewer.id,
+      email: viewer.email,
+      state: "refused",
+      reason: "too_many",
+    });
+    await turnOff();
+    expect((await cleanupsOf(workspace.id))[0]).toMatchObject({
+      permissionIds: [],
+      emails: [admin.email],
+    });
+  });
+
   it("leaves nothing to clean up when TapNShow shared nothing", async () => {
     await seedSharedSheet();
     await seedShare(workspace.id, {
@@ -590,6 +611,42 @@ describe("finishing a cleanup", () => {
       account_email: "club@example.test",
       left: 2,
     });
+  });
+
+  it("backs a cleanup off after a Google error, and not when only the run's time ran out", async () => {
+    await seedSharedSheet();
+    await seedShare(workspace.id, {
+      userId: admin.id,
+      email: admin.email,
+      state: "shared",
+      permissionId: "perm1",
+    });
+    await turnOff();
+    const state = () =>
+      queryLocalSql(
+        `select attempts, retry_at <= now() as due, run_id is null as free from public.sheet_share_cleanups where workspace_id = '${workspace.id}'`,
+        z
+          .array(
+            z.object({
+              attempts: z.number(),
+              due: z.boolean(),
+              free: z.boolean(),
+            }),
+          )
+          .length(1),
+      )[0];
+    for (const [backoff, expected] of [
+      [false, { attempts: 0, due: true, free: true }],
+      [true, { attempts: 1, due: false, free: true }],
+    ] as const) {
+      const { id, runId } = await claimCleanup();
+      await serviceRpc("sheet_share_cleanup_retry", {
+        p_id: id,
+        p_run: runId,
+        p_backoff: backoff,
+      });
+      expect(state()).toEqual(expected);
+    }
   });
 
   it("lets only the run holding a cleanup finish or retry it", async () => {

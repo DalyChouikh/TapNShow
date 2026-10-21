@@ -31,6 +31,16 @@ export type SharePlan = {
 const keyOf = (email: string) => email.toLowerCase();
 
 /**
+ * TapNShow asked Google to share with this address, or took the share as its own. A refusal counts:
+ * Drive's `invalidSharingRequest` also covers "the items were successfully shared but emails could
+ * not be sent" (Drive "Resolve errors", read 2026-10-20). Past the cap (`too_many`) it never tried.
+ */
+const triedByTapNShow = (row: ShareRow) =>
+  row.state === "shared" ||
+  row.state === "sharing" ||
+  (row.state === "refused" && row.reason !== "too_many");
+
+/**
  * Decides every person's share from the wanted team, TapNShow's records and what Drive lists
  * (design §5, the plan's Task 3 table). Never shares an address Drive already lists (Google would
  * email the person again), never removes a share TapNShow didn't make, and never shares again what
@@ -45,12 +55,18 @@ export function planShareChanges(input: {
   now: number;
   createBudget: number;
 }): SharePlan {
-  const listed = new Map(
+  const ids = new Set(input.permissions.map((permission) => permission.id));
+  const byEmail = new Map(
     input.permissions.map((permission) => [
       keyOf(permission.email),
       permission.id,
     ]),
   );
+  /** Drive may list an account under another address than the one used here: TapNShow's own share by its id first. */
+  const listedFor = (email: string, row: ShareRow | undefined) =>
+    row?.permissionId && ids.has(row.permissionId)
+      ? row.permissionId
+      : byEmail.get(keyOf(email));
   const rows = new Map(input.shares.map((row) => [keyOf(row.email), row]));
   const wanted = new Set(input.targets.map((target) => keyOf(target.email)));
   const plan: SharePlan = {
@@ -71,15 +87,17 @@ export function planShareChanges(input: {
     (a, b) => a.position - b.position,
   )) {
     const row = rows.get(keyOf(target.email));
-    const permissionId = listed.get(keyOf(target.email));
+    const permissionId = listedFor(target.email, row);
     if (permissionId !== undefined) {
       holding += 1;
-      if (!row || row.state === "pending") {
-        plan.external.push(target);
-      } else if (
-        row.state !== "external" &&
-        !(row.state === "shared" && row.permissionId === permissionId)
-      ) {
+      if (!row || !triedByTapNShow(row)) {
+        // Never asked by TapNShow (an external row stays as it is): someone shared it by hand.
+        if (row?.state !== "external") {
+          plan.external.push(target);
+        }
+      } else if (!(
+        row.state === "shared" && row.permissionId === permissionId
+      )) {
         plan.adopt.push({ target, permissionId });
       }
       continue;
@@ -121,11 +139,8 @@ export function planShareChanges(input: {
     if (wanted.has(keyOf(row.email))) {
       continue;
     }
-    const permissionId = listed.get(keyOf(row.email));
-    if (
-      permissionId !== undefined &&
-      (row.state === "shared" || row.state === "sharing")
-    ) {
+    const permissionId = listedFor(row.email, row);
+    if (permissionId !== undefined && triedByTapNShow(row)) {
       plan.remove.push({ email: row.email, permissionId });
     } else {
       plan.forget.push(row.email);

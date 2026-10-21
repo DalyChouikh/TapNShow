@@ -41,7 +41,6 @@ create table public.sheet_share_cleanups (
   created_at timestamptz not null default now()
 );
 create index sheet_share_cleanups_retry_idx on public.sheet_share_cleanups (retry_at);
-create index sheet_share_cleanups_workspace_idx on public.sheet_share_cleanups (workspace_id);
 create index sheet_share_cleanups_connection_idx on public.sheet_share_cleanups (connection_id);
 create index sheet_share_cleanups_owner_idx on public.sheet_share_cleanups (owner_user_id);
 alter table public.sheet_share_cleanups enable row level security;
@@ -72,11 +71,14 @@ begin
   if v_conn.id is null then
     return;
   end if;
+  -- A refusal counts: Drive's invalidSharingRequest also covers "the items were successfully shared
+  -- but emails could not be sent" (design §4), so the cleanup looks that address up too.
   select coalesce(pg_catalog.array_agg(sh.permission_id) filter (where sh.state = 'shared' and sh.permission_id is not null), '{}'),
-    coalesce(pg_catalog.array_agg(sh.email) filter (where sh.state = 'sharing'), '{}')
+    coalesce(pg_catalog.array_agg(sh.email) filter (where sh.state <> 'shared'), '{}')
   into v_ids, v_emails
   from public.sheet_shares sh
-  where sh.workspace_id = p_workspace and sh.state in ('shared', 'sharing');
+  where sh.workspace_id = p_workspace
+    and (sh.state in ('shared', 'sharing') or (sh.state = 'refused' and sh.reason = 'refused'));
   if pg_catalog.cardinality(v_ids) = 0 and pg_catalog.cardinality(v_emails) = 0 then
     return;
   end if;
@@ -92,7 +94,8 @@ begin
     pg_catalog.now() + pg_catalog.make_interval(hours => private.app_limit('sheet_share_cleanup_max_hours')));
   update public.sheet_shares sh
   set state = 'pending', permission_id = null, reason = null, next_try_at = null, updated_at = pg_catalog.now()
-  where sh.workspace_id = p_workspace and sh.state in ('shared', 'sharing');
+  where sh.workspace_id = p_workspace
+    and (sh.state in ('shared', 'sharing') or (sh.state = 'refused' and sh.reason = 'refused'));
 end;
 $$;
 
@@ -298,49 +301,46 @@ begin
 end;
 $$;
 
--- One pause, shared by the redraw and the share step (each checks its own lease first).
-create function private.sheet_pause_apply(p_workspace uuid, p_reason public.sheet_pause_reason)
+-- One pause, shared by the redraw and the share step: one statement guarded by the caller's lease
+-- (p_shares: the share lease, else the redraw's), so a lease lost meanwhile pauses nothing (as M7's
+-- sheet_pause did).
+create function private.sheet_pause_apply(
+  p_workspace uuid, p_run uuid, p_shares boolean, p_reason public.sheet_pause_reason)
 returns jsonb
 language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  v_paused uuid;
 begin
-  update public.sheet_syncs
+  update public.sheet_syncs s
   set status = 'paused', paused_reason = p_reason, paused_at = pg_catalog.now(),
     run_id = null, locked_until = null, shares_run_id = null, shares_locked_until = null
-  where workspace_id = p_workspace;
+  where s.workspace_id = p_workspace
+    and case when p_shares then s.shares_run_id = p_run else s.run_id = p_run end
+  returning s.workspace_id into v_paused;
+  if v_paused is null then
+    return null;
+  end if;
   return private.sheet_alert_target(p_workspace) || pg_catalog.jsonb_build_object('reason', p_reason);
 end;
 $$;
 
+-- Latest body: sheet_pause from 20261014151133_m8_account_deletion.sql, through the shared pause.
 create or replace function private.sheet_pause(p_workspace uuid, p_run uuid, p_reason public.sheet_pause_reason)
 returns jsonb
-language plpgsql
+language sql
 security definer
 set search_path = ''
-as $$
-begin
-  if not exists (select 1 from public.sheet_syncs s where s.workspace_id = p_workspace and s.run_id = p_run) then
-    return null;
-  end if;
-  return private.sheet_pause_apply(p_workspace, p_reason);
-end;
-$$;
+as $$ select private.sheet_pause_apply(p_workspace, p_run, false, p_reason) $$;
 
 create function private.sheet_share_pause(p_workspace uuid, p_run uuid, p_reason public.sheet_pause_reason)
 returns jsonb
-language plpgsql
+language sql
 security definer
 set search_path = ''
-as $$
-begin
-  if not exists (select 1 from public.sheet_syncs s where s.workspace_id = p_workspace and s.shares_run_id = p_run) then
-    return null;
-  end if;
-  return private.sheet_pause_apply(p_workspace, p_reason);
-end;
-$$;
+as $$ select private.sheet_pause_apply(p_workspace, p_run, true, p_reason) $$;
 create function public.sheet_share_pause(p_workspace uuid, p_run uuid, p_reason public.sheet_pause_reason)
 returns jsonb
 language sql
@@ -356,8 +356,12 @@ security invoker
 set search_path = ''
 as $$
 declare
+  v_leased jsonb;
   v_rows jsonb;
 begin
+  -- First the lease and each sheet's version, then (a separate statement, so a newer snapshot) the
+  -- team and the records: a team change that commits in between bumps the version past the one
+  -- returned here, so the run's release keeps the sheet due (Review Focus 2).
   with picked as (
     select s.workspace_id from public.sheet_syncs s
     where s.shares_due_at <= pg_catalog.now() and private.sheet_shares_due(s)
@@ -368,10 +372,15 @@ begin
     update public.sheet_syncs s
     set shares_run_id = p_run, shares_locked_until = pg_catalog.now() + pg_catalog.make_interval(secs => p_lease_seconds)
     from picked where s.workspace_id = picked.workspace_id
-    returning s.*
+    returning s.workspace_id, s.shares_version
   )
   select coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
-    'workspace_id', l.workspace_id, 'spreadsheet_id', l.spreadsheet_id, 'version', l.shares_version,
+    'workspace_id', l.workspace_id, 'version', l.shares_version)), '[]'::jsonb)
+  into v_leased
+  from leased l;
+
+  select coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+    'workspace_id', s.workspace_id, 'spreadsheet_id', s.spreadsheet_id, 'version', (x.e ->> 'version')::bigint,
     'cap', private.app_limit('sheet_team_shares_max'),
     'connection', case when c.id is null then null else pg_catalog.jsonb_build_object(
       'id', c.id, 'user_id', c.user_id, 'google_sub', c.google_sub,
@@ -379,16 +388,17 @@ begin
     'targets', coalesce((
       select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object('user_id', t.user_id, 'email', t.email, 'position', t."position")
         order by t."position")
-      from private.sheet_share_targets(l.workspace_id) t), '[]'::jsonb),
+      from private.sheet_share_targets(s.workspace_id) t), '[]'::jsonb),
     'shares', coalesce((
       select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
         'email', sh.email, 'state', sh.state, 'permission_id', sh.permission_id, 'reason', sh.reason,
         'next_try_at', sh.next_try_at) order by sh.email)
-      from public.sheet_shares sh where sh.workspace_id = l.workspace_id), '[]'::jsonb)
+      from public.sheet_shares sh where sh.workspace_id = s.workspace_id), '[]'::jsonb)
   )), '[]'::jsonb)
   into v_rows
-  from leased l
-  left join public.google_connections c on c.id = l.connection_id;
+  from pg_catalog.jsonb_array_elements(v_leased) as x(e)
+  join public.sheet_syncs s on s.workspace_id = (x.e ->> 'workspace_id')::uuid
+  left join public.google_connections c on c.id = s.connection_id;
   return v_rows;
 end;
 $$;
@@ -530,17 +540,20 @@ begin
 end;
 $$;
 
-create function public.sheet_share_cleanup_retry(p_id uuid, p_run uuid)
+-- Frees a cleanup's lease: with backoff after a Google error, or due again at once (p_backoff false)
+-- when only the run's time ran out.
+create function public.sheet_share_cleanup_retry(p_id uuid, p_run uuid, p_backoff boolean)
 returns void
 language sql
 security invoker
 set search_path = ''
 as $$
   update public.sheet_share_cleanups
-  set attempts = attempts + 1, run_id = null, locked_until = null,
-    retry_at = pg_catalog.now()
+  set attempts = attempts + case when p_backoff then 1 else 0 end, run_id = null, locked_until = null,
+    retry_at = case when p_backoff then pg_catalog.now()
       + pg_catalog.make_interval(mins => least(private.app_limit('sheet_retry_max_minutes'), (2 ^ least(attempts, 10))::integer))
       + pg_catalog.make_interval(secs => pg_catalog.random() * 30)
+      else pg_catalog.now() end
   where id = p_id and run_id = p_run
 $$;
 
@@ -610,10 +623,11 @@ as $$
     or exists (
       select 1 from public.sheet_syncs s
       where s.status = 'active' and s.retry_at <= pg_catalog.now() and private.sheet_due(s))
-    -- A sheet's shares are due (#413): the same predicate as the share claim.
-    or exists (
+    -- A sheet's shares are due (#413): the same predicate as the share claim, read only while the
+    -- switch is on (marked sheets keep their marks while it is off).
+    or (private.app_flag('sheet_team_sharing') and exists (
       select 1 from public.sheet_syncs s
-      where s.shares_due_at <= pg_catalog.now() and private.sheet_shares_due(s))
+      where s.shares_due_at <= pg_catalog.now() and private.sheet_shares_due(s)))
     -- Access to remove from a file TapNShow let go of (#413): the cleanup claim's predicate.
     or exists (
       select 1 from public.sheet_share_cleanups k
@@ -630,7 +644,7 @@ as $$
 $$;
 
 revoke execute on function
-  private.sheet_shares_retire(uuid), private.sheet_syncs_retire(), private.sheet_pause_apply(uuid, public.sheet_pause_reason),
+  private.sheet_shares_retire(uuid), private.sheet_syncs_retire(), private.sheet_pause_apply(uuid, uuid, boolean, public.sheet_pause_reason),
   private.sheet_share_pause(uuid, uuid, public.sheet_pause_reason), private.sheet_shares_leased(uuid, uuid),
   private.sheet_share_cleanup_finish(uuid, uuid, integer)
 from public, anon, authenticated;
@@ -644,7 +658,7 @@ revoke execute on function
   public.sheet_share_save(uuid, uuid, text, uuid, public.sheet_share_state, text, public.sheet_share_reason, timestamptz),
   public.sheet_share_forget(uuid, uuid, text[]), public.sheet_share_release(uuid, uuid, bigint, timestamptz),
   public.sheet_share_retry(uuid, uuid), public.sheet_share_cleanup_claim(uuid, integer, integer),
-  public.sheet_share_cleanup_retry(uuid, uuid), public.sheet_share_cleanup_finish(uuid, uuid, integer)
+  public.sheet_share_cleanup_retry(uuid, uuid, boolean), public.sheet_share_cleanup_finish(uuid, uuid, integer)
 from public, anon, authenticated;
 grant execute on function
   public.sheet_share_pause(uuid, uuid, public.sheet_pause_reason), public.sheet_share_claim(uuid, integer, integer),
@@ -652,5 +666,5 @@ grant execute on function
   public.sheet_share_save(uuid, uuid, text, uuid, public.sheet_share_state, text, public.sheet_share_reason, timestamptz),
   public.sheet_share_forget(uuid, uuid, text[]), public.sheet_share_release(uuid, uuid, bigint, timestamptz),
   public.sheet_share_retry(uuid, uuid), public.sheet_share_cleanup_claim(uuid, integer, integer),
-  public.sheet_share_cleanup_retry(uuid, uuid), public.sheet_share_cleanup_finish(uuid, uuid, integer)
+  public.sheet_share_cleanup_retry(uuid, uuid, boolean), public.sheet_share_cleanup_finish(uuid, uuid, integer)
 to service_role;
