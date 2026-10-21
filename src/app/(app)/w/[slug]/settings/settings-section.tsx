@@ -81,13 +81,16 @@ export function SettingsSection({
 
 /**
  * A link to another Settings section on this page: it opens and scrolls to it, also when the hash
- * already points there (the browser fires no `hashchange` for the same hash).
+ * already points there (the browser fires no `hashchange` for the same hash). `onFollow` runs on
+ * each tap (e.g. to refresh what that section shows).
  */
 export function SettingsSectionLink({
   section,
+  onFollow,
   children,
 }: {
   section: SettingsSectionId;
+  onFollow?: () => void;
   children: ReactNode;
 }) {
   return (
@@ -95,6 +98,7 @@ export function SettingsSectionLink({
       href={`#${section}`}
       className="inline-flex min-h-11 items-center self-start text-sm font-bold underline underline-offset-4"
       onClick={() => {
+        onFollow?.();
         if (pointsAt(section)) {
           window.dispatchEvent(new HashChangeEvent("hashchange"));
         }

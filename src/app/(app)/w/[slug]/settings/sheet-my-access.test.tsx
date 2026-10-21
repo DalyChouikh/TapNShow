@@ -5,11 +5,7 @@ import { renderWithProviders } from "@/test/render";
 import { SheetMyAccess } from "./sheet-my-access";
 
 const sharing = (mine: SheetSharing["mine"]): SheetSharing => ({
-  teamCount: 2,
-  total: 3,
-  canView: 1,
-  cantOpen: 1,
-  inProgress: 1,
+  team: null,
   mine,
   myEmail: mine ? "ali@example.test" : null,
 });

@@ -11,6 +11,7 @@ import type {
   CleanupClaim,
   ShareAccessAlert,
   ShareClaim,
+  ShareOutcome,
   ShareStore,
 } from "@/server/queries/sheet-shares";
 import type { SheetPausedAlert } from "@/server/queries/sheets";
@@ -132,6 +133,14 @@ export async function runSheetShares(
   return summary;
 }
 
+/** What a run records about one person. */
+type Recorded = {
+  state: "shared" | "external" | "refused";
+  permissionId?: string;
+  reason?: "refused" | "too_many" | "removed_in_drive";
+  nextTryAt?: string;
+};
+
 async function shareSheet(
   deps: SheetSharesDeps,
   options: SheetSharesOptions,
@@ -245,23 +254,16 @@ async function shareSheet(
         nextDue: null,
       }
     : planned;
-  const save = (
-    target: ShareTarget,
-    outcome: {
-      state: "shared" | "external" | "refused";
-      permissionId?: string;
-      reason?: "refused" | "too_many" | "removed_in_drive";
-      nextTryAt?: string;
-    },
-  ) =>
-    deps.store.save(workspace, run, {
-      email: target.email,
-      userId: target.userId,
-      state: outcome.state,
-      permissionId: outcome.permissionId ?? null,
-      reason: outcome.reason ?? null,
-      nextTryAt: outcome.nextTryAt ?? null,
-    });
+  const outcomeOf = (target: ShareTarget, result: Recorded): ShareOutcome => ({
+    email: target.email,
+    userId: target.userId,
+    state: result.state,
+    permissionId: result.permissionId ?? null,
+    reason: result.reason ?? null,
+    nextTryAt: result.nextTryAt ?? null,
+  });
+  const save = (target: ShareTarget, result: Recorded) =>
+    deps.store.save(workspace, run, outcomeOf(target, result));
 
   if (
     plan.forget.length > 0 &&
@@ -281,25 +283,24 @@ async function shareSheet(
       return;
     }
   }
+  // Everyone who needs no Google call is recorded in one database call.
   const recorded = [
-    ...plan.adopt.map(
-      ({ target, permissionId }) =>
-        () =>
-          save(target, { state: "shared", permissionId }),
+    ...plan.adopt.map(({ target, permissionId }) =>
+      outcomeOf(target, { state: "shared", permissionId }),
     ),
-    ...plan.external.map((target) => () => save(target, { state: "external" })),
-    ...plan.removedInDrive.map(
-      (target) => () =>
-        save(target, { state: "refused", reason: "removed_in_drive" }),
+    ...plan.external.map((target) => outcomeOf(target, { state: "external" })),
+    ...plan.removedInDrive.map((target) =>
+      outcomeOf(target, { state: "refused", reason: "removed_in_drive" }),
     ),
-    ...plan.tooMany.map(
-      (target) => () => save(target, { state: "refused", reason: "too_many" }),
+    ...plan.tooMany.map((target) =>
+      outcomeOf(target, { state: "refused", reason: "too_many" }),
     ),
   ];
-  for (const record of recorded) {
-    if (!(await record())) {
-      return;
-    }
+  if (
+    recorded.length > 0 &&
+    !(await deps.store.saveMany(workspace, run, recorded))
+  ) {
+    return;
   }
   summary.adopted += plan.adopt.length;
   // A refusal recorded below brings the sheet back when its next try is due.

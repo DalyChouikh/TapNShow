@@ -29,10 +29,10 @@ const sheetQueryOptions = (slug: string) =>
     queryFn: () => apiRequest(path(slug), { schema: sheetStatusSchema }),
   });
 
-/** Whether someone's share is still in progress: a member's own, or anyone's for the Owner. */
+/** Whether someone's share is still in progress: anyone's for the Owner, else the member's own. */
 const sharingInProgress = (sharing: SheetStatus["sharing"]) =>
   sharing !== null &&
-  (sharing.mine === null ? sharing.inProgress > 0 : sharing.mine === "sharing");
+  (sharing.team ? sharing.team.inProgress > 0 : sharing.mine === "sharing");
 
 /**
  * The workspace's Google Sheet (spec §7.17). Polls only while it matters: while the file is being

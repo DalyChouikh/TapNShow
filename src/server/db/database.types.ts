@@ -1058,6 +1058,9 @@ isOneToOne: false
 "sheet_share_save":
 { Args: { "p_email": string,"p_next_try_at": string,"p_permission_id": string,"p_reason": Database["public"]['Enums']["sheet_share_reason"],"p_run": string,"p_state": Database["public"]['Enums']["sheet_share_state"],"p_user": string,"p_workspace": string }; Returns: boolean
                            },
+"sheet_share_save_many":
+{ Args: { "p_rows": Json,"p_run": string,"p_workspace": string }; Returns: boolean
+                           },
 "start_sheet":
 { Args: { "p_connection": string,"p_replace": boolean,"p_user": string,"p_workspace": string }; Returns: Json
                            },

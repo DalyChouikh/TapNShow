@@ -57,16 +57,24 @@ export const SHEET_MY_ACCESS = [
 ] as const;
 
 /**
- * Sharing the sheet with the team (#413, design §3), null while it's switched off. The counts
- * cover the people TapNShow shares with (the team minus the sheet's own Google account).
+ * The team's access, for the Owner (#413, design §3): counts over the people TapNShow shares with
+ * (the team minus the sheet's own Google account).
  */
-export const sheetSharingSchema = z.object({
+export const sheetTeamCountsSchema = z.object({
   /** Admins and Viewers: who the connect dialog says will get a link. */
   teamCount: z.number().int().nonnegative(),
   total: z.number().int().nonnegative(),
   canView: z.number().int().nonnegative(),
   cantOpen: z.number().int().nonnegative(),
   inProgress: z.number().int().nonnegative(),
+});
+/** The team's access, for the Owner. */
+export type SheetTeamCounts = z.infer<typeof sheetTeamCountsSchema>;
+
+/** Sharing the sheet with the team (#413, design §3), null while it's switched off. */
+export const sheetSharingSchema = z.object({
+  /** The Owner's counts; null for Admins and Viewers (they see only their own line). */
+  team: sheetTeamCountsSchema.nullable(),
   /** The caller's own line; null for the Owner, or before there is a sheet. */
   mine: z.enum(SHEET_MY_ACCESS).nullable(),
   myEmail: z.string().nullable(),

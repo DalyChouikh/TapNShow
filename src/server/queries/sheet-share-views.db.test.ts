@@ -23,11 +23,15 @@ let restore: () => void = () => undefined;
 const sharingSchema = z.object({
   sharing: z
     .object({
-      team_count: z.number(),
-      total: z.number(),
-      can_view: z.number(),
-      cant_open: z.number(),
-      in_progress: z.number(),
+      team: z
+        .object({
+          team_count: z.number(),
+          total: z.number(),
+          can_view: z.number(),
+          cant_open: z.number(),
+          in_progress: z.number(),
+        })
+        .nullable(),
       mine: z.string().nullable(),
       my_email: z.string().nullable(),
     })
@@ -103,19 +107,24 @@ describe("the sheet's sharing, as each person sees it", () => {
       reason: "refused",
     });
     expect(await sharingOf(owner)).toEqual({
-      team_count: 2,
-      total: 3,
-      can_view: 1,
-      cant_open: 1,
-      in_progress: 1,
+      team: {
+        team_count: 2,
+        total: 3,
+        can_view: 1,
+        cant_open: 1,
+        in_progress: 1,
+      },
       mine: null,
       my_email: null,
     });
-    expect(await sharingOf(admin)).toMatchObject({
+    // Admins and Viewers get their own line only, never the Owner's counts.
+    expect(await sharingOf(admin)).toEqual({
+      team: null,
       mine: "shared",
       my_email: admin.email,
     });
-    expect(await sharingOf(viewer)).toMatchObject({
+    expect(await sharingOf(viewer)).toEqual({
+      team: null,
       mine: "refused",
       my_email: viewer.email,
     });
@@ -125,16 +134,18 @@ describe("the sheet's sharing, as each person sees it", () => {
     await seedSharedSheet(workspace.id, owner.id, admin.email.toUpperCase());
     expect(await sharingOf(admin)).toMatchObject({ mine: "sheet_account" });
     expect(await sharingOf(viewer)).toMatchObject({ mine: "sharing" });
-    expect(await sharingOf(owner)).toMatchObject({ total: 2 });
+    expect((await sharingOf(owner))?.team).toMatchObject({ total: 2 });
   });
 
   it("counts the team for the connect dialog before there is a sheet", async () => {
     expect(await sharingOf(owner)).toEqual({
-      team_count: 2,
-      total: 0,
-      can_view: 0,
-      cant_open: 0,
-      in_progress: 0,
+      team: {
+        team_count: 2,
+        total: 0,
+        can_view: 0,
+        cant_open: 0,
+        in_progress: 0,
+      },
       mine: null,
       my_email: null,
     });
@@ -153,7 +164,7 @@ describe("the sheet's sharing, as each person sees it", () => {
       state: "refused",
       reason: "removed_in_drive",
     });
-    expect(await sharingOf(owner)).toMatchObject({
+    expect((await sharingOf(owner))?.team).toMatchObject({
       total: 2,
       can_view: 1,
       cant_open: 1,

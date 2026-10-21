@@ -4,7 +4,8 @@ import { Table } from "@phosphor-icons/react";
 import { format } from "date-fns";
 import { useSearchParams } from "next/navigation";
 import { useFormatter, useNow, useTranslations } from "next-intl";
-import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/forms/confirm-dialog";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import {
   useTurnOffSheet,
   useWorkspaceSheet,
 } from "@/hooks/use-sheet";
+import { membersQueryKey } from "@/hooks/use-members";
 import { errorCodeOf } from "@/lib/api-client";
 import { goTo } from "@/lib/navigation";
 import { sheetUrl } from "@/lib/sheets/url";
@@ -22,7 +24,11 @@ import {
   GOOGLE_RESULT_PARAMS,
   googleConnectHref,
 } from "@/shared/api/google-connect";
-import { SHEET_RETRYABLE_REASONS, type SheetStatus } from "@/shared/api/sheets";
+import {
+  SHEET_RETRYABLE_REASONS,
+  type SheetStatus,
+  type SheetTeamCounts,
+} from "@/shared/api/sheets";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
 import { GoogleConnectResult } from "./google-connect-result";
 import { SettingsSection } from "./settings-section";
@@ -40,6 +46,28 @@ const TONE: Record<SheetStatus["state"], "primary" | "success" | "warning"> = {
   on: "success",
   paused: "warning",
 };
+
+/**
+ * People's "Can't open the sheet" tags come from the members list: refresh it when the team's counts
+ * change (not on the first load) and on demand, so a tag shows as soon as its count does (#413).
+ */
+function usePeopleInStep(slug: string, team: SheetTeamCounts | null) {
+  const queryClient = useQueryClient();
+  const refresh = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: membersQueryKey(slug) });
+  }, [queryClient, slug]);
+  const counts = team
+    ? `${team.canView}/${team.cantOpen}/${team.inProgress}`
+    : null;
+  const seen = useRef(counts);
+  useEffect(() => {
+    if (seen.current !== null && counts !== null && counts !== seen.current) {
+      refresh();
+    }
+    seen.current = counts;
+  }, [counts, refresh]);
+  return refresh;
+}
 
 /**
  * Settings > Sheets (spec §7.17): the workspace's Google Sheet. Every member sees its state and the
@@ -69,13 +97,18 @@ export function SheetsSection({
   const retry = useRetrySheet(workspace.slug);
   const [pending, setPending] = useState<Pending>(null);
   const isOwner = workspace.myRole === "owner";
+  const refreshPeople = usePeopleInStep(
+    workspace.slug,
+    sheet.data?.sharing?.team ?? null,
+  );
   if (!sheet.data) {
     return <Skeleton className="h-40 w-full" />;
   }
   const status = sheet.data;
   // Sharing with the team (#413): null while switched off, so every line below keeps today's words.
   const sharing = status.sharing;
-  const teamShared = sharing !== null && sharing.total > 0;
+  const team = sharing?.team ?? null;
+  const teamShared = team !== null && team.total > 0;
   const connectHref = googleConnectHref(workspace.slug, "sheets");
   const href = status.spreadsheetId ? sheetUrl(status.spreadsheetId) : null;
   const when = status.syncedAt
@@ -225,7 +258,9 @@ export function SheetsSection({
             </>
           ) : href ? (
             <>
-              {sharing ? <SheetTeamAccess sharing={sharing} /> : null}
+              {team ? (
+                <SheetTeamAccess team={team} onShowPeople={refreshPeople} />
+              ) : null}
               {openLink(href)}
               <Button onClick={() => void copy(href)}>{t("copy")}</Button>
               <p className="text-sm text-muted-ink">
@@ -245,10 +280,10 @@ export function SheetsSection({
         confirmLabel={t("continue")}
         onConfirm={() => goTo(connectHref)}
       >
-        {sharing ? (
+        {team ? (
           <p className="text-sm">
-            {sharing.teamCount > 0
-              ? t("team.connect", { count: sharing.teamCount })
+            {team.teamCount > 0
+              ? t("team.connect", { count: team.teamCount })
               : t("team.connectNone")}
           </p>
         ) : null}

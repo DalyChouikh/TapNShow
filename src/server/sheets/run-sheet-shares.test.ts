@@ -102,6 +102,11 @@ function fakeStore(input: {
       saved.push(row);
       return true;
     },
+    saveMany: async (_w, _r, rows) => {
+      calls.push(`save-many:${rows.length}`);
+      saved.push(...rows);
+      return true;
+    },
     forget: async (_w, _r, emails) => {
       calls.push(`forget:${emails.join(",")}`);
       return true;
@@ -266,6 +271,34 @@ describe("runSheetShares", () => {
         reason: null,
         nextTryAt: null,
       },
+    ]);
+  });
+
+  it("records everyone it needs no Google call for in one database call", async () => {
+    const claim = claimOf({
+      targets: [SARA, ALI],
+      shares: [
+        {
+          email: SARA.email,
+          state: "sharing",
+          permissionId: null,
+          reason: null,
+          nextTryAt: null,
+        },
+      ],
+    });
+    const { store, calls, saved } = fakeStore({ claims: [claim] });
+    const { drive, calls: driveCalls } = fakeDrive([
+      { id: "p7", email: SARA.email, viewOnly: true },
+      { id: "p8", email: ALI.email, viewOnly: false },
+    ]);
+    const { deps } = depsOf(store, drive);
+    await runSheetShares(deps, OPTIONS);
+    expect(driveCalls).toEqual(["list"]);
+    expect(calls).toEqual(["save-many:2", "release:3:none"]);
+    expect(saved.map((row) => [row.email, row.state])).toEqual([
+      [SARA.email, "shared"],
+      [ALI.email, "external"],
     ]);
   });
 

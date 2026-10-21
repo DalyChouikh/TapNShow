@@ -790,6 +790,62 @@ describe("the share run's calls", () => {
     expect((await sharesDueOf(workspace.id)).dueAt).toBeNull();
   });
 
+  it("records many people in one call while holding the lease, and nothing without it", async () => {
+    const runId = crypto.randomUUID();
+    await claim(runId);
+    const rows = [
+      {
+        email: admin.email.toUpperCase(),
+        user_id: admin.id,
+        state: "shared",
+        permission_id: "p1",
+        reason: null,
+        next_try_at: null,
+      },
+      {
+        email: viewer.email,
+        user_id: viewer.id,
+        state: "refused",
+        permission_id: null,
+        reason: "removed_in_drive",
+        next_try_at: null,
+      },
+    ];
+    expect(
+      await serviceRpc("sheet_share_save_many", {
+        p_workspace: workspace.id,
+        p_run: crypto.randomUUID(),
+        p_rows: rows,
+      }),
+    ).toBe(false);
+    expect(await sharesOf(workspace.id)).toEqual([]);
+    expect(
+      await serviceRpc("sheet_share_save_many", {
+        p_workspace: workspace.id,
+        p_run: runId,
+        p_rows: rows,
+      }),
+    ).toBe(true);
+    const byEmail = (a: { email: string }, b: { email: string }) =>
+      a.email < b.email ? -1 : 1;
+    expect((await sharesOf(workspace.id)).sort(byEmail)).toEqual(
+      [
+        {
+          email: admin.email,
+          state: "shared",
+          permissionId: "p1",
+          reason: null,
+        },
+        {
+          email: viewer.email,
+          state: "refused",
+          permissionId: null,
+          reason: "removed_in_drive",
+        },
+      ].sort(byEmail),
+    );
+  });
+
   it("records an intent, an outcome and a forgotten person while holding the lease", async () => {
     const runId = crypto.randomUUID();
     await claim(runId);
@@ -960,6 +1016,21 @@ describe("the share store (real database)", () => {
         nextTryAt: null,
       }),
     ).toBe(true);
+    expect(
+      await store.saveMany(workspace.id, run, [
+        {
+          email: viewer.email,
+          userId: viewer.id,
+          state: "refused",
+          permissionId: null,
+          reason: "too_many",
+          nextTryAt: null,
+        },
+      ]),
+    ).toBe(true);
+    expect(
+      (await sharesOf(workspace.id)).find((row) => row.email === viewer.email),
+    ).toMatchObject({ state: "refused", reason: "too_many" });
     await store.release(workspace.id, run, claim.version, null);
     await turnOff();
     makeCleanupsDue(workspace.id);

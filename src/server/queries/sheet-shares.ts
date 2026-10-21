@@ -88,6 +88,12 @@ export type ShareStore = {
     run: string,
     outcome: ShareOutcome,
   ): Promise<boolean>;
+  /** Records many outcomes in one call (`sheet_share_save_many`); false without the lease. */
+  saveMany(
+    workspaceId: string,
+    run: string,
+    outcomes: ShareOutcome[],
+  ): Promise<boolean>;
   forget(workspaceId: string, run: string, emails: string[]): Promise<boolean>;
   release(
     workspaceId: string,
@@ -277,6 +283,22 @@ export function createShareStore(admin: Client): ShareStore {
           p_permission_id: sqlNullable(outcome.permissionId),
           p_reason: sqlNullable(outcome.reason),
           p_next_try_at: sqlNullable(outcome.nextTryAt),
+        }),
+      ) === true,
+    saveMany: async (workspaceId, run, outcomes) =>
+      check(
+        "sheet_share_save_many",
+        await admin.rpc("sheet_share_save_many", {
+          p_workspace: workspaceId,
+          p_run: run,
+          p_rows: outcomes.map((outcome) => ({
+            email: outcome.email,
+            user_id: outcome.userId,
+            state: outcome.state,
+            permission_id: outcome.permissionId,
+            reason: outcome.reason,
+            next_try_at: outcome.nextTryAt,
+          })),
         }),
       ) === true,
     forget: async (workspaceId, run, emails) =>

@@ -5,7 +5,7 @@ import { queryLocalSql, runLocalScript, runLocalSql } from "./sql";
 /** Calls a dispatcher RPC as the service role and returns its JSON (throws on error). */
 export async function serviceRpc(
   name: string,
-  args: Record<string, string | number | boolean | string[] | null>,
+  args: Record<string, string | number | boolean | string[] | object[] | null>,
 ) {
   const { data, error } = await adminClient().rpc(name as never, args as never);
   if (error) {
