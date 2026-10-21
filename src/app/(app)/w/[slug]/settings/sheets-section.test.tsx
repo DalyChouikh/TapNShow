@@ -1,12 +1,18 @@
-import { screen, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { sheetUrl } from "@/lib/sheets/url";
 import { googleConnectHref } from "@/shared/api/google-connect";
-import type { SheetSharing, SheetStatus } from "@/shared/api/sheets";
+import type {
+  SheetSharing,
+  SheetStatus,
+  SheetTeamCounts,
+} from "@/shared/api/sheets";
 import { json, routeFetch } from "@/test/fetch";
 import { workspaceFixture } from "@/test/fixtures/me";
+import { membersFixture, ownerId } from "@/test/fixtures/members";
 import { renderWithProviders } from "@/test/render";
+import { PeopleSection } from "./people-section";
 import { SheetsSection } from "./sheets-section";
 
 const mocks = vi.hoisted(() => ({ goTo: vi.fn() }));
@@ -310,15 +316,18 @@ describe("SheetsSection", () => {
 });
 
 describe("SheetsSection while the sheet is shared with the team (#413)", () => {
-  const sharing = (over: Partial<SheetSharing> = {}): SheetSharing => ({
-    teamCount: 3,
-    total: 4,
-    canView: 3,
-    cantOpen: 1,
-    inProgress: 0,
+  /** The Owner's view: the team's counts. */
+  const sharing = (over: Partial<SheetTeamCounts> = {}): SheetSharing => ({
+    team: {
+      teamCount: 3,
+      total: 4,
+      canView: 3,
+      cantOpen: 1,
+      inProgress: 0,
+      ...over,
+    },
     mine: null,
     myEmail: null,
-    ...over,
   });
 
   it("Owner, on: the team block, and the tip without sharing by hand", async () => {
@@ -367,7 +376,7 @@ describe("SheetsSection while the sheet is shared with the team (#413)", () => {
       [`GET ${PATH}`]: json(
         status({
           accountEmail: null,
-          sharing: sharing({ mine: "shared", myEmail: "ali@example.test" }),
+          sharing: { team: null, mine: "shared", myEmail: "ali@example.test" },
         }),
       ),
     });
@@ -464,5 +473,55 @@ describe("SheetsSection while the sheet is shared with the team (#413)", () => {
         "The sheet stops updating. It stays in club@gmail.com's Drive.",
       ),
     ).toBeInTheDocument();
+  });
+
+  describe("keeping People's tags in step with the counts", () => {
+    const MEMBERS = "/api/workspaces/robotics-cd34/members?limit=50";
+    const renderBoth = (replies: SheetStatus[]) => {
+      const fetchMock = routeFetch({
+        [`GET ${PATH}`]: () =>
+          new Response(
+            JSON.stringify(replies.length > 1 ? replies.shift() : replies[0]),
+          ),
+        [`GET ${MEMBERS}`]: json({ items: membersFixture, nextCursor: null }),
+      });
+      renderWithProviders(
+        <>
+          <SheetsSection workspace={workspaceFixture} />
+          <PeopleSection workspace={workspaceFixture} myId={ownerId} />
+        </>,
+      );
+      return () =>
+        fetchMock.mock.calls.filter(([url]) => String(url) === MEMBERS).length;
+    };
+
+    afterEach(() => vi.useRealTimers());
+
+    it("refreshes People when the team's counts change", async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      const membersCalls = renderBoth([
+        status({
+          sharing: sharing({ canView: 3, cantOpen: 0, inProgress: 1 }),
+        }),
+        status({
+          sharing: sharing({ canView: 3, cantOpen: 1, inProgress: 0 }),
+        }),
+      ]);
+      expect(await screen.findByText("Sharing…")).toBeInTheDocument();
+      await waitFor(() => expect(membersCalls()).toBe(1));
+      await act(() => vi.advanceTimersByTimeAsync(10_000));
+      expect(
+        await screen.findByText(/^1 person on your team can't open it\./),
+      ).toBeInTheDocument();
+      await waitFor(() => expect(membersCalls()).toBe(2));
+    });
+
+    it("refreshes People when the Owner follows the link to it", async () => {
+      const membersCalls = renderBoth([status({ sharing: sharing() })]);
+      await userEvent.click(
+        await screen.findByRole("link", { name: "They're marked in People." }),
+      );
+      await waitFor(() => expect(membersCalls()).toBe(2));
+    });
   });
 });

@@ -1,17 +1,15 @@
 import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import type { SheetSharing } from "@/shared/api/sheets";
+import type { SheetTeamCounts } from "@/shared/api/sheets";
 import { renderWithProviders } from "@/test/render";
 import { SheetTeamAccess } from "./sheet-team-access";
 
-const sharing = (over: Partial<SheetSharing> = {}): SheetSharing => ({
+const team = (over: Partial<SheetTeamCounts> = {}): SheetTeamCounts => ({
   teamCount: 4,
   total: 5,
   canView: 5,
   cantOpen: 0,
   inProgress: 0,
-  mine: null,
-  myEmail: null,
   ...over,
 });
 const FOLLOWS =
@@ -19,7 +17,7 @@ const FOLLOWS =
 
 describe("SheetTeamAccess", () => {
   it("says the whole team can view it, in green", () => {
-    renderWithProviders(<SheetTeamAccess sharing={sharing()} />);
+    renderWithProviders(<SheetTeamAccess team={team()} />);
     expect(screen.getByText("Shared")).toHaveClass("bg-fill-success");
     expect(
       screen.getByText("Your team can view it · 5 of 5 people"),
@@ -30,7 +28,7 @@ describe("SheetTeamAccess", () => {
 
   it("says it is still sharing while some people wait", () => {
     renderWithProviders(
-      <SheetTeamAccess sharing={sharing({ canView: 3, inProgress: 2 })} />,
+      <SheetTeamAccess team={team({ canView: 3, inProgress: 2 })} />,
     );
     expect(screen.getByText("Sharing…")).toHaveClass("bg-fill-info");
     expect(
@@ -40,7 +38,7 @@ describe("SheetTeamAccess", () => {
 
   it("counts who can't open it, never naming anyone, and points to People", () => {
     const { rerender } = renderWithProviders(
-      <SheetTeamAccess sharing={sharing({ canView: 4, cantOpen: 1 })} />,
+      <SheetTeamAccess team={team({ canView: 4, cantOpen: 1 })} />,
     );
     expect(screen.getByText("Shared")).toHaveClass("bg-fill-warning");
     expect(
@@ -51,9 +49,7 @@ describe("SheetTeamAccess", () => {
     expect(
       screen.getByRole("link", { name: "They're marked in People." }),
     ).toHaveAttribute("href", "#people");
-    rerender(
-      <SheetTeamAccess sharing={sharing({ canView: 0, cantOpen: 5 })} />,
-    );
+    rerender(<SheetTeamAccess team={team({ canView: 0, cantOpen: 5 })} />);
     expect(
       screen.getByText(/^5 people on your team can't open it\./),
     ).toBeInTheDocument();
@@ -61,9 +57,7 @@ describe("SheetTeamAccess", () => {
 
   it("tells an Owner alone that people who join get access", () => {
     renderWithProviders(
-      <SheetTeamAccess
-        sharing={sharing({ teamCount: 0, total: 0, canView: 0 })}
-      />,
+      <SheetTeamAccess team={team({ teamCount: 0, total: 0, canView: 0 })} />,
     );
     expect(
       screen.getByText("Only you so far. People who join the team get access."),

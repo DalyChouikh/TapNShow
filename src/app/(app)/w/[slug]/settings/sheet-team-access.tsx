@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { Pill } from "@/components/ui/pill";
-import type { SheetSharing } from "@/shared/api/sheets";
+import type { SheetTeamCounts } from "@/shared/api/sheets";
 import { SettingsSectionLink } from "./settings-section";
 
 /**
@@ -10,31 +10,32 @@ import { SettingsSectionLink } from "./settings-section";
  * the sheet, as counts only. Who Google couldn't share with is one sentence, never a list; People
  * marks them.
  */
-export function SheetTeamAccess({ sharing }: { sharing: SheetSharing }) {
+export function SheetTeamAccess({
+  team,
+  onShowPeople,
+}: {
+  team: SheetTeamCounts;
+  /** Runs when the Owner follows "They're marked in People." */
+  onShowPeople?: () => void;
+}) {
   const t = useTranslations("Settings.sheets.team");
-  if (sharing.total === 0) {
+  if (team.total === 0) {
     return <p className="text-sm">{t("alone")}</p>;
   }
   const tone =
-    sharing.inProgress > 0
-      ? "info"
-      : sharing.cantOpen > 0
-        ? "warning"
-        : "success";
+    team.inProgress > 0 ? "info" : team.cantOpen > 0 ? "warning" : "success";
   return (
     <div className="flex flex-col gap-1">
       <p className="text-sm">
         <Pill tone={tone}>
-          {sharing.inProgress > 0 ? t("sharing") : t("shared")}
+          {team.inProgress > 0 ? t("sharing") : t("shared")}
         </Pill>{" "}
-        {t("summary", { canView: sharing.canView, total: sharing.total })}
+        {t("summary", { canView: team.canView, total: team.total })}
       </p>
-      {sharing.cantOpen > 0 ? (
+      {team.cantOpen > 0 ? (
         <>
-          <p className="text-sm">
-            {t("cantOpen", { count: sharing.cantOpen })}
-          </p>
-          <SettingsSectionLink section="people">
+          <p className="text-sm">{t("cantOpen", { count: team.cantOpen })}</p>
+          <SettingsSectionLink section="people" onFollow={onShowPeople}>
             {t("markedInPeople")}
           </SettingsSectionLink>
         </>

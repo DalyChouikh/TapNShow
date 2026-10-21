@@ -63,7 +63,9 @@ one block:
 - a tag **Shared** (green when everyone can open it, yellow when anyone can't, "Sharing…" in the
   info colour while shares are in progress) and "Your team can view it · {shared} of {total} people",
   where {total} is the people TapNShow shares with (the desired set, §5) and both numbers come from
-  the sheet status API, not from the paged members list (my call);
+  the sheet status API, not from the paged members list (my call); the API sends the counts to the
+  Owner only (Admins and Viewers get their own line), and Settings refreshes People when the counts
+  change, so a tag shows as soon as its count does;
 - when the desired set is empty (the Owner alone, holding the sheet in their own account): "Only you
   so far. People who join the team get access." (my call; not in the mockups);
 - only when some can't: one sentence with the count, never a list: "{count, plural, one {1 person on

@@ -41,11 +41,15 @@ const dbSheetSchema = z
     // Missing before the #413 migration reaches a database (a deploy or preview can go first).
     sharing: z
       .object({
-        team_count: z.number(),
-        total: z.number(),
-        can_view: z.number(),
-        cant_open: z.number(),
-        in_progress: z.number(),
+        team: z
+          .object({
+            team_count: z.number(),
+            total: z.number(),
+            can_view: z.number(),
+            cant_open: z.number(),
+            in_progress: z.number(),
+          })
+          .nullable(),
         mine: z.string().nullable(),
         my_email: z.string().nullable(),
       })
@@ -70,11 +74,13 @@ const dbSheetSchema = z
       })),
       sharing: db.sharing
         ? {
-            teamCount: db.sharing.team_count,
-            total: db.sharing.total,
-            canView: db.sharing.can_view,
-            cantOpen: db.sharing.cant_open,
-            inProgress: db.sharing.in_progress,
+            team: db.sharing.team && {
+              teamCount: db.sharing.team.team_count,
+              total: db.sharing.team.total,
+              canView: db.sharing.team.can_view,
+              cantOpen: db.sharing.team.cant_open,
+              inProgress: db.sharing.team.in_progress,
+            },
             mine: db.sharing.mine,
             myEmail: db.sharing.my_email,
           }
