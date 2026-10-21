@@ -160,13 +160,19 @@ test.describe(() => {
     ).toBeVisible();
     await expect(member.getByText("Can't come")).toBeVisible();
 
-    // A notification that went stale before it was sent never arrives.
+    // A notification that went stale before it was sent never arrives. The meeting is cancelled
+    // before the notification is queued: tests run in parallel and any of them may start the
+    // workers, so a notification queued first could go out before the cancel (#423).
     const invitee = await inviteeOf(email, slugB);
     const { data: subscription } = await adminClient()
       .from("push_subscriptions")
       .select("id")
       .like("endpoint", `%/push/${stampA}`)
       .single();
+    await adminClient()
+      .from("meetings")
+      .update({ status: "cancelled" })
+      .eq("id", invitee.meeting_id);
     expect(
       (
         await adminClient().from("push_deliveries").insert({
@@ -177,10 +183,6 @@ test.describe(() => {
         })
       ).error,
     ).toBeNull();
-    await adminClient()
-      .from("meetings")
-      .update({ status: "cancelled" })
-      .eq("id", invitee.meeting_id);
     await runWorkers(request);
     await expect
       .poll(async () => {
