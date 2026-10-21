@@ -13,6 +13,7 @@ import { useMeetingResults } from "@/hooks/use-results";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { useExportSheetLink } from "@/hooks/use-sheet";
 import { canCheckIn } from "@/lib/responses/check-in";
+import { sendState } from "@/lib/meetings/send-state";
 import { isLive } from "@/lib/responses/live-window";
 import type { Meeting } from "@/shared/api/meetings";
 import type { PeopleFilter } from "@/shared/api/responses";
@@ -74,7 +75,8 @@ export default function MeetingPage() {
   const workspace = useWorkspace(slug);
   const live =
     meeting.data?.status === "scheduled" && isLive(meeting.data, new Date());
-  const results = useMeetingResults(slug, id, live);
+  const suspended = Boolean(workspace.data?.sendingSuspension);
+  const results = useMeetingResults(slug, id, live, suspended);
   const [filter, setFilter] = useState<PeopleFilter>("all");
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [view, setView] = useView(id);
@@ -98,7 +100,7 @@ export default function MeetingPage() {
     canCheckIn(workspace.data);
   const checkingIn = checkInOpen && view === "checkIn";
   const sending = results.data
-    ? results.data.emails.queued > 0 || results.data.paused > 0
+    ? sendState(results.data, suspended).kind !== "sent"
     : false;
   return (
     <div className="flex flex-col gap-4">
@@ -124,7 +126,7 @@ export default function MeetingPage() {
           slug={slug}
           results={results.data}
           canConnect={workspace.data.myRole === "owner"}
-          suspended={Boolean(workspace.data.sendingSuspension)}
+          suspended={suspended}
         />
       ) : (
         <EmailLine

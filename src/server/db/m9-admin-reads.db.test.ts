@@ -493,6 +493,48 @@ describe("rollup and overview", () => {
     expect(answerCounts(utcDay(-6), utcDay())).toEqual(live);
   });
 
+  it("counts an answer given exactly at the start as after it, like Home (#417)", async () => {
+    const { owner, workspace } = await adminAndWorkspace("Boundary Club", 1);
+    runLocalSql("select private.rollup_platform_daily()");
+    setRollupMark(utcDay(-2));
+    const before = answerCounts(utcDay(-6), utcDay());
+    const startsAt = `${utcDay(-1)}T10:00:00Z`;
+    const meetingId = await seedMeeting(workspace.id, {
+      status: "scheduled",
+      starts_at: startsAt,
+    });
+    seedEmailedPeople(workspace.id, meetingId, 2);
+    // One answered an hour before the start, the other exactly at it.
+    runLocalSql(`
+      insert into public.responses (workspace_id, meeting_id, invitee_id, status, responded_at)
+      select i.workspace_id, i.meeting_id, i.id, 'attending',
+        '${startsAt}'::timestamptz - case when row_number() over (order by i.id) = 1
+          then interval '1 hour' else interval '0' end
+      from public.meeting_invitees i where i.meeting_id = '${meetingId}'`);
+    const gained = () => {
+      const now = answerCounts(utcDay(-6), utcDay());
+      return {
+        invited: now.invited - before.invited,
+        answered: now.answered - before.answered,
+      };
+    };
+    expect(gained()).toEqual({ invited: 2, answered: 1 });
+    runLocalSql("select private.rollup_platform_daily()");
+    expect(gained()).toEqual({ invited: 2, answered: 1 });
+
+    const { data, error } = await owner.client.rpc("workspace_insights", {
+      p_workspace: workspace.id,
+      p_from: `${utcDay(-1)}T00:00:00Z`,
+      p_to: `${utcDay()}T00:00:00Z`,
+    });
+    expect(error).toBeNull();
+    expect(
+      z
+        .object({ period: z.object({ answered_before_start: z.number() }) })
+        .parse(data).period.answered_before_start,
+    ).toBe(0.5);
+  });
+
   it("keeps the answers of meetings older than the nightly window once backfilled", async () => {
     const { workspace } = await adminAndWorkspace("History Club", 1);
     runLocalSql("select private.rollup_platform_daily()");

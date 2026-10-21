@@ -19,6 +19,7 @@ import {
 import { withListCounts } from "@/lib/roster/roster-cache";
 import type { Contact, Roster } from "@/shared/api/roster";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
+import { periodFromSearchParams } from "@/lib/responses/periods";
 import { AddContactDialog } from "./add-contact-dialog";
 import { AttendanceView } from "./attendance-view";
 import { ContactSheet } from "./contact-sheet";
@@ -50,6 +51,8 @@ export function RosterView({
   const pathname = usePathname();
   const search = useSearchParams();
   const view = search.get("view") === "attendance" ? "attendance" : "people";
+  // A link from Home carries its period; read once, on arrival (#417).
+  const [linkedPeriod] = useState(() => periodFromSearchParams(search));
   const [query, setQuery] = useState("");
   const [listId, setListId] = useState<ListFilter>(null);
   // `?person=<id>` (a name on the meeting page) opens that person's sheet once, on arrival.
@@ -170,6 +173,7 @@ export function RosterView({
           workspace={workspace}
           roster={live}
           onOpenContact={openContactSheet}
+          initialPeriod={linkedPeriod ?? undefined}
         />
       ) : people.length === 0 && live.lists.length === 0 ? (
         <RosterEmpty

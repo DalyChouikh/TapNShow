@@ -157,13 +157,27 @@ test.describe("Home", () => {
     );
     await page.keyboard.press("Escape");
     await expect(dialog).toHaveCount(0);
-    await expect(
-      page.getByRole("link", { name: "See everyone's attendance" }),
-    ).toHaveAttribute("href", `/w/${slug}/lists?view=attendance`);
+    const everyone = page.getByRole("link", {
+      name: "See everyone's attendance",
+    });
+    await expect(everyone).toHaveAttribute(
+      "href",
+      `/w/${slug}/lists?view=attendance&period=3m`,
+    );
 
-    // All time reads the same three; a bar opens its meeting.
+    // All time reads the same three, and Attendance opens on it (#417).
     await page.getByRole("button", { name: "All time" }).click();
     await expect(numbers).toContainText("3meetings");
+    await everyone.click();
+    await expect(page).toHaveURL(
+      new RegExp(`/w/${slug}/lists\\?view=attendance&period=all$`),
+    );
+    await expect(
+      page.getByRole("button", { name: "All time" }),
+    ).toHaveAttribute("aria-pressed", "true");
+
+    // A bar opens its meeting.
+    await page.goto(`/w/${slug}`);
     await chart.getByRole("link").first().click();
     await expect(page).toHaveURL(new RegExp(`/meetings/${meetings[0]}$`));
 

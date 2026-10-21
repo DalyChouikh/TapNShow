@@ -5,10 +5,10 @@ import type { ReactNode } from "react";
 import { LoadError } from "@/components/errors/load-error";
 import { PeriodChips } from "@/components/forms/period-chips";
 import { Card } from "@/components/ui/card";
+import { Refreshing } from "@/components/ui/refreshing";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useWorkspaceInsights } from "@/hooks/use-results";
 import type { PeriodState } from "@/lib/responses/use-period";
-import { cn } from "@/lib/utils";
 import { InsightsChart } from "./insights-chart";
 
 /** One of the three numbers: the value large, what it counts small under it. */
@@ -60,13 +60,9 @@ export function HowItsGoing({
           {!data ? (
             <LoadError bare onRetry={() => void insights.refetch()} />
           ) : (
-            /* The last period stays, dimmed, while the next one loads. */
-            <div
-              aria-busy={insights.isPlaceholderData}
-              className={cn(
-                "flex flex-col gap-3 transition-opacity motion-reduce:transition-none",
-                insights.isPlaceholderData && "opacity-60",
-              )}
+            <Refreshing
+              busy={insights.isPlaceholderData}
+              className="flex flex-col gap-3"
             >
               <div
                 role="group"
@@ -117,7 +113,7 @@ export function HowItsGoing({
                   <InsightsChart slug={slug} meetings={data.chart} />
                 </>
               )}
-            </div>
+            </Refreshing>
           )}
         </>
       )}

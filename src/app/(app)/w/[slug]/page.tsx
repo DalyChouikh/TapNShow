@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useNow } from "next-intl";
+import { useNow, useTranslations } from "next-intl";
 import { type ReactNode, useState } from "react";
 import { LoadError } from "@/components/errors/load-error";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,7 +12,7 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 import { useWorkspaceInsights } from "@/hooks/use-results";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { usePeriod } from "@/lib/responses/use-period";
-import type { WorkspaceDetails } from "@/shared/api/workspaces";
+import type { WorkspaceResponse } from "@/shared/api/workspaces";
 import { HomeChecklist } from "./home-checklist";
 import { HomeGreeting } from "./home-greeting";
 import { HowItsGoing } from "./how-its-going";
@@ -39,7 +39,8 @@ export default function WorkspaceHomePage() {
   return <WorkspaceHome workspace={workspace.data} />;
 }
 
-function WorkspaceHome({ workspace }: { workspace: WorkspaceDetails }) {
+function WorkspaceHome({ workspace }: { workspace: WorkspaceResponse }) {
+  const tHome = useTranslations("WorkspaceHome");
   const now = useNow({ updateInterval: RELATIVE_TIME_TICK_MS });
   // One period for How it's going and Often missing, chosen with the chips.
   const period = usePeriod(workspace.timezone);
@@ -55,12 +56,17 @@ function WorkspaceHome({ workspace }: { workspace: WorkspaceDetails }) {
     me.data?.profile.displayName?.trim().split(/\s+/)[0] ?? null;
 
   const attention = <NeedsAttention key="attention" workspace={workspace} />;
+  // The Remind dialog's state lives here like the history dialog's: crossing lg remounts the cards.
+  const [remindFor, setRemindFor] = useState<string | null>(null);
   const next = (
     <NextMeetingCard
       key="next"
       slug={workspace.slug}
       canManage={canManage}
       now={now}
+      sendingSuspended={Boolean(workspace.sendingSuspension)}
+      remindFor={remindFor}
+      onRemindFor={setRemindFor}
     />
   );
   const going = (
@@ -90,11 +96,17 @@ function WorkspaceHome({ workspace }: { workspace: WorkspaceDetails }) {
     // While setup loads or fails, the same cards stay mounted around its slot. A card mounting
     // then would ask again for a request that just failed (TanStack retries on mount), flipping
     // setup back to loading and remounting it, in a loop of requests.
+    // Setup's own error (sender or sheet) goes to those who can act on setup; when only the
+    // insights failed, How it's going already offers to try that same request again (#417).
     const setupSlot =
       setup.state === "loading" ? (
         <Skeleton key="setup" className="h-64 w-full" />
-      ) : setup.state === "error" ? (
-        <LoadError key="setup" onRetry={setup.retry} />
+      ) : setup.state === "error" && setup.ownFailure && canManage ? (
+        <LoadError
+          key="setup"
+          message={tHome("setupLoadError")}
+          onRetry={setup.retry}
+        />
       ) : null;
     const sheetsTip =
       setup.state === "ready" ? (

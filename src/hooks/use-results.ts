@@ -1,7 +1,6 @@
 "use client";
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { PROGRESS_POLL_MS } from "@/config/meetings";
 import { RESULTS_POLL_MS } from "@/config/responses";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { apiRequest } from "@/lib/api-client";
@@ -18,6 +17,7 @@ import {
   type PersonRow,
 } from "@/shared/api/responses";
 import { fetchAllPages } from "@/lib/api/fetch-all-pages";
+import { resultsPollMs } from "@/lib/meetings/send-state";
 
 const workspaceBase = (slug: string) =>
   `/api/workspaces/${encodeURIComponent(slug)}`;
@@ -36,21 +36,24 @@ function periodParams(range: PeriodRange): Record<string, string> {
 export const meetingResultsKey = (slug: string, id: string) =>
   ["meeting-results", slug, id] as const;
 
-/** A meeting's counts (tiles, email line, send progress), refreshed while sending or `live`. */
-export function useMeetingResults(slug: string, id: string, live: boolean) {
+/**
+ * A meeting's counts (tiles, email line, send progress), refreshed while invites go out or the
+ * meeting is `live`; `suspended` is the workspace's pause for review (nothing goes out meanwhile).
+ */
+export function useMeetingResults(
+  slug: string,
+  id: string,
+  live: boolean,
+  suspended: boolean,
+) {
   return useQuery({
     queryKey: meetingResultsKey(slug, id),
     queryFn: () =>
       apiRequest(`${meetingBase(slug, id)}/results`, {
         schema: meetingResultsSchema,
       }),
-    // Every 3 s while invites are still going out, every 10 s while the meeting is live.
     refetchInterval: (query) =>
-      (query.state.data?.emails.queued ?? 0) > 0
-        ? PROGRESS_POLL_MS
-        : live
-          ? RESULTS_POLL_MS
-          : false,
+      resultsPollMs(query.state.data, suspended, live, new Date()),
     refetchIntervalInBackground: false,
   });
 }

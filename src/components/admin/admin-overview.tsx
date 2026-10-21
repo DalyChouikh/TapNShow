@@ -17,11 +17,11 @@ import {
   selectedPeriod,
   utcToday,
 } from "@/lib/admin/period";
-import { cn } from "@/lib/utils";
 import { ADMIN_PERIOD_MAX_DAYS } from "@/shared/api/admin";
 import { AttentionList } from "./attention-list";
 import { FigureTiles } from "./figure-tiles";
 import { LoadError } from "@/components/errors/load-error";
+import { Refreshing } from "@/components/ui/refreshing";
 import { MeetingsChart } from "./meetings-chart";
 import { SystemHealth } from "./system-health";
 
@@ -31,8 +31,6 @@ const CHOICES: readonly AdminPeriodChoice[] = [
   ...ADMIN_PERIOD_PRESETS,
   "custom",
 ];
-/** The last period's figures stay on screen, dimmed, while the next one loads. */
-const LOADING_CLASS = "transition-opacity motion-reduce:transition-none";
 
 /**
  * `/admin` (spec §7.19): what needs attention first, then one period (7, 30 or 90 days, 12
@@ -117,9 +115,9 @@ export function AdminOverviewView() {
           />
         ) : null}
         {data ? (
-          <div className={cn(LOADING_CLASS, loading && "opacity-60")}>
+          <Refreshing busy={loading}>
             <FigureTiles current={data.current} previous={data.previous} />
-          </div>
+          </Refreshing>
         ) : failed ? (
           <LoadError onRetry={() => void overview.refetch()} />
         ) : (
@@ -132,12 +130,9 @@ export function AdminOverviewView() {
       </section>
       {data ? (
         <>
-          <div
-            aria-busy={loading}
-            className={cn(LOADING_CLASS, loading && "opacity-60")}
-          >
+          <Refreshing busy={loading}>
             <MeetingsChart series={data.series} today={today} />
-          </div>
+          </Refreshing>
           <SystemHealth health={data.health} pushes={data.current} />
         </>
       ) : failed ? null : (

@@ -4,6 +4,7 @@ import { DEVICE_KEYS } from "@/config/members";
 import {
   clearDeviceValues,
   readDeviceValue,
+  scopedDeviceKey,
   writeDeviceValue,
 } from "./storage";
 
@@ -27,5 +28,14 @@ describe("device storage", () => {
     clearDeviceValues();
     expect(window.localStorage.getItem(DEVICE_KEYS.invitesFilter)).toBeNull();
     expect(window.localStorage.getItem("theme")).toBe("dark");
+  });
+
+  it("keeps a value per workspace, and clears it with the rest at sign-out (#417)", () => {
+    const a = scopedDeviceKey(DEVICE_KEYS.sheetsTipHiddenUntil, "workspace-a");
+    const b = scopedDeviceKey(DEVICE_KEYS.sheetsTipHiddenUntil, "workspace-b");
+    writeDeviceValue(a, "2026-11-01T00:00:00.000Z");
+    expect(readDeviceValue(b, z.string())).toBeNull();
+    clearDeviceValues();
+    expect(window.localStorage.getItem(a)).toBeNull();
   });
 });

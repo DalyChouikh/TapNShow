@@ -46,6 +46,11 @@ describe("InsightsChart", () => {
     expect(bars[0]).toHaveAccessibleName(
       "Weekly sync 1, Mon 5 Oct: 18 came, 4 late, 5 absent, 3 no reply",
     );
+    // #417: named once, by its own tooltip, so a screen reader doesn't read it twice; and a ring
+    // drawn inside the link shows keyboard focus where SVG links get no outline (Safari).
+    expect(bars[0]).not.toHaveAttribute("aria-label");
+    expect(bars[0]).not.toHaveAccessibleDescription();
+    expect(bars[0].querySelector("[data-focus-ring]")).not.toBeNull();
     expect(bars[0]).toHaveAttribute(
       "href",
       `/w/club-ab12/meetings/${INSIGHTS_IDS.firstMeeting}`,
@@ -135,6 +140,7 @@ describe("InsightsChart", () => {
     expect(bars[11]).toHaveAccessibleName(
       "Weekly sync 12, Mon 12 Oct: 18 came, 4 late, 5 absent, 3 no reply",
     );
+    expect(bars[11]).not.toHaveAttribute("aria-label");
   });
 
   it("on a touch screen, bars wide enough for 44 px stay links", () => {

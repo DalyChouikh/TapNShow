@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Sticker } from "@/components/ui/sticker";
 import { DEVICE_KEYS, REMINDERS_NOT_NOW_DAYS } from "@/config/members";
+import { scopedDeviceKey } from "@/lib/device/storage";
 import { useHiddenUntil } from "@/lib/device/use-hidden-until";
 import { settingsPath } from "@/lib/with-query";
 import type { WorkspaceDetails } from "@/shared/api/workspaces";
@@ -14,7 +15,8 @@ import type { ReadySetup } from "./home-checklist";
 
 /**
  * Home's optional Google Sheets step once setup is done (design §2.6), for the Owner, who connects
- * it. "Not now" hides it on this device as long as the reminders card's "Not now".
+ * it. "Not now" hides it in this workspace on this device as long as the reminders card's "Not
+ * now" (#417: another workspace still shows its own tip).
  */
 export function SheetsTip({
   workspace,
@@ -27,7 +29,7 @@ export function SheetsTip({
 }) {
   const t = useTranslations("WorkspaceHome.sheetsTip");
   const notNow = useHiddenUntil(
-    DEVICE_KEYS.sheetsTipHiddenUntil,
+    scopedDeviceKey(DEVICE_KEYS.sheetsTipHiddenUntil, workspace.id),
     REMINDERS_NOT_NOW_DAYS,
     now,
   );

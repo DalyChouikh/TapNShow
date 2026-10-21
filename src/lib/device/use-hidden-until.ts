@@ -5,7 +5,11 @@ import { useState } from "react";
 import { z } from "zod";
 import type { DeviceKey } from "@/config/members";
 import { useIsClient } from "@/lib/use-is-client";
-import { readDeviceValue, writeDeviceValue } from "./storage";
+import {
+  readDeviceValue,
+  type ScopedDeviceKey,
+  writeDeviceValue,
+} from "./storage";
 
 /**
  * "Not now" for a card on this device: hidden until the instant stored under `key`, and `hide()`
@@ -13,7 +17,7 @@ import { readDeviceValue, writeDeviceValue } from "./storage";
  * a dismissed card never flashes in.
  */
 export function useHiddenUntil(
-  key: DeviceKey,
+  key: DeviceKey | ScopedDeviceKey,
   days: number,
   now: Date,
 ): { hidden: boolean; hide: () => void } {

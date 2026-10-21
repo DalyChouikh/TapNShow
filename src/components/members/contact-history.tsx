@@ -12,7 +12,8 @@ import { OUTCOME_TONES } from "@/design/tokens";
 import { useAnswerLabels } from "@/hooks/use-answer-labels";
 import { useContactHistory } from "@/hooks/use-results";
 import { describeCheckIn } from "@/lib/responses/describe-answer";
-import { type PeriodChoice, usePeriod } from "@/lib/responses/use-period";
+import type { PeriodChoice } from "@/lib/responses/periods";
+import { usePeriod } from "@/lib/responses/use-period";
 import { cn } from "@/lib/utils";
 import type { HistoryRow } from "@/shared/api/responses";
 

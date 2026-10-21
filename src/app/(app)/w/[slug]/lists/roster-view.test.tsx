@@ -62,6 +62,25 @@ describe("RosterView navigation (M5)", () => {
     );
   });
 
+  it("opens Attendance on the period in the link", async () => {
+    navigation.search = "view=attendance&period=30d";
+    routeFetch(
+      new Proxy(
+        {},
+        {
+          get: () => () =>
+            new Response(JSON.stringify({ meetings: 0, rows: [] })),
+        },
+      ),
+    );
+    renderWithProviders(
+      <RosterView workspace={owner} roster={rosterFixture} />,
+    );
+    expect(
+      await screen.findByRole("button", { name: "Last 30 days" }),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
   it("switches to Attendance through ?view=", async () => {
     const user = userEvent.setup();
     renderWithProviders(

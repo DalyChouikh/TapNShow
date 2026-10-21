@@ -50,7 +50,7 @@ describe("organizer hooks", () => {
     });
     const { result } = renderHook(
       () => ({
-        results: useMeetingResults("club-ab12", MEETING, true),
+        results: useMeetingResults("club-ab12", MEETING, true, false),
         people: useMeetingPeople("club-ab12", MEETING, "late", true),
       }),
       { wrapper },

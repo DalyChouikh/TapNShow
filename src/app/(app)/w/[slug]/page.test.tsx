@@ -229,9 +229,10 @@ describe("Workspace Home", () => {
     expect(
       await screen.findByRole("link", { name: "Weekly sync" }),
     ).toBeInTheDocument();
-    // Setup and How it's going each offer it; either asks for the same insights.
+    // #417: one offer, How it's going's (titled); setup doesn't repeat it for the same request.
     const retries = await screen.findAllByRole("button", { name: "Try again" });
-    expect(retries).toHaveLength(2);
+    expect(retries).toHaveLength(1);
+    expect(screen.getAllByText("Couldn't load this.")).toHaveLength(1);
     await new Promise((resolve) => setTimeout(resolve, 300));
     expect(calls).toBe(1);
     healthy = true;
@@ -327,6 +328,69 @@ describe("Workspace Home", () => {
     expect(container.querySelector('[data-slot="side"]')).toBeNull();
     expect(
       screen.getByRole("dialog", { name: amira.fullName }),
+    ).toBeInTheDocument();
+  });
+
+  it("says the setup steps couldn't load when its own request fails, to Owners and Admins only (#417)", async () => {
+    serve({
+      meeting: false,
+      routes: { [`GET ${base}/sheet`]: refused },
+    });
+    const { unmount } = renderWithProviders(<WorkspaceHomePage />);
+    expect(
+      await screen.findByText("Couldn't load the setup steps."),
+    ).toBeInTheDocument();
+    unmount();
+
+    serve({
+      meeting: false,
+      routes: {
+        [`GET ${base}`]: json({ ...workspaceFixture, myRole: "viewer" }),
+        [`GET ${base}/sheet`]: refused,
+      },
+    });
+    renderWithProviders(<WorkspaceHomePage />);
+    expect(
+      await screen.findByText("No meeting coming up."),
+    ).toBeInTheDocument();
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(screen.queryByText("Couldn't load the setup steps.")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+  });
+
+  it("keeps the Remind dialog open when the screen crosses lg (#417)", async () => {
+    setWideViewport(true);
+    serve();
+    const { rerender } = renderWithProviders(<WorkspaceHomePage />);
+    await userEvent.click(
+      await screen.findByRole("button", {
+        name: "Remind 1 who hasn't answered",
+      }),
+    );
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    setWideViewport(false);
+    rerender(<WorkspaceHomePage />);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("says the next meeting's invites are paused while the workspace is under review (#417)", async () => {
+    serve({
+      routes: {
+        [`GET ${base}`]: json({
+          ...workspaceFixture,
+          sendingSuspension: {
+            since: "2026-10-17T09:00:00.000Z",
+            contact: "help@example.test",
+          },
+        }),
+        [`GET ${base}/meetings/${next.id}/results`]: json(resultsFixture),
+      },
+    });
+    renderWithProviders(<WorkspaceHomePage />);
+    expect(
+      await screen.findByText(
+        "Sending is paused while TapNShow reviews reports about this workspace.",
+      ),
     ).toBeInTheDocument();
   });
 });

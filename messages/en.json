@@ -629,7 +629,8 @@
       "customRange": "{from} to {to}",
       "missed": "Missed {missed} of {invited}: {absent} absent, {noReply} no reply",
       "seeAll": "See everyone's attendance"
-    }
+    },
+    "setupLoadError": "Couldn't load the setup steps."
   },
   "Invites": {
     "title": "Invites",

@@ -49,7 +49,10 @@ which includes a meeting in progress until it ends.
   `onFilter` becomes optional, and without it the tiles render as plain boxes, not buttons.
 - **Answer line:** "24 of 30 answered", with a progress bar, and ", answers close <deadline>" when
   the meeting has a deadline. While invites are still going out, it says "Sending invites: 12 of 30"
-  instead.
+  instead; when sending is held, it says why, in the meeting page's words (paused for review, Gmail
+  to connect or reconnect, or queued until Gmail's daily limit resets). One rule decides both
+  screens (`sendState`, `src/lib/meetings/send-state.ts`), and the counts are asked for every 3 s
+  only while invites actually go out (#417).
 - **Actions:**
   - Owner and Admin: the meeting page's `NudgeButton` ("Remind 6 who haven't answered", its
     confirm dialog, its once-every-12-hours rule and its "Reminded N at …" state), reused.
@@ -57,7 +60,10 @@ which includes a meeting in progress until it ends.
   - While the meeting is in progress, the reminder is gone (`NudgeButton` already hides after the
     start) and **Open meeting** becomes the primary button. The meeting page doesn't open its
     check-in view from a link, and this change doesn't add that.
-- **Live:** the card refreshes like the meeting page (`RESULTS_POLL_MS` while visible).
+- **Live:** the card refreshes like the meeting page (`RESULTS_POLL_MS` while visible). When the
+  meeting's end passes, the card asks for the next meeting and for this one's details again, so a
+  meeting made longer on another device stays (#417). The Remind dialog's state is held by the
+  page, so it survives crossing `lg` (#417).
 - **Nothing upcoming:** a card that says "No meeting coming up." with **New meeting** (Owner and
   Admin), plus "Create one now; you can send it once Gmail is connected." while there's no sender.
 
@@ -102,7 +108,8 @@ For everyone with access.
 - **Each row:** initials, name, "Missed 6 of 8: 4 absent, 2 no reply". It opens the person sheet
   in place: the same `ContactSheet` Lists opens (`src/app/(app)/w/[slug]/lists/contact-sheet.tsx`),
   moved to `src/components/members/` if both pages need it.
-- **Footer:** "See everyone's attendance" goes to Lists → Attendance.
+- **Footer:** "See everyone's attendance" goes to Lists → Attendance on Home's period (in the
+  link, #417).
 - Hidden when nobody missed anything in the period.
 
 ### 2.6 Get set up (`HomeChecklist`, redone)
@@ -119,8 +126,11 @@ For Owner and Admin, until the two required steps are done.
 - Each step shows **Done** or its button, with "0 of 2 needed" and a bar.
 - An Admin sees "Ask <Owner> to connect" for the Owner-only steps, as today.
 - Once both required steps are done, the card is gone. If Sheets isn't connected, a small **Sheets
-  tip** stays (Owner only) with **Connect** and **Not now**; Not now hides it on that device for
-  `REMINDERS_NOT_NOW_DAYS` days, the same rule as the reminders card.
+  tip** stays (Owner only) with **Connect** and **Not now**; Not now hides it for that workspace on
+  that device for `REMINDERS_NOT_NOW_DAYS` days, the same rule as the reminders card (#417).
+- When the sender or the sheet can't load, the setup slot says "Couldn't load the setup steps."
+  with Try again, for Owners and Admins only; when only the insights failed, How it's going
+  offers that retry instead (#417).
 - Viewers keep today's short welcome card instead.
 
 ### 2.7 Layout
@@ -181,13 +191,13 @@ card's details, tiles, nudge state), `POST …/nudge`, the sender and sheet hook
 | 1 | No meeting ever | Next: "No meeting coming up"; chart empty state; no often missing | component tests |
 | 2 | Meetings, none in the period | Numbers show 0 meetings; "No meetings in this period" | component + DB test |
 | 3 | Next meeting in progress | "Now" chip; no reminder; Open meeting is primary; listed until it ends | component test |
-| 4 | Next meeting's invites still queued | "Sending invites: X of N" | component test |
+| 4 | Next meeting's invites still queued | "Sending invites: X of N"; held sending says why (#417) | unit + component test |
 | 5 | Announcement / RSVP next | No tiles / RSVP tiles (ResultTiles) | component test |
 | 6 | Cancelled, draft, announcement meetings | Never counted | DB test |
 | 7 | Check-in differs from the answer | The check-in wins | DB test |
 | 8 | Ad hoc people | In the chart totals; never in often missing | DB test |
 | 9 | Unsubscribed or failed email | Neither no reply nor answered (the existing rule) | DB test |
-| 10 | Answer after the start | Counted as answered, not "before the start" (first answer's `responded_at`) | DB test |
+| 10 | Answer after the start | Counted as answered, not "before the start" (first answer's `responded_at`); an answer exactly at the start is after it, on Home and in the admin overview (#417) | DB test |
 | 11 | More than 12 meetings in the period | Newest 12, "The latest 12 of N" | DB + component test |
 | 12 | Ties in often missing | More absent first, then name | DB test |
 | 13 | A Viewer, a non-member | Viewer reads it; a non-member gets 403/404 like Attendance | DB + route test |
@@ -198,6 +208,7 @@ card's details, tiles, nudge state), `POST …/nudge`, the sender and sheet hook
 | 18 | Slow or failed load | Each card has its own skeleton and its own retry, so one failure doesn't blank Home | component tests |
 | 19 | 320 px, dark mode, 1024 | No sideways scroll; tokens only | screenshots |
 | 20 | Screen readers | The chart has a label per bar and a text summary (the three numbers) | component test |
+| 21 | An answer or check-in filed under another meeting | Refused: foreign keys tie both to their invitee's meeting and workspace (#417) | DB test |
 
 ## 5. Goals, non-goals, anti-goals
 
