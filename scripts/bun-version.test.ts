@@ -76,6 +76,19 @@ describe("Bun version", () => {
     }
   });
 
+  it("is the last Bun a job installs: supabase/setup-cli brings its own, so it goes first", () => {
+    for (const step of setupBunSteps) {
+      const job = steps.filter(
+        (other) => other.workflow === step.workflow && other.job === step.job,
+      );
+      const later = job.slice(job.indexOf(step) + 1);
+      expect(
+        later.some((other) => usesAction(other, "supabase/setup-cli")),
+        `${step.workflow} → ${step.job}`,
+      ).toBe(false);
+    }
+  });
+
   it("is read after the checkout that brings package.json, in the same job", () => {
     for (const step of setupBunSteps) {
       const job = steps.filter(
