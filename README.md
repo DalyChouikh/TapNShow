@@ -86,8 +86,8 @@ docs/           Spec and plans (superpowers/), spike reports, runbooks
 
 ### Prerequisites
 
-- **Bun 1.3.11** (pinned in `package.json`).
-- **Node.js 20.9 or later**, which Next.js 16 requires.
+- **Bun** at the version pinned in `package.json` (`packageManager`; CI installs the same one).
+- **Node.js 24**, the line Vercel runs: 24.22.1 or later has the October 2026 security fixes.
 - **Supabase CLI 2.119.0** (the version CI uses) and **Docker**, for the local database.
 - On Windows, work inside **WSL 2**. The local stack uses ports 44320–44329 rather than Supabase's
   default 543xx, because Windows reserves blocks in its dynamic port range.
