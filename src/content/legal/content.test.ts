@@ -57,6 +57,21 @@ describe("privacy policy", () => {
     );
   });
 
+  it("says the Google Sheet is shared with the team, view only, and how long that lasts (#413)", () => {
+    expect(section("google")).toContain(
+      "- **Files TapNShow creates (drive.file):** to create and update the one Google Sheet that follows a workspace's answers, and to share it, view only, with the workspace's team (Owner, Admins, Viewers); Google emails each of them a link.",
+    );
+    expect(section("google-sharing")).toContain(
+      "TapNShow shares the group's Google Sheet with the team, view only.",
+    );
+    expect(section("visibility")).toContain(
+      "TapNShow shares it, view only, with the group's team, who already see those in TapNShow.",
+    );
+    expect(section("retention")).toContain(
+      "- A Google Sheet's sharing with a team member: until they leave the team, the sheet is turned off or replaced, or the workspace is deleted.",
+    );
+  });
+
   it("states that Google data follows the Limited Use requirements", () => {
     const text = JSON.stringify(privacyPolicy);
     expect(text).toContain(

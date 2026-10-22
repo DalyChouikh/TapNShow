@@ -246,7 +246,9 @@ deleted person's token beyond the removals. **The exact mechanism is left to the
 `NEXT_PUBLIC_GMAIL_CONNECT_ENABLED`) hides the new words and stops the worker from sharing. The
 privacy policy update (section 4: TapNShow also shares the sheet with the workspace's team, view
 only; section 5 "People in your groups"; the "Last updated" date) ships in the same release that
-turns the flag on, after Google approves the verification.
+turns the flag on, after Google approves the verification. **Switched on 2026-10-22** (Google
+approved that day; the safeguard count in §7 found only the platform owner's sheet with other people
+on its team).
 
 ## 6. Limits and settings (my calls, in `src/config/sheets.ts` and `private.app_limits`)
 

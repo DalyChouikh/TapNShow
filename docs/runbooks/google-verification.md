@@ -20,6 +20,10 @@ screens without notice.
 Nothing else. If the code ever asks for another scope, this table and the Data access screen change
 in the same PR.
 
+Sharing the sheet with the workspace's team (#413, on since 2026-10-22) uses the same `drive.file`:
+Drive's `permissions.list`, `permissions.create` and `permissions.delete` accept it (design
+`2026-10-20-sheet-team-sharing-design.md` §4), so it asked for no new scope and no new verification.
+
 ## Before submitting (I check, you confirm)
 
 - [ ] https://www.tapnshow.tn/ is the landing (not a sign-in page) and links /privacy and /terms.
@@ -64,7 +68,25 @@ Google's email (to the Owner) asked for:
 
 **Answered 2026-10-20** (the Owner): #407 merged (`/privacy` section 5); the new video uploaded Unlisted
 (both recordings spliced by `.superpowers/scripts/demo-video/cuts/round2.py`, private details blurred); Data access
-checked; the justification below and the video link pasted; resubmitted; the reply below sent. Waiting for Google.
+checked; the justification below and the video link pasted; resubmitted; the reply below sent.
+
+### Approved 2026-10-22
+
+Google's Third Party Data Safety Team approved the OAuth app verification of project 850676857783
+(`tapnshow-510707`) for `gmail.send` (email to the Owner, 2026-10-22). The status is on the Google
+Auth Platform's Verification Center.
+
+What the approval asks from now on (Google's email):
+
+- Keep the project's Owner and Editor accounts current in the Cloud Console, so Google's emails
+  reach someone.
+- **A new scope, or any change to the consent screen's setup (Branding: name, logo, links,
+  authorized domains; Data access), needs a new verification request.** Change nothing there
+  without a reason worth another review; a new scope goes through the table above first.
+- The approval isn't inherited: another project or app can't use `gmail.send` on it.
+
+The same day, the team sharing of the Google Sheet was switched on with the privacy policy update
+(#413).
 
 The email named no scope. `gmail.send` is the only sensitive one, so round 2 is about it (Owner,
 2026-10-20). "Show all services" isn't described on Google's help pages (checked 2026-10-20): the
