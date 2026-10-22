@@ -161,6 +161,15 @@ describe("the switch", () => {
   let restore: () => void = () => undefined;
   afterEach(() => restore());
 
+  it("is on once the migrations have run (Google approved the verification, 2026-10-22)", () => {
+    expect(
+      queryLocalSql(
+        "select enabled from private.app_flags where name = 'sheet_team_sharing'",
+        z.array(z.object({ enabled: z.boolean() })).length(1),
+      ),
+    ).toEqual([{ enabled: true }]);
+  });
+
   it("is due only while the switch is on", async () => {
     await seedSharedSheet();
     parkAllWork();
